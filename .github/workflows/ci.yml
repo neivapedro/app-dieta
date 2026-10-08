@@ -1,8 +1,7 @@
 name: CI
 
+# Testes em cada pull request (a publicação também testa antes de publicar)
 on:
-  push:
-    branches: [main]
   pull_request:
 
 jobs:

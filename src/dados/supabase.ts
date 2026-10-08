@@ -53,13 +53,13 @@ export class RepositorioSupabase implements Repositorio {
   }
 
   async cadastrar(email: string, senha: string) {
-    const { data, error } = await this.sb.auth.signUp({ email, password: senha, options: { emailRedirectTo: location.origin } });
+    const { data, error } = await this.sb.auth.signUp({ email, password: senha, options: { emailRedirectTo: location.origin + import.meta.env.BASE_URL } });
     if (error) throw new Error(error.message);
     return { confirmarEmail: !data.session };
   }
 
   async recuperarSenha(email: string) {
-    const { error } = await this.sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin });
+    const { error } = await this.sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + import.meta.env.BASE_URL });
     if (error) throw new Error(error.message);
   }
 

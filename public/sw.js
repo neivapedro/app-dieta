@@ -1,8 +1,10 @@
 // Service worker: deixa o app abrir offline e recebe os lembretes (push).
-const CACHE = 'app-dieta-v2';
+const CACHE = 'app-dieta-v3';
+// Caminhos relativos ao escopo (ex.: /app-dieta/ no GitHub Pages)
+const BASE = new URL(self.registration.scope).pathname;
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(['/', '/manifest.webmanifest', '/icone-192.png', '/braco.webp'])));
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll([BASE, BASE + 'manifest.webmanifest', BASE + 'icone-192.png', BASE + 'braco.webp'])));
   self.skipWaiting();
 });
 
@@ -22,14 +24,14 @@ self.addEventListener('fetch', (e) => {
       fetch(req)
         .then((r) => {
           const copia = r.clone();
-          caches.open(CACHE).then((c) => c.put('/', copia));
+          caches.open(CACHE).then((c) => c.put(BASE, copia));
           return r;
         })
-        .catch(() => caches.match('/')),
+        .catch(() => caches.match(BASE)),
     );
     return;
   }
-  if (url.pathname.startsWith('/assets/')) {
+  if (url.pathname.startsWith(BASE + 'assets/')) {
     // Arquivos com hash no nome: cache primeiro
     e.respondWith(
       caches.match(req).then(
@@ -55,18 +57,18 @@ self.addEventListener('push', (e) => {
   e.waitUntil(
     self.registration.showNotification(d.titulo || 'Lembrete de aplicação', {
       body: d.corpo || 'Hora da sua aplicação.',
-      icon: '/icone-192.png',
-      badge: '/icone-192.png',
+      icon: BASE + 'icone-192.png',
+      badge: BASE + 'icone-192.png',
       tag: d.tag || 'dose',
       renotify: true,
-      data: { url: d.url || '/' },
+      data: { url: new URL(d.url || './', self.registration.scope).href },
     }),
   );
 });
 
 self.addEventListener('notificationclick', (e) => {
   e.notification.close();
-  const destino = (e.notification.data && e.notification.data.url) || '/';
+  const destino = (e.notification.data && e.notification.data.url) || self.registration.scope;
   e.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((lista) => {
       for (const c of lista) {

@@ -38,35 +38,35 @@ npm run dev      # http://localhost:5173
 npm test         # testes dos cálculos
 ```
 
-Sem o arquivo `.env.local` (modelo em `.env.example`), o app roda em **modo demonstração**: os dados ficam só no navegador, separados por e-mail. Esse modo serve só para testar.
+O app usa o projeto Supabase configurado em `src/config.ts`. Para testar sem nuvem, com dados só no navegador, rode com `VITE_SUPABASE_URL=` vazio (veja `.env.example`).
 
-## Colocar no ar (login real + lembretes no celular)
+## Colocar no ar
 
-Todos os serviços abaixo têm plano gratuito suficiente para uso pessoal. Você vai precisar de 3 chaves: a pública e a privada de notificação (VAPID) e uma senha para o agendador (CRON_SECRET). Gere com `npx web-push generate-vapid-keys` e qualquer texto aleatório longo. Guarde a privada e o CRON_SECRET fora do GitHub.
+Mesmo método do Diário de Carga:
 
-### 1. Supabase: banco + login (cerca de 10 min)
+- **Endereço:** <https://neivapedro.github.io/app-dieta/>, pelo **GitHub Pages**.
+- **Dados e login:** no **Supabase**, no mesmo projeto do Diário de Carga. As tabelas deste app têm nomes próprios e não mexem nas do treino, e o login é o mesmo nos dois apps.
+- **Valores públicos:** já estão em `src/config.ts`. Ali ficam a URL do projeto, a chave publicável e a chave pública de notificação.
 
-1. Crie uma conta em <https://supabase.com> e um projeto novo (região *South America (São Paulo)*).
-2. **Edge Functions → Secrets:** cadastre `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (`mailto:seu-email`) e `CRON_SECRET`.
-3. **Edge Functions → Deploy a new function → Via Editor:**
+### 1. GitHub: publicação automática (uma vez)
+
+1. **Settings → General → Danger Zone → Change visibility → Public.** O GitHub Pages grátis exige repositório público. Isso deixa visível o código, não os dados: cada conta só acessa as próprias linhas no Supabase.
+2. **Settings → Pages → Build and deployment → Source: GitHub Actions.**
+3. A partir daí, cada atualização da `main` roda os testes e publica o app sozinho (`.github/workflows/publicar.yml`).
+
+### 2. Supabase: banco e lembretes (uma vez, no projeto do Diário de Carga)
+
+1. **Edge Functions → Secrets:** cadastre `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (`mailto:seu-email`) e `CRON_SECRET`.
+2. **Edge Functions → Deploy a new function → Via Editor:**
    - Nome: `enviar-lembretes`.
    - Cole o conteúdo de `supabase/functions/enviar-lembretes/index.ts` e publique.
    - Nos detalhes da função, **desligue "Enforce JWT verification"**. A função valida o próprio CRON_SECRET.
-4. **SQL Editor:** abra `supabase/configurar_tudo.sql`, troque os 2 valores marcados no topo (URL do projeto e CRON_SECRET) e clique em **Run**. Esse script cria as tabelas com Row Level Security (cada usuário só acessa as próprias linhas), guarda os segredos no Vault e agenda os lembretes de hora em hora.
-5. **Project Settings → API:** anote a **Project URL** e a chave pública (**anon** / **publishable**).
-
-Se preferir a linha de comando: `npx supabase link`, `npx supabase secrets set ...`, `npx supabase functions deploy enviar-lembretes` e `npx supabase db push`. As migrações estão em `supabase/migrations/`.
-
-### 2. Vercel: hospedagem do app (cerca de 5 min)
-
-1. Em <https://vercel.com>, entre com o GitHub e importe este repositório. O framework é detectado como Vite.
-2. Em **Environment Variables**, cadastre:
-   - `VITE_SUPABASE_URL`: Project URL do passo 1.5
-   - `VITE_SUPABASE_ANON_KEY`: chave anon/publishable do passo 1.5
-   - `VITE_VAPID_PUBLIC_KEY`: chave pública VAPID
-3. Clique em **Deploy**. Depois, no Supabase, vá em **Authentication → URL Configuration** e coloque a URL da Vercel em *Site URL*.
+3. **SQL Editor:** abra `supabase/configurar_tudo.sql`, troque o CRON_SECRET marcado no topo e clique em **Run**. O script cria as tabelas com Row Level Security, guarda os segredos no Vault e agenda os lembretes de hora em hora.
+4. **Authentication → URL Configuration → Redirect URLs:** adicione `https://neivapedro.github.io/app-dieta/**`. Isso é usado nos links de confirmação e de troca de senha. O *Site URL* do Diário de Carga continua como está.
 
 ### 3. Instalar no celular
+
+Abra <https://neivapedro.github.io/app-dieta/> e entre com o mesmo e-mail e senha do Diário de Carga.
 
 - **Android (Chrome):** abra o site, toque em ⋮ → **Instalar app**. Depois, vá em Perfil → **Ativar notificações** → **Enviar teste**.
 - **iPhone (Safari, iOS 16.4+):** toque em Compartilhar → **Adicionar à Tela de Início** e abra pelo ícone. Depois, vá em Perfil → **Ativar notificações**. No iPhone, o push só funciona com o app instalado.

@@ -1,13 +1,13 @@
 -- =====================================================================
--- CONFIGURAÇÃO COMPLETA DO BANCO · cole tudo no Supabase → SQL Editor → Run
--- Antes, troque os 2 valores marcados com <<< >>> logo abaixo.
--- (Gerado a partir de supabase/migrations/. Rode uma única vez.)
+-- CONFIGURAÇÃO DO BANCO DO APP CICLO · cole tudo no Supabase → SQL Editor → Run
+-- Projeto: o mesmo do Diário de Carga (as tabelas daqui têm nomes próprios
+-- e não mexem nas do treino). Rode uma única vez.
+-- Antes, troque o valor marcado com <<< >>> logo abaixo.
 -- =====================================================================
 
--- <<< 1. URL do projeto (Project Settings → API → Project URL) >>>
-select vault.create_secret('https://SEU-PROJETO.supabase.co', 'projeto_url');
--- <<< 2. CRON_SECRET (o mesmo cadastrado nos segredos da Edge Function) >>>
-select vault.create_secret('COLE-AQUI-O-CRON_SECRET', 'cron_secret');
+select vault.create_secret('https://dqxpiyjdwwrcwkcuuyys.supabase.co', 'app_dieta_projeto_url');
+-- <<< CRON_SECRET: o mesmo cadastrado nos segredos da Edge Function >>>
+select vault.create_secret('COLE-AQUI-O-CRON_SECRET', 'app_dieta_cron_secret');
 
 -- App Dieta · Ciclo de retatrutida + medidas
 -- Cada tabela tem user_id e Row Level Security: um usuário só lê e grava as
@@ -131,10 +131,10 @@ select cron.schedule(
   '5 * * * *',
   $$
   select net.http_post(
-    url := (select decrypted_secret from vault.decrypted_secrets where name = 'projeto_url') || '/functions/v1/enviar-lembretes',
+    url := (select decrypted_secret from vault.decrypted_secrets where name = 'app_dieta_projeto_url') || '/functions/v1/enviar-lembretes',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
-      'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'cron_secret')
+      'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'app_dieta_cron_secret')
     ),
     body := '{}'::jsonb
   );

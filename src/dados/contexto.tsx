@@ -1,13 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Aplicacao, Ciclo, Medida, Perfil, RegistroDiario } from '../lib/tipos';
+import { SUPABASE_KEY, SUPABASE_URL } from '../config';
 import { RepositorioLocal } from './local';
 import type { Repositorio, Usuario } from './repositorio';
 import { RepositorioSupabase } from './supabase';
 
-const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const chave = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
-
-export const repositorio: Repositorio = url && chave && !import.meta.env.VITE_DEMO ? new RepositorioSupabase(url, chave) : new RepositorioLocal();
+export const repositorio: Repositorio =
+  SUPABASE_URL && SUPABASE_KEY && !import.meta.env.VITE_DEMO ? new RepositorioSupabase(SUPABASE_URL, SUPABASE_KEY) : new RepositorioLocal();
 
 export interface Dados {
   perfil: Perfil | null;

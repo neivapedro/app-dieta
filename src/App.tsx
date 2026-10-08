@@ -89,7 +89,7 @@ export function App() {
     );
   }
   return (
-    <Roteador>
+    <Roteador basename={import.meta.env.VITE_DEMO ? undefined : import.meta.env.BASE_URL.replace(/\/$/, '')}>
       <Estrutura />
     </Roteador>
   );

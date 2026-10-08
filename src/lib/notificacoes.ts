@@ -1,6 +1,5 @@
+import { VAPID_PUBLICA } from '../config';
 import type { Repositorio } from '../dados/repositorio';
-
-const VAPID_PUBLICA = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined;
 
 export type EstadoNotificacao =
   | 'sem-suporte'
@@ -21,7 +20,7 @@ export function instaladoComoApp(): boolean {
 export async function registrarServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   if (!('serviceWorker' in navigator)) return null;
   try {
-    return await navigator.serviceWorker.register('/sw.js');
+    return await navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`);
   } catch {
     return null;
   }
@@ -83,8 +82,8 @@ export async function notificacaoTeste(): Promise<void> {
   const reg = await navigator.serviceWorker.ready;
   await reg.showNotification('Teste de lembrete 💉', {
     body: 'As notificações estão funcionando neste aparelho.',
-    icon: '/icone-192.png',
-    badge: '/icone-192.png',
+    icon: `${import.meta.env.BASE_URL}icone-192.png`,
+    badge: `${import.meta.env.BASE_URL}icone-192.png`,
     tag: 'teste',
   });
 }
