@@ -1,0 +1,5 @@
+project_id = "app-dieta"
+
+[functions.enviar-lembretes]
+# A função valida o próprio cabeçalho (só aceita a service role key).
+verify_jwt = false
