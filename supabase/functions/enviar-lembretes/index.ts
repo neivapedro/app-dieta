@@ -21,6 +21,8 @@ const MAX_DIAS_ATRASO = 14;
 
 const url = Deno.env.get('SUPABASE_URL')!;
 const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+// Segredo compartilhado só com o pg_cron (guardado no Vault como 'cron_secret')
+const cronSecret = Deno.env.get('CRON_SECRET')!;
 webpush.setVapidDetails(
   Deno.env.get('VAPID_SUBJECT') ?? 'mailto:contato@example.com',
   Deno.env.get('VAPID_PUBLIC_KEY')!,
@@ -71,7 +73,7 @@ function fmt(n: number, casas = 2): string {
 }
 
 Deno.serve(async (req) => {
-  if (req.headers.get('Authorization') !== `Bearer ${serviceKey}`) {
+  if (!cronSecret || req.headers.get('Authorization') !== `Bearer ${cronSecret}`) {
     return new Response('Não autorizado', { status: 401 });
   }
 

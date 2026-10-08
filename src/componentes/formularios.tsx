@@ -6,7 +6,7 @@ import { diaDaSemana, hojeLocal } from '../lib/datas';
 import { cm, kg, num, paraNumero, paraTexto, pp } from '../lib/formato';
 import { composicao } from '../lib/gordura';
 import { LOCAIS_APLICACAO, NIVEIS_NAUSEA, type Aplicacao, type Medida, type RegistroDiario } from '../lib/tipos';
-import { Campo, CampoNumero, Escolhas, Folha } from './ui';
+import { BotaoExcluir, Campo, CampoNumero, Escolhas, Folha } from './ui';
 
 const OPCOES_NAUSEA = NIVEIS_NAUSEA.map((r, i) => ({ valor: i, rotulo: `${i} · ${r}` }));
 
@@ -55,7 +55,7 @@ export function FormAplicacao({ aplicacao, aoFechar }: { aplicacao?: Aplicacao; 
   }
 
   async function excluir() {
-    if (!aplicacao || !confirm('Excluir esta aplicação? O saldo e a agenda serão recalculados.')) return;
+    if (!aplicacao) return;
     await executar((repo) => repo.excluirAplicacao(aplicacao.id));
     aoFechar();
   }
@@ -98,9 +98,7 @@ export function FormAplicacao({ aplicacao, aoFechar }: { aplicacao?: Aplicacao; 
           {salvando ? 'Salvando…' : 'Salvar aplicação'}
         </button>
         {aplicacao && (
-          <button type="button" className="botao perigo" onClick={excluir}>
-            Excluir aplicação
-          </button>
+          <BotaoExcluir rotulo="Excluir aplicação" aviso="O saldo e a agenda serão recalculados." aoConfirmar={excluir} />
         )}
       </form>
     </Folha>
@@ -140,7 +138,7 @@ export function FormDiario({ registro, aoFechar }: { registro?: RegistroDiario; 
 
   async function excluir() {
     const r = diario.find((x) => x.data === data);
-    if (!r || !confirm('Excluir o registro deste dia?')) return;
+    if (!r) return;
     await executar((repo) => repo.excluirDiario(r.id));
     aoFechar();
   }
@@ -161,9 +159,7 @@ export function FormDiario({ registro, aoFechar }: { registro?: RegistroDiario; 
         <Erro msg={erro} />
         <button className="botao primario">Salvar</button>
         {diario.some((x) => x.data === data) && (
-          <button type="button" className="botao perigo" onClick={excluir}>
-            Excluir registro do dia
-          </button>
+          <BotaoExcluir rotulo="Excluir registro do dia" aviso="Excluir peso, náusea e observações deste dia?" aoConfirmar={excluir} />
         )}
       </form>
     </Folha>
@@ -218,7 +214,7 @@ export function FormMedida({ medida, aoFechar }: { medida?: Medida; aoFechar: ()
   }
 
   async function excluir() {
-    if (!medida || !confirm('Excluir esta medição?')) return;
+    if (!medida) return;
     await executar((repo) => repo.excluirMedida(medida.id));
     aoFechar();
   }
@@ -255,9 +251,7 @@ export function FormMedida({ medida, aoFechar }: { medida?: Medida; aoFechar: ()
         <Erro msg={erro} />
         <button className="botao primario">Salvar medição</button>
         {medida && (
-          <button type="button" className="botao perigo" onClick={excluir}>
-            Excluir medição
-          </button>
+          <BotaoExcluir rotulo="Excluir medição" aviso="Excluir esta medição?" aoConfirmar={excluir} />
         )}
       </form>
     </Folha>

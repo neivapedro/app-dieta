@@ -93,7 +93,6 @@ export function Perfil() {
     try {
       const b = JSON.parse(await f.text()) as Backup;
       if (b.versao !== 1) throw new Error('Arquivo de backup não reconhecido.');
-      if (!confirm('Importar este backup? Registros do diário com a mesma data serão sobrescritos; aplicações e medidas serão adicionadas (importe só uma vez).')) return;
       await executar(async (r) => {
         if (b.perfil) await r.salvarPerfil(b.perfil);
         let cicloId = ciclo?.id;
@@ -167,7 +166,7 @@ export function Perfil() {
 
       <section className="cartao pilha">
         <h2>Backup</h2>
-        <p className="mudo">Exporta todos os seus dados (ciclo, aplicações, diário e medidas) em um arquivo.</p>
+        <p className="mudo">Exporta todos os seus dados (ciclo, aplicações, diário e medidas) em um arquivo. Ao importar, registros do diário com a mesma data são substituídos e aplicações e medidas são adicionadas, então importe cada arquivo uma vez só.</p>
         <div className="linha">
           <button className="botao" onClick={exportar}>Exportar</button>
           <button className="botao" onClick={() => arquivo.current?.click()}>Importar</button>

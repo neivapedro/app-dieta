@@ -23,7 +23,7 @@
 }
 
 @media (prefers-color-scheme: light) {
-  :root {
+  :root:not([data-theme="dark"]) {
     color-scheme: light;
     --fundo: #f3f5f8;
     --superficie: #ffffff;
@@ -40,6 +40,23 @@
     --info: #2563eb;
     --sombra: 0 1px 3px rgb(15 23 32 / 0.08);
   }
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --fundo: #f3f5f8;
+  --superficie: #ffffff;
+  --superficie-2: #eef2f6;
+  --borda: #dbe2ea;
+  --texto: #0f1720;
+  --texto-2: #4b5d70;
+  --texto-3: #7a8a9a;
+  --destaque: #0d9488;
+  --destaque-texto: #ffffff;
+  --bom: #15803d;
+  --ruim: #dc2626;
+  --aviso: #b45309;
+  --info: #2563eb;
+  --sombra: 0 1px 3px rgb(15 23 32 / 0.08);
 }
 
 * { box-sizing: border-box; }

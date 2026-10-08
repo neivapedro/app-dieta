@@ -1,4 +1,4 @@
-import { BrowserRouter, Link, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { BrowserRouter, HashRouter, Link, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { Icone } from './componentes/ui';
 import { useDados } from './dados/contexto';
 import { Analise } from './paginas/Analise';
@@ -63,6 +63,9 @@ function Estrutura() {
   );
 }
 
+// A versão de demonstração roda dentro de outra página, então usa rotas com #
+const Roteador = import.meta.env.VITE_DEMO ? HashRouter : BrowserRouter;
+
 export function App() {
   const { usuario, carregando, perfil, ciclo, erro } = useDados();
   if (carregando) {
@@ -81,8 +84,8 @@ export function App() {
     );
   }
   return (
-    <BrowserRouter>
+    <Roteador>
       <Estrutura />
-    </BrowserRouter>
+    </Roteador>
   );
 }

@@ -37,7 +37,7 @@ export function Entrar() {
     <div className="centro">
       <form className="entrada pilha" onSubmit={enviar}>
         <div className="pilha" style={{ alignItems: 'center', textAlign: 'center', gap: 8 }}>
-          <img src="/icone-192.png" alt="" className="logo" />
+          <img src={`${import.meta.env.BASE_URL}icone-192.png`} alt="" className="logo" />
           <h1>Ciclo · Acompanhamento</h1>
           <p className="mudo">Aplicações, medidas e evolução, em um só lugar.</p>
         </div>

@@ -7,7 +7,7 @@ import { RepositorioSupabase } from './supabase';
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const chave = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
-export const repositorio: Repositorio = url && chave ? new RepositorioSupabase(url, chave) : new RepositorioLocal();
+export const repositorio: Repositorio = url && chave && !import.meta.env.VITE_DEMO ? new RepositorioSupabase(url, chave) : new RepositorioLocal();
 
 export interface Dados {
   perfil: Perfil | null;

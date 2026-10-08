@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 
 const caminhos: Record<string, ReactNode> = {
   inicio: <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" />,
@@ -152,4 +152,19 @@ export function Bloco({ rotulo, valor, classe }: { rotulo: string; valor: ReactN
 
 export function Vazio({ children }: { children: ReactNode }) {
   return <p className="mudo" style={{ padding: '8px 0' }}>{children}</p>;
+}
+
+/** Exclusão em dois toques: o primeiro pede confirmação, o segundo executa. */
+export function BotaoExcluir({ rotulo, aviso, aoConfirmar }: { rotulo: string; aviso: string; aoConfirmar: () => void }) {
+  const [armado, setArmado] = useState(false);
+  useEffect(() => {
+    if (!armado) return;
+    const t = setTimeout(() => setArmado(false), 5000);
+    return () => clearTimeout(t);
+  }, [armado]);
+  return (
+    <button type="button" className="botao perigo" onClick={() => (armado ? aoConfirmar() : setArmado(true))}>
+      {armado ? `${aviso} Toque de novo para confirmar.` : rotulo}
+    </button>
+  );
 }

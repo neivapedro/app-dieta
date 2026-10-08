@@ -5,7 +5,7 @@ import { ProvedorDados } from './dados/contexto';
 import { registrarServiceWorker } from './lib/notificacoes';
 import './estilos.css';
 
-registrarServiceWorker();
+if (!import.meta.env.VITE_DEMO) registrarServiceWorker();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

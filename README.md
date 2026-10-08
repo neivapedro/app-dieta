@@ -38,53 +38,67 @@ npm run dev      # http://localhost:5173
 npm test         # testes dos cálculos
 ```
 
-Sem o arquivo `.env.local`, o app roda em **modo demonstração**: os dados ficam só no navegador, separados por e-mail. Esse modo serve só para testar.
+Sem o arquivo `.env.local` (modelo em `.env.example`), o app roda em **modo demonstração**: os dados ficam só no navegador, separados por e-mail. Esse modo serve só para testar.
 
 ## Colocar no ar (login real + lembretes no celular)
 
-Todos os serviços abaixo têm plano gratuito suficiente para uso pessoal.
+Todos os serviços abaixo têm plano gratuito suficiente para uso pessoal. Você vai precisar de 3 chaves: a pública e a privada de notificação (VAPID) e uma senha para o agendador (CRON_SECRET). Gere com `npx web-push generate-vapid-keys` e qualquer texto aleatório longo. Guarde a privada e o CRON_SECRET fora do GitHub.
 
-### 1. Supabase (login + banco de dados)
+### 1. Supabase: banco + login (cerca de 10 min)
 
-1. Crie uma conta em <https://supabase.com> e um projeto novo (região São Paulo).
-2. Em **SQL Editor**, cole e execute o conteúdo de `supabase/migrations/20261008000000_inicial.sql`. Ele cria as tabelas com Row Level Security: cada usuário só acessa as próprias linhas.
-3. Em **Project Settings → API**, anote a **Project URL**, a chave **anon** e a chave **service_role**.
-4. Em **Authentication → URL Configuration**, coloque em *Site URL* o endereço do app (passo 3).
+1. Crie uma conta em <https://supabase.com> e um projeto novo (região *South America (São Paulo)*).
+2. **Edge Functions → Secrets:** cadastre `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (`mailto:seu-email`) e `CRON_SECRET`.
+3. **Edge Functions → Deploy a new function → Via Editor:**
+   - Nome: `enviar-lembretes`.
+   - Cole o conteúdo de `supabase/functions/enviar-lembretes/index.ts` e publique.
+   - Nos detalhes da função, **desligue "Enforce JWT verification"**. A função valida o próprio CRON_SECRET.
+4. **SQL Editor:** abra `supabase/configurar_tudo.sql`, troque os 2 valores marcados no topo (URL do projeto e CRON_SECRET) e clique em **Run**. Esse script cria as tabelas com Row Level Security (cada usuário só acessa as próprias linhas), guarda os segredos no Vault e agenda os lembretes de hora em hora.
+5. **Project Settings → API:** anote a **Project URL** e a chave pública (**anon** / **publishable**).
 
-### 2. Lembretes (push)
+Se preferir a linha de comando: `npx supabase link`, `npx supabase secrets set ...`, `npx supabase functions deploy enviar-lembretes` e `npx supabase db push`. As migrações estão em `supabase/migrations/`.
 
-1. Gere as chaves VAPID: `npx web-push generate-vapid-keys`.
-2. Publique a função e configure os segredos:
-   ```bash
-   npx supabase login
-   npx supabase link --project-ref <id-do-projeto>
-   npx supabase secrets set VAPID_PUBLIC_KEY=<publica> VAPID_PRIVATE_KEY=<privada> VAPID_SUBJECT=mailto:<seu-email>
-   npx supabase functions deploy enviar-lembretes
-   ```
-3. No **SQL Editor**, guarde a URL e a service role no Vault e agende a função:
-   ```sql
-   select vault.create_secret('https://<id-do-projeto>.supabase.co', 'projeto_url');
-   select vault.create_secret('<service_role_key>', 'service_role_key');
-   ```
-   Depois, execute `supabase/migrations/20261008000100_agendar_lembretes.sql`.
+### 2. Vercel: hospedagem do app (cerca de 5 min)
 
-A função roda a cada hora. No dia previsto, a partir do horário escolhido no Perfil (padrão 08:00, no seu fuso), ela envia o lembrete com a dose em mg e UI. Se a dose atrasar, envia um lembrete por dia, por até 14 dias, até a aplicação ser registrada.
-
-### 3. Vercel (hospedagem do app)
-
-1. Em <https://vercel.com>, importe este repositório do GitHub. O framework é detectado como Vite.
+1. Em <https://vercel.com>, entre com o GitHub e importe este repositório. O framework é detectado como Vite.
 2. Em **Environment Variables**, cadastre:
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_ANON_KEY`
-   - `VITE_VAPID_PUBLIC_KEY`
-3. Faça o deploy e use a URL gerada no passo 1.4.
+   - `VITE_SUPABASE_URL`: Project URL do passo 1.5
+   - `VITE_SUPABASE_ANON_KEY`: chave anon/publishable do passo 1.5
+   - `VITE_VAPID_PUBLIC_KEY`: chave pública VAPID
+3. Clique em **Deploy**. Depois, no Supabase, vá em **Authentication → URL Configuration** e coloque a URL da Vercel em *Site URL*.
 
-### 4. Instalar no celular
+### 3. Instalar no celular
 
-- **Android (Chrome):** abra o site, toque em ⋮ → **Instalar app**. Depois, vá em Perfil → **Ativar notificações**.
+- **Android (Chrome):** abra o site, toque em ⋮ → **Instalar app**. Depois, vá em Perfil → **Ativar notificações** → **Enviar teste**.
 - **iPhone (Safari, iOS 16.4+):** toque em Compartilhar → **Adicionar à Tela de Início** e abra pelo ícone. Depois, vá em Perfil → **Ativar notificações**. No iPhone, o push só funciona com o app instalado.
 
 Ative as notificações em cada aparelho que for usar.
+
+### Como os lembretes funcionam
+
+O `pg_cron` chama a função `enviar-lembretes` a cada hora. Para cada usuário, a função calcula a próxima dose com a mesma regra do app: última aplicação real + intervalo, ou a data de início se ainda não houver aplicação.
+
+- O lembrete é enviado a partir do horário escolhido no Perfil (padrão 08:00), no fuso do usuário, uma vez por dia.
+- Se a dose atrasar, o lembrete se repete diariamente, por até 14 dias, até a aplicação ser registrada.
+- Quando a sua parte do frasco acaba, os lembretes param.
+
+## Verificações feitas
+
+- `npm test`: 20 testes dos cálculos, conferidos contra os valores das planilhas (ex.: % de gordura 24,89301412476658, igual ao Excel).
+- Migração aplicada num PostgreSQL 16 com os papéis do Supabase emulados:
+  - outra conta não lê, não altera nem grava dados de outro usuário;
+  - ninguém registra aplicação no ciclo de outra pessoa;
+  - visitante sem login não vê nada.
+- Função de lembretes executada com Deno contra um banco simulado e um endpoint de push HTTPS local, em 12 cenários:
+  - horário e fuso de Brasília;
+  - não repetir no mesmo dia;
+  - dose remarcada de quinta para sexta;
+  - lembrete de atraso;
+  - inscrição expirada removida;
+  - push criptografado (aes128gcm + VAPID).
+
+## Versão de demonstração
+
+`npm run build:demo` gera em `dist-demo/` uma versão sem nuvem: dados só no navegador e rotas com `#`. Serve para testar a interface.
 
 ---
 
