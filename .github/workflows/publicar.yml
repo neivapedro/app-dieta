@@ -20,6 +20,8 @@ concurrency:
 jobs:
   publicar:
     runs-on: ubuntu-latest
+    # Só publica com o repositório público (o Pages grátis exige)
+    if: ${{ !github.event.repository.private }}
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
