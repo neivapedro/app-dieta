@@ -1,19 +1,24 @@
 :root {
+  /* Preto, grafite e branco; verde e vermelho só para melhora/piora */
   color-scheme: dark;
-  --fundo: #0f1720;
-  --superficie: #17212c;
-  --superficie-2: #1f2b38;
-  --borda: #2a3846;
-  --texto: #e6edf3;
-  --texto-2: #9fb0c0;
-  --texto-3: #6f8295;
-  --destaque: #2dd4bf;
-  --destaque-texto: #062a26;
-  --bom: #4ade80;
-  --ruim: #f87171;
-  --aviso: #fbbf24;
-  --info: #60a5fa;
-  --sombra: 0 1px 2px rgb(0 0 0 / 0.3);
+  --fundo: #0b0b0c;
+  --superficie: #161618;
+  --superficie-2: #232326;
+  --borda: #2f2f33;
+  --texto: #f5f5f7;
+  --texto-2: #a1a1a6;
+  --texto-3: #6e6e73;
+  --destaque: #f5f5f7;
+  --destaque-texto: #0b0b0c;
+  --bom: #34c759;
+  --ruim: #ff453a;
+  --aviso: #ffd60a;
+  --info: #a1a1a6;
+  --sombra: 0 1px 2px rgb(0 0 0 / 0.4);
+  --g-peso: #f5f5f7;
+  --g-magra: #8e8e93;
+  --g-bf: #ffd60a;
+  --g-dose: #636366;
   --raio: 14px;
   --nav-altura: 64px;
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -25,38 +30,46 @@
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
     color-scheme: light;
-    --fundo: #f3f5f8;
+    --fundo: #f2f2f4;
     --superficie: #ffffff;
-    --superficie-2: #eef2f6;
-    --borda: #dbe2ea;
-    --texto: #0f1720;
-    --texto-2: #4b5d70;
-    --texto-3: #7a8a9a;
-    --destaque: #0d9488;
+    --superficie-2: #ececef;
+    --borda: #dcdce0;
+    --texto: #0b0b0c;
+    --texto-2: #4a4a50;
+    --texto-3: #8e8e93;
+    --destaque: #0b0b0c;
     --destaque-texto: #ffffff;
-    --bom: #15803d;
-    --ruim: #dc2626;
-    --aviso: #b45309;
-    --info: #2563eb;
-    --sombra: 0 1px 3px rgb(15 23 32 / 0.08);
+    --bom: #248a3d;
+    --ruim: #d70015;
+    --aviso: #b25000;
+    --info: #6e6e73;
+    --sombra: 0 1px 3px rgb(0 0 0 / 0.08);
+    --g-peso: #0b0b0c;
+    --g-magra: #8e8e93;
+    --g-bf: #c77700;
+    --g-dose: #aeaeb2;
   }
 }
 :root[data-theme="light"] {
   color-scheme: light;
-  --fundo: #f3f5f8;
+  --fundo: #f2f2f4;
   --superficie: #ffffff;
-  --superficie-2: #eef2f6;
-  --borda: #dbe2ea;
-  --texto: #0f1720;
-  --texto-2: #4b5d70;
-  --texto-3: #7a8a9a;
-  --destaque: #0d9488;
+  --superficie-2: #ececef;
+  --borda: #dcdce0;
+  --texto: #0b0b0c;
+  --texto-2: #4a4a50;
+  --texto-3: #8e8e93;
+  --destaque: #0b0b0c;
   --destaque-texto: #ffffff;
-  --bom: #15803d;
-  --ruim: #dc2626;
-  --aviso: #b45309;
-  --info: #2563eb;
-  --sombra: 0 1px 3px rgb(15 23 32 / 0.08);
+  --bom: #248a3d;
+  --ruim: #d70015;
+  --aviso: #b25000;
+  --info: #6e6e73;
+  --sombra: 0 1px 3px rgb(0 0 0 / 0.08);
+  --g-peso: #0b0b0c;
+  --g-magra: #8e8e93;
+  --g-bf: #c77700;
+  --g-dose: #aeaeb2;
 }
 
 * { box-sizing: border-box; }
@@ -64,8 +77,8 @@ html, body { margin: 0; background: var(--fundo); color: var(--texto); }
 body { min-height: 100dvh; overscroll-behavior-y: none; }
 button, input, select, textarea { font: inherit; color: inherit; }
 h1, h2, h3 { margin: 0; line-height: 1.2; }
-h1 { font-size: 1.35rem; }
-h2 { font-size: 1.05rem; }
+h1 { font-size: 1.45rem; font-weight: 700; letter-spacing: -0.02em; }
+h2 { font-size: 1.05rem; font-weight: 650; letter-spacing: -0.01em; }
 h3 { font-size: 0.95rem; }
 p { margin: 0; }
 a { color: var(--destaque); }
@@ -222,3 +235,19 @@ details.ajuda summary { cursor: pointer; color: var(--texto-2); font-size: 0.85r
 details.ajuda[open] summary { margin-bottom: 8px; }
 .oculto { display: none; }
 .botao svg, .alerta svg { width: 20px; height: 20px; flex: none; }
+
+/* Marca: braço flexionado */
+.marca-heroi { position: relative; display: flex; justify-content: center; padding: 8px 0; }
+.marca-heroi::before {
+  content: ''; position: absolute; inset: 10% 20%; border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--texto) 14%, transparent), transparent);
+}
+.marca-heroi img { position: relative; width: min(52vw, 200px); height: auto; filter: drop-shadow(0 12px 24px rgb(0 0 0 / 0.35)); }
+.marca-mini {
+  width: 44px; height: 44px; border-radius: 12px; flex: none;
+  background: linear-gradient(180deg, #3a3a3c, #0b0b0c); border: 1px solid var(--borda);
+  display: flex; align-items: center; justify-content: center;
+}
+.marca-mini img { width: 34px; height: 34px; object-fit: contain; }
+.topo-marca { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.nome-app { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--texto-3); }

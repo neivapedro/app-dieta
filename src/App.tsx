@@ -28,9 +28,14 @@ function Estrutura() {
     <>
       <div className="app">
         <header className="topo">
-          <div>
-            <h1>{titulo}</h1>
-            {pathname === '/' && <div className="sub">Olá{primeiroNome ? `, ${primeiroNome}` : ''} · {ciclo?.nome}</div>}
+          <div className="topo-marca">
+            <span className="marca-mini" aria-hidden="true">
+              <img src={`${import.meta.env.BASE_URL}braco.webp`} alt="" />
+            </span>
+            <div style={{ minWidth: 0 }}>
+              <h1>{titulo}</h1>
+              {pathname === '/' && <div className="sub">Olá{primeiroNome ? `, ${primeiroNome}` : ''} · {ciclo?.nome}</div>}
+            </div>
           </div>
           <Link to="/perfil" className="icone-botao" aria-label="Perfil">
             <Icone nome="perfil" />

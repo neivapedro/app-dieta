@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { diferencaDias, formatarData, somarDias } from '../lib/datas';
 import { num } from '../lib/formato';
@@ -9,7 +10,30 @@ const BASE = '2000-01-01';
 const paraDia = (d: string) => diferencaDias(BASE, d);
 const deDia = (n: number) => somarDias(BASE, n);
 
-const CORES = { peso: '#60a5fa', magra: '#9ca3af', bf: '#fbbf24', dose: '#2dd4bf' };
+type Cores = { peso: string; magra: string; bf: string; dose: string };
+
+function lerCores(): Cores {
+  const css = getComputedStyle(document.documentElement);
+  const v = (nome: string, padrao: string) => css.getPropertyValue(nome).trim() || padrao;
+  return { peso: v('--g-peso', '#f5f5f7'), magra: v('--g-magra', '#8e8e93'), bf: v('--g-bf', '#ffd60a'), dose: v('--g-dose', '#636366') };
+}
+
+/** Cores das séries vindas do tema (claro/escuro), atualizadas quando o tema muda. */
+function useCores(): Cores {
+  const [cores, setCores] = useState(lerCores);
+  useEffect(() => {
+    const atualizar = () => setCores(lerCores());
+    const mq = matchMedia('(prefers-color-scheme: light)');
+    mq.addEventListener('change', atualizar);
+    const obs = new MutationObserver(atualizar);
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => {
+      mq.removeEventListener('change', atualizar);
+      obs.disconnect();
+    };
+  }, []);
+  return cores;
+}
 
 function eixoX() {
   return (
@@ -53,6 +77,7 @@ function Dica({ active, payload, label }: { active?: boolean; payload?: ItemDica
 
 /** Mesmo gráfico "Evolução" da planilha, com a % de gordura no eixo da direita. */
 export function GraficoComposicao({ dados }: { dados: Composicao[] }) {
+  const CORES = useCores();
   const pontos = dados.map((c) => ({ dia: paraDia(c.data), peso: c.peso_kg, magra: c.massa_magra_kg, bf: c.bf }));
   return (
     <div className="grafico">
@@ -75,6 +100,7 @@ export function GraficoComposicao({ dados }: { dados: Composicao[] }) {
 
 /** Peso ao longo do ciclo × degraus de dose aplicada. */
 export function GraficoPesoDose({ serie, linhas, hoje }: { serie: PontoPeso[]; linhas: LinhaAplicacao[]; hoje: string }) {
+  const CORES = useCores();
   const mapa = new Map<number, { dia: number; peso?: number; dose?: number }>();
   for (const p of serie) mapa.set(paraDia(p.data), { dia: paraDia(p.data), peso: p.peso_kg });
   for (const l of linhas) {
@@ -97,7 +123,7 @@ export function GraficoPesoDose({ serie, linhas, hoje }: { serie: PontoPeso[]; l
           <Tooltip content={<Dica />} />
           <Legend iconType="plainline" />
           <Line yAxisId="kg" dataKey="peso" name="Peso" unit=" kg" stroke={CORES.peso} strokeWidth={2} dot={{ r: 2 }} connectNulls isAnimationActive={false} />
-          <Line yAxisId="mg" dataKey="dose" name="Dose" unit=" mg" type="stepAfter" stroke={CORES.dose} strokeWidth={2} dot={false} connectNulls isAnimationActive={false} />
+          <Line yAxisId="mg" dataKey="dose" name="Dose" unit=" mg" type="stepAfter" stroke={CORES.dose} strokeWidth={2} strokeDasharray="6 4" dot={false} connectNulls isAnimationActive={false} />
         </ComposedChart>
       </ResponsiveContainer>
     </div>

@@ -1,8 +1,8 @@
 // Service worker: deixa o app abrir offline e recebe os lembretes (push).
-const CACHE = 'app-dieta-v1';
+const CACHE = 'app-dieta-v2';
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(['/', '/manifest.webmanifest', '/icone-192.png'])));
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(['/', '/manifest.webmanifest', '/icone-192.png', '/braco.webp'])));
   self.skipWaiting();
 });
 
