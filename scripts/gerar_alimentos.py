@@ -21,7 +21,7 @@ GRUPO = {
 ANIMAL_CATS = {'5', '6', '7', '9'}
 # Itens de outras categorias cuja proteína vem principalmente de origem animal
 ANIMAL_IDS = {'20', '55', '56', '57', '58', '140', '141', '495', '496', '497', '501', '515',
-              '526', '528', '529', '531', '532', '536', '537', '538', '539', '540', '541', '542', '543',
+              '526', '528', '544', '529', '531', '532', '536', '537', '538', '539', '540', '541', '542', '543',
               '547', '548', '553', '554', '555', '556'}
 # Linhas sem dados na TACO: descartadas ou substituídas por valores de rótulo
 DESCARTAR = {'450', '472', '516', '517', '591', '457', '458'}
@@ -56,6 +56,7 @@ PORCOES = [
     (r'^Queijo, (requeijão|ricota)', [('colher de sopa', 30)]),
     (r'^(Mortadela|Presunto|Salame|Apresuntado)', [('fatia', 15)]),
     (r'^Salsicha', [('unidade', 50)]),
+    (r'^Banana, doce em barra', [('unidade', 25)]),
     (r'^Banana, da terra', [('unidade', 150)]),
     (r'^Banana', [('unidade', 65)]),
     (r'^Laranja, .*, crua', [('unidade', 150)]),
@@ -65,7 +66,9 @@ PORCOES = [
     (r'^Pêra', [('unidade', 130)]),
     (r'^Kiwi', [('unidade', 75)]),
     (r'^Morango', [('unidade', 12)]),
+    (r'^Mamão.*calda', [('pedaço', 30)]),
     (r'^Mamão', [('fatia', 150)]),
+    (r'^Manga, polpa', [('pacote', 100)]),
     (r'^Manga', [('unidade', 300)]),
     (r'^Melancia|^Melão', [('fatia', 200)]),
     (r'^Arroz.*cozido', [('colher de sopa cheia', 25), ('escumadeira', 90)]),
@@ -87,7 +90,7 @@ PORCOES = [
     (r'^(Refrigerante|Cerveja)', [('lata', 350)]),
     (r'^Tapioca, com manteiga', [('unidade', 100)]),
     (r'^Pastel', [('unidade', 60)]),
-    (r'^Coxinha|^Empada|^Quibe', [('unidade', 80)]),
+    (r'^Coxinha|^Empada|^Quibe,', [('unidade', 80)]),
     (r'^Hambúrguer', [('unidade', 90)]),
 ]
 
@@ -117,12 +120,14 @@ APELIDOS = [
     (r'^Toucinho', 'torresmo'),
     (r'^Peru, congelado, assado', 'peito de peru assado'),
     (r'^Carne, bovina, músculo', 'carne de panela'),
+    (r'^Grão-de-bico', 'grao de bico'),
+    (r'^Banana, doce em barra', 'bananinha'),
 ]
 
 # Sempre se pesa o alimento pronto: cru some da busca, exceto o que se come cru
 CRU = re.compile(r'\bcru(a|s|as)?\b')
 GRUPOS_COZIDOS = {'Carnes', 'Peixes e frutos do mar', 'Ovos', 'Leguminosas'}
-CRU_VISIVEL = {'t278', 't316', 't557', 't585'}  # atum e salmão (sashimi), amendoim, tremoço
+CRU_VISIVEL = {'t278', 't316', 't557', 't485'}  # atum e salmão (sashimi), amendoim, ovo de codorna (pesa igual cozido)
 CRU_OCULTO = {'t2', 't4', 't6', 't19', 't38', 't40', 't41', 't55', 't57', 't59', 't87', 't89', 't92', 't103', 't126',
               't130', 't141', 'x26'}
 
@@ -223,6 +228,8 @@ extras = [
     ('x62', 'Tilápia, filé, frita', 'Peixes e frutos do mar', 24.0, 0, 9.0, 0, 1, [('filé', 120)], 'USDA (peixe branco frito)'),
     # Acompanhamentos prontos que faltavam
     ('x63', 'Batata, doce, assada', 'Verduras, legumes e tubérculos', 2.0, 20.7, 0.2, 3.3, 0, [], 'USDA'),
+    ('x65', 'Grão-de-bico, cozido', 'Leguminosas', 8.9, 27.4, 2.6, 7.6, 0, [('concha', 140)], 'USDA'),
+    ('x66', 'Guandu, cozido', 'Leguminosas', 6.8, 23.3, 0.4, 6.7, 0, [('concha', 140)], 'USDA'),
     ('x64', 'Inhame, cozido', 'Verduras, legumes e tubérculos', 0.5, 34.6, 0.1, 5.1, 0, [], 'USDA (taro cozido)'),
 ]
 for e in extras:

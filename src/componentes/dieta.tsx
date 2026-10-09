@@ -1,10 +1,13 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import {
   buscarAlimentos,
   calcularMetas,
+  exercicioReal,
   FATORES_ATIVIDADE,
   gramasDoItem,
+  itemPadrao,
   macrosDoItem,
+  type Aderencia,
   type Alimento,
   type Atividade,
   type ConfigDieta,
@@ -25,24 +28,30 @@ export function kcal(n: number): string {
   return `${num(n, 0)} kcal`;
 }
 
+/** Macros compactos: só o que não é zero (menos ruído na tela do iPhone) */
 export function LinhaMacros({ m, kcalFinal = true }: { m: Macros; kcalFinal?: boolean }) {
+  const itens: [string, string, number][] = [
+    ['m-pa', 'Ptn A', m.ptn_animal],
+    ['m-pv', 'Ptn V', m.ptn_vegetal],
+    ['m-c', 'Carb', m.carb],
+    ['m-g', 'Gord', m.gord],
+  ];
   return (
     <div className="macros">
-      <span className="m-pa">Ptn A {gr(m.ptn_animal)}</span>
-      <span className="m-pv">Ptn V {gr(m.ptn_vegetal)}</span>
-      <span className="m-c">Carb {gr(m.carb)}</span>
-      <span className="m-g">Gord {gr(m.gord)}</span>
+      {itens
+        .filter(([, , v]) => v >= 0.05)
+        .map(([c, nome, v]) => (
+          <span key={nome} className={c}>
+            {nome} {gr(v)}
+          </span>
+        ))}
       {kcalFinal && <span className="m-k">{kcal(m.kcal)}</span>}
     </div>
   );
 }
 
-function porcaoPadrao(a: Alimento): Pick<ItemRefeicao, 'quantidade' | 'unidade'> {
-  return a.porcoes.length ? { quantidade: 1, unidade: a.porcoes[0].nome } : { quantidade: 100, unidade: 'g' };
-}
-
 export function novoItem(a: Alimento): ItemRefeicao {
-  return { alimento_id: a.id, ...porcaoPadrao(a) };
+  return itemPadrao(a);
 }
 
 function rotuloPorcao(a: Alimento, unidade: string): string {
@@ -58,14 +67,18 @@ export function LinhaItem({
   aoMudar,
   aoRemover,
   aoTrocar,
+  faltaNoFoco,
 }: {
   item: ItemRefeicao;
   alimento: Alimento | undefined;
   aoMudar: (i: ItemRefeicao) => void;
   aoRemover: () => void;
   aoTrocar: () => void;
+  /** Quanto falta para a meta, mostrado logo abaixo enquanto o teclado está aberto */
+  faltaNoFoco?: ReactNode;
 }) {
   const [texto, setTexto] = useState(paraTexto(item.quantidade));
+  const [foco, setFoco] = useState(false);
   // Mantém o campo em sincronia quando a quantidade muda por fora (troca de unidade)
   useEffect(() => {
     if (paraNumero(texto) !== item.quantidade) setTexto(paraTexto(item.quantidade));
@@ -97,10 +110,21 @@ export function LinhaItem({
           inputMode="decimal"
           aria-label="Quantidade"
           value={texto}
+          onFocus={(e) => {
+            setFoco(true);
+            // Seleciona o número: é só digitar o novo
+            const alvo = e.currentTarget;
+            setTimeout(() => alvo.select(), 0);
+          }}
+          onBlur={() => {
+            setFoco(false);
+            // Campo vazio vale zero; ao sair, mostra o que está valendo
+            setTexto(paraTexto(item.quantidade));
+          }}
           onChange={(e) => {
             const v = e.target.value.replace(/[^\d.,]/g, '');
             setTexto(v);
-            const n = paraNumero(v);
+            const n = v.trim() === '' ? 0 : paraNumero(v);
             if (n !== null) aoMudar({ ...item, quantidade: n });
           }}
         />
@@ -115,6 +139,7 @@ export function LinhaItem({
         {item.unidade !== 'g' && <span className="mudo">= {num(gramas, 0)} g</span>}
       </div>
       <LinhaMacros m={m} />
+      {foco && faltaNoFoco}
     </div>
   );
 }
@@ -182,6 +207,7 @@ export function FormRefeicao({
   ultima,
   aoSalvar,
   aoMover,
+  aoDuplicar,
   aoExcluir,
   aoFechar,
 }: {
@@ -190,6 +216,7 @@ export function FormRefeicao({
   ultima: boolean;
   aoSalvar: (r: Refeicao) => void;
   aoMover: (passo: -1 | 1) => void;
+  aoDuplicar: () => void;
   aoExcluir: () => void;
   aoFechar: () => void;
 }) {
@@ -222,6 +249,16 @@ export function FormRefeicao({
             ↓ Descer
           </button>
         </div>
+        <button
+          type="button"
+          className="botao"
+          onClick={() => {
+            aoDuplicar();
+            aoFechar();
+          }}
+        >
+          Duplicar refeição
+        </button>
         <BotaoExcluir rotulo="Excluir refeição" aviso="Os alimentos dela também saem do plano." aoConfirmar={aoExcluir} />
       </form>
     </Folha>
@@ -234,14 +271,18 @@ type Sentido = 'deficit' | 'manter' | 'superavit';
 export function FormConfigDieta({
   config,
   corpo,
+  aderencia,
   aoSalvar,
   aoFechar,
 }: {
   config: ConfigDieta;
   corpo: Corpo | null;
+  /** Aderência das últimas semanas (aba Treino), quando houver */
+  aderencia?: Aderencia | null;
   aoSalvar: (c: ConfigDieta) => void;
   aoFechar: () => void;
 }) {
+  const [usarAderencia, setUsarAderencia] = useState(!!config.usar_aderencia);
   const [fator, setFator] = useState(config.fator_atividade);
   const [atividades, setAtividades] = useState(
     config.atividades.map((a) => ({ nome: a.nome, kcal: paraTexto(a.kcal), vezes: paraTexto(a.vezes_semana) })),
@@ -259,8 +300,9 @@ export function FormConfigDieta({
     ajuste_kcal: sentido === 'manter' ? 0 : (sentido === 'deficit' ? -1 : 1) * Math.abs(paraNumero(ajuste) ?? 0),
     ptn_gkg: paraNumero(ptn) ?? config.ptn_gkg,
     gord_gkg: paraNumero(gord) ?? config.gord_gkg,
+    usar_aderencia: usarAderencia,
   });
-  const previa = corpo ? calcularMetas(montar(), corpo) : null;
+  const previa = corpo ? calcularMetas(montar(), corpo, aderencia) : null;
 
   function salvar(e: FormEvent) {
     e.preventDefault();
@@ -317,6 +359,25 @@ export function FormConfigDieta({
           <button type="button" className="botao pequeno" onClick={() => setAtividades([...atividades, { nome: '', kcal: '', vezes: '' }])}>
             + Atividade
           </button>
+          {aderencia && (
+            <Campo
+              rotulo="Exercício na meta"
+              grupo
+              dica={`Nas últimas ${Math.round(aderencia.dias / 7)} semanas você fez ${num(aderencia.treino * 100, 0)}% dos treinos e ${num(
+                aderencia.cardio * 100,
+                0,
+              )}% dos cardios: ≈ ${num(exercicioReal(montar().atividades, aderencia), 0)} kcal/dia de exercício real.`}
+            >
+              <Escolhas
+                opcoes={[
+                  { valor: 'plano', rotulo: 'Como planejado' },
+                  { valor: 'real', rotulo: 'Pelo que fiz' },
+                ]}
+                valor={usarAderencia ? 'real' : 'plano'}
+                aoMudar={(v) => v && setUsarAderencia(v === 'real')}
+              />
+            </Campo>
+          )}
         </div>
 
         <Campo rotulo="Objetivo" grupo>

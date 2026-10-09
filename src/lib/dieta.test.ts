@@ -12,6 +12,10 @@ import {
   tmbHarris,
   tmbKatch,
   tmbMifflin,
+  itemPadrao,
+  trocarAlimento,
+  exercicioReal,
+  metaFibra,
   type LinhaAlimento,
 } from './dieta';
 
@@ -60,13 +64,43 @@ describe('Gasto total e metas', () => {
     expect(m.gord_g).toBeCloseTo(95.5, 6);
   });
   it('carboidrato fecha a conta (exemplo de 2.100 kcal)', () => {
-    const metas = { tmb: 0, dia_a_dia: 0, exercicio: 0, gasto_total: 2400, meta_kcal: 2100, ptn_animal_g: 145.2, gord_g: 95.5 };
-    const vazio = { ptn_animal: 0, ptn_vegetal: 0, carb: 0, gord: 0, kcal: 0 };
+    const metas = { tmb: 0, dia_a_dia: 0, exercicio: 0, exercicio_planejado: 0, pela_aderencia: false, gasto_total: 2400, meta_kcal: 2100, ptn_animal_g: 145.2, gord_g: 95.5 };
+    const vazio = { ptn_animal: 0, ptn_vegetal: 0, carb: 0, gord: 0, fibra: 0, kcal: 0 };
     expect(calcularSaldo(metas, vazio).meta.carb).toBeCloseTo((2100 - 145.2 * 4 - 95.5 * 9) / 4, 6);
     // proteína vegetal planejada (arroz, feijão…) consome kcal do carboidrato
     const comVegetal = calcularSaldo(metas, { ...vazio, ptn_vegetal: 10, kcal: 40 });
     expect(comVegetal.meta.carb).toBeCloseTo((2100 - 145.2 * 4 - 95.5 * 9) / 4 - 10, 6);
     expect(comVegetal.falta.kcal).toBe(2060);
+  });
+});
+
+describe('Montagem do plano', () => {
+  it('arroz, feijão e carne moída entram em gramas; ovo e fatia em unidade', () => {
+    expect(itemPadrao(mapa.get('t3')!)).toEqual({ alimento_id: 't3', quantidade: 100, unidade: 'g' });
+    expect(itemPadrao(mapa.get('t561')!).unidade).toBe('g');
+    expect(itemPadrao(mapa.get('t488')!)).toEqual({ alimento_id: 't488', quantidade: 1, unidade: 'unidade' });
+    expect(itemPadrao(mapa.get('x01')!).unidade).toBe('dose');
+  });
+  it('trocar o alimento mantém o peso', () => {
+    const arroz = { alimento_id: 't3', quantidade: 200, unidade: 'g' };
+    expect(trocarAlimento(arroz, mapa.get('t3'), mapa.get('t1')!)).toEqual({ alimento_id: 't1', quantidade: 200, unidade: 'g' });
+    const ovos = { alimento_id: 't488', quantidade: 2, unidade: 'unidade' };
+    expect(trocarAlimento(ovos, mapa.get('t488'), mapa.get('t490')!)).toEqual({ alimento_id: 't490', quantidade: 2, unidade: 'unidade' });
+    // porção que o novo alimento não tem vira gramas
+    expect(trocarAlimento(ovos, mapa.get('t488'), mapa.get('t410')!)).toEqual({ alimento_id: 't410', quantidade: 100, unidade: 'g' });
+  });
+  it('exercício pela aderência real e fibra de referência', () => {
+    const at = [
+      { nome: 'Musculação', kcal: 350, vezes_semana: 7 },
+      { nome: 'Bike', kcal: 300, vezes_semana: 5 },
+    ];
+    expect(exercicioReal(at, { treino: 1, cardio: 0.5, dias: 28 })).toBeCloseTo((350 * 7 + 300 * 5 * 0.5) / 7, 6);
+    expect(metaFibra(2500)).toBe(35);
+  });
+  it('busca põe os do dia a dia primeiro e o pronto antes do cru', () => {
+    expect(buscarAlimentos(alimentos, 'frango')[0].id).toBe('t410');
+    const brocolis = buscarAlimentos(alimentos, 'brocolis').map((a) => a.nome);
+    expect(brocolis[0]).not.toMatch(/cru/);
   });
 });
 
@@ -82,6 +116,8 @@ describe('Banco de alimentos', () => {
   });
   it('busca sem acento, em qualquer ordem e por apelido', () => {
     expect(buscarAlimentos(alimentos, 'frango grelhado peito')[0].id).toBe('t410');
+    expect(buscarAlimentos(alimentos, 'grao de bico')[0].id).toBe('x65');
+    expect(buscarAlimentos(alimentos, 'codorna').length).toBe(1);
     expect(buscarAlimentos(alimentos, 'mussarela').map((a) => a.id)).toContain('t463');
     expect(buscarAlimentos(alimentos, 'feijao carioca cozido')[0].id).toBe('t561');
     expect(buscarAlimentos(alimentos, 'whey growth')[0].id).toBe('x01');
