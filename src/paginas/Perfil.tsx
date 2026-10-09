@@ -1,3 +1,4 @@
+import type { PlanoDieta } from '../lib/dieta';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { BotaoExcluir, Campo, CampoNumero, Escolhas, Icone } from '../componentes/ui';
 import { CALENDARIO_URL } from '../config';
@@ -31,13 +32,15 @@ interface Backup {
   aplicacoes: Aplicacao[];
   diario: RegistroDiario[];
   medidas: Medida[];
+  dieta?: PlanoDieta | null;
 }
 
 export function Perfil() {
-  const { perfil, ciclo, aplicacoes, diario, medidas, usuario, repo, executar } = useDados();
+  const { perfil, ciclo, aplicacoes, diario, medidas, dieta, usuario, repo, executar } = useDados();
   const [nome, setNome] = useState(perfil?.nome ?? '');
   const [sexo, setSexo] = useState<Sexo>(perfil?.sexo ?? 'Masculino');
   const [altura, setAltura] = useState(paraTexto(perfil?.altura_cm));
+  const [nascimento, setNascimento] = useState(perfil?.data_nascimento ?? '');
   const [ativos, setAtivos] = useState(perfil?.lembretes_ativos ?? true);
   const [hora, setHora] = useState(perfil?.hora_lembrete ?? '08:00');
   const [msg, setMsg] = useState<{ tipo: string; texto: string } | null>(null);
@@ -57,6 +60,7 @@ export function Perfil() {
           nome: nome.trim(),
           sexo,
           altura_cm: paraNumero(altura),
+          data_nascimento: nascimento || null,
           lembretes_ativos: ativos,
           hora_lembrete: hora,
           fuso_horario: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Sao_Paulo',
@@ -82,7 +86,7 @@ export function Perfil() {
   }
 
   function exportar() {
-    const backup: Backup = { versao: 1, exportado_em: new Date().toISOString(), perfil, ciclo, aplicacoes, diario, medidas };
+    const backup: Backup = { versao: 1, exportado_em: new Date().toISOString(), perfil, ciclo, aplicacoes, diario, medidas, dieta };
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -114,6 +118,7 @@ export function Perfil() {
           const { id: _id, ...resto } = m;
           await r.salvarMedida(resto);
         }
+        if (b.dieta) await r.salvarDieta(b.dieta);
       });
       setMsg({ tipo: 'info', texto: 'Backup importado.' });
     } catch (e) {
@@ -133,6 +138,9 @@ export function Perfil() {
           <Escolhas opcoes={[{ valor: 'Masculino' as Sexo, rotulo: 'Masculino' }, { valor: 'Feminino' as Sexo, rotulo: 'Feminino' }]} valor={sexo} aoMudar={(v) => v && setSexo(v)} />
         </Campo>
         <CampoNumero rotulo="Altura" sufixo="cm" valor={altura} aoMudar={setAltura} />
+        <Campo rotulo="Data de nascimento" dica="Usada na conferência da taxa basal da aba Dieta.">
+          <input type="date" value={nascimento} onChange={(e) => setNascimento(e.target.value)} />
+        </Campo>
 
         <h2 style={{ marginTop: 8 }}>Lembretes de aplicação</h2>
         <div className="linha entre">

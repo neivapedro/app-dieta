@@ -1,3 +1,4 @@
+import type { PlanoDieta } from '../lib/dieta';
 import type { Aplicacao, Ciclo, Medida, MetasProjeto, Perfil, RegistroDiario, TreinoDia } from '../lib/tipos';
 import type { Repositorio, Usuario } from './repositorio';
 
@@ -12,6 +13,7 @@ interface Banco {
   diario: RegistroDiario[];
   medidas: Medida[];
   treinos?: TreinoDia[];
+  dieta?: PlanoDieta | null;
 }
 
 const CHAVE_SESSAO = 'app-dieta:sessao';
@@ -163,6 +165,14 @@ export class RepositorioLocal implements Repositorio {
       const existente = b.treinos.find((x) => x.data === t.data);
       upsert(b.treinos, { ...t, id: existente?.id ?? novoId() });
     });
+  }
+
+  async obterDieta() {
+    return this.banco().dieta ?? null;
+  }
+
+  async salvarDieta(p: PlanoDieta) {
+    this.alterar((b) => (b.dieta = p));
   }
 
   async novoTokenCalendario(): Promise<string> {

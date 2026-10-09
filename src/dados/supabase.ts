@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { configPadrao, type PlanoDieta } from '../lib/dieta';
 import type { Aplicacao, Ciclo, Medida, MetasProjeto, Perfil, RegistroDiario, TreinoDia } from '../lib/tipos';
 import type { Repositorio, Usuario } from './repositorio';
 
@@ -74,6 +75,7 @@ export class RepositorioSupabase implements Repositorio {
       nome: d.nome ?? '',
       sexo: d.sexo,
       altura_cm: numOuNulo(d.altura_cm),
+      data_nascimento: d.data_nascimento ?? null,
       lembretes_ativos: d.lembretes_ativos,
       hora_lembrete: String(d.hora_lembrete).slice(0, 5),
       fuso_horario: d.fuso_horario,
@@ -86,8 +88,10 @@ export class RepositorioSupabase implements Repositorio {
   async salvarPerfil(p: Perfil) {
     // O token do calendário é gerado pelo banco; aqui ele não é sobrescrito
     // Token, liberação da aba Treino e metas têm gravação própria
-    const { token_calendario: _token, modulo_treino: _modulo, metas_projeto: _metas, ...dados } = p;
-    erro(await this.sb.from('perfis').upsert({ user_id: await this.uid(), ...dados }));
+    const { token_calendario: _token, modulo_treino: _modulo, metas_projeto: _metas, data_nascimento, ...dados } = p;
+    // Data de nascimento só vai quando preenchida: assim o perfil continua salvando antes da migração da Dieta
+    const extra = data_nascimento ? { data_nascimento } : {};
+    erro(await this.sb.from('perfis').upsert({ user_id: await this.uid(), ...dados, ...extra }));
   }
 
   async novoTokenCalendario(): Promise<string> {
@@ -189,5 +193,18 @@ export class RepositorioSupabase implements Repositorio {
 
   async salvarTreino(t: Omit<TreinoDia, 'id'>) {
     erro(await this.sb.from('treino_dias').upsert({ ...t, user_id: await this.uid() }, { onConflict: 'user_id,data' }));
+  }
+
+  async obterDieta(): Promise<PlanoDieta | null> {
+    const d = erro(await this.sb.from('dieta_planos').select('config, refeicoes').maybeSingle());
+    return d ? { config: { ...configPadrao(), ...d.config }, refeicoes: d.refeicoes ?? [] } : null;
+  }
+
+  async salvarDieta(p: PlanoDieta) {
+    erro(
+      await this.sb
+        .from('dieta_planos')
+        .upsert({ user_id: await this.uid(), config: p.config, refeicoes: p.refeicoes, atualizado_em: new Date().toISOString() }),
+    );
   }
 }

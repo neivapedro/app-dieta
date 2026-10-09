@@ -287,3 +287,57 @@ details.ajuda[open] summary { margin-bottom: 8px; }
 .mini.falta { background: var(--ruim); color: #fff; }
 .sub-valor { font-size: 0.72rem; font-weight: 600; }
 .tabela-medidas td { vertical-align: top; }
+
+/* Aba Dieta — cores dos macros como na planilha (Ptn A verde, Ptn V azul, Carb amarelo, Gordura laranja) */
+:root { --m-pa: #30d158; --m-pv: #64d2ff; --m-c: #ffd60a; --m-g: #ff9f0a; }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --m-pa: #248a3d; --m-pv: #0071a4; --m-c: #a05a00; --m-g: #c93400; } }
+:root[data-theme="light"] { --m-pa: #248a3d; --m-pv: #0071a4; --m-c: #a05a00; --m-g: #c93400; }
+.m-pa { color: var(--m-pa); }
+.m-pv { color: var(--m-pv); }
+.m-c { color: var(--m-c); }
+.m-g { color: var(--m-g); }
+.m-k { color: var(--texto); }
+
+.nav-itens.apertado a { font-size: 0.64rem; }
+.nav-itens.apertado svg { width: 20px; height: 20px; }
+
+.macros { display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: 0.76rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.refeicao { padding-bottom: 12px; }
+.refeicao-titulo { display: flex; align-items: baseline; gap: 8px; min-width: 0; padding: 0; border: 0; background: none; cursor: pointer; text-align: left; }
+.refeicao-titulo h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.refeicao-rodape { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding-top: 10px; border-top: 1px solid var(--borda); }
+
+.item-dieta { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; border-top: 1px solid var(--borda); }
+.cartao-cab + .item-dieta { border-top: 0; padding-top: 0; }
+.item-dieta-topo { display: flex; align-items: flex-start; gap: 8px; }
+.item-dieta-nome { flex: 1; min-width: 0; padding: 0; border: 0; background: none; text-align: left; font-weight: 600; cursor: pointer; }
+.item-dieta-qtd { display: flex; align-items: center; gap: 8px; }
+.item-dieta-qtd input, .item-dieta-qtd select, .atividade input {
+  min-height: 38px; padding: 6px 10px; border-radius: 9px; border: 1px solid var(--borda); background: var(--superficie-2); font-size: 16px; min-width: 0;
+}
+.item-dieta-qtd input { width: 76px; text-align: right; font-variant-numeric: tabular-nums; }
+.item-dieta-qtd select { flex: 1; }
+.item-dieta-qtd .mudo { flex: none; }
+.remover {
+  flex: none; width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--borda); background: var(--superficie-2);
+  color: var(--texto-2); font-size: 1.1rem; line-height: 1; cursor: pointer;
+}
+.atividade { display: grid; grid-template-columns: minmax(0, 1fr) 70px 62px 30px; gap: 6px; align-items: center; }
+
+.resultado { width: 100%; border: 0; border-top: 1px solid var(--borda); background: none; text-align: left; cursor: pointer; }
+.resultado:first-child { border-top: 0; }
+
+.tabela-macros td { vertical-align: top; }
+.tabela-macros td:first-child { white-space: normal; font-weight: 600; }
+.tabela-macros .sub-linha { font-size: 0.7rem; font-weight: 500; color: var(--texto-3); }
+.tabela-macros tr.total td { font-weight: 700; border-bottom: 0; }
+
+.saldo-fixo {
+  position: sticky; bottom: calc(var(--nav-altura) + env(safe-area-inset-bottom) + 8px); z-index: 5;
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 8px; padding: 9px 12px; border-radius: 12px;
+  background: var(--superficie); border: 1px solid var(--borda); box-shadow: 0 4px 16px rgb(0 0 0 / 0.35);
+  font-size: 0.76rem; font-variant-numeric: tabular-nums;
+}
+.saldo-item { white-space: nowrap; font-weight: 600; }
+.atividade-cab span { font-size: 0.7rem; color: var(--texto-3); }

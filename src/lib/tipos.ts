@@ -4,6 +4,8 @@ export interface Perfil {
   nome: string;
   sexo: Sexo;
   altura_cm: number | null;
+  /** YYYY-MM-DD; usada na idade das fórmulas de TMB */
+  data_nascimento?: string | null;
   lembretes_ativos: boolean;
   /** Horário local do lembrete, formato HH:MM */
   hora_lembrete: string;

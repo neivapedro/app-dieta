@@ -5,6 +5,7 @@ import { Analise } from './paginas/Analise';
 import { Ciclo } from './paginas/Ciclo';
 import { Configurar } from './paginas/Configurar';
 import { Diario } from './paginas/Diario';
+import { Dieta } from './paginas/Dieta';
 import { Entrar } from './paginas/Entrar';
 import { Inicio } from './paginas/Inicio';
 import { Medidas } from './paginas/Medidas';
@@ -16,6 +17,7 @@ const ABAS = [
   { para: '/ciclo', rotulo: 'Ciclo', icone: 'ciclo', titulo: 'Ciclo' },
   { para: '/diario', rotulo: 'Diário', icone: 'diario', titulo: 'Diário' },
   { para: '/medidas', rotulo: 'Medidas', icone: 'medidas', titulo: 'Medidas' },
+  { para: '/dieta', rotulo: 'Dieta', icone: 'dieta', titulo: 'Dieta' },
   { para: '/analise', rotulo: 'Análise', icone: 'analise', titulo: 'Análise do ciclo' },
 ];
 
@@ -24,7 +26,7 @@ const ABA_TREINO = { para: '/treino', rotulo: 'Treino', icone: 'treino', titulo:
 function Estrutura() {
   const { perfil, ciclo, erro } = useDados();
   const { pathname } = useLocation();
-  const abas = perfil?.modulo_treino ? [...ABAS.slice(0, 4), ABA_TREINO, ABAS[4]] : ABAS;
+  const abas = perfil?.modulo_treino ? [...ABAS.slice(0, 5), ABA_TREINO, ABAS[5]] : ABAS;
   const titulo = pathname === '/perfil' ? 'Perfil' : abas.find((a) => a.para === pathname)?.titulo ?? '';
   const primeiroNome = perfil?.nome.split(' ')[0];
 
@@ -52,6 +54,7 @@ function Estrutura() {
             <Route path="/ciclo" element={<Ciclo />} />
             <Route path="/diario" element={<Diario />} />
             <Route path="/medidas" element={<Medidas />} />
+            <Route path="/dieta" element={<Dieta />} />
             <Route path="/analise" element={<Analise />} />
             <Route path="/perfil" element={<Perfil />} />
             {perfil?.modulo_treino && <Route path="/treino" element={<Treino />} />}
@@ -60,7 +63,7 @@ function Estrutura() {
         </main>
       </div>
       <nav className="nav" aria-label="Navegação principal">
-        <div className="nav-itens" style={{ gridTemplateColumns: `repeat(${abas.length}, 1fr)` }}>
+        <div className={`nav-itens ${abas.length > 6 ? 'apertado' : ''}`} style={{ gridTemplateColumns: `repeat(${abas.length}, 1fr)` }}>
           {abas.map((a) => (
             <NavLink key={a.para} to={a.para} end className={({ isActive }) => (isActive ? 'ativo' : '')}>
               <Icone nome={a.icone} />

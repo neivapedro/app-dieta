@@ -1,3 +1,4 @@
+import type { PlanoDieta } from '../lib/dieta';
 import type { Aplicacao, Ciclo, Medida, MetasProjeto, Perfil, RegistroDiario, TreinoDia } from '../lib/tipos';
 
 export interface Usuario {
@@ -52,4 +53,8 @@ export interface Repositorio {
   listarTreinos(): Promise<TreinoDia[]>;
   /** Um registro por dia: grava por cima se a data já existir */
   salvarTreino(t: Omit<TreinoDia, 'id'>): Promise<void>;
+
+  // Aba Dieta: um plano por conta
+  obterDieta(): Promise<PlanoDieta | null>;
+  salvarDieta(p: PlanoDieta): Promise<void>;
 }

@@ -12,8 +12,9 @@ App (PWA) de acompanhamento do ciclo de retatrutida e da composição corporal. 
 | **Ciclo → Ajustes** | Painel (parâmetros) | Data da 1ª aplicação, quantidade (mg), concentração (mg/ml), intervalo e menor marcação da seringa |
 | **Diário** | Diário | Peso, náusea (0 a 3) e observações em qualquer dia, com as aplicações na mesma linha do tempo |
 | **Medidas** | % de Gordura (Gorgonoidiana) | % de gordura, massa magra e massa gorda, ganhos (última − primeira medição) e gráfico de evolução |
+| **Dieta** | Dieta Pedro Neiva + Cálculo de Macros (Gorgonoidiana) | Gasto calórico, meta do dia, metas de macros e plano alimentar por refeição com o banco de alimentos |
 | **Análise** | — | Resumo do ciclo, gráfico peso × dose, medidas iniciais × atuais e resultado por fase |
-| **Perfil** | — | Dados pessoais, lembretes, notificações do aparelho, backup (exportar/importar) |
+| **Perfil** | — | Dados pessoais (inclui data de nascimento), lembretes, notificações do aparelho, backup (exportar/importar) |
 
 ### Regras de cálculo
 
@@ -87,6 +88,17 @@ Coloca todas as doses do plano no Calendário do iPhone. É um calendário **ass
 Detalhes:
 - Cada conta tem um endereço secreto próprio (`perfis.token_calendario`).
 - **Perfil → Gerar novo endereço** invalida o endereço antigo.
+
+### Aba Dieta (todas as contas)
+
+- **Basal (TMB) pela Katch-McArdle:** `370 + 21,6 × massa magra`. A massa magra vem da última medição (fórmula da Gorgonoidiana), então a meta se atualiza sozinha a cada medição. Para conferência, o app mostra também Mifflin-St Jeor e Harris-Benedict (a fórmula das duas planilhas), que exigem a data de nascimento no Perfil.
+- **Gasto total** = basal × fator do dia a dia (sentado 1,2 · em pé 1,3 · braçal 1,45) + média diária dos exercícios (Σ kcal da sessão × vezes por semana ÷ 7).
+- **Meta do dia** = gasto total ± déficit/superávit em kcal.
+- **Macros:** proteína animal em g/kg de **massa magra** (padrão 2), gordura em g/kg de **peso** (padrão 1). O **carboidrato fecha a conta**: `(meta − ptn animal × 4 − gordura × 9 − ptn vegetal do plano × 4) ÷ 4`. A proteína vegetal (arroz, feijão, pão…) aparece separada, sem meta, e consome kcal do carbo.
+- **Plano:** refeições com alimento, quantidade (g ou porção caseira: fatia, unidade, dose…) e Ptn A, Ptn V, Carb, Gord e kcal de cada item, por refeição e no total. A barra "Falta", fixa no rodapé, mostra quanto ainda falta de cada macro enquanto você monta e simula. As kcal sempre vêm dos macros (4/4/9).
+- **Banco de alimentos** (`src/dados/alimentos.json`, sem tela própria): 590 itens da TACO (Unicamp, 4ª ed.), os da planilha Gorgonoidiana revisados e itens de marca e suplementos. O de-para está em `docs/alimentos-depara.md`. Para regenerar: `python3 scripts/gerar_alimentos.py <pasta csv da TACO> src/dados/alimentos.json`.
+
+Para ativar: no **SQL Editor**, rode `supabase/ativar_dieta.sql`. A parte 2 é opcional e já monta o plano da planilha numa conta; antes, troque o e-mail.
 
 ### Aba Treino (só para contas liberadas)
 

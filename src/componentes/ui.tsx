@@ -29,6 +29,7 @@ const caminhos: Record<string, ReactNode> = {
   ),
   mais: <path d="M12 5v14M5 12h14" />,
   fechar: <path d="M18 6 6 18M6 6l12 12" />,
+  dieta: <path d="M3 2v7a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V2M7 2v20M21 15V2a5 5 0 0 0-5 5v6a2 2 0 0 0 2 2h3zm0 0v7" />,
   treino: <path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11" />,
   sino: <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0" />,
 };
