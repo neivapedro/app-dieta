@@ -76,7 +76,7 @@ export function FormAplicacao({ aplicacao, aoFechar }: { aplicacao?: Aplicacao; 
           valor={dose}
           aoMudar={setDose}
           obrigatorio
-          dica={m ? `${num(m.ui)} UI na seringa U-100 · marcação prática ${num(m.ui_pratica, 1)} UI (= ${num(m.mg_pratica)} mg)` : undefined}
+          dica={m ? `${num(m.ui)} UI na seringa U-100 · na prática ${num(m.ui_pratica, 1)} UI, que entrega ${num(m.mg_pratica)} mg` : undefined}
         />
         <Campo rotulo="Local da aplicação" dica={!aplicacao ? 'Sugestão pelo rodízio: diferente do último local usado.' : undefined}>
           <select value={local} onChange={(e) => setLocal(e.target.value)}>

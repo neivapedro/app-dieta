@@ -206,7 +206,7 @@ function Plano() {
             <div className="grade grade-4">
               <div className="bloco"><div className="rotulo">Volume</div><div className="valor">{num(mgParaMl(fv.dose_mg, ciclo!.concentracao_mg_ml), 4)} ml</div></div>
               <div className="bloco"><div className="rotulo">Seringa U-100</div><div className="valor">{num(m.ui)} UI</div></div>
-              <div className="bloco"><div className="rotulo">Marcação prática</div><div className="valor">{num(m.ui_pratica, 1)} UI</div></div>
+              <div className="bloco"><div className="rotulo">Na seringa</div><div className="valor">{num(m.ui_pratica, 1)} UI</div></div>
               <div className="bloco"><div className="rotulo">Consumo</div><div className="valor">{mg(fv.dose_mg * fv.semanas)}</div></div>
             </div>
             <Campo rotulo="Objetivo da fase">
@@ -311,7 +311,7 @@ function Ajustes() {
         <CampoNumero rotulo="Quantidade total" sufixo="mg" valor={total} aoMudar={setTotal} />
         <CampoNumero rotulo="Concentração" sufixo="mg/ml" valor={conc} aoMudar={setConc} />
         <CampoNumero rotulo="Intervalo entre doses" sufixo="dias" valor={intervalo} aoMudar={setIntervalo} />
-        <CampoNumero rotulo="Menor marcação da seringa" sufixo="UI" valor={passo} aoMudar={setPasso} dica="Usada para arredondar a marcação prática." />
+        <CampoNumero rotulo="Menor marcação da seringa" sufixo="UI" valor={passo} aoMudar={setPasso} dica="Use 0,5 para seringa com marcas de meia unidade; 0,25 se você mede no meio entre duas marcas." />
       </div>
       <div className="bloco">
         <div className="rotulo">Volume total da sua parte</div>

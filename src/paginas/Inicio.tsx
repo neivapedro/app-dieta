@@ -56,8 +56,19 @@ export function Inicio() {
             </div>
           </div>
           <div className="grade" style={{ marginTop: 14 }}>
-            <Bloco rotulo="Marcação prática" valor={`${num(p.ui_pratica, 1)} UI`} />
-            <Bloco rotulo="= dose real" valor={mg(p.mg_pratica)} />
+            <Bloco rotulo={`Na seringa (marcas de ${num(ciclo.passo_ui, ciclo.passo_ui % 1 ? 2 : 0)} UI)`} valor={`${num(p.ui_pratica, 1)} UI`} />
+            <Bloco
+              rotulo="Isso entrega"
+              valor={
+                Math.abs(p.mg_pratica - p.dose_mg) < 0.0005 ? (
+                  mg(p.mg_pratica)
+                ) : (
+                  <>
+                    {mg(p.mg_pratica)} <span className="mudo">({sinal(p.mg_pratica - p.dose_mg, 2)})</span>
+                  </>
+                )
+              }
+            />
             <Bloco rotulo={`Fase ${p.fase.indice + 1}`} valor={p.fase.fase.nome} />
             <Bloco rotulo="Local sugerido" valor={resumo.sugestao_local} />
           </div>
