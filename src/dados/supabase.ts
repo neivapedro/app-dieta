@@ -175,11 +175,27 @@ export class RepositorioSupabase implements Repositorio {
 
   async listarDiario(): Promise<RegistroDiario[]> {
     const d = lista(await this.sb.from('diario').select('*').order('data'));
-    return d.map((r) => ({ id: r.id, data: r.data, peso_kg: numOuNulo(r.peso_kg), nausea: r.nausea, observacoes: r.observacoes }));
+    return d.map((r) => ({
+      id: r.id,
+      data: r.data,
+      peso_kg: numOuNulo(r.peso_kg),
+      nausea: r.nausea,
+      observacoes: r.observacoes,
+      vomito: r.vomito ?? null,
+      diarreia: r.diarreia ?? null,
+      intestino_preso: r.intestino_preso ?? null,
+      dieta_seguida: r.dieta_seguida ?? null,
+    }));
   }
 
   async salvarDiario(r: Omit<RegistroDiario, 'id'>) {
-    erro(await this.sb.from('diario').upsert({ ...r, user_id: await this.uid() }, { onConflict: 'user_id,data' }));
+    const linha = { ...r, user_id: await this.uid() };
+    const res = await this.sb.from('diario').upsert(linha, { onConflict: 'user_id,data' });
+    // Banco sem as colunas novas (SQL de melhorias ainda não rodou): grava o básico
+    if (res.error && /vomito|diarreia|intestino_preso|dieta_seguida/.test(res.error.message)) {
+      const { vomito: _v, diarreia: _d, intestino_preso: _i, dieta_seguida: _s, ...basico } = linha;
+      erro(await this.sb.from('diario').upsert(basico, { onConflict: 'user_id,data' }));
+    } else erro(res);
   }
 
   async excluirDiario(id: string) {

@@ -1,6 +1,8 @@
 import { lazy, Suspense, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FormDiaTreino, FormMetas } from '../componentes/treino';
+import { CartaoTreinoHoje, FormDiaTreino, FormMetas } from '../componentes/treino';
+import { tendenciaMedidas } from '../lib/conferencia';
+import { diferencaDias } from '../lib/datas';
 import { Bloco, Vazio } from '../componentes/ui';
 import { useDados } from '../dados/contexto';
 import { useTreino } from '../dados/useTreino';
@@ -67,6 +69,19 @@ export function Treino() {
     { nome: 'Massa gorda', chave: 'massa_gorda_kg', fmt: kg, unidade: ' kg', menorMelhor: true, meta: metaGorda },
   ];
   const valor = (c: Composicao | null, k: keyof Composicao) => (c ? (c[k] as number | null) : null);
+  // No ritmo das últimas semanas, onde cada medida chega no fim do projeto
+  const tend = tendenciaMedidas(t.composicoes, 28);
+  const diasAteFim = atual ? Math.max(diferencaDias(atual.data, t.fim), 0) : 0;
+  const ritmo: Partial<Record<keyof Composicao, number>> | null =
+    tend && atual && !final
+      ? {
+          cintura_cm: atual.cintura_cm + (tend.cintura_semana / 7) * diasAteFim,
+          peso_kg: atual.peso_kg + (tend.peso_semana / 7) * diasAteFim,
+          bf: (atual.bf ?? 0) + (tend.bf_semana / 7) * diasAteFim,
+          massa_magra_kg: (atual.massa_magra_kg ?? 0) + (tend.magra_semana / 7) * diasAteFim,
+          massa_gorda_kg: (atual.massa_gorda_kg ?? 0) + (tend.gorda_semana / 7) * diasAteFim,
+        }
+      : null;
   // Grade: até a semana que vem; mostra as 6 mais recentes, com opção de ver tudo
   const SEMANAS_VISIVEIS = 6;
   const ateProxima = t.semanas.filter((s) => s.segunda <= somarDias(hoje, 7));
@@ -75,6 +90,8 @@ export function Treino() {
 
   return (
     <div className="pilha">
+      <CartaoTreinoHoje />
+
       <section className="cartao">
         <div className="cartao-cab">
           <h2>Projeto</h2>
@@ -177,6 +194,7 @@ export function Treino() {
                   <th>Início<div className="mudo" style={{ fontWeight: 400 }}>{formatarData(inicial.data, true)}</div></th>
                   <th>{final ? 'Final' : 'Agora'}<div className="mudo" style={{ fontWeight: 400 }}>{temAtual ? formatarData(atual!.data, true) : '–'}</div></th>
                   <th>Meta<div className="mudo" style={{ fontWeight: 400 }}>falta</div></th>
+                  {ritmo && <th>No ritmo<div className="mudo" style={{ fontWeight: 400 }}>no fim</div></th>}
                 </tr>
               </thead>
               <tbody>
@@ -199,6 +217,16 @@ export function Treino() {
                         {l.meta === null ? '–' : l.fmt(l.meta)}
                         {falta !== null && <div className={`sub-valor ${atingida ? 'bom' : 'mudo'}`}>{atingida ? '✓ atingida' : sinal(falta, 1, l.unidade)}</div>}
                       </td>
+                      {ritmo && (
+                        <td>
+                          {ritmo[l.chave] === undefined ? '–' : l.fmt(ritmo[l.chave])}
+                          {ritmo[l.chave] !== undefined && l.meta !== null && (
+                            <div className={`sub-valor ${(l.menorMelhor ? ritmo[l.chave]! <= l.meta : ritmo[l.chave]! >= l.meta) ? 'bom' : 'aviso-txt'}`}>
+                              {(l.menorMelhor ? ritmo[l.chave]! <= l.meta : ritmo[l.chave]! >= l.meta) ? 'chega' : 'não chega'}
+                            </div>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
@@ -232,7 +260,7 @@ export function Treino() {
         <Suspense fallback={<div className="grafico" />}>
           <GraficoAderencia semanas={t.semanas.filter((s) => s.segunda <= hoje)} metrica={metrica} />
         </Suspense>
-        <p className="mudo" style={{ marginTop: 6 }}>Barras: % de treinos e cardios cumpridos na semana. Linha: medição da segunda-feira.</p>
+        <p className="mudo" style={{ marginTop: 6 }}>Barras: % de treinos e cardios cumpridos na semana. Linha: medição da segunda-feira seguinte (o resultado daquela semana).</p>
       </section>
 
       <section className="cartao">

@@ -138,7 +138,9 @@ describe('Semanas e medidas', () => {
     expect(s).toHaveLength(3);
     // semana 1: 15 a 18 (4 dias × 2) = 8 metas, 5 feitos
     expect(s[0].aderencia).toBeCloseTo(5 / 8);
-    expect(s[1].medida?.cintura_cm).toBe(97);
+    // medição de 19/10 (segunda) mostra o resultado da semana de 12 a 18/10
+    expect(s[0].medida?.cintura_cm).toBe(97);
+    expect(s[1].medida).toBeNull();
     expect(medidaInicial([med], '2026-10-15')?.data).toBe('2026-10-19');
   });
 });

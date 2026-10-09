@@ -3,7 +3,7 @@ import { useDados } from '../dados/contexto';
 import { useTreino } from '../dados/useTreino';
 import { diaDaSemana, formatarData } from '../lib/datas';
 import { cm, kg, num, paraNumero, paraTexto, pp } from '../lib/formato';
-import type { Composicao } from '../lib/gordura';
+import { percentualGordura, type Composicao } from '../lib/gordura';
 import { digitosParaTempo, formatarTempo, KM_CORRIDA_PADRAO, lerTempo, paceValido, rotuloCardio, tipoCardio } from '../lib/treino';
 import type { MetasProjeto } from '../lib/tipos';
 import { Campo, CampoNumero, Folha } from './ui';
@@ -142,8 +142,9 @@ export function FormDiaTreino({ data, marcarCardio, aoFechar }: { data: string; 
 
 /** Metas para o fim do projeto, definidas depois de conhecer as medidas reais. */
 export function FormMetas({ base, aoFechar, primeiraVez }: { base: Composicao | null; aoFechar: () => void; primeiraVez?: boolean }) {
-  const { perfil, executar } = useDados();
+  const { perfil, executar, medidas } = useDados();
   const m = perfil?.metas_projeto;
+  const altura = [...medidas].sort((a, b) => b.data.localeCompare(a.data))[0]?.altura_cm ?? perfil?.altura_cm ?? null;
   const feminino = perfil?.sexo === 'Feminino';
   const [pescoco, setPescoco] = useState(paraTexto(m?.pescoco_cm));
   const [cintura, setCintura] = useState(paraTexto(m?.cintura_cm));
@@ -195,6 +196,32 @@ export function FormMetas({ base, aoFechar, primeiraVez }: { base: Composicao | 
           <CampoNumero rotulo="% de gordura" sufixo="%" valor={bf} aoMudar={setBf} dica={atual(base?.bf, pp)} />
           <CampoNumero rotulo="Peso" sufixo="kg" valor={peso} aoMudar={setPeso} dica={atual(base?.peso_kg, kg)} />
         </div>
+        {(() => {
+          // Coerência: no método US Navy o % de gordura sai da cintura, do pescoço e da altura
+          const bfDasMedidas =
+            altura && paraNumero(cintura) && paraNumero(pescoco)
+              ? percentualGordura(perfil?.sexo ?? 'Masculino', altura, paraNumero(pescoco)!, paraNumero(cintura)!, feminino ? paraNumero(quadril) : null)
+              : null;
+          const magraMeta = pesoN && bfN ? pesoN * (1 - bfN / 100) : null;
+          const magraHoje = base?.massa_magra_kg ?? null;
+          const pesoPreserva = bfN && magraHoje ? magraHoje / (1 - bfN / 100) : null;
+          return (
+            <>
+              {bfDasMedidas !== null && (
+                <div className={`alerta ${bfN !== null && Math.abs(bfDasMedidas - bfN) > 2 ? '' : 'info'}`}>
+                  Cintura {cintura} e pescoço {pescoco} dão {num(bfDasMedidas, 1)}% de gordura (altura {num(altura, 0)} cm).
+                  {bfN !== null && Math.abs(bfDasMedidas - bfN) > 2 ? ' Diferente do % da meta: ajuste um dos dois.' : ''}
+                </div>
+              )}
+              {magraMeta !== null && magraHoje !== null && magraMeta < magraHoje - 0.5 && (
+                <div className="alerta">
+                  Peso {kg(pesoN)} com {num(bfN, 1)}% dá {kg(magraMeta)} de massa magra, abaixo dos {kg(magraHoje)} de hoje. Para manter a massa magra com{' '}
+                  {num(bfN, 1)}%, o peso seria ≈ {kg(pesoPreserva)}.
+                </div>
+              )}
+            </>
+          );
+        })()}
         {pesoN && bfN ? (
           <div className="grade">
             <div className="bloco"><div className="rotulo">Massa magra na meta</div><div className="valor">{kg(pesoN * (1 - bfN / 100))}</div></div>

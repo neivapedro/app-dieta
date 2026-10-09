@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { analisarFases, analisarGeral, serieDePeso } from './analise';
+import { analisarFases, analisarGeral, diaAposDose, serieDePeso, sintomasPorFase } from './analise';
 import { calcularCiclo, cicloPadrao, guiaSeringa, consumoPlano, faseDaDose, marcacao, mgParaUI, verificarPlano } from './ciclo';
 import { diaDaSemana, somarDias } from './datas';
 import { composicao, ganhos, percentualGordura } from './gordura';
@@ -194,6 +194,33 @@ describe('Análise do ciclo', () => {
     expect(fases).toHaveLength(2);
     expect(fases[0]).toMatchObject({ nome: 'Adaptação', doses: 4, inicio: '2026-10-08', fim: '2026-11-05', peso_inicio: 96.5, peso_fim: 95.2, em_andamento: false });
     expect(fases[1]).toMatchObject({ nome: 'Primeira progressão', doses: 1, em_andamento: true, peso_fim: 93 });
+  });
+
+  it('kg/semana da fase usa o intervalo entre as pesagens (não muda sem pesagem nova)', () => {
+    // perda constante de 0,5 kg/semana, pesagem só às segundas
+    const seg = ['2026-10-05', '2026-10-12', '2026-10-19', '2026-10-26', '2026-11-02', '2026-11-09'];
+    const med: Medida[] = seg.map((d, i) => ({ id: d, data: d, altura_cm: 182, pescoco_cm: 41, cintura_cm: 98, quadril_cm: null, peso_kg: 96 - 0.5 * i }));
+    const aps = ['2026-10-08', '2026-10-15', '2026-10-22', '2026-10-29', '2026-11-05'].map((d) => ap(d, 1.25));
+    for (const hoje of ['2026-11-09', '2026-11-13', '2026-11-15']) {
+      const r = calcularCiclo(ciclo, aps, [], hoje);
+      const f = analisarFases(r, serieDePeso([], med), [], hoje);
+      expect(f[0].kg_por_semana).toBeCloseTo(-0.5, 6);
+    }
+  });
+
+  it('náusea por dia depois da dose', () => {
+    expect(diaAposDose('2026-10-10', ['2026-10-08'])).toBe(2);
+    expect(diaAposDose('2026-10-07', ['2026-10-08'])).toBeNull();
+    const aps = ['2026-10-08', '2026-10-15'].map((d) => ap(d, 1.25));
+    const r = calcularCiclo(ciclo, aps, [], '2026-10-20');
+    const fases = analisarFases(r, [], [], '2026-10-20');
+    const diario: RegistroDiario[] = [
+      { id: 'a', data: '2026-10-09', peso_kg: null, nausea: 2, observacoes: null, vomito: true },
+      { id: 'b', data: '2026-10-16', peso_kg: null, nausea: 1, observacoes: null, vomito: false },
+    ];
+    const s = sintomasPorFase(fases, ['2026-10-08', '2026-10-15'], diario, '2026-10-20');
+    expect(s[0].nausea_por_dia[1]).toBe(1.5);
+    expect(s[0].vomito).toBe(0.5);
   });
 
   it('fase concluída não aparece como atual quando a próxima dose já é da fase seguinte', () => {

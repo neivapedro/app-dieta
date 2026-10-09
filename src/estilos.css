@@ -349,3 +349,30 @@ details.ajuda[open] summary { margin-bottom: 8px; }
 .desfazer { position: sticky; bottom: calc(var(--nav-altura) + env(safe-area-inset-bottom) + 64px); z-index: 6; align-items: center; background: var(--superficie); }
 .refeicao-titulo { min-height: 36px; }
 details.ajuda summary { min-height: 32px; display: flex; align-items: center; }
+
+.sintomas { display: flex; flex-wrap: wrap; gap: 6px; }
+.sintoma { min-height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--borda); background: var(--superficie-2); cursor: pointer; font-size: 0.85rem; }
+.sintoma.sim { border-color: var(--ruim); color: var(--ruim); font-weight: 600; }
+.sintoma.nao { border-color: var(--bom); color: var(--bom); }
+
+.leituras { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; align-items: end; }
+
+/* Relatório para o médico: Análise → Imprimir / PDF */
+.so-impressao { display: none; }
+@media print {
+  :root, :root[data-theme] {
+    color-scheme: light;
+    --fundo: #fff; --superficie: #fff; --superficie-2: #f3f3f3; --borda: #d0d0d0;
+    --texto: #000; --texto-2: #333; --texto-3: #555; --bom: #1e7a35; --ruim: #b00012; --aviso: #8a4b00; --sombra: none;
+  }
+  html, body { background: #fff; }
+  .nav, .topo, .nao-imprimir, .app > .alerta, .saldo-fixo, button { display: none !important; }
+  .so-impressao { display: block; margin-bottom: 8px; }
+  .app { padding: 0; max-width: none; }
+  .pilha { gap: 10px; }
+  .cartao { box-shadow: none; break-inside: avoid; padding: 10px 12px; }
+  .tabela-rolagem { overflow: visible; margin: 0; padding: 0; }
+  table { font-size: 0.75rem; }
+  tr { break-inside: avoid; }
+  .grafico { height: 220px; }
+}

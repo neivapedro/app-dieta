@@ -72,6 +72,12 @@ export interface RegistroDiario {
   /** 0 = nenhuma · 1 = leve · 2 = moderada · 3 = forte */
   nausea: number | null;
   observacoes: string | null;
+  /** Sintomas do remédio (opcionais; null = não registrado) */
+  vomito?: boolean | null;
+  diarreia?: boolean | null;
+  intestino_preso?: boolean | null;
+  /** Segui o plano da dieta hoje? */
+  dieta_seguida?: 'sim' | 'parcial' | 'nao' | null;
 }
 
 export interface Medida {

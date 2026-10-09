@@ -6,14 +6,14 @@ App (PWA) de acompanhamento do ciclo de retatrutida e da composição corporal. 
 
 | Tela | Equivale a | Conteúdo |
 |---|---|---|
-| **Início** | Painel | Próxima dose (data, mg, UI, marcação prática, fase, local sugerido), saldo do frasco, registro do dia e comparação antes × agora |
+| **Início** | Painel | Próxima dose (data, mg, UI, marcação prática, fase, local sugerido), medição de segunda, treino de hoje, dieta de hoje ("segui o plano?"), saldo do frasco e sobra depois do plano, registro do dia e antes × agora (medidas primeiro, com a meta) |
 | **Ciclo → Agenda** | Diário + Semanal | Próximas aplicações projetadas e histórico (prevista × aplicada, atraso, saldo, peso médio e náusea máxima por semana) |
 | **Ciclo → Plano** | Plano | Fases editáveis, "Repetir fase (+4 semanas)", conferência do consumo × quantidade disponível e regras para subir de fase |
 | **Ciclo → Ajustes** | Painel (parâmetros) | Data da 1ª aplicação, quantidade (mg), concentração (mg/ml), intervalo e menor marcação da seringa |
-| **Diário** | Diário | Peso, náusea (0 a 3) e observações em qualquer dia, com as aplicações na mesma linha do tempo |
-| **Medidas** | % de Gordura (Gorgonoidiana) | % de gordura, massa magra e massa gorda, ganhos (última − primeira medição) e gráfico de evolução |
+| **Ciclo → Diário** | Diário | Peso, náusea (0 a 3), sintomas (vômito, diarreia, intestino preso) e observações em qualquer dia, com as aplicações e o "D+N" (dias depois da dose) na mesma linha do tempo |
+| **Medidas** | % de Gordura (Gorgonoidiana) | % de gordura, massa magra e massa gorda; variação desde a anterior e desde a 1ª; até 3 leituras por medida (vale a média) com alerta de erro de digitação; resumo da semana ao salvar |
 | **Dieta** | Dieta Pedro Neiva + Cálculo de Macros (Gorgonoidiana) | Gasto calórico, meta do dia, metas de macros e plano alimentar por refeição com o banco de alimentos |
-| **Análise** | — | Resumo do ciclo, gráfico peso × dose, medidas iniciais × atuais e resultado por fase |
+| **Análise** | — | Resumo (medidas primeiro) e ritmo em % do peso por semana, peso × dose, composição e aderência por fase, náusea D0–D6 e sintomas por fase, aplicações com atraso, plano alimentar, treino e **Imprimir / PDF** para o médico |
 | **Perfil** | — | Dados pessoais (inclui data de nascimento), lembretes, notificações do aparelho, backup (exportar/importar) |
 
 ### Regras de cálculo
@@ -118,11 +118,18 @@ Para ativar:
 
 ### Como os lembretes funcionam
 
-O `pg_cron` chama a função `enviar-lembretes` a cada hora. Para cada usuário, a função calcula a próxima dose com a mesma regra do app: última aplicação real + intervalo, ou a data de início se ainda não houver aplicação.
+O `pg_cron` chama a função `enviar-lembretes` a cada 15 minutos (migração `20261012000000_melhorias.sql`). Para cada usuário, a função calcula a próxima dose com a mesma regra do app: última aplicação real + intervalo, ou a data de início se ainda não houver aplicação.
 
 - O lembrete é enviado a partir do horário escolhido no Perfil (padrão 08:00), no fuso do usuário, uma vez por dia.
 - Se a dose atrasar, o lembrete se repete diariamente, por até 14 dias, até a aplicação ser registrada.
 - Quando a sua parte do frasco acaba, os lembretes param.
+
+### Funcionar sem sinal e atualizações
+
+- **Fila de gravação:** checks do treino, registros do diário e edições da dieta mudam a tela na hora e são enviados em ordem. Sem internet, ficam guardados no aparelho e vão quando a conexão volta, mesmo que o app seja fechado.
+- **Sem conexão:** o app abre com a última cópia dos dados e um aviso no topo; não manda para o login por falta de rede.
+- **Versão nova:** cada publicação gera um service worker com versão própria; o app mostra "Nova versão disponível · Atualizar".
+- **Supabase acordado:** o agendamento `.github/workflows/manter-supabase.yml` faz uma consulta leve a cada 3 dias. Se o projeto pausar, a execução falha e o GitHub avisa por e-mail.
 
 ## Verificações feitas
 

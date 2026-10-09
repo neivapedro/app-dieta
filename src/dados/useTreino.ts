@@ -16,6 +16,6 @@ export function useTreino() {
     const inicial = medidaInicial(composicoes, inicio);
     const atual = composicoes.length ? composicoes[composicoes.length - 1] : null;
     const doDia = (data: string) => treinos.find((t) => t.data === data);
-    return { inicio, fim, placar, semanas, corridas, inicial, atual, metas: perfil.metas_projeto ?? null, doDia, hoje };
+    return { inicio, fim, placar, semanas, corridas, inicial, atual, composicoes, metas: perfil.metas_projeto ?? null, doDia, hoje };
   }, [perfil, ciclo, resumo, treinos, composicoes, hoje]);
 }

@@ -225,13 +225,15 @@ export function semanasDoProjeto(
         if (r?.cardio) feito++;
       }
     }
-    const daSemana = composicoes.filter((c) => c.data >= seg && c.data <= datas[6]);
+    // A medição de segunda (em jejum) mostra o resultado da semana ANTERIOR: junta com a semana que terminou
+    const proxSeg = somarDias(seg, 7);
+    const daSemana = composicoes.filter((c) => c.data >= proxSeg && c.data <= somarDias(proxSeg, 6));
     semanas.push({
       numero: n,
       segunda: seg,
       dias: datas,
       aderencia: meta > 0 ? feito / meta : null,
-      medida: daSemana.length ? daSemana[daSemana.length - 1] : null,
+      medida: daSemana.length ? daSemana[0] : null,
     });
   }
   return semanas;

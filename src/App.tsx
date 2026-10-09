@@ -7,7 +7,6 @@ import { useDados } from './dados/contexto';
 import { Analise } from './paginas/Analise';
 import { Ciclo } from './paginas/Ciclo';
 import { Configurar } from './paginas/Configurar';
-import { Diario } from './paginas/Diario';
 import { Dieta } from './paginas/Dieta';
 import { Entrar } from './paginas/Entrar';
 import { Inicio } from './paginas/Inicio';
@@ -18,7 +17,6 @@ import { Treino } from './paginas/Treino';
 const ABAS = [
   { para: '/', rotulo: 'Início', icone: 'inicio', titulo: 'Início' },
   { para: '/ciclo', rotulo: 'Ciclo', icone: 'ciclo', titulo: 'Ciclo' },
-  { para: '/diario', rotulo: 'Diário', icone: 'diario', titulo: 'Diário' },
   { para: '/medidas', rotulo: 'Medidas', icone: 'medidas', titulo: 'Medidas' },
   { para: '/dieta', rotulo: 'Dieta', icone: 'dieta', titulo: 'Dieta' },
   { para: '/analise', rotulo: 'Análise', icone: 'analise', titulo: 'Análise do ciclo' },
@@ -87,7 +85,7 @@ function Avisos() {
 function Estrutura() {
   const { perfil, ciclo } = useDados();
   const { pathname } = useLocation();
-  const abas = perfil?.modulo_treino ? [...ABAS.slice(0, 5), ABA_TREINO, ABAS[5]] : ABAS;
+  const abas = perfil?.modulo_treino ? [...ABAS.slice(0, 4), ABA_TREINO, ABAS[4]] : ABAS;
   const titulo = pathname === '/perfil' ? 'Perfil' : abas.find((a) => a.para === pathname)?.titulo ?? '';
   const primeiroNome = perfil?.nome.split(' ')[0];
 
@@ -114,7 +112,7 @@ function Estrutura() {
           <Routes>
             <Route path="/" element={<Inicio />} />
             <Route path="/ciclo" element={<Ciclo />} />
-            <Route path="/diario" element={<Diario />} />
+            <Route path="/diario" element={<Navigate to="/ciclo?aba=diario" replace />} />
             <Route path="/medidas" element={<Medidas />} />
             <Route path="/dieta" element={<Dieta />} />
             <Route path="/analise" element={<Analise />} />

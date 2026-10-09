@@ -135,6 +135,17 @@ export function FormAplicacao({ aplicacao, aoFechar }: { aplicacao?: Aplicacao; 
 
 // ---------- Diário ----------
 
+type ChaveSintoma = 'vomito' | 'diarreia' | 'intestino_preso';
+const SINTOMAS: [ChaveSintoma, string][] = [
+  ['vomito', 'Vômito'],
+  ['diarreia', 'Diarreia'],
+  ['intestino_preso', 'Intestino preso'],
+];
+
+function sintomasDe(r?: RegistroDiario): Record<ChaveSintoma, boolean | null> {
+  return { vomito: r?.vomito ?? null, diarreia: r?.diarreia ?? null, intestino_preso: r?.intestino_preso ?? null };
+}
+
 export function FormDiario({ registro, dataInicial, aoFechar }: { registro?: RegistroDiario; dataInicial?: string; aoFechar: () => void }) {
   const { diario, executar, gravar } = useDados();
   const [data, setData] = useState(registro?.data ?? dataInicial ?? hojeLocal());
@@ -142,6 +153,7 @@ export function FormDiario({ registro, dataInicial, aoFechar }: { registro?: Reg
   const [peso, setPeso] = useState(paraTexto(existente?.peso_kg));
   const [nausea, setNausea] = useState<number | null>(existente?.nausea ?? null);
   const [obs, setObs] = useState(existente?.observacoes ?? '');
+  const [sintomas, setSintomas] = useState(sintomasDe(existente));
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
 
@@ -151,16 +163,22 @@ export function FormDiario({ registro, dataInicial, aoFechar }: { registro?: Reg
     setPeso(paraTexto(r?.peso_kg));
     setNausea(r?.nausea ?? null);
     setObs(r?.observacoes ?? '');
+    setSintomas(sintomasDe(r));
   }
 
   async function salvar(e: FormEvent) {
     e.preventDefault();
     const pesoNum = paraNumero(peso);
-    if (pesoNum === null && nausea === null && !obs.trim()) return setErro('Preencha ao menos um campo.');
+    const algumSintoma = Object.values(sintomas).some((v) => v !== null);
+    if (pesoNum === null && nausea === null && !obs.trim() && !algumSintoma) return setErro('Preencha ao menos um campo.');
     if (salvando) return;
     setSalvando(true);
+    const atual = diario.find((x) => x.data === data);
     // Pela fila: grava na hora e, sem internet, envia quando a conexão voltar
-    gravar({ tipo: 'diario', dado: { data, peso_kg: pesoNum, nausea, observacoes: obs.trim() || null } });
+    gravar({
+      tipo: 'diario',
+      dado: { data, peso_kg: pesoNum, nausea, observacoes: obs.trim() || null, ...sintomas, dieta_seguida: atual?.dieta_seguida ?? null },
+    });
     aoFechar();
   }
 
@@ -181,6 +199,20 @@ export function FormDiario({ registro, dataInicial, aoFechar }: { registro?: Reg
         <Campo rotulo="Náusea (0 a 3)" grupo>
           <Escolhas opcoes={OPCOES_NAUSEA} valor={nausea} aoMudar={setNausea} permitirVazio />
         </Campo>
+        <Campo rotulo="Sintomas do dia (opcional)" grupo dica="Toque para marcar Sim; de novo para Não; mais uma vez para limpar.">
+          <div className="sintomas">
+            {SINTOMAS.map(([k, rotulo]) => (
+              <button
+                type="button"
+                key={k}
+                className={`sintoma ${sintomas[k] === true ? 'sim' : sintomas[k] === false ? 'nao' : ''}`}
+                onClick={() => setSintomas({ ...sintomas, [k]: sintomas[k] === null ? true : sintomas[k] ? false : null })}
+              >
+                {rotulo}: {sintomas[k] === true ? 'sim' : sintomas[k] === false ? 'não' : '–'}
+              </button>
+            ))}
+          </div>
+        </Campo>
         <Campo rotulo="Observações / efeitos">
           <textarea value={obs} onChange={(e) => setObs(e.target.value)} />
         </Campo>
@@ -196,14 +228,76 @@ export function FormDiario({ registro, dataInicial, aoFechar }: { registro?: Reg
 
 // ---------- Medidas ----------
 
+function DicaAnterior({ valor, anterior, data, unidade, limite }: { valor: number | null; anterior: number; data: string; unidade: string; limite: number }) {
+  const dif = valor !== null ? valor - anterior : null;
+  return (
+    <span className={dif !== null && Math.abs(dif) > limite ? 'aviso-txt' : undefined}>
+      Última: {num(anterior, 1)} {unidade} ({formatarData(data, true)})
+      {dif !== null && Math.abs(dif) > limite ? ` · diferença de ${num(dif, 1)} ${unidade}: confira` : ''}
+    </span>
+  );
+}
+
+/** Campo de medida com até 3 leituras; vale a média. */
+function Leituras({
+  rotulo,
+  valores,
+  aoMudar,
+  anterior,
+  dataAnterior,
+  limite,
+}: {
+  rotulo: string;
+  valores: string[];
+  aoMudar: (v: string[]) => void;
+  anterior?: number;
+  dataAnterior?: string;
+  limite: number;
+}) {
+  const ns = valores.map(paraNumero).filter((n): n is number => n !== null);
+  const m = ns.length ? ns.reduce((a, b) => a + b, 0) / ns.length : null;
+  const espalhamento = ns.length > 1 ? Math.max(...ns) - Math.min(...ns) : 0;
+  return (
+    <div className="pilha" style={{ gap: 6 }}>
+      <div className="leituras">
+        {valores.map((v, i) => (
+          <CampoNumero
+            key={i}
+            rotulo={i === 0 ? rotulo : `${i + 1}ª leitura`}
+            sufixo={i === 0 ? 'cm' : undefined}
+            valor={v}
+            aoMudar={(nv) => aoMudar(valores.map((x, j) => (j === i ? nv : x)))}
+          />
+        ))}
+        {valores.length < 3 && (
+          <button type="button" className="botao pequeno" style={{ alignSelf: 'flex-end' }} onClick={() => aoMudar([...valores, ''])}>
+            + leitura
+          </button>
+        )}
+      </div>
+      {(anterior !== undefined || ns.length > 1) && (
+        <small className="texto-2">
+          {ns.length > 1 && <>Média: {num(m, 1)} cm{espalhamento > 1 ? ' · leituras com mais de 1 cm de diferença, meça de novo' : ''}. </>}
+          {anterior !== undefined && <DicaAnterior valor={m} anterior={anterior} data={dataAnterior ?? ''} unidade="cm" limite={limite} />}
+        </small>
+      )}
+    </div>
+  );
+}
+
 export function FormMedida({ medida, aoFechar, aoSalvar }: { medida?: Medida; aoFechar: () => void; aoSalvar?: () => void }) {
   const { perfil, medidas, executar } = useDados();
   const ultima = [...medidas].sort((a, b) => b.data.localeCompare(a.data))[0];
   const sexo = perfil?.sexo ?? 'Masculino';
   const [data, setData] = useState(medida?.data ?? hojeLocal());
   const [altura, setAltura] = useState(paraTexto(medida?.altura_cm ?? ultima?.altura_cm ?? perfil?.altura_cm));
-  const [pescoco, setPescoco] = useState(paraTexto(medida?.pescoco_cm));
-  const [cintura, setCintura] = useState(paraTexto(medida?.cintura_cm));
+  // Até 3 leituras de pescoço e cintura: vale a média
+  const [pescocos, setPescocos] = useState<string[]>([paraTexto(medida?.pescoco_cm)]);
+  const [cinturas, setCinturas] = useState<string[]>([paraTexto(medida?.cintura_cm)]);
+  const media = (l: string[]) => {
+    const ns = l.map(paraNumero).filter((n): n is number => n !== null);
+    return ns.length ? Math.round((ns.reduce((a, b) => a + b, 0) / ns.length) * 10) / 10 : null;
+  };
   const [quadril, setQuadril] = useState(paraTexto(medida?.quadril_cm));
   const [peso, setPeso] = useState(paraTexto(medida?.peso_kg));
   const [erro, setErro] = useState<string | null>(null);
@@ -211,19 +305,22 @@ export function FormMedida({ medida, aoFechar, aoSalvar }: { medida?: Medida; ao
 
   const valores = {
     altura_cm: paraNumero(altura),
-    pescoco_cm: paraNumero(pescoco),
-    cintura_cm: paraNumero(cintura),
+    pescoco_cm: media(pescocos),
+    cintura_cm: media(cinturas),
     quadril_cm: paraNumero(quadril),
     peso_kg: paraNumero(peso),
   };
   const completo =
     valores.altura_cm && valores.pescoco_cm && valores.cintura_cm && valores.peso_kg && (sexo === 'Masculino' || valores.quadril_cm);
+  // Medição anterior a esta data, para comparar e pegar erro de digitação
+  const anterior = [...medidas].filter((m) => m.data < data && m.id !== medida?.id).sort((a, b) => b.data.localeCompare(a.data))[0];
   const previa = completo ? composicao({ id: '', data, ...(valores as Omit<Medida, 'id' | 'data'>) }, sexo) : null;
 
   async function salvar(e: FormEvent) {
     e.preventDefault();
     if (!completo) return setErro(sexo === 'Feminino' ? 'Preencha altura, pescoço, cintura, quadril e peso.' : 'Preencha altura, pescoço, cintura e peso.');
     if (valores.altura_cm! < 100) return setErro('A altura é em centímetros (ex.: 182).');
+    if (!medida && medidas.some((m) => m.data === data)) return setErro('Já existe uma medição nesta data. Toque nela no histórico para editar.');
     if (salvando) return;
     setSalvando(true);
     try {
@@ -260,16 +357,26 @@ export function FormMedida({ medida, aoFechar, aoSalvar }: { medida?: Medida; ao
         </Campo>
         <div className="grade">
           <CampoNumero rotulo="Altura" sufixo="cm" valor={altura} aoMudar={setAltura} dica="Em centímetros, ex.: 182" />
-          <CampoNumero rotulo="Peso" sufixo="kg" valor={peso} aoMudar={setPeso} />
-          <CampoNumero rotulo="Pescoço" sufixo="cm" valor={pescoco} aoMudar={setPescoco} />
-          <CampoNumero rotulo="Cintura" sufixo="cm" valor={cintura} aoMudar={setCintura} />
+          <CampoNumero
+            rotulo="Peso"
+            sufixo="kg"
+            valor={peso}
+            aoMudar={setPeso}
+            dica={anterior ? <DicaAnterior valor={valores.peso_kg} anterior={anterior.peso_kg} data={anterior.data} unidade="kg" limite={3} /> : undefined}
+          />
+        </div>
+        <Leituras rotulo="Pescoço" valores={pescocos} aoMudar={setPescocos} anterior={anterior?.pescoco_cm} dataAnterior={anterior?.data} limite={2} />
+        <Leituras rotulo="Cintura" valores={cinturas} aoMudar={setCinturas} anterior={anterior?.cintura_cm} dataAnterior={anterior?.data} limite={3} />
+        <div className="grade">
           {sexo === 'Feminino' && <CampoNumero rotulo="Quadril" sufixo="cm" valor={quadril} aoMudar={setQuadril} />}
         </div>
         <details className="ajuda">
           <summary>Como medir</summary>
           <div className="pilha mudo">
-            <p><b>Pescoço:</b> logo acima do trapézio, no maior diâmetro possível (cuidado para não medir o próprio trapézio).</p>
-            <p><b>Cintura:</b> na altura do umbigo. Solte todo o ar antes de medir, sem murchar a barriga. De preferência logo pela manhã.</p>
+            <p><b>Quando:</b> toda segunda, em jejum, depois de ir ao banheiro e antes de beber água. Mesma fita e mesmo horário.</p>
+            <p><b>Pescoço:</b> logo abaixo do pomo de Adão, com a fita levemente inclinada para a frente, sem medir o trapézio.</p>
+            <p><b>Cintura:</b> na altura do umbigo, fita paralela ao chão. Solte todo o ar antes de medir, sem murchar a barriga.</p>
+            <p><b>Leituras:</b> meça 2 ou 3 vezes; o app usa a média. Diferença maior que 1 cm entre leituras: meça de novo.</p>
             {sexo === 'Feminino' && <p><b>Quadril:</b> na maior circunferência dos glúteos.</p>}
           </div>
         </details>

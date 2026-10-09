@@ -1,5 +1,6 @@
 import { lazy, Suspense, useState } from 'react';
 import { FormMedida } from '../componentes/formularios';
+import { ResumoSemana } from '../componentes/ResumoSemana';
 import { FormMetas } from '../componentes/treino';
 import { Vazio } from '../componentes/ui';
 import { useDados } from '../dados/contexto';
@@ -18,17 +19,23 @@ export function Medidas() {
   const [editando, setEditando] = useState<Medida | null>(null);
   const [nova, setNova] = useState(false);
   const [pedirMetas, setPedirMetas] = useState(false);
+  const [resumoAberto, setResumoAberto] = useState(false);
 
   const g = composicoes.length >= 2 ? ganhos(composicoes[0], composicoes[composicoes.length - 1]) : null;
   const atual = composicoes[composicoes.length - 1];
+  const anterior = composicoes[composicoes.length - 2];
+  const ultimo = anterior && atual ? ganhos(anterior, atual) : null;
   const ordenadas = [...medidas].sort((a, b) => a.data.localeCompare(b.data));
   const feminino = perfil?.sexo === 'Feminino';
 
-  const tiles: { rotulo: string; atual: string; ganho: number | null | undefined; fmt: (n: number) => string; menorMelhor: boolean }[] = [
-    { rotulo: 'Peso', atual: kg(atual?.peso_kg), ganho: g?.peso_kg, fmt: (n) => sinal(n, 1, ' kg'), menorMelhor: true },
-    { rotulo: '% de gordura', atual: pp(atual?.bf), ganho: g?.bf, fmt: (n) => sinal(n, 1, ' p.p.'), menorMelhor: true },
-    { rotulo: 'Massa magra', atual: kg(atual?.massa_magra_kg), ganho: g?.massa_magra_kg, fmt: (n) => sinal(n, 1, ' kg'), menorMelhor: false },
-    { rotulo: 'Massa gorda', atual: kg(atual?.massa_gorda_kg), ganho: g?.massa_gorda_kg, fmt: (n) => sinal(n, 1, ' kg'), menorMelhor: true },
+  // Medidas antes do peso; embaixo de cada número: variação na semana (vs anterior) e desde a 1ª
+  type Tile = { rotulo: string; atual: string; semana: number | null | undefined; ganho: number | null | undefined; fmt: (n: number) => string; menorMelhor: boolean };
+  const tiles: Tile[] = [
+    { rotulo: 'Cintura', atual: cm(atual?.cintura_cm), semana: ultimo?.cintura_cm, ganho: g?.cintura_cm, fmt: (n) => sinal(n, 1, ' cm'), menorMelhor: true },
+    { rotulo: '% de gordura', atual: pp(atual?.bf), semana: ultimo?.bf, ganho: g?.bf, fmt: (n) => sinal(n, 1, ' p.p.'), menorMelhor: true },
+    { rotulo: 'Massa gorda', atual: kg(atual?.massa_gorda_kg), semana: ultimo?.massa_gorda_kg, ganho: g?.massa_gorda_kg, fmt: (n) => sinal(n, 1, ' kg'), menorMelhor: true },
+    { rotulo: 'Massa magra', atual: kg(atual?.massa_magra_kg), semana: ultimo?.massa_magra_kg, ganho: g?.massa_magra_kg, fmt: (n) => sinal(n, 1, ' kg'), menorMelhor: false },
+    { rotulo: 'Peso', atual: kg(atual?.peso_kg), semana: ultimo?.peso_kg, ganho: g?.peso_kg, fmt: (n) => sinal(n, 1, ' kg'), menorMelhor: true },
   ];
 
   return (
@@ -45,16 +52,22 @@ export function Medidas() {
                 <div className="bloco" key={t.rotulo}>
                   <div className="rotulo">{t.rotulo}</div>
                   <div className="valor">{t.atual}</div>
+                  {t.semana !== null && t.semana !== undefined && (
+                    <div className={`numero ${corVariacao(t.semana, t.menorMelhor)}`} style={{ fontSize: '0.78rem', fontWeight: 600 }}>
+                      {t.fmt(t.semana)} <span className="texto-2" style={{ fontWeight: 500, fontSize: '0.72rem' }}>últ.</span>
+                    </div>
+                  )}
                   {t.ganho !== null && t.ganho !== undefined && (
-                    <div className={`numero ${corVariacao(t.ganho, t.menorMelhor)}`} style={{ fontSize: '0.8rem', fontWeight: 600 }}>
-                      {t.fmt(t.ganho)}
+                    <div className={`numero ${corVariacao(t.ganho, t.menorMelhor)}`} style={{ fontSize: '0.78rem', fontWeight: 600 }}>
+                      {t.fmt(t.ganho)} <span className="texto-2" style={{ fontWeight: 500, fontSize: '0.72rem' }}>total</span>
                     </div>
                   )}
                 </div>
               ))}
             </div>
             <p className="mudo" style={{ marginTop: 8 }}>
-              {g ? `Ganhos: da 1ª medição (${formatarData(composicoes[0].data)}) até a última.` : 'Registre outra medição para ver os ganhos.'} Método da Marinha dos EUA (fita métrica).
+              {g ? `“últ.” = desde a medição anterior; “total” = desde a 1ª (${formatarData(composicoes[0].data)}).` : 'Registre outra medição para ver os ganhos.'}{' '}
+              Método da Marinha dos EUA (fita métrica).
             </p>
           </>
         ) : (
@@ -87,11 +100,14 @@ export function Medidas() {
                   <th>% gordura</th>
                   <th>Massa magra</th>
                   <th>Massa gorda</th>
+                  <th>Δ cintura</th>
                 </tr>
               </thead>
               <tbody>
                 {[...composicoes].reverse().map((c, i) => {
                   const m = ordenadas[ordenadas.length - 1 - i];
+                  const prev = composicoes[composicoes.length - 2 - i];
+                  const dc = prev ? c.cintura_cm - prev.cintura_cm : null;
                   return (
                     <tr key={m.id} className="item-acao" onClick={() => setEditando(m)}>
                       <td>{formatarData(c.data, true)}</td>
@@ -103,6 +119,7 @@ export function Medidas() {
                       <td>{pp(c.bf)}</td>
                       <td>{kg(c.massa_magra_kg)}</td>
                       <td>{kg(c.massa_gorda_kg)}</td>
+                      <td className={corVariacao(dc, true)}>{dc === null ? '–' : sinal(dc, 1)}</td>
                     </tr>
                   );
                 })}
@@ -113,7 +130,13 @@ export function Medidas() {
         </section>
       )}
 
-      {nova && <FormMedida aoFechar={() => setNova(false)} aoSalvar={() => perfil?.modulo_treino && !perfil.metas_projeto && setPedirMetas(true)} />}
+      {nova && (
+        <FormMedida
+          aoFechar={() => setNova(false)}
+          aoSalvar={() => (perfil?.modulo_treino && !perfil.metas_projeto ? setPedirMetas(true) : setResumoAberto(true))}
+        />
+      )}
+      {resumoAberto && <ResumoSemana aoFechar={() => setResumoAberto(false)} />}
       {pedirMetas && <FormMetas primeiraVez base={composicoes[composicoes.length - 1] ?? null} aoFechar={() => setPedirMetas(false)} />}
       {editando && <FormMedida medida={editando} aoFechar={() => setEditando(null)} />}
     </div>

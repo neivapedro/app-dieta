@@ -138,6 +138,8 @@ export interface ProximaDose extends Marcacao {
   /** Dias até a data (futura) ou dias de atraso (atrasada) */
   dias: number;
   saldo_suficiente: boolean;
+  /** Dose além do plano, usando a sobra do frasco */
+  extra: boolean;
 }
 
 export interface DoseProjetada {
@@ -161,6 +163,9 @@ export interface ResumoCiclo {
   percentual_usado: number;
   /** Quantas doses da última fase (manutenção) o saldo ainda cobre */
   doses_manutencao_restantes: number;
+  /** Doses da última fase que sobram no frasco depois de cumprir o plano */
+  sobra_doses: number;
+  sobra_mg: number;
   data_fim_prevista: string | null;
   sugestao_local: string;
   alertas: string[];
@@ -254,6 +259,7 @@ export function calcularCiclo(
       situacao: dias > 0 ? 'futura' : dias === 0 ? 'hoje' : 'atrasada',
       dias: Math.abs(dias),
       saldo_suficiente: saldo + EPS >= dose,
+      extra: numero > totalPlano,
       ...marcacao(dose, ciclo),
     };
     if (!proxima.saldo_suficiente) {
@@ -263,7 +269,8 @@ export function calcularCiclo(
     // Projeção: se a dose está atrasada, assume que será tomada hoje.
     let dataProj = maiorData(data, hoje);
     let saldoProj = saldo;
-    for (let n = numero; n <= Math.max(totalPlano, numero) && projecao.length < 200; n++) {
+    // A agenda vai só até o fim do plano; depois disso, o que sobra no frasco aparece como "sobra"
+    for (let n = numero; n <= totalPlano && projecao.length < 200; n++) {
       const f = faseDaDose(ciclo.fases, n);
       if (saldoProj + EPS < f.fase.dose_mg) break;
       saldoProj -= f.fase.dose_mg;
@@ -276,6 +283,7 @@ export function calcularCiclo(
   if (plano.situacao === 'excesso') alertas.push(plano.mensagem);
 
   const doseManutencao = ciclo.fases[ciclo.fases.length - 1]?.dose_mg ?? 0;
+  const sobraMg = Math.max(projecao.length ? projecao[projecao.length - 1].saldo_apos_mg : saldo, 0);
 
   return {
     linhas,
@@ -288,6 +296,8 @@ export function calcularCiclo(
     saldo_ui: mgParaUI(saldo, conc),
     percentual_usado: ciclo.quantidade_total_mg > 0 ? acumulado / ciclo.quantidade_total_mg : 0,
     doses_manutencao_restantes: saldo <= 0 || doseManutencao <= 0 ? 0 : Math.floor(saldo / doseManutencao + EPS),
+    sobra_doses: doseManutencao > 0 ? Math.floor(sobraMg / doseManutencao + EPS) : 0,
+    sobra_mg: sobraMg,
     data_fim_prevista: projecao.length ? projecao[projecao.length - 1].data : ultima?.data ?? null,
     sugestao_local: sugerirLocal(ultima?.local),
     alertas,

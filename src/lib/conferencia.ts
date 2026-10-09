@@ -83,3 +83,14 @@ export function ritmoPercentual(pesoSemana: number, peso: number): { pct: number
   const faixa = pct < 0 ? 'ganho' : pct < 0.5 ? 'lento' : pct <= 1.0 ? 'ideal' : 'rapido';
   return { pct, faixa };
 }
+
+/** Tendência do peso (diário + medidas) nas últimas semanas, em kg por semana. */
+export function tendenciaPeso(serie: { data: string; peso_kg: number }[], hoje: string, janelaDias = 28): { kg_semana: number; pontos: number } | null {
+  const pts = serie.filter((p) => diferencaDias(p.data, hoje) <= janelaDias && p.data <= hoje);
+  if (pts.length < 3 || diferencaDias(pts[0].data, pts[pts.length - 1].data) < 14) return null;
+  const r = reta(
+    pts.map((p) => diferencaDias(pts[0].data, p.data)),
+    pts.map((p) => p.peso_kg),
+  );
+  return { kg_semana: r.inclinacao * 7, pontos: pts.length };
+}

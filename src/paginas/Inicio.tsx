@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { FormAplicacao, FormDiario } from '../componentes/formularios';
+import { FormAplicacao, FormDiario, FormMedida } from '../componentes/formularios';
+import { CartaoDietaHoje, CartaoMedicaoSegunda } from '../componentes/inicio';
+import { ResumoSemana } from '../componentes/ResumoSemana';
 import { CartaoTreinoHoje } from '../componentes/treino';
 import { Bloco, Icone } from '../componentes/ui';
 import { useDados } from '../dados/contexto';
@@ -17,6 +19,8 @@ export function Inicio() {
   const [params, setParams] = useSearchParams();
   const [registrar, setRegistrar] = useState(params.get('registrar') === '1');
   const [diarioAberto, setDiarioAberto] = useState(false);
+  const [medindo, setMedindo] = useState(false);
+  const [resumoSemana, setResumo] = useState(false);
   const [notif, setNotif] = useState<EstadoNotificacao | null>(null);
 
   useEffect(() => {
@@ -34,6 +38,31 @@ export function Inicio() {
 
   const ini = geral.medida_inicial;
   const atu = geral.medida_atual;
+  const metas = perfil?.modulo_treino ? perfil.metas_projeto ?? null : null;
+  const metaGorda = metas?.peso_kg && metas.bf ? (metas.peso_kg * metas.bf) / 100 : null;
+  const metaMagra = metas?.peso_kg && metas.bf ? metas.peso_kg * (1 - metas.bf / 100) : null;
+
+  // Medidas antes do peso (a regra do projeto: medidas valem mais que peso)
+  const linha = (
+    rotulo: string,
+    a: number | null,
+    b: number | null,
+    meta: number | null,
+    fmt: (n: number | null | undefined) => string,
+    fmtDelta: (n: number) => string,
+    menorMelhor: boolean,
+  ) => {
+    const d = a !== null && b !== null ? b - a : null;
+    return (
+      <tr key={rotulo}>
+        <td>{rotulo}</td>
+        <td>{fmt(a)}</td>
+        <td>{fmt(b)}</td>
+        <td className={corVariacao(d, menorMelhor)}>{d === null ? '–' : fmtDelta(d)}</td>
+        {metas && <td>{meta === null ? '–' : fmt(meta)}</td>}
+      </tr>
+    );
+  };
 
   return (
     <div className="pilha">
@@ -41,6 +70,7 @@ export function Inicio() {
         <section className={`cartao proxima ${p.situacao}`}>
           <div className="cartao-cab">
             <span className="rotulo">Próxima aplicação · {p.numero}ª dose</span>
+            {p.extra && <span className="etiqueta aviso">Dose extra · sobra do frasco</span>}
             {p.situacao === 'hoje' && <span className="etiqueta destaque">Hoje</span>}
             {p.situacao === 'atrasada' && <span className="etiqueta ruim">Atrasada {p.dias} dia(s)</span>}
             {p.situacao === 'futura' && <span className="etiqueta">em {p.dias} dia(s)</span>}
@@ -89,7 +119,11 @@ export function Inicio() {
         </section>
       )}
 
+      <CartaoMedicaoSegunda aoMedir={() => setMedindo(true)} />
+
       <CartaoTreinoHoje />
+
+      <CartaoDietaHoje />
 
       {resumo.alertas.map((a) => (
         <div className="alerta" key={a}>{a}</div>
@@ -122,9 +156,15 @@ export function Inicio() {
           <Bloco rotulo="Aplicações feitas" valor={`${resumo.aplicacoes_realizadas} · ${mg(resumo.total_aplicado_mg)}`} />
           <Bloco rotulo="Doses restantes no plano" valor={`${resumo.projecao.length} ${resumo.projecao.length === 1 ? 'dose' : 'doses'}`} />
         </div>
-        {resumo.data_fim_prevista && p && (
+        {resumo.data_fim_prevista && resumo.projecao.length > 0 && (
           <p className="mudo" style={{ marginTop: 10 }}>
             Mantendo o plano, a última dose fica para {formatarData(resumo.data_fim_prevista)}.
+          </p>
+        )}
+        {resumo.sobra_doses > 0 && (
+          <p className="mudo" style={{ marginTop: 6 }}>
+            Depois do plano sobram {mg(resumo.sobra_mg)} no frasco (≈ {resumo.sobra_doses} dose{resumo.sobra_doses > 1 ? 's' : ''} da última fase). Se o
+            médico indicar continuar, use “Repetir fase” no Plano.
           </p>
         )}
       </section>
@@ -138,7 +178,14 @@ export function Inicio() {
           <div className="grade grade-3">
             <Bloco rotulo="Peso" valor={kg(regHoje.peso_kg)} />
             <Bloco rotulo="Náusea" valor={regHoje.nausea === null ? '–' : NIVEIS_NAUSEA[regHoje.nausea]} />
-            <Bloco rotulo="Obs." valor={regHoje.observacoes ?? '–'} />
+            <Bloco
+              rotulo="Sintomas"
+              valor={
+                [regHoje.vomito && 'vômito', regHoje.diarreia && 'diarreia', regHoje.intestino_preso && 'intestino preso'].filter(Boolean).join(', ') ||
+                regHoje.observacoes ||
+                '–'
+              }
+            />
           </div>
         ) : (
           <p className="mudo">Anote peso, náusea e efeitos de hoje. Vale para qualquer dia, não só o da aplicação.</p>
@@ -159,35 +206,19 @@ export function Inicio() {
                   <th>Início</th>
                   <th>Agora</th>
                   <th>Variação</th>
+                  {metas && <th>Meta</th>}
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td>Peso</td>
-                  <td>{kg(geral.peso_inicial.peso_kg)}</td>
-                  <td>{kg(geral.peso_atual?.peso_kg)}</td>
-                  <td className={corVariacao(geral.variacao_kg, true)}>{sinal(geral.variacao_kg, 1, ' kg')}</td>
-                </tr>
                 {ini && (
                   <>
-                    <tr>
-                      <td>% gordura</td>
-                      <td>{pp(ini.bf)}</td>
-                      <td>{pp(atu?.bf)}</td>
-                      <td className={corVariacao(atu && ini.bf !== null && atu.bf !== null ? atu.bf - ini.bf : null, true)}>
-                        {atu && ini.bf !== null && atu.bf !== null ? sinal(atu.bf - ini.bf, 1, ' p.p.') : '–'}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>Cintura</td>
-                      <td>{cm(ini.cintura_cm)}</td>
-                      <td>{cm(atu?.cintura_cm)}</td>
-                      <td className={corVariacao(atu ? atu.cintura_cm - ini.cintura_cm : null, true)}>
-                        {atu ? sinal(atu.cintura_cm - ini.cintura_cm, 1, ' cm') : '–'}
-                      </td>
-                    </tr>
+                    {linha('Cintura', ini.cintura_cm, atu?.cintura_cm ?? null, metas?.cintura_cm ?? null, cm, (n) => sinal(n, 1, ' cm'), true)}
+                    {linha('% gordura', ini.bf, atu?.bf ?? null, metas?.bf ?? null, pp, (n) => sinal(n, 1, ' p.p.'), true)}
+                    {linha('Massa gorda', ini.massa_gorda_kg, atu?.massa_gorda_kg ?? null, metaGorda, kg, (n) => sinal(n, 1, ' kg'), true)}
+                    {linha('Massa magra', ini.massa_magra_kg, atu?.massa_magra_kg ?? null, metaMagra, kg, (n) => sinal(n, 1, ' kg'), false)}
                   </>
                 )}
+                {linha('Peso', geral.peso_inicial.peso_kg, geral.peso_atual?.peso_kg ?? null, metas?.peso_kg ?? null, kg, (n) => sinal(n, 1, ' kg'), true)}
               </tbody>
             </table>
           </div>
@@ -200,6 +231,8 @@ export function Inicio() {
 
       {registrar && <FormAplicacao aoFechar={fecharRegistro} />}
       {diarioAberto && <FormDiario registro={regHoje} aoFechar={() => setDiarioAberto(false)} />}
+      {medindo && <FormMedida aoFechar={() => setMedindo(false)} aoSalvar={() => setResumo(true)} />}
+      {resumoSemana && <ResumoSemana aoFechar={() => setResumo(false)} />}
     </div>
   );
 }

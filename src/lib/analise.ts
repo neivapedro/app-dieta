@@ -1,7 +1,7 @@
 import type { ResumoCiclo } from './ciclo';
-import { diferencaDias } from './datas';
+import { diferencaDias, somarDias } from './datas';
 import { composicao, type Composicao } from './gordura';
-import type { Medida, RegistroDiario, Sexo } from './tipos';
+import type { Medida, RegistroDiario, Sexo, TreinoDia } from './tipos';
 
 export interface PontoPeso {
   data: string;
@@ -29,12 +29,6 @@ function pesoReferencia(serie: PontoPeso[], data: string): PontoPeso | null {
   return antes;
 }
 
-function ultimoPesoAte(serie: PontoPeso[], data: string): PontoPeso | null {
-  let r: PontoPeso | null = null;
-  for (const p of serie) if (p.data <= data) r = p;
-  return r;
-}
-
 export interface AnaliseFase {
   indice: number;
   nome: string;
@@ -47,6 +41,8 @@ export interface AnaliseFase {
   peso_fim: number | null;
   variacao_kg: number | null;
   kg_por_semana: number | null;
+  /** Menos de 2 pesagens na fase: sem ritmo confiável */
+  poucos_dados: boolean;
   nausea_media: number | null;
   nausea_max: number | null;
   em_andamento: boolean;
@@ -74,9 +70,16 @@ export function analisarFases(
     const em_andamento = proximoInicio === null && faseProxima === indice;
     const fim = proximoInicio ?? hoje;
     const dias = Math.max(diferencaDias(inicio, fim), 0);
-    const pIni = pesoReferencia(serie, inicio);
-    const pFim = ultimoPesoAte(serie, fim);
-    const variacao = pIni && pFim && pFim.data > pIni.data ? pFim.peso_kg - pIni.peso_kg : null;
+    // Pesagens da fase: até 3 dias antes do início e, no fim, só até a véspera da fase seguinte
+    const ultimoDia = proximoInicio ? somarDias(proximoInicio, -1) : hoje;
+    const naFase = serie.filter((p) => p.data >= somarDias(inicio, -3) && p.data <= ultimoDia);
+    const antesDoInicio = naFase.filter((p) => p.data <= inicio);
+    const pIni = antesDoInicio.length ? antesDoInicio[antesDoInicio.length - 1] : (naFase[0] ?? null);
+    const pFim = naFase.length ? naFase[naFase.length - 1] : null;
+    const temRitmo = !!(pIni && pFim && pFim.data > pIni.data);
+    const variacao = temRitmo ? pFim!.peso_kg - pIni!.peso_kg : null;
+    // kg/semana pelo intervalo entre as pesagens usadas (não pela duração da fase)
+    const diasPesagens = temRitmo ? diferencaDias(pIni!.data, pFim!.data) : 0;
     const nauseas = diario
       .filter((r) => r.data >= inicio && (proximoInicio === null ? r.data <= hoje : r.data < fim) && r.nausea !== null)
       .map((r) => r.nausea as number);
@@ -91,7 +94,8 @@ export function analisarFases(
       peso_inicio: pIni?.peso_kg ?? null,
       peso_fim: pFim?.peso_kg ?? null,
       variacao_kg: variacao,
-      kg_por_semana: variacao !== null && dias > 0 ? (variacao / dias) * 7 : null,
+      kg_por_semana: variacao !== null && diasPesagens > 0 ? (variacao / diasPesagens) * 7 : null,
+      poucos_dados: !temRitmo,
       nausea_media: nauseas.length ? nauseas.reduce((s, n) => s + n, 0) / nauseas.length : null,
       nausea_max: nauseas.length ? Math.max(...nauseas) : null,
       em_andamento,
@@ -145,4 +149,106 @@ export function analisarGeral(
     medida_inicial: mIni ? composicao(mIni, sexo) : null,
     medida_atual: mAtual && mAtual !== mIni ? composicao(mAtual, sexo) : null,
   };
+}
+
+// ---------- Composição e treino por fase ----------
+
+export interface ComposicaoFase {
+  indice: number;
+  de: Composicao | null;
+  ate: Composicao | null;
+  cintura: number | null;
+  gorda: number | null;
+  magra: number | null;
+  gorda_semana: number | null;
+  /** Aderência (0 a 1) de treino e cardio na fase, só para quem tem a aba Treino */
+  treino: number | null;
+  cardio: number | null;
+}
+
+/**
+ * Para cada fase: última medição até o início × última medição antes da fase seguinte
+ * (o dia da troca de fase fica com a fase nova).
+ */
+export function composicaoPorFase(fases: AnaliseFase[], composicoes: Composicao[], treinos: TreinoDia[] | null, hoje: string): ComposicaoFase[] {
+  return fases.map((f, i) => {
+    const prox = fases[i + 1]?.inicio ?? null;
+    const ultimoDia = prox ? somarDias(prox, -1) : hoje;
+    const ate = [...composicoes].reverse().find((c) => c.data <= ultimoDia && c.data >= f.inicio) ?? null;
+    const de = [...composicoes].reverse().find((c) => c.data <= f.inicio) ?? null;
+    const ok = de && ate && ate.data > de.data;
+    const dif = (k: 'cintura_cm' | 'massa_gorda_kg' | 'massa_magra_kg') =>
+      ok && de![k] !== null && ate![k] !== null ? (ate![k] as number) - (de![k] as number) : null;
+    const gorda = dif('massa_gorda_kg');
+    let treino: number | null = null;
+    let cardio: number | null = null;
+    if (treinos) {
+      const fimAderencia = prox ? somarDias(prox, -1) : somarDias(hoje, -1);
+      const n = Math.max(diferencaDias(f.inicio, fimAderencia) + 1, 0);
+      if (n > 0) {
+        const doPeriodo = treinos.filter((t) => t.data >= f.inicio && t.data <= fimAderencia);
+        treino = doPeriodo.filter((t) => t.treino).length / n;
+        cardio = doPeriodo.filter((t) => t.cardio).length / n;
+      }
+    }
+    return {
+      indice: f.indice,
+      de: ok ? de : null,
+      ate: ok ? ate : null,
+      cintura: dif('cintura_cm'),
+      gorda,
+      magra: dif('massa_magra_kg'),
+      gorda_semana: gorda !== null ? (gorda / diferencaDias(de!.data, ate!.data)) * 7 : null,
+      treino,
+      cardio,
+    };
+  });
+}
+
+// ---------- Náusea e sintomas por dia depois da dose ----------
+
+export interface SintomasFase {
+  indice: number;
+  /** Náusea média em D0 (dia da dose) até D6; null sem registro */
+  nausea_por_dia: (number | null)[];
+  dias_com_registro: number;
+  vomito: number | null;
+  diarreia: number | null;
+  intestino_preso: number | null;
+}
+
+/** Dias desde a última aplicação até a data (D0 = dia da dose); null antes da 1ª. */
+export function diaAposDose(data: string, datasAplicacoes: string[]): number | null {
+  let ultima: string | null = null;
+  for (const d of datasAplicacoes) if (d <= data) ultima = d;
+  return ultima ? diferencaDias(ultima, data) : null;
+}
+
+export function sintomasPorFase(fases: AnaliseFase[], datasAplicacoes: string[], diario: RegistroDiario[], hoje: string): SintomasFase[] {
+  const ordenadas = [...datasAplicacoes].sort();
+  return fases.map((f, i) => {
+    const prox = fases[i + 1]?.inicio ?? null;
+    const regs = diario.filter((r) => r.data >= f.inicio && (prox ? r.data < prox : r.data <= hoje));
+    const soma = Array(7).fill(0);
+    const qtd = Array(7).fill(0);
+    for (const r of regs) {
+      if (r.nausea === null) continue;
+      const d = diaAposDose(r.data, ordenadas);
+      if (d === null || d > 6) continue;
+      soma[d] += r.nausea;
+      qtd[d]++;
+    }
+    const taxa = (k: 'vomito' | 'diarreia' | 'intestino_preso') => {
+      const marcados = regs.filter((r) => r[k] !== undefined && r[k] !== null);
+      return marcados.length ? marcados.filter((r) => r[k]).length / marcados.length : null;
+    };
+    return {
+      indice: f.indice,
+      nausea_por_dia: soma.map((s, d) => (qtd[d] ? s / qtd[d] : null)),
+      dias_com_registro: regs.length,
+      vomito: taxa('vomito'),
+      diarreia: taxa('diarreia'),
+      intestino_preso: taxa('intestino_preso'),
+    };
+  });
 }

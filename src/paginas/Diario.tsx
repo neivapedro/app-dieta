@@ -4,6 +4,7 @@ import { Vazio } from '../componentes/ui';
 import { useDados } from '../dados/contexto';
 import { useCalculos } from '../dados/useCalculos';
 import { diaDaSemana, formatarData, hojeLocal } from '../lib/datas';
+import { diaAposDose } from '../lib/analise';
 import { kg, mg } from '../lib/formato';
 import { NIVEIS_NAUSEA, type RegistroDiario } from '../lib/tipos';
 
@@ -18,6 +19,7 @@ export function Diario() {
   const aplicacaoPorData = new Map((resumo?.linhas ?? []).map((l) => [l.aplicacao.data, l]));
   const datas = [...new Set([...diario.map((r) => r.data), ...aplicacaoPorData.keys()])].sort().reverse();
   const regPorData = new Map(diario.map((r) => [r.data, r]));
+  const datasAplic = [...aplicacaoPorData.keys()].sort();
 
   return (
     <div className="pilha">
@@ -41,11 +43,20 @@ export function Diario() {
                     <div className="titulo">
                       {diaDaSemana(d)}, {formatarData(d, true)}
                       {a && <span className="etiqueta destaque" style={{ marginLeft: 6 }}>💉 {a.numero}ª · {mg(a.aplicacao.dose_mg)}</span>}
+                      {!a && diaAposDose(d, datasAplic) !== null && diaAposDose(d, datasAplic)! <= 6 && (
+                        <span className="etiqueta" style={{ marginLeft: 6 }} title="Dias depois da última dose">
+                          D+{diaAposDose(d, datasAplic)}
+                        </span>
+                      )}
                     </div>
                     <div className="detalhe">
                       {[
                         r?.peso_kg != null && kg(r.peso_kg),
                         r?.nausea != null && `náusea ${r.nausea} (${NIVEIS_NAUSEA[r.nausea].toLowerCase()})`,
+                        r?.vomito && 'vômito',
+                        r?.diarreia && 'diarreia',
+                        r?.intestino_preso && 'intestino preso',
+                        r?.dieta_seguida && `dieta: ${r.dieta_seguida === 'sim' ? 'seguida' : r.dieta_seguida === 'parcial' ? 'em parte' : 'não seguida'}`,
                         a?.aplicacao.local,
                         r?.observacoes,
                         a?.aplicacao.observacoes,

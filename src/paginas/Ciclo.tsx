@@ -1,4 +1,6 @@
 import { useState, type FormEvent } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { Diario } from './Diario';
 import { FormAplicacao } from '../componentes/formularios';
 import { Campo, CampoNumero, Vazio } from '../componentes/ui';
 import { useDados } from '../dados/contexto';
@@ -8,18 +10,30 @@ import { diaDaSemana, formatarData } from '../lib/datas';
 import { mg, num, paraNumero, paraTexto, sinal, ui } from '../lib/formato';
 import type { Aplicacao, Ciclo as TCiclo, Fase } from '../lib/tipos';
 
-type Aba = 'agenda' | 'plano' | 'ajustes';
+type Aba = 'agenda' | 'diario' | 'plano' | 'ajustes';
+const ABAS_CICLO: [Aba, string][] = [
+  ['agenda', 'Agenda'],
+  ['diario', 'Diário'],
+  ['plano', 'Plano'],
+  ['ajustes', 'Ajustes'],
+];
 
 export function Ciclo() {
-  const [aba, setAba] = useState<Aba>('agenda');
+  // A sub-aba fica no endereço (?aba=diario), para o link antigo do Diário continuar funcionando
+  const [params, setParams] = useSearchParams();
+  const aba = (ABAS_CICLO.find(([k]) => k === params.get('aba'))?.[0] ?? 'agenda') as Aba;
+  const setAba = (a: Aba) => setParams(a === 'agenda' ? {} : { aba: a }, { replace: true });
   return (
     <div className="pilha">
       <div className="abas">
-        <button className={aba === 'agenda' ? 'ativo' : ''} onClick={() => setAba('agenda')}>Agenda</button>
-        <button className={aba === 'plano' ? 'ativo' : ''} onClick={() => setAba('plano')}>Plano</button>
-        <button className={aba === 'ajustes' ? 'ativo' : ''} onClick={() => setAba('ajustes')}>Ajustes</button>
+        {ABAS_CICLO.map(([k, r]) => (
+          <button key={k} className={aba === k ? 'ativo' : ''} onClick={() => setAba(k)}>
+            {r}
+          </button>
+        ))}
       </div>
       {aba === 'agenda' && <Agenda />}
+      {aba === 'diario' && <Diario />}
       {aba === 'plano' && <Plano />}
       {aba === 'ajustes' && <Ajustes />}
     </div>
