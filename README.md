@@ -73,6 +73,21 @@ Abra <https://neivapedro.github.io/app-dieta/> e entre com o mesmo e-mail e senh
 
 Ative as notificações em cada aparelho que for usar.
 
+### Calendário do iPhone (opcional)
+
+Coloca todas as doses do plano no Calendário do iPhone. É um calendário **assinado**: quando uma dose atrasa ou o plano muda, as datas se ajustam sozinhas.
+
+1. No **SQL Editor**, rode `supabase/migrations/20261009000000_calendario.sql`. Ele cria o endereço secreto de cada conta.
+2. Em **Edge Functions → Deploy a new function → Via Editor**:
+   - Nome: `calendario`.
+   - Cole `supabase/functions/calendario/index.ts` e publique.
+   - Nos detalhes da função, **desligue a verificação de JWT**.
+3. No app, vá em **Perfil → Adicionar ao Calendário** e confirme em **Assinar**.
+
+Detalhes:
+- Cada conta tem um endereço secreto próprio (`perfis.token_calendario`).
+- **Perfil → Gerar novo endereço** invalida o endereço antigo.
+
 ### Como os lembretes funcionam
 
 O `pg_cron` chama a função `enviar-lembretes` a cada hora. Para cada usuário, a função calcula a próxima dose com a mesma regra do app: última aplicação real + intervalo, ou a data de início se ainda não houver aplicação.

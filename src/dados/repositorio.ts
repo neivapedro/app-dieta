@@ -43,4 +43,7 @@ export interface Repositorio {
 
   salvarInscricaoPush(i: InscricaoPush): Promise<void>;
   removerInscricaoPush(endpoint: string): Promise<void>;
+
+  /** Troca o endereço secreto do calendário (o antigo para de funcionar) */
+  novoTokenCalendario(): Promise<string>;
 }

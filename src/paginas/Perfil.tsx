@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Campo, CampoNumero, Escolhas, Icone } from '../componentes/ui';
+import { BotaoExcluir, Campo, CampoNumero, Escolhas, Icone } from '../componentes/ui';
+import { CALENDARIO_URL } from '../config';
 import { useDados } from '../dados/contexto';
 import { hojeLocal } from '../lib/datas';
 import { paraNumero, paraTexto } from '../lib/formato';
@@ -41,6 +42,7 @@ export function Perfil() {
   const [hora, setHora] = useState(perfil?.hora_lembrete ?? '08:00');
   const [msg, setMsg] = useState<{ tipo: string; texto: string } | null>(null);
   const [estado, setEstado] = useState<EstadoNotificacao | null>(null);
+  const [msgCal, setMsgCal] = useState<string | null>(null);
   const arquivo = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -162,6 +164,50 @@ export function Perfil() {
           {estado === 'ativo' && <button className="botao perigo" onClick={desativar}>Desativar</button>}
         </div>
         {!ehIOS() && <p className="mudo">Ative em cada celular que você usar. Funciona melhor com o app instalado (menu do navegador → "Instalar app" / "Adicionar à tela inicial").</p>}
+      </section>
+
+      <section className="cartao pilha">
+        <h2>Calendário do iPhone</h2>
+        <p className="mudo">
+          Coloca todas as doses até o fim do ciclo no seu calendário, com dose em mg e UI e alerta no horário do lembrete. Quando uma dose
+          atrasa ou o plano muda, as datas se ajustam sozinhas.
+        </p>
+        {repo.modo === 'local' ? (
+          <div className="alerta info">Disponível quando a nuvem estiver configurada.</div>
+        ) : !perfil?.token_calendario ? (
+          <div className="alerta">O calendário ainda não foi ativado no banco (script supabase/migrations/20261009000000_calendario.sql).</div>
+        ) : (
+          <>
+            <a className="botao primario" href={CALENDARIO_URL.replace(/^https?:/, 'webcal:') + perfil.token_calendario}>
+              Adicionar ao Calendário
+            </a>
+            <button
+              className="botao"
+              onClick={() => {
+                const endereco = CALENDARIO_URL + perfil.token_calendario;
+                navigator.clipboard
+                  .writeText(endereco)
+                  .then(() => setMsgCal('Endereço copiado. No Google Agenda: Outras agendas → Do URL.'))
+                  .catch(() => setMsgCal(endereco));
+              }}
+            >
+              Copiar endereço
+            </button>
+            {msgCal && <div className="alerta info" style={{ wordBreak: 'break-all' }}>{msgCal}</div>}
+            <p className="mudo">
+              No iPhone, toque em <b>Adicionar ao Calendário</b> e confirme em <b>Assinar</b>. O endereço é secreto e só mostra as suas doses.
+            </p>
+            <BotaoExcluir
+              rotulo="Gerar novo endereço"
+              aviso="O endereço atual vai parar de funcionar."
+              aoConfirmar={() =>
+                executar((r) => r.novoTokenCalendario())
+                  .then(() => setMsgCal('Novo endereço criado. Apague a assinatura antiga no iPhone e adicione de novo.'))
+                  .catch(() => undefined)
+              }
+            />
+          </>
+        )}
       </section>
 
       <section className="cartao pilha">

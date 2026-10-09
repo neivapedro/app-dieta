@@ -146,6 +146,10 @@ export class RepositorioLocal implements Repositorio {
     /* sem servidor, não há envio de push agendado */
   }
   async removerInscricaoPush() {}
+
+  async novoTokenCalendario(): Promise<string> {
+    throw new Error('O calendário só funciona com a nuvem configurada.');
+  }
 }
 
 function upsert<T extends { id: string }>(lista: T[], item: T) {

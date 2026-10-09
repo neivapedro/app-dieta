@@ -8,6 +8,8 @@ export interface Perfil {
   /** Horário local do lembrete, formato HH:MM */
   hora_lembrete: string;
   fuso_horario: string;
+  /** Endereço secreto do calendário assinado (só na nuvem) */
+  token_calendario?: string | null;
 }
 
 export interface Fase {

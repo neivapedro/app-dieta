@@ -77,11 +77,20 @@ export class RepositorioSupabase implements Repositorio {
       lembretes_ativos: d.lembretes_ativos,
       hora_lembrete: String(d.hora_lembrete).slice(0, 5),
       fuso_horario: d.fuso_horario,
+      token_calendario: d.token_calendario ?? null,
     };
   }
 
   async salvarPerfil(p: Perfil) {
-    erro(await this.sb.from('perfis').upsert({ user_id: await this.uid(), ...p }));
+    // O token do calendário é gerado pelo banco; aqui ele não é sobrescrito
+    const { token_calendario: _token, ...dados } = p;
+    erro(await this.sb.from('perfis').upsert({ user_id: await this.uid(), ...dados }));
+  }
+
+  async novoTokenCalendario(): Promise<string> {
+    const token = (crypto.randomUUID() + crypto.randomUUID()).replace(/-/g, '');
+    erro(await this.sb.from('perfis').update({ token_calendario: token }).eq('user_id', await this.uid()));
+    return token;
   }
 
   async obterCiclo(): Promise<Ciclo | null> {
