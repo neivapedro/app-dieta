@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useDados } from '../dados/contexto';
 import { useCalculos } from '../dados/useCalculos';
 import { faseDaDose, guiaSeringa, marcacao } from '../lib/ciclo';
-import { diaDaSemana, hojeLocal } from '../lib/datas';
+import { diaDaSemana, formatarData, hojeLocal } from '../lib/datas';
 import { cm, kg, num, paraNumero, paraTexto, pp, ui } from '../lib/formato';
 import { composicao } from '../lib/gordura';
 import { LOCAIS_APLICACAO, NIVEIS_NAUSEA, type Aplicacao, type Medida, type RegistroDiario } from '../lib/tipos';
@@ -28,8 +28,18 @@ export function FormAplicacao({ aplicacao, aoFechar }: { aplicacao?: Aplicacao; 
   const regDia = diario.find((r) => r.data === data);
   const [peso, setPeso] = useState(paraTexto(regDia?.peso_kg));
   const [nausea, setNausea] = useState<number | null>(regDia?.nausea ?? null);
+  // O Diário só é tocado se você mexeu no peso ou na náusea aqui
+  const [mexeuDiario, setMexeuDiario] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
+
+  function trocarData(nova: string) {
+    setData(nova);
+    if (mexeuDiario) return;
+    const r = diario.find((x) => x.data === nova);
+    setPeso(paraTexto(r?.peso_kg));
+    setNausea(r?.nausea ?? null);
+  }
 
   const doseNum = paraNumero(dose);
   const m = doseNum ? marcacao(doseNum, ciclo!) : null;
@@ -43,8 +53,9 @@ export function FormAplicacao({ aplicacao, aoFechar }: { aplicacao?: Aplicacao; 
       await executar(async (repo) => {
         await repo.salvarAplicacao({ id: aplicacao?.id, ciclo_id: ciclo!.id, data, dose_mg: doseNum, local: local || null, observacoes: obs.trim() || null });
         const pesoNum = paraNumero(peso);
-        if (pesoNum !== null || nausea !== null) {
-          await repo.salvarDiario({ data, peso_kg: pesoNum ?? regDia?.peso_kg ?? null, nausea: nausea ?? regDia?.nausea ?? null, observacoes: regDia?.observacoes ?? null });
+        if (mexeuDiario && (pesoNum !== null || nausea !== null)) {
+          const { id: _id, ...resto } = regDia ?? ({} as Partial<RegistroDiario>);
+          await repo.salvarDiario({ ...resto, data, peso_kg: pesoNum ?? regDia?.peso_kg ?? null, nausea: nausea ?? regDia?.nausea ?? null, observacoes: regDia?.observacoes ?? null });
         }
       });
       aoFechar();
@@ -68,7 +79,7 @@ export function FormAplicacao({ aplicacao, aoFechar }: { aplicacao?: Aplicacao; 
           <span className="etiqueta">Prevista: {num(fase.fase.dose_mg)} mg</span>
         </div>
         <Campo rotulo="Data da aplicação" dica={data ? diaDaSemana(data) : undefined}>
-          <input type="date" value={data} max={hojeLocal()} onChange={(e) => setData(e.target.value)} required />
+          <input type="date" value={data} max={hojeLocal()} onChange={(e) => trocarData(e.target.value)} required />
         </Campo>
         <CampoNumero
           rotulo="Dose aplicada"
@@ -86,9 +97,26 @@ export function FormAplicacao({ aplicacao, aoFechar }: { aplicacao?: Aplicacao; 
             ))}
           </select>
         </Campo>
-        <CampoNumero rotulo="Peso no dia" sufixo="kg" valor={peso} aoMudar={setPeso} dica="Opcional, vai para o Diário." />
+        <CampoNumero
+          rotulo="Peso no dia"
+          sufixo="kg"
+          valor={peso}
+          aoMudar={(v) => {
+            setPeso(v);
+            setMexeuDiario(true);
+          }}
+          dica={`Opcional, vai para o Diário de ${formatarData(data)}.`}
+        />
         <Campo rotulo="Náusea no dia (opcional)" grupo>
-          <Escolhas opcoes={OPCOES_NAUSEA} valor={nausea} aoMudar={setNausea} permitirVazio />
+          <Escolhas
+            opcoes={OPCOES_NAUSEA}
+            valor={nausea}
+            aoMudar={(v) => {
+              setNausea(v);
+              setMexeuDiario(true);
+            }}
+            permitirVazio
+          />
         </Campo>
         <Campo rotulo="Observações / efeitos">
           <textarea value={obs} onChange={(e) => setObs(e.target.value)} placeholder="ex.: leve enjoo à tarde" />
@@ -107,14 +135,15 @@ export function FormAplicacao({ aplicacao, aoFechar }: { aplicacao?: Aplicacao; 
 
 // ---------- Diário ----------
 
-export function FormDiario({ registro, aoFechar }: { registro?: RegistroDiario; aoFechar: () => void }) {
-  const { diario, executar } = useDados();
-  const [data, setData] = useState(registro?.data ?? hojeLocal());
+export function FormDiario({ registro, dataInicial, aoFechar }: { registro?: RegistroDiario; dataInicial?: string; aoFechar: () => void }) {
+  const { diario, executar, gravar } = useDados();
+  const [data, setData] = useState(registro?.data ?? dataInicial ?? hojeLocal());
   const existente = registro ?? diario.find((r) => r.data === data);
   const [peso, setPeso] = useState(paraTexto(existente?.peso_kg));
   const [nausea, setNausea] = useState<number | null>(existente?.nausea ?? null);
   const [obs, setObs] = useState(existente?.observacoes ?? '');
   const [erro, setErro] = useState<string | null>(null);
+  const [salvando, setSalvando] = useState(false);
 
   function trocarData(nova: string) {
     setData(nova);
@@ -128,12 +157,11 @@ export function FormDiario({ registro, aoFechar }: { registro?: RegistroDiario; 
     e.preventDefault();
     const pesoNum = paraNumero(peso);
     if (pesoNum === null && nausea === null && !obs.trim()) return setErro('Preencha ao menos um campo.');
-    try {
-      await executar((repo) => repo.salvarDiario({ data, peso_kg: pesoNum, nausea, observacoes: obs.trim() || null }));
-      aoFechar();
-    } catch (e) {
-      setErro((e as Error).message);
-    }
+    if (salvando) return;
+    setSalvando(true);
+    // Pela fila: grava na hora e, sem internet, envia quando a conexão voltar
+    gravar({ tipo: 'diario', dado: { data, peso_kg: pesoNum, nausea, observacoes: obs.trim() || null } });
+    aoFechar();
   }
 
   async function excluir() {
@@ -157,7 +185,7 @@ export function FormDiario({ registro, aoFechar }: { registro?: RegistroDiario; 
           <textarea value={obs} onChange={(e) => setObs(e.target.value)} />
         </Campo>
         <Erro msg={erro} />
-        <button className="botao primario">Salvar</button>
+        <button className="botao primario" disabled={salvando}>{salvando ? 'Salvando…' : 'Salvar'}</button>
         {diario.some((x) => x.data === data) && (
           <BotaoExcluir rotulo="Excluir registro do dia" aviso="Excluir peso, náusea e observações deste dia?" aoConfirmar={excluir} />
         )}
@@ -179,6 +207,7 @@ export function FormMedida({ medida, aoFechar, aoSalvar }: { medida?: Medida; ao
   const [quadril, setQuadril] = useState(paraTexto(medida?.quadril_cm));
   const [peso, setPeso] = useState(paraTexto(medida?.peso_kg));
   const [erro, setErro] = useState<string | null>(null);
+  const [salvando, setSalvando] = useState(false);
 
   const valores = {
     altura_cm: paraNumero(altura),
@@ -195,6 +224,8 @@ export function FormMedida({ medida, aoFechar, aoSalvar }: { medida?: Medida; ao
     e.preventDefault();
     if (!completo) return setErro(sexo === 'Feminino' ? 'Preencha altura, pescoço, cintura, quadril e peso.' : 'Preencha altura, pescoço, cintura e peso.');
     if (valores.altura_cm! < 100) return setErro('A altura é em centímetros (ex.: 182).');
+    if (salvando) return;
+    setSalvando(true);
     try {
       await executar((repo) =>
         repo.salvarMedida({
@@ -211,6 +242,7 @@ export function FormMedida({ medida, aoFechar, aoSalvar }: { medida?: Medida; ao
       aoSalvar?.();
     } catch (e) {
       setErro((e as Error).message);
+      setSalvando(false);
     }
   }
 
@@ -250,7 +282,7 @@ export function FormMedida({ medida, aoFechar, aoSalvar }: { medida?: Medida; ao
         )}
         {previa && previa.bf === null && <div className="alerta">Não foi possível calcular: a cintura precisa ser maior que o pescoço ({cm(valores.pescoco_cm)}).</div>}
         <Erro msg={erro} />
-        <button className="botao primario">Salvar medição</button>
+        <button className="botao primario" disabled={salvando}>{salvando ? 'Salvando…' : 'Salvar medição'}</button>
         {medida && (
           <BotaoExcluir rotulo="Excluir medição" aviso="Excluir esta medição?" aoConfirmar={excluir} />
         )}

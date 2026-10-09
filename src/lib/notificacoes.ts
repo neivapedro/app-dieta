@@ -17,10 +17,22 @@ export function instaladoComoApp(): boolean {
   return window.matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true;
 }
 
+/**
+ * Registra o service worker e procura versão nova sempre que o app volta para a tela.
+ * Quando a versão nova assume, dispara o evento "nova-versao" (o App mostra o aviso).
+ */
 export async function registrarServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   if (!('serviceWorker' in navigator)) return null;
   try {
-    return await navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`);
+    const tinhaControle = !!navigator.serviceWorker.controller;
+    const reg = await navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`, { updateViaCache: 'none' });
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (tinhaControle) window.dispatchEvent(new Event('nova-versao'));
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') reg.update().catch(() => undefined);
+    });
+    return reg;
   } catch {
     return null;
   }
@@ -86,4 +98,30 @@ export async function notificacaoTeste(): Promise<void> {
     badge: `${import.meta.env.BASE_URL}icone-192.png`,
     tag: 'teste',
   });
+}
+
+/**
+ * Ao abrir o app: se este aparelho já tem permissão e inscrição, garante que ela
+ * está gravada no servidor para a conta atual (o iOS pode trocar o endereço e o
+ * servidor apaga inscrições recusadas pela Apple).
+ */
+export async function sincronizarInscricao(repo: Repositorio): Promise<void> {
+  if (!VAPID_PUBLICA || !('serviceWorker' in navigator) || !('Notification' in window) || !('PushManager' in window)) return;
+  if (Notification.permission !== 'granted') return;
+  const reg = await navigator.serviceWorker.getRegistration();
+  const sub = await reg?.pushManager.getSubscription();
+  if (!sub) return;
+  await repo.salvarInscricaoPush({
+    endpoint: sub.endpoint,
+    p256dh: bytesParaBase64(sub.getKey('p256dh')),
+    auth: bytesParaBase64(sub.getKey('auth')),
+  });
+}
+
+/** Ao sair da conta: este aparelho deixa de receber os lembretes dela. */
+export async function esquecerAparelho(repo: Repositorio): Promise<void> {
+  if (!('serviceWorker' in navigator)) return;
+  const reg = await navigator.serviceWorker.getRegistration();
+  const sub = await reg?.pushManager?.getSubscription();
+  if (sub) await repo.removerInscricaoPush(sub.endpoint);
 }

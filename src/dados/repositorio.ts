@@ -21,6 +21,9 @@ export interface Repositorio {
   entrar(email: string, senha: string): Promise<void>;
   cadastrar(email: string, senha: string): Promise<{ confirmarEmail: boolean }>;
   recuperarSenha(email: string): Promise<void>;
+  /** Avisa quando o app foi aberto pelo link de "Esqueci minha senha" */
+  aoRecuperarSenha(cb: () => void): () => void;
+  definirSenha(nova: string): Promise<void>;
   sair(): Promise<void>;
 
   obterPerfil(): Promise<Perfil | null>;

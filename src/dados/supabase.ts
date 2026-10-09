@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { configPadrao, type PlanoDieta } from '../lib/dieta';
 import type { Aplicacao, Ciclo, Medida, MetasProjeto, Perfil, RegistroDiario, TreinoDia } from '../lib/tipos';
+import { ehErroDeRede } from '../lib/erros';
 import type { Repositorio, Usuario } from './repositorio';
 
 // O isolamento entre contas é garantido no banco (Row Level Security, ver
@@ -26,9 +27,24 @@ function lista<T>(r: { data: T[] | null; error: { message: string } | null }): T
 export class RepositorioSupabase implements Repositorio {
   readonly modo = 'nuvem' as const;
   private sb: SupabaseClient;
+  private chaveSessao: string;
+  // O link de recuperação chega com #...type=recovery; o cliente limpa o endereço logo ao iniciar
+  private abertoParaRecuperar = /type=recovery/.test(location.hash + location.search);
 
   constructor(url: string, chave: string) {
     this.sb = createClient(url, chave, { auth: { persistSession: true, autoRefreshToken: true } });
+    this.chaveSessao = `sb-${new URL(url).hostname.split('.')[0]}-auth-token`;
+  }
+
+  /** Sessão guardada no aparelho: sem internet o token não renova, mas você continua logado. */
+  private usuarioGuardado(): Usuario | null {
+    try {
+      const s = JSON.parse(localStorage.getItem(this.chaveSessao) ?? 'null');
+      const u = s?.user ?? s?.currentSession?.user;
+      return u?.id ? { id: u.id, email: u.email ?? '' } : null;
+    } catch {
+      return null;
+    }
   }
 
   private async uid(): Promise<string> {
@@ -38,9 +54,29 @@ export class RepositorioSupabase implements Repositorio {
   }
 
   async usuarioAtual(): Promise<Usuario | null> {
-    const { data } = await this.sb.auth.getSession();
-    const u = data.session?.user;
-    return u ? { id: u.id, email: u.email ?? '' } : null;
+    try {
+      const { data, error } = await this.sb.auth.getSession();
+      const u = data.session?.user;
+      if (u) return { id: u.id, email: u.email ?? '' };
+      // Falha de rede ao renovar o acesso não é "deslogado"
+      if (error && ehErroDeRede(error)) return this.usuarioGuardado();
+      return null;
+    } catch (e) {
+      if (ehErroDeRede(e)) return this.usuarioGuardado();
+      throw e;
+    }
+  }
+
+  aoRecuperarSenha(cb: () => void) {
+    if (this.abertoParaRecuperar) setTimeout(cb, 0);
+    const { data } = this.sb.auth.onAuthStateChange((e) => e === 'PASSWORD_RECOVERY' && cb());
+    return () => data.subscription.unsubscribe();
+  }
+
+  async definirSenha(nova: string) {
+    const { error } = await this.sb.auth.updateUser({ password: nova });
+    if (error) throw new Error(error.message);
+    this.abertoParaRecuperar = false;
   }
 
   aoMudarUsuario(cb: (u: Usuario | null) => void) {
@@ -89,9 +125,13 @@ export class RepositorioSupabase implements Repositorio {
     // O token do calendário é gerado pelo banco; aqui ele não é sobrescrito
     // Token, liberação da aba Treino e metas têm gravação própria
     const { token_calendario: _token, modulo_treino: _modulo, metas_projeto: _metas, data_nascimento, ...dados } = p;
-    // Data de nascimento só vai quando preenchida: assim o perfil continua salvando antes da migração da Dieta
-    const extra = data_nascimento ? { data_nascimento } : {};
-    erro(await this.sb.from('perfis').upsert({ user_id: await this.uid(), ...dados, ...extra }));
+    const base = { user_id: await this.uid(), ...dados };
+    // undefined = não mexer (ex.: backup antigo); null = apagar a data
+    const linha: Record<string, unknown> = data_nascimento === undefined ? base : { ...base, data_nascimento };
+    const r = await this.sb.from('perfis').upsert(linha);
+    // Banco sem a coluna (migração da Dieta ainda não rodou): salva o resto
+    if (r.error && /data_nascimento/.test(r.error.message)) erro(await this.sb.from('perfis').upsert(base));
+    else erro(r);
   }
 
   async novoTokenCalendario(): Promise<string> {

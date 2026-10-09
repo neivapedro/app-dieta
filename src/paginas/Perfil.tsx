@@ -1,9 +1,9 @@
-import type { PlanoDieta } from '../lib/dieta';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { BotaoExcluir, Campo, CampoNumero, Escolhas, Icone } from '../componentes/ui';
 import { CALENDARIO_URL } from '../config';
 import { useDados } from '../dados/contexto';
-import { hojeLocal } from '../lib/datas';
+import { lerBackup, montarBackup, planejarImportacao, type Backup, type PlanoImportacao } from '../lib/backup';
+import { formatarData, hojeLocal } from '../lib/datas';
 import { paraNumero, paraTexto } from '../lib/formato';
 import {
   ativarNotificacoes,
@@ -13,7 +13,7 @@ import {
   notificacaoTeste,
   type EstadoNotificacao,
 } from '../lib/notificacoes';
-import type { Aplicacao, Ciclo, Medida, Perfil as TPerfil, RegistroDiario, Sexo } from '../lib/tipos';
+import type { Sexo } from '../lib/tipos';
 
 const TEXTO_ESTADO: Record<EstadoNotificacao, string> = {
   'sem-suporte': 'Este navegador não suporta notificações.',
@@ -24,19 +24,9 @@ const TEXTO_ESTADO: Record<EstadoNotificacao, string> = {
   'ativo-sem-servidor': 'Permissão concedida, mas o envio automático exige a nuvem configurada (Supabase + chaves VAPID).',
 };
 
-interface Backup {
-  versao: 1;
-  exportado_em: string;
-  perfil: TPerfil | null;
-  ciclo: Ciclo | null;
-  aplicacoes: Aplicacao[];
-  diario: RegistroDiario[];
-  medidas: Medida[];
-  dieta?: PlanoDieta | null;
-}
 
 export function Perfil() {
-  const { perfil, ciclo, aplicacoes, diario, medidas, dieta, usuario, repo, executar } = useDados();
+  const { perfil, ciclo, aplicacoes, diario, medidas, treinos, dieta, usuario, repo, executar, sair } = useDados();
   const [nome, setNome] = useState(perfil?.nome ?? '');
   const [sexo, setSexo] = useState<Sexo>(perfil?.sexo ?? 'Masculino');
   const [altura, setAltura] = useState(paraTexto(perfil?.altura_cm));
@@ -47,6 +37,8 @@ export function Perfil() {
   const [estado, setEstado] = useState<EstadoNotificacao | null>(null);
   const [msgCal, setMsgCal] = useState<string | null>(null);
   const arquivo = useRef<HTMLInputElement>(null);
+  const [importacao, setImportacao] = useState<{ backup: Backup; plano: PlanoImportacao } | null>(null);
+  const [msgBackup, setMsgBackup] = useState<{ tipo: string; texto: string } | null>(null);
 
   useEffect(() => {
     estadoNotificacao().then(setEstado).catch(() => setEstado('sem-suporte'));
@@ -85,44 +77,79 @@ export function Perfil() {
     setEstado(await estadoNotificacao());
   }
 
-  function exportar() {
-    const backup: Backup = { versao: 1, exportado_em: new Date().toISOString(), perfil, ciclo, aplicacoes, diario, medidas, dieta };
+  async function exportar() {
+    const backup = montarBackup({ perfil, ciclo, aplicacoes, diario, medidas, dieta, treinos }, new Date().toISOString());
+    const nomeArquivo = `ciclo-backup-${hojeLocal()}.json`;
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    // No iPhone, o menu Compartilhar permite "Salvar em Arquivos"
+    const file = new File([blob], nomeArquivo, { type: 'application/json' });
+    if (navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: 'Backup do Ciclo' });
+        setMsgBackup({ tipo: 'info', texto: 'Backup gerado.' });
+        return;
+      } catch (e) {
+        if ((e as Error).name === 'AbortError') return;
+      }
+    }
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `ciclo-backup-${hojeLocal()}.json`;
+    a.download = nomeArquivo;
     a.click();
-    URL.revokeObjectURL(a.href);
+    setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+    setMsgBackup({ tipo: 'info', texto: 'Backup gerado.' });
   }
 
-  async function importar(f: File) {
+  async function prepararImportacao(f: File) {
     try {
-      const b = JSON.parse(await f.text()) as Backup;
-      if (b.versao !== 1) throw new Error('Arquivo de backup não reconhecido.');
+      const b = lerBackup(await f.text());
+      setImportacao({ backup: b, plano: planejarImportacao(b, { aplicacoes, medidas, diario, treinos }) });
+      setMsgBackup(null);
+    } catch (e) {
+      setMsgBackup({ tipo: 'erro', texto: (e as Error).message });
+    } finally {
+      if (arquivo.current) arquivo.current.value = '';
+    }
+  }
+
+  async function importar() {
+    if (!importacao) return;
+    const { backup: b, plano } = importacao;
+    try {
       await executar(async (r) => {
-        if (b.perfil) await r.salvarPerfil(b.perfil);
+        if (b.perfil) {
+          await r.salvarPerfil(b.perfil);
+          if (b.perfil.metas_projeto) await r.salvarMetas(b.perfil.metas_projeto);
+        }
         let cicloId = ciclo?.id;
         if (b.ciclo) {
           const { id: _ignorado, ...resto } = b.ciclo;
           cicloId = (await r.salvarCiclo({ ...resto, id: ciclo?.id })).id;
         }
-        for (const a of b.aplicacoes) {
+        for (const a of plano.aplicacoes) {
           const { id: _id, ...resto } = a;
           await r.salvarAplicacao({ ...resto, ciclo_id: cicloId! });
         }
-        for (const d of b.diario) {
+        for (const d of plano.diario) {
           const { id: _id, ...resto } = d;
           await r.salvarDiario(resto);
         }
-        for (const m of b.medidas) {
+        for (const m of plano.medidas) {
           const { id: _id, ...resto } = m;
           await r.salvarMedida(resto);
         }
+        if (perfil?.modulo_treino || b.perfil?.modulo_treino) {
+          for (const t of plano.treinos) {
+            const { id: _id, ...resto } = t;
+            await r.salvarTreino(resto);
+          }
+        }
         if (b.dieta) await r.salvarDieta(b.dieta);
       });
-      setMsg({ tipo: 'info', texto: 'Backup importado.' });
+      setImportacao(null);
+      setMsgBackup({ tipo: 'info', texto: 'Backup importado.' });
     } catch (e) {
-      setMsg({ tipo: 'erro', texto: (e as Error).message });
+      setMsgBackup({ tipo: 'erro', texto: (e as Error).message });
     }
   }
 
@@ -147,7 +174,7 @@ export function Perfil() {
           <span>Avisar no dia da aplicação</span>
           <Escolhas opcoes={[{ valor: 'sim', rotulo: 'Sim' }, { valor: 'nao', rotulo: 'Não' }]} valor={ativos ? 'sim' : 'nao'} aoMudar={(v) => setAtivos(v === 'sim')} />
         </div>
-        <Campo rotulo="Horário do lembrete" dica="Se a dose atrasar, você recebe um lembrete por dia até registrar a aplicação.">
+        <Campo rotulo="Horário do lembrete" dica="O aviso chega em até 15 minutos depois desse horário. Se a dose atrasar, você recebe um lembrete por dia até registrar a aplicação.">
           <input type="time" value={hora} onChange={(e) => setHora(e.target.value)} />
         </Campo>
         {msg && <div className={`alerta ${msg.tipo}`}>{msg.texto}</div>}
@@ -220,19 +247,45 @@ export function Perfil() {
 
       <section className="cartao pilha">
         <h2>Backup</h2>
-        <p className="mudo">Exporta todos os seus dados (ciclo, aplicações, diário e medidas) em um arquivo. Ao importar, registros do diário com a mesma data são substituídos e aplicações e medidas são adicionadas, então importe cada arquivo uma vez só.</p>
+        <p className="mudo">
+          Exporta todos os seus dados (perfil e metas, ciclo, aplicações, diário, medidas, treinos e dieta) em um arquivo. Ao importar, nada é
+          duplicado: aplicações e medidas de datas que já existem são puladas, e diário e treino substituem o mesmo dia.
+        </p>
         <div className="linha">
-          <button className="botao" onClick={exportar}>Exportar</button>
+          <button className="botao" onClick={() => void exportar()}>Exportar</button>
           <button className="botao" onClick={() => arquivo.current?.click()}>Importar</button>
-          <input ref={arquivo} type="file" accept="application/json" className="oculto" onChange={(e) => e.target.files?.[0] && importar(e.target.files[0])} />
+          <input
+            ref={arquivo}
+            type="file"
+            accept="application/json,.json"
+            className="oculto"
+            onChange={(e) => e.target.files?.[0] && prepararImportacao(e.target.files[0])}
+          />
         </div>
+        {importacao && (
+          <div className="alerta info pilha" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div>
+              <b>Backup de {formatarData(importacao.backup.exportado_em.slice(0, 10))}.</b> Vai importar:{' '}
+              {importacao.plano.aplicacoes.length} aplicação(ões), {importacao.plano.medidas.length} medição(ões),{' '}
+              {importacao.plano.diario.length} dia(s) do diário, {importacao.plano.treinos.length} dia(s) de treino
+              {importacao.backup.dieta ? ' e o plano da dieta (substitui o atual)' : ''}.
+              {importacao.plano.ignoradas.aplicacoes + importacao.plano.ignoradas.medidas > 0 &&
+                ` ${importacao.plano.ignoradas.aplicacoes + importacao.plano.ignoradas.medidas} registro(s) já existentes serão pulados.`}
+            </div>
+            <div className="linha">
+              <button className="botao primario pequeno" onClick={() => void importar()}>Importar agora</button>
+              <button className="botao pequeno" onClick={() => setImportacao(null)}>Cancelar</button>
+            </div>
+          </div>
+        )}
+        {msgBackup && <div className={`alerta ${msgBackup.tipo}`}>{msgBackup.texto}</div>}
       </section>
 
       {repo.modo === 'local' && (
         <div className="alerta info">Modo demonstração: dados salvos só neste navegador. Configure o Supabase para login real e sincronização.</div>
       )}
 
-      <button className="botao perigo" onClick={() => repo.sair()}>Sair da conta</button>
+      <button className="botao perigo" onClick={() => void sair()}>Sair da conta</button>
       <p className="mudo" style={{ textAlign: 'center' }}>
         Este app registra e calcula; decisões de dose devem ser tomadas com acompanhamento médico.
       </p>

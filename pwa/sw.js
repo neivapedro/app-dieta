@@ -1,5 +1,7 @@
 // Service worker: deixa o app abrir offline e recebe os lembretes (push).
-const CACHE = 'app-dieta-v3';
+// __VERSAO__ é trocado a cada publicação (vite.config.ts): o iPhone percebe a versão nova
+const VERSAO = '__VERSAO__';
+const CACHE = 'app-dieta-' + VERSAO;
 // Caminhos relativos ao escopo (ex.: /app-dieta/ no GitHub Pages)
 const BASE = new URL(self.registration.scope).pathname;
 
@@ -19,9 +21,9 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(req.url);
   if (req.method !== 'GET' || url.origin !== self.location.origin) return;
   if (req.mode === 'navigate') {
-    // Páginas: rede primeiro, cache se estiver offline
+    // Páginas: rede primeiro, sem cópia do navegador (senão o app reabre na versão antiga); cache se estiver offline
     e.respondWith(
-      fetch(req)
+      fetch(req, { cache: 'no-store' })
         .then((r) => {
           const copia = r.clone();
           caches.open(CACHE).then((c) => c.put(BASE, copia));

@@ -34,7 +34,7 @@ function falta(valor: number, meta: number, sufixo: string, tolerancia: number) 
 export function Dieta() {
   const { dieta, salvarDieta, estadoDieta, dietaIndisponivel, perfil, medidas } = useDados();
   const { composicoes, hoje, sexo } = useCalculos();
-  const banco = useAlimentos();
+  const { banco, falhou: falhouAlimentos, tentarDeNovo } = useAlimentos();
   const [config, setConfig] = useState(false);
   const [seletor, setSeletor] = useState<Seletor>(null);
   const [editando, setEditando] = useState<string | null>(null);
@@ -219,7 +219,13 @@ export function Dieta() {
         <h2>Refeições</h2>
         <span className="mudo">{estadoDieta === 'salvando' ? 'Salvando…' : estadoDieta === 'erro' ? 'Erro ao salvar' : 'Salvo'}</span>
       </div>
-      {!banco && <p className="mudo">Carregando alimentos…</p>}
+      {!banco && !falhouAlimentos && <p className="mudo">Carregando alimentos…</p>}
+      {!banco && falhouAlimentos && (
+        <div className="alerta erro" style={{ alignItems: 'center' }}>
+          <span className="cresce">Não deu para baixar a lista de alimentos (sem sinal?).</span>
+          <button className="botao pequeno" onClick={tentarDeNovo}>Tentar de novo</button>
+        </div>
+      )}
       {banco &&
         plano.refeicoes.map((r, ri) => (
           <section key={r.id} className="cartao refeicao">

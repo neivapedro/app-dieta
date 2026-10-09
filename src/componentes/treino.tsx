@@ -4,8 +4,8 @@ import { useTreino } from '../dados/useTreino';
 import { diaDaSemana, formatarData } from '../lib/datas';
 import { cm, kg, num, paraNumero, paraTexto, pp } from '../lib/formato';
 import type { Composicao } from '../lib/gordura';
-import { formatarTempo, KM_CORRIDA_PADRAO, lerTempo, rotuloCardio, tipoCardio } from '../lib/treino';
-import type { MetasProjeto, TreinoDia } from '../lib/tipos';
+import { digitosParaTempo, formatarTempo, KM_CORRIDA_PADRAO, lerTempo, paceValido, rotuloCardio, tipoCardio } from '../lib/treino';
+import type { MetasProjeto } from '../lib/tipos';
 import { Campo, CampoNumero, Folha } from './ui';
 
 function Marcador({ rotulo, detalhe, feito, aoTocar }: { rotulo: string; detalhe: string; feito: boolean; aoTocar: () => void }) {
@@ -18,10 +18,10 @@ function Marcador({ rotulo, detalhe, feito, aoTocar }: { rotulo: string; detalhe
   );
 }
 
-/** Cartão da tela Início: marca o treino e o cardio de hoje com um toque. */
+/** Cartão "Treino de hoje": marca o treino e o cardio com um toque (Início e topo da aba Treino). */
 export function CartaoTreinoHoje() {
   const t = useTreino();
-  const { executar } = useDados();
+  const { gravar } = useDados();
   const [corridaAberta, setCorridaAberta] = useState(false);
   if (!t) return null;
   const { hoje, placar } = t;
@@ -30,17 +30,21 @@ export function CartaoTreinoHoje() {
   const corrida = tipoCardio(hoje) === 'corrida';
   const diaNumero = placar.diasDecorridos + 1;
 
-  const salvar = (mudanca: Partial<TreinoDia>) =>
-    executar((r) =>
-      r.salvarTreino({
+  // Cada toque grava o dia a partir do estado mais recente (a fila aplica na hora),
+  // então tocar Treino e logo depois Cardio nunca apaga o primeiro check
+  const alternar = (campo: 'treino' | 'cardio') => {
+    const atual = t.doDia(hoje);
+    gravar({
+      tipo: 'treino',
+      dado: {
         data: hoje,
-        treino: reg?.treino ?? false,
-        cardio: reg?.cardio ?? false,
-        corrida_km: reg?.corrida_km ?? null,
-        corrida_seg: reg?.corrida_seg ?? null,
-        ...mudanca,
-      }),
-    ).catch(() => undefined);
+        treino: campo === 'treino' ? !atual?.treino : !!atual?.treino,
+        cardio: campo === 'cardio' ? !atual?.cardio : !!atual?.cardio,
+        corrida_km: atual?.corrida_km ?? null,
+        corrida_seg: atual?.corrida_seg ?? null,
+      },
+    });
+  };
 
   return (
     <section className="cartao">
@@ -52,27 +56,28 @@ export function CartaoTreinoHoje() {
         </span>
       </div>
       <div className="linha" style={{ flexWrap: 'nowrap' }}>
-        <Marcador rotulo="Treino" detalhe="musculação" feito={!!reg?.treino} aoTocar={() => salvar({ treino: !reg?.treino })} />
+        <Marcador rotulo="Treino" detalhe="musculação" feito={!!reg?.treino} aoTocar={() => alternar('treino')} />
         <Marcador
           rotulo="Cardio"
           detalhe={rotuloCardio(hoje)}
           feito={!!reg?.cardio}
-          aoTocar={() => (corrida ? setCorridaAberta(true) : salvar({ cardio: !reg?.cardio }))}
+          aoTocar={() => (corrida && !reg?.cardio ? setCorridaAberta(true) : alternar('cardio'))}
         />
       </div>
-      {corridaAberta && <FormDiaTreino data={hoje} aoFechar={() => setCorridaAberta(false)} />}
+      {corridaAberta && <FormDiaTreino data={hoje} marcarCardio aoFechar={() => setCorridaAberta(false)} />}
     </section>
   );
 }
 
 /** Edição de um dia: treino, cardio e, na corrida, distância e tempo. */
-export function FormDiaTreino({ data, aoFechar }: { data: string; aoFechar: () => void }) {
+export function FormDiaTreino({ data, marcarCardio, aoFechar }: { data: string; marcarCardio?: boolean; aoFechar: () => void }) {
   const t = useTreino();
-  const { executar } = useDados();
+  const { gravar } = useDados();
   const reg = t?.doDia(data);
   const corrida = tipoCardio(data) === 'corrida';
   const [treino, setTreino] = useState(!!reg?.treino);
-  const [cardio, setCardio] = useState(reg ? reg.cardio : corrida);
+  // Cardio pré-marcado só quando o formulário vem do botão "Cardio" do dia
+  const [cardio, setCardio] = useState(reg ? reg.cardio || !!marcarCardio : !!marcarCardio);
   const [km, setKm] = useState(paraTexto(reg?.corrida_km ?? KM_CORRIDA_PADRAO));
   const [tempo, setTempo] = useState(reg?.corrida_seg ? formatarTempo(reg.corrida_seg) : '');
   const [erro, setErro] = useState<string | null>(null);
@@ -81,23 +86,21 @@ export function FormDiaTreino({ data, aoFechar }: { data: string; aoFechar: () =
   const seg = tempo.trim() ? lerTempo(tempo) : null;
   const pace = seg && kmN ? seg / kmN : null;
 
-  async function salvar(e: FormEvent) {
+  function salvar(e: FormEvent) {
     e.preventDefault();
-    if (tempo.trim() && !seg) return setErro('Tempo inválido. Use minutos:segundos, ex.: 28:30.');
-    try {
-      await executar((r) =>
-        r.salvarTreino({
-          data,
-          treino,
-          cardio,
-          corrida_km: corrida && cardio ? kmN : null,
-          corrida_seg: corrida && cardio ? seg : null,
-        }),
-      );
-      aoFechar();
-    } catch (e) {
-      setErro((e as Error).message);
-    }
+    if (tempo.trim() && !seg) return setErro('Tempo inválido. Digite só os números, ex.: 2830 para 28:30.');
+    if (corrida && cardio && pace && !paceValido(pace)) return setErro(`Confira o tempo: deu ${formatarTempo(pace)} por km.`);
+    gravar({
+      tipo: 'treino',
+      dado: {
+        data,
+        treino,
+        cardio,
+        corrida_km: corrida && cardio ? kmN : null,
+        corrida_seg: corrida && cardio ? seg : null,
+      },
+    });
+    aoFechar();
   }
 
   return (
@@ -111,11 +114,23 @@ export function FormDiaTreino({ data, aoFechar }: { data: string; aoFechar: () =
           <>
             <div className="grade">
               <CampoNumero rotulo="Distância" sufixo="km" valor={km} aoMudar={setKm} />
-              <Campo rotulo="Tempo (opcional)" dica="minutos:segundos, ex.: 28:30">
-                <input inputMode="numeric" value={tempo} placeholder="28:30" onChange={(e) => setTempo(e.target.value.replace(/[^\d:]/g, ''))} />
+              <Campo rotulo="Tempo (opcional)" dica="Só os números: 2830 = 28:30">
+                <input
+                  inputMode="numeric"
+                  value={tempo}
+                  placeholder="28:30"
+                  onChange={(e) => {
+                    setTempo(digitosParaTempo(e.target.value));
+                    setErro(null);
+                  }}
+                />
               </Campo>
             </div>
-            {pace && <div className="alerta info">Pace: {formatarTempo(pace)} /km</div>}
+            {pace && (
+              <div className={`alerta ${paceValido(pace) ? 'info' : 'erro'}`}>
+                Pace: {formatarTempo(pace)} /km{paceValido(pace) ? '' : ' — confira o tempo'}
+              </div>
+            )}
           </>
         )}
         {erro && <div className="alerta erro">{erro}</div>}
@@ -136,6 +151,7 @@ export function FormMetas({ base, aoFechar, primeiraVez }: { base: Composicao | 
   const [peso, setPeso] = useState(paraTexto(m?.peso_kg));
   const [bf, setBf] = useState(paraTexto(m?.bf));
   const [erro, setErro] = useState<string | null>(null);
+  const [salvando, setSalvando] = useState(false);
 
   const pesoN = paraNumero(peso);
   const bfN = paraNumero(bf);
@@ -150,11 +166,14 @@ export function FormMetas({ base, aoFechar, primeiraVez }: { base: Composicao | 
       bf: bfN,
     };
     if (Object.values(metas).every((v) => v === null)) return setErro('Preencha ao menos uma meta.');
+    if (salvando) return;
+    setSalvando(true);
     try {
       await executar((r) => r.salvarMetas(metas));
       aoFechar();
     } catch (e) {
       setErro((e as Error).message);
+      setSalvando(false);
     }
   }
 
@@ -188,7 +207,7 @@ export function FormMetas({ base, aoFechar, primeiraVez }: { base: Composicao | 
           </p>
         )}
         {erro && <div className="alerta erro">{erro}</div>}
-        <button className="botao primario">Salvar metas</button>
+        <button className="botao primario" disabled={salvando}>{salvando ? 'Salvando…' : 'Salvar metas'}</button>
         {primeiraVez && (
           <button type="button" className="botao pequeno" onClick={aoFechar}>
             Definir depois

@@ -4,6 +4,8 @@ import { composicao } from './gordura';
 import type { Ciclo, TreinoDia } from './tipos';
 import {
   calcularPlacar,
+  digitosParaTempo,
+  paceValido,
   formatarTempo,
   lerTempo,
   listarCorridas,
@@ -98,6 +100,17 @@ describe('Corridas e pace', () => {
     expect(c[1].pace).toBe(342);
     expect(c[1].delta).toBe(-18);
     expect(formatarTempo(342)).toBe('5:42');
+  });
+  it('formata o tempo digitado só com números', () => {
+    expect(digitosParaTempo('2830')).toBe('28:30');
+    expect(digitosParaTempo('13000')).toBe('1:30:00');
+    expect(digitosParaTempo('500')).toBe('5:00');
+    expect(digitosParaTempo('5')).toBe('0:05');
+    expect(digitosParaTempo('28:30')).toBe('28:30');
+    expect(digitosParaTempo('')).toBe('');
+    expect(lerTempo(digitosParaTempo('2830'))).toBe(1710);
+    expect(paceValido(1710 / 5)).toBe(true);
+    expect(paceValido(169800 / 5)).toBe(false);
   });
   it('lê tempos digitados', () => {
     expect(lerTempo('28:30')).toBe(1710);

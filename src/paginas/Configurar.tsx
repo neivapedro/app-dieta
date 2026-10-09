@@ -8,7 +8,7 @@ import type { Sexo } from '../lib/tipos';
 
 /** Primeiro acesso: dados pessoais + parâmetros do ciclo (aba Painel da planilha). */
 export function Configurar() {
-  const { perfil, usuario, executar, repo } = useDados();
+  const { perfil, usuario, executar, sair } = useDados();
   const [nome, setNome] = useState(perfil?.nome ?? '');
   const [sexo, setSexo] = useState<Sexo>(perfil?.sexo ?? 'Masculino');
   const [altura, setAltura] = useState(paraTexto(perfil?.altura_cm));
@@ -77,7 +77,7 @@ export function Configurar() {
         </section>
         {erro && <div className="alerta erro">{erro}</div>}
         <button className="botao primario">Começar</button>
-        <button type="button" className="botao pequeno" onClick={() => repo.sair()}>Sair</button>
+        <button type="button" className="botao pequeno" onClick={() => void sair()}>Sair</button>
       </form>
     </div>
   );

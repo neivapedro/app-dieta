@@ -165,6 +165,25 @@ export function lerTempo(texto: string): number | null {
   return seg > 0 ? seg : null;
 }
 
+/**
+ * O teclado numérico do iPhone não tem ":". Os 2 últimos dígitos são os segundos:
+ * 2830 → 28:30 · 13000 → 1:30:00 · 500 → 5:00.
+ */
+export function digitosParaTempo(digitos: string): string {
+  const d = digitos.replace(/\D/g, '').replace(/^0+(?=\d)/, '').slice(0, 6);
+  if (!d) return '';
+  const p = d.padStart(3, '0');
+  const seg = p.slice(-2);
+  const resto = p.slice(0, -2);
+  if (resto.length <= 2) return `${Number(resto)}:${seg}`;
+  return `${Number(resto.slice(0, -2))}:${resto.slice(-2)}:${seg}`;
+}
+
+/** Pace plausível para corrida (2:30 a 15:00 por km); fora disso, o tempo foi digitado errado. */
+export function paceValido(segPorKm: number): boolean {
+  return segPorKm >= 150 && segPorKm <= 900;
+}
+
 // ---------- Semanas (segunda a domingo) ----------
 
 export interface Semana {

@@ -91,6 +91,14 @@ export class RepositorioLocal implements Repositorio {
     throw new Error('Recuperação de senha só funciona com a nuvem configurada.');
   }
 
+  aoRecuperarSenha() {
+    return () => undefined;
+  }
+
+  async definirSenha() {
+    throw new Error('Troca de senha só funciona com a nuvem configurada.');
+  }
+
   async sair() {
     localStorage.removeItem(CHAVE_SESSAO);
     this.avisar();
