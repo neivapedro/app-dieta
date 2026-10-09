@@ -180,8 +180,8 @@ Deno.serve(async (req) => {
     'METHOD:PUBLISH',
     `X-WR-CALNAME:${escapar('Ciclo · Retatrutida')}`,
     `X-WR-TIMEZONE:${fuso}`,
-    // Cor sugerida ao assinar: mesmo rosa do calendário "Trabalho" do iPhone
-    'X-APPLE-CALENDAR-COLOR:#CC33E0',
+    // Cor sugerida ao assinar: verde-água
+    'X-APPLE-CALENDAR-COLOR:#2DD4BF',
     'REFRESH-INTERVAL;VALUE=DURATION:PT1H',
     'X-PUBLISHED-TTL:PT1H',
     ...eventos,
