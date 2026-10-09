@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { analisarFases, analisarGeral, serieDePeso } from './analise';
-import { calcularCiclo, cicloPadrao, consumoPlano, faseDaDose, marcacao, mgParaUI, verificarPlano } from './ciclo';
+import { calcularCiclo, cicloPadrao, guiaSeringa, consumoPlano, faseDaDose, marcacao, mgParaUI, verificarPlano } from './ciclo';
 import { diaDaSemana, somarDias } from './datas';
 import { composicao, ganhos, percentualGordura } from './gordura';
 import type { Aplicacao, Ciclo, Medida, RegistroDiario } from './tipos';
@@ -75,6 +75,15 @@ describe('Plano (aba Plano)', () => {
     expect(marcacao(2.25, meia).ui_pratica).toBe(11.5);
   });
 
+});
+
+describe('Guia da seringa (marcas de 1 em 1 UI)', () => {
+  it('descreve onde parar o êmbolo', () => {
+    expect(guiaSeringa(6.25)).toContain('um quarto depois da marca 6');
+    expect(guiaSeringa(7.5)).toContain('no meio entre as marcas 7 e 8');
+    expect(guiaSeringa(8.75)).toContain('três quartos depois da marca 8');
+    expect(guiaSeringa(10)).toBe('exatamente na marca 10');
+  });
 });
 
 describe('Agenda recalculada pela última aplicação', () => {

@@ -50,3 +50,9 @@ export function paraNumero(s: string): number | null {
 export function paraTexto(n: number | null | undefined): string {
   return n === null || n === undefined ? '' : String(n).replace('.', ',');
 }
+
+/** Unidades da seringa: até 2 casas, sem zeros sobrando (6,25 · 7,5 · 10) */
+export function ui(n: number | null | undefined): string {
+  if (n === null || n === undefined || !Number.isFinite(n)) return '–';
+  return `${n.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} UI`;
+}

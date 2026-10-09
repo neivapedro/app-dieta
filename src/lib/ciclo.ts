@@ -293,3 +293,17 @@ export function calcularCiclo(
     alertas,
   };
 }
+
+/**
+ * Onde parar o êmbolo numa seringa U-100 com marcas de 1 em 1 UI (ex.: seringa de 50 UI).
+ * 6,25 → "um quarto depois da marca 6".
+ */
+export function guiaSeringa(ui: number): string {
+  const base = Math.floor(ui + EPS);
+  const resto = Math.round((ui - base) * 100) / 100;
+  if (resto === 0) return `exatamente na marca ${base}`;
+  if (resto === 0.5) return `no meio entre as marcas ${base} e ${base + 1}`;
+  if (resto === 0.25) return `um quarto depois da marca ${base} (entre ${base} e ${base + 1})`;
+  if (resto === 0.75) return `três quartos depois da marca ${base} (quase no ${base + 1})`;
+  return `entre as marcas ${base} e ${base + 1}`;
+}

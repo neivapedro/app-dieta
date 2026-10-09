@@ -5,7 +5,7 @@ import { useDados } from '../dados/contexto';
 import { useCalculos } from '../dados/useCalculos';
 import { consumoPlano, fasesNumeradas, marcacao, mgParaMl, verificarPlano } from '../lib/ciclo';
 import { diaDaSemana, formatarData } from '../lib/datas';
-import { mg, num, paraNumero, paraTexto, sinal } from '../lib/formato';
+import { mg, num, paraNumero, paraTexto, sinal, ui } from '../lib/formato';
 import type { Aplicacao, Ciclo as TCiclo, Fase } from '../lib/tipos';
 
 type Aba = 'agenda' | 'plano' | 'ajustes';
@@ -63,7 +63,7 @@ function Agenda() {
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div className="titulo numero">{num(d.dose_mg)} mg</div>
-                  <div className="detalhe numero">{num(d.ui)} UI · saldo {num(d.saldo_apos_mg)}</div>
+                  <div className="detalhe numero">{ui(d.ui)} · saldo {num(d.saldo_apos_mg)}</div>
                 </div>
               </div>
             ))}
@@ -108,7 +108,7 @@ function Agenda() {
                     <td>{num(l.dose_prevista)}</td>
                     <td>{num(l.aplicacao.dose_mg)}</td>
                     <td className={Math.abs(l.diferenca_mg) > 1e-9 ? 'aviso-txt' : 'mudo'}>{Math.abs(l.diferenca_mg) > 1e-9 ? sinal(l.diferenca_mg, 2) : '–'}</td>
-                    <td>{num(l.ui_aplicada)}</td>
+                    <td>{num(l.ui_aplicada, 2)}</td>
                     <td className={l.atraso_dias > 0 ? 'aviso-txt' : 'mudo'}>{l.atraso_dias === 0 ? 'no dia' : `${l.atraso_dias > 0 ? '+' : ''}${l.atraso_dias} d`}</td>
                     <td>{num(l.saldo_mg)}</td>
                     <td>{num(l.peso_medio, 1)}</td>
@@ -205,8 +205,8 @@ function Plano() {
             </div>
             <div className="grade grade-4">
               <div className="bloco"><div className="rotulo">Volume</div><div className="valor">{num(mgParaMl(fv.dose_mg, ciclo!.concentracao_mg_ml), 4)} ml</div></div>
-              <div className="bloco"><div className="rotulo">Seringa U-100</div><div className="valor">{num(m.ui)} UI</div></div>
-              <div className="bloco"><div className="rotulo">Na seringa</div><div className="valor">{num(m.ui_pratica, 1)} UI</div></div>
+              <div className="bloco"><div className="rotulo">Seringa U-100</div><div className="valor">{ui(m.ui)}</div></div>
+              <div className="bloco"><div className="rotulo">Puxar até</div><div className="valor">{ui(m.ui_pratica)}</div></div>
               <div className="bloco"><div className="rotulo">Consumo</div><div className="valor">{mg(fv.dose_mg * fv.semanas)}</div></div>
             </div>
             <Campo rotulo="Objetivo da fase">

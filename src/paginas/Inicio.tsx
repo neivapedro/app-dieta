@@ -4,8 +4,9 @@ import { FormAplicacao, FormDiario } from '../componentes/formularios';
 import { Bloco, Icone } from '../componentes/ui';
 import { useDados } from '../dados/contexto';
 import { useCalculos } from '../dados/useCalculos';
+import { guiaSeringa } from '../lib/ciclo';
 import { diaDaSemana, formatarData } from '../lib/datas';
-import { corVariacao, kg, mg, num, pct, pp, sinal, cm } from '../lib/formato';
+import { cm, corVariacao, kg, mg, num, pct, pp, sinal, ui } from '../lib/formato';
 import { estadoNotificacao, type EstadoNotificacao } from '../lib/notificacoes';
 import { NIVEIS_NAUSEA } from '../lib/tipos';
 
@@ -51,12 +52,12 @@ export function Inicio() {
               </div>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div className="medio numero">{num(p.ui)} UI</div>
+              <div className="medio numero">{ui(p.ui)}</div>
               <div className="mudo">seringa U-100</div>
             </div>
           </div>
           <div className="grade" style={{ marginTop: 14 }}>
-            <Bloco rotulo={`Na seringa (marcas de ${num(ciclo.passo_ui, ciclo.passo_ui % 1 ? 2 : 0)} UI)`} valor={`${num(p.ui_pratica, 1)} UI`} />
+            <Bloco rotulo="Puxar até" valor={ui(p.ui_pratica)} />
             <Bloco
               rotulo="Isso entrega"
               valor={
@@ -72,6 +73,9 @@ export function Inicio() {
             <Bloco rotulo={`Fase ${p.fase.indice + 1}`} valor={p.fase.fase.nome} />
             <Bloco rotulo="Local sugerido" valor={resumo.sugestao_local} />
           </div>
+          <p className="mudo" style={{ marginTop: 10 }}>
+            Na seringa de insulina (U-100, marcas de 1 em 1 UI): {guiaSeringa(p.ui_pratica)}.
+          </p>
           <button className="botao primario bloco-largo" style={{ marginTop: 14 }} onClick={() => setRegistrar(true)}>
             <Icone nome="mais" /> Registrar aplicação
           </button>

@@ -1,9 +1,9 @@
 import { useState, type FormEvent } from 'react';
 import { useDados } from '../dados/contexto';
 import { useCalculos } from '../dados/useCalculos';
-import { faseDaDose, marcacao } from '../lib/ciclo';
+import { faseDaDose, guiaSeringa, marcacao } from '../lib/ciclo';
 import { diaDaSemana, hojeLocal } from '../lib/datas';
-import { cm, kg, num, paraNumero, paraTexto, pp } from '../lib/formato';
+import { cm, kg, num, paraNumero, paraTexto, pp, ui } from '../lib/formato';
 import { composicao } from '../lib/gordura';
 import { LOCAIS_APLICACAO, NIVEIS_NAUSEA, type Aplicacao, type Medida, type RegistroDiario } from '../lib/tipos';
 import { BotaoExcluir, Campo, CampoNumero, Escolhas, Folha } from './ui';
@@ -76,7 +76,7 @@ export function FormAplicacao({ aplicacao, aoFechar }: { aplicacao?: Aplicacao; 
           valor={dose}
           aoMudar={setDose}
           obrigatorio
-          dica={m ? `${num(m.ui)} UI na seringa U-100 · na prática ${num(m.ui_pratica, 1)} UI, que entrega ${num(m.mg_pratica)} mg` : undefined}
+          dica={m ? `Puxar até ${ui(m.ui_pratica)} na seringa U-100 (${guiaSeringa(m.ui_pratica)}) · entrega ${num(m.mg_pratica)} mg` : undefined}
         />
         <Campo rotulo="Local da aplicação" dica={!aplicacao ? 'Sugestão pelo rodízio: diferente do último local usado.' : undefined}>
           <select value={local} onChange={(e) => setLocal(e.target.value)}>
