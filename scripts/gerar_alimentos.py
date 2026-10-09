@@ -1,6 +1,8 @@
 """Gera src/dados/alimentos.json a partir da TACO + itens extras (marcas, suplementos, USDA).
 Uso: python3 -I gerar_alimentos.py <pasta_csv_taco> <saida_json>
-Valores por 100 g. Cada item: [id, nome, grupo, prot, carb, gord, fibra, animal(0/1), porcoes, fonte, apelidos?]
+Valores por 100 g. Cada item: [id, nome, grupo, prot, carb, gord, fibra, animal(0/1), porcoes, fonte, apelidos, oculto(0/1)]
+O alimento é sempre pesado PRONTO: versões cruas de carnes, peixes, ovos, feijões, arroz,
+massas e tubérculos ficam ocultas na busca (continuam no arquivo para planos antigos).
 Fonte da TACO em CSV: https://github.com/raulfdm/taco-api (references/csv)
 """
 import csv, json, re, sys
@@ -102,7 +104,32 @@ APELIDOS = [
     (r'^Ovo, de galinha', 'ovos'),
     (r'^Feijão', 'feijao'),
     (r'^Queijo, requeijão', 'requeijao'),
+    (r'^Carne, bovina, acém, moído', 'carne moída'),
+    (r'^Lingüiça, porco', 'linguiça toscana'),
+    (r'^Lingüiça, frango', 'linguiça de frango'),
+    (r'^Frango, peito, sem pele, cozido', 'frango desfiado'),
+    (r'^Frango, inteiro, sem pele, assado', 'frango assado'),
+    (r'^Salmão, sem pele, fresco, cru', 'sashimi sushi'),
+    (r'^Tilápia', 'saint peter'),
+    (r'^Ovo, de galinha, inteiro, cozido', 'pochê'),
+    (r'^Carne, bovina, charque', 'jabá'),
+    (r'^Carne, bovina, seca', 'jabá'),
+    (r'^Toucinho', 'torresmo'),
+    (r'^Peru, congelado, assado', 'peito de peru assado'),
+    (r'^Carne, bovina, músculo', 'carne de panela'),
 ]
+
+# Sempre se pesa o alimento pronto: cru some da busca, exceto o que se come cru
+CRU = re.compile(r'\bcru(a|s|as)?\b')
+GRUPOS_COZIDOS = {'Carnes', 'Peixes e frutos do mar', 'Ovos', 'Leguminosas'}
+CRU_VISIVEL = {'t278', 't316', 't557', 't585'}  # atum e salmão (sashimi), amendoim, tremoço
+CRU_OCULTO = {'t2', 't4', 't6', 't19', 't38', 't40', 't41', 't55', 't57', 't59', 't87', 't89', 't92', 't103', 't126',
+              't130', 't141', 'x26'}
+
+def oculto(i, nome, grupo):
+    if i in CRU_VISIVEL or not CRU.search(nome):
+        return False
+    return grupo in GRUPOS_COZIDOS or i in CRU_OCULTO
 
 def apelidos(nome):
     return ' '.join(a for pad, a in APELIDOS if re.search(pad, nome))
@@ -125,6 +152,7 @@ for r in foods:
     animal = r['categoryId'] in ANIMAL_CATS or i in ANIMAL_IDS
     itens.append([f't{i}', nome, GRUPO[r['categoryId']], f(n['protein']), f(n['carbohydrates']), f(n['lipids']),
                   f(n['dietaryFiber']), 1 if animal else 0, porcoes(nome), 'TACO'])
+
 
 # Extras: (id, nome, grupo, prot, carb, gord, fibra, animal, porcoes, fonte) por 100 g
 SUP, PAO, CARNE, LEITE, GORD, OUT = 'Suplementos', 'Cereais e pães', 'Carnes', 'Leite e derivados', 'Óleos e gorduras', 'Diversos'
@@ -178,6 +206,24 @@ extras = [
     ('x46', 'Refrigerante zero / água com gás', 'Bebidas', 0, 0, 0, 0, 0, [('lata', 350)], 'Rótulo'),
     ('x47', 'Chocolate amargo 70%', 'Doces', 7.8, 45.9, 42.6, 10.9, 0, [('quadradinho', 5)], 'USDA'),
     ('x48', 'Café preto sem açúcar', 'Bebidas', 0.1, 0, 0, 0, 0, [('cafezinho', 50), ('xícara', 150)], 'USDA'),
+    # Carnes prontas comuns que a TACO não tem
+    ('x49', 'Carne moída de patinho, cozida/refogada', CARNE, 35.9, 0, 7.3, 0, 1, [('colher de sopa', 25)], 'TACO (patinho cozido)'),
+    ('x50', 'Fraldinha, grelhada', CARNE, 27.7, 0, 8.2, 0, 1, [], 'USDA (flank grelhado)'),
+    ('x51', 'Carne de sol, grelhada', CARNE, 26.9, 0, 21.9, 0, 1, [], 'IBGE/POF'),
+    ('x52', 'Hambúrguer artesanal bovino, grelhado', CARNE, 25.9, 0, 15.4, 0, 1, [('unidade (150 g)', 150)], 'USDA (85% magra)'),
+    ('x53', 'Frango, peito, sem pele, assado', CARNE, 31.0, 0, 3.6, 0, 1, [], 'USDA'),
+    ('x54', 'Frango, coxa, sem pele, assada', CARNE, 24.2, 0, 5.7, 0, 1, [('unidade', 60)], 'USDA'),
+    ('x55', 'Frango, asa, com pele, assada', CARNE, 26.9, 0, 19.5, 0, 1, [('unidade', 35)], 'USDA'),
+    ('x56', 'Frango, moela, cozida', CARNE, 30.4, 0, 2.7, 0, 1, [], 'USDA'),
+    ('x57', 'Bacon, frito', CARNE, 37.0, 1.4, 41.8, 0, 1, [('fatia', 8)], 'USDA'),
+    ('x58', 'Linguiça calabresa (defumada)', CARNE, 15.0, 1.8, 24.0, 0, 1, [('gomo', 80)], 'Rótulo médio'),
+    ('x59', 'Salsicha', CARNE, 12.0, 5.0, 18.0, 0, 1, [('unidade', 50)], 'Rótulo médio'),
+    ('x60', 'Ovo mexido', 'Ovos', 10.0, 1.6, 10.9, 0, 1, [('2 ovos', 110)], 'USDA'),
+    ('x61', 'Atum fresco, grelhado', 'Peixes e frutos do mar', 29.2, 0, 0.6, 0, 1, [], 'USDA'),
+    ('x62', 'Tilápia, filé, frita', 'Peixes e frutos do mar', 24.0, 0, 9.0, 0, 1, [('filé', 120)], 'USDA (peixe branco frito)'),
+    # Acompanhamentos prontos que faltavam
+    ('x63', 'Batata, doce, assada', 'Verduras, legumes e tubérculos', 2.0, 20.7, 0.2, 3.3, 0, [], 'USDA'),
+    ('x64', 'Inhame, cozido', 'Verduras, legumes e tubérculos', 0.5, 34.6, 0.1, 5.1, 0, [], 'USDA (taro cozido)'),
 ]
 for e in extras:
     i, nome, grupo, p, c, g, fib, a, por, fonte = e
@@ -187,9 +233,8 @@ ids = [x[0] for x in itens]
 assert len(ids) == len(set(ids))
 saida_itens = []
 for x in itens:
-    linha = [x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], [[n, g] for n, g in x[8]], x[9]]
-    if apelidos(x[1]):
-        linha.append(apelidos(x[1]))
+    linha = [x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], [[n, g] for n, g in x[8]], x[9], apelidos(x[1]),
+             1 if oculto(x[0], x[1], x[2]) else 0]
     saida_itens.append(linha)
 json.dump(saida_itens, open(saida, 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
-print(len(itens), 'alimentos;', sum(1 for x in itens if x[7]), 'com proteína animal;', sum(1 for x in itens if x[8]), 'com porção caseira')
+print(sum(1 for x in saida_itens if x[11]), 'crus ocultos;', len(itens), 'alimentos;', sum(1 for x in itens if x[7]), 'com proteína animal;', sum(1 for x in itens if x[8]), 'com porção caseira')

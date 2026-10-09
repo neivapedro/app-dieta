@@ -1,12 +1,20 @@
 # De-para do banco de alimentos
 
-O banco da aba Dieta (`src/dados/alimentos.json`, 638 itens) junta três fontes:
+O banco da aba Dieta (`src/dados/alimentos.json`, 654 itens) junta três fontes:
 
 1. **TACO 4ª edição (NEPA/Unicamp):** 590 alimentos brasileiros por 100 g. CSV em [raulfdm/taco-api](https://github.com/raulfdm/taco-api).
 2. **Planilha Gorgonoidiana:** os 32 itens da aba de alimentos, conferidos abaixo.
 3. **Rótulos e USDA:** produtos de marca e itens que a TACO não tem (whey, pasta de amendoim, Pão Pullman, gelatina zero, tilápia, wrap etc.).
 
 **Regras aplicadas a todas as fontes:**
+
+- **Sempre pronto:** o alimento é pesado depois de preparado. As 101 versões cruas de carnes, peixes, ovos, feijões e leguminosas, arroz, massas e tubérculos ficam fora da busca. Elas continuam no arquivo, para um plano antigo não quebrar. Ficam visíveis: verduras, legumes e frutas cruas (salada), aveia, amendoim, e o salmão e o atum crus (sashimi).
+- **Carnes prontas incluídas além da TACO:**
+  - carne moída de patinho cozida, fraldinha grelhada, carne de sol grelhada (IBGE/POF), hambúrguer artesanal grelhado;
+  - frango: peito assado, coxa sem pele assada, asa assada, moela cozida;
+  - bacon frito, linguiça calabresa, salsicha;
+  - ovo mexido, atum fresco grelhado, tilápia frita;
+  - acompanhamentos: batata-doce assada e inhame cozido.
 
 - **kcal:** o app sempre calcula as kcal pelos macros (proteína 4, carbo 4, gordura 9), como a planilha de dieta. Assim o total do plano bate com a soma dos macros.
 - **Proteína animal:** carnes, peixes, ovos, leite e derivados, whey/albumina e pratos com carne contam como **proteína animal**. O resto conta como **proteína vegetal**.

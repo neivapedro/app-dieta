@@ -22,10 +22,12 @@ export interface Alimento {
   porcoes: Porcao[];
   fonte: string;
   busca: string;
+  /** Versão crua de algo que se pesa pronto: fora da busca, mas ainda lida em planos antigos */
+  oculto: boolean;
 }
 
-/** Linha compacta do alimentos.json: [id, nome, grupo, prot, carb, gord, fibra, animal, porcoes, fonte, apelidos?] */
-export type LinhaAlimento = [string, string, string, number, number, number, number, number, [string, number][], string, string?];
+/** Linha compacta do alimentos.json: [id, nome, grupo, prot, carb, gord, fibra, animal, porcoes, fonte, apelidos, oculto] */
+export type LinhaAlimento = [string, string, string, number, number, number, number, number, [string, number][], string, string, number];
 
 export function normalizar(s: string): string {
   return s
@@ -37,7 +39,7 @@ export function normalizar(s: string): string {
 }
 
 export function lerAlimentos(linhas: LinhaAlimento[]): Alimento[] {
-  return linhas.map(([id, nome, grupo, prot, carb, gord, fibra, animal, porcoes, fonte, apelidos]) => ({
+  return linhas.map(([id, nome, grupo, prot, carb, gord, fibra, animal, porcoes, fonte, apelidos, oculto]) => ({
     id,
     nome,
     grupo,
@@ -48,14 +50,20 @@ export function lerAlimentos(linhas: LinhaAlimento[]): Alimento[] {
     animal: animal === 1,
     porcoes: porcoes.map(([n, g]) => ({ nome: n, g })),
     fonte,
-    busca: normalizar(`${nome} ${apelidos ?? ''}`),
+    busca: normalizar(`${nome} ${apelidos}`),
+    oculto: oculto === 1,
   }));
 }
 
-/** Busca por palavras em qualquer ordem, sem acento. Alimentos já usados no plano vêm primeiro. */
+/**
+ * Busca por palavras em qualquer ordem, sem acento. Alimentos já usados no plano vêm primeiro.
+ * Versões cruas (ocultas) não aparecem: o alimento é sempre pesado pronto.
+ */
 export function buscarAlimentos(lista: Alimento[], termo: string, usados: Set<string> = new Set(), limite = 60): Alimento[] {
   const palavras = normalizar(termo).split(' ').filter(Boolean);
-  const achados = palavras.length ? lista.filter((a) => palavras.every((p) => a.busca.includes(p))) : lista.filter((a) => usados.has(a.id));
+  const achados = palavras.length
+    ? lista.filter((a) => !a.oculto && palavras.every((p) => a.busca.includes(p)))
+    : lista.filter((a) => usados.has(a.id));
   const primeira = palavras[0] ?? '';
   const nota = (a: Alimento) => (usados.has(a.id) ? 0 : 2) + (a.busca.startsWith(primeira) ? 0 : 1);
   return achados.sort((a, b) => nota(a) - nota(b) || a.nome.length - b.nome.length || a.nome.localeCompare(b.nome)).slice(0, limite);

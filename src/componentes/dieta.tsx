@@ -144,11 +144,12 @@ export function SeletorAlimento({
             ref={campo}
             type="search"
             value={termo}
-            placeholder="ex.: arroz cozido, frango grelhado, whey"
+            placeholder="ex.: arroz, frango grelhado, whey"
             onChange={(e) => setTermo(e.target.value)}
           />
         </Campo>
-        {!termo.trim() && <p className="mudo">{usados.size ? 'Já usados no seu plano:' : `Digite para buscar entre ${lista.length} alimentos.`}</p>}
+        <p className="mudo">Pese sempre o alimento pronto (cozido, grelhado, assado). Os valores já são do alimento preparado.</p>
+        {!termo.trim() && usados.size > 0 && <p className="rotulo">Já usados no seu plano:</p>}
         {termo.trim() && !achados.length && <p className="mudo">Nada encontrado. Tente outra palavra (ex.: “carne patinho”).</p>}
         <div className="lista">
           {achados.map((a) => {

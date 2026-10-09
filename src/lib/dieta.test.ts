@@ -86,6 +86,19 @@ describe('Banco de alimentos', () => {
     expect(buscarAlimentos(alimentos, 'feijao carioca cozido')[0].id).toBe('t561');
     expect(buscarAlimentos(alimentos, 'whey growth')[0].id).toBe('x01');
   });
+  it('só alimentos prontos na busca (cru fica oculto, exceto o que se come cru)', () => {
+    const patinho = buscarAlimentos(alimentos, 'patinho');
+    expect(patinho.map((a) => a.id)).toEqual(expect.arrayContaining(['t377', 'x49']));
+    expect(patinho.some((a) => /\bcru/.test(a.nome))).toBe(false);
+    expect(buscarAlimentos(alimentos, 'arroz').some((a) => a.id === 't4')).toBe(false);
+    expect(buscarAlimentos(alimentos, 'feijao preto')[0].id).toBe('t567');
+    expect(buscarAlimentos(alimentos, 'salmao').map((a) => a.id)).toContain('t316'); // sashimi
+    expect(buscarAlimentos(alimentos, 'alface').length).toBeGreaterThan(0); // salada continua crua
+    // um plano antigo com item cru ainda é calculado
+    expect(mapa.get('t376')?.oculto).toBe(true);
+    expect(buscarAlimentos(alimentos, 'carne moida').map((a) => a.id)).toEqual(expect.arrayContaining(['x49', 't326']));
+  });
+
   it('todo alimento tem macros válidos', () => {
     expect(alimentos.length).toBeGreaterThan(600);
     for (const a of alimentos) {

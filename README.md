@@ -96,7 +96,7 @@ Detalhes:
 - **Meta do dia** = gasto total ± déficit/superávit em kcal.
 - **Macros:** proteína animal em g/kg de **massa magra** (padrão 2), gordura em g/kg de **peso** (padrão 1). O **carboidrato fecha a conta**: `(meta − ptn animal × 4 − gordura × 9 − ptn vegetal do plano × 4) ÷ 4`. A proteína vegetal (arroz, feijão, pão…) aparece separada, sem meta, e consome kcal do carbo.
 - **Plano:** refeições com alimento, quantidade (g ou porção caseira: fatia, unidade, dose…) e Ptn A, Ptn V, Carb, Gord e kcal de cada item, por refeição e no total. A barra "Falta", fixa no rodapé, mostra quanto ainda falta de cada macro enquanto você monta e simula. As kcal sempre vêm dos macros (4/4/9).
-- **Banco de alimentos** (`src/dados/alimentos.json`, sem tela própria): 590 itens da TACO (Unicamp, 4ª ed.), os da planilha Gorgonoidiana revisados e itens de marca e suplementos. O de-para está em `docs/alimentos-depara.md`. Para regenerar: `python3 scripts/gerar_alimentos.py <pasta csv da TACO> src/dados/alimentos.json`.
+- **Banco de alimentos** (`src/dados/alimentos.json`, sem tela própria): 654 itens. São 590 da TACO (Unicamp, 4ª ed.), os da planilha Gorgonoidiana revisados, marcas, suplementos e carnes prontas comuns que a TACO não tem. **O alimento é sempre pesado pronto:** as versões cruas de carnes, peixes, ovos, feijões, arroz, massas e tubérculos não aparecem na busca. Saladas, frutas e o peixe de sashimi continuam crus. O de-para está em `docs/alimentos-depara.md`. Para regenerar: `python3 scripts/gerar_alimentos.py <pasta csv da TACO> src/dados/alimentos.json`.
 
 Para ativar: no **SQL Editor**, rode `supabase/ativar_dieta.sql`. A parte 2 é opcional e já monta o plano da planilha numa conta; antes, troque o e-mail.
 
