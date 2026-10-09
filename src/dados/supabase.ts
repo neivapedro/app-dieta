@@ -195,6 +195,9 @@ export class RepositorioSupabase implements Repositorio {
     if (res.error && /vomito|diarreia|intestino_preso|dieta_seguida/.test(res.error.message)) {
       const { vomito: _v, diarreia: _d, intestino_preso: _i, dieta_seguida: _s, ...basico } = linha;
       erro(await this.sb.from('diario').upsert(basico, { onConflict: 'user_id,data' }));
+      // Avisa: o resto foi salvo, mas sintomas e "segui o plano?" precisam do SQL de melhorias
+      const marcouAlgo = [r.vomito, r.diarreia, r.intestino_preso, r.dieta_seguida].some((v) => v !== null && v !== undefined);
+      if (marcouAlgo) throw new Error('Sintomas e "segui o plano?" não foram salvos: falta rodar o SQL de melhorias no Supabase.');
     } else erro(res);
   }
 
