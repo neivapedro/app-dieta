@@ -1,5 +1,6 @@
 import { lazy, Suspense, useState } from 'react';
 import { FormMedida } from '../componentes/formularios';
+import { FormMetas } from '../componentes/treino';
 import { Vazio } from '../componentes/ui';
 import { useDados } from '../dados/contexto';
 import { useCalculos } from '../dados/useCalculos';
@@ -16,6 +17,7 @@ export function Medidas() {
   const { composicoes } = useCalculos();
   const [editando, setEditando] = useState<Medida | null>(null);
   const [nova, setNova] = useState(false);
+  const [pedirMetas, setPedirMetas] = useState(false);
 
   const g = composicoes.length >= 2 ? ganhos(composicoes[0], composicoes[composicoes.length - 1]) : null;
   const atual = composicoes[composicoes.length - 1];
@@ -111,7 +113,8 @@ export function Medidas() {
         </section>
       )}
 
-      {nova && <FormMedida aoFechar={() => setNova(false)} />}
+      {nova && <FormMedida aoFechar={() => setNova(false)} aoSalvar={() => perfil?.modulo_treino && !perfil.metas_projeto && setPedirMetas(true)} />}
+      {pedirMetas && <FormMetas primeiraVez base={composicoes[composicoes.length - 1] ?? null} aoFechar={() => setPedirMetas(false)} />}
       {editando && <FormMedida medida={editando} aoFechar={() => setEditando(null)} />}
     </div>
   );

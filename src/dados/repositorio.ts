@@ -1,4 +1,4 @@
-import type { Aplicacao, Ciclo, Medida, Perfil, RegistroDiario } from '../lib/tipos';
+import type { Aplicacao, Ciclo, Medida, MetasProjeto, Perfil, RegistroDiario, TreinoDia } from '../lib/tipos';
 
 export interface Usuario {
   id: string;
@@ -46,4 +46,10 @@ export interface Repositorio {
 
   /** Troca o endereço secreto do calendário (o antigo para de funcionar) */
   novoTokenCalendario(): Promise<string>;
+
+  // Aba Treino
+  salvarMetas(m: MetasProjeto): Promise<void>;
+  listarTreinos(): Promise<TreinoDia[]>;
+  /** Um registro por dia: grava por cima se a data já existir */
+  salvarTreino(t: Omit<TreinoDia, 'id'>): Promise<void>;
 }

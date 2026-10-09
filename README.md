@@ -88,6 +88,22 @@ Detalhes:
 - Cada conta tem um endereço secreto próprio (`perfis.token_calendario`).
 - **Perfil → Gerar novo endereço** invalida o endereço antigo.
 
+### Aba Treino (só para contas liberadas)
+
+Acompanhamento do treino durante o ciclo:
+- **Check diário:** 1 treino e 1 cardio por dia, sem folga. O cardio é corrida de 5 km na quarta e no domingo, e bike de 30 min nos demais dias.
+- **Placar:** aderência, sequência e projeção.
+- **Grade:** calendário do período com o check de cada dia.
+- **Medidas:** início × agora × meta.
+- **Aderência semanal × medidas:** comparada com a medição de toda segunda.
+- **Pace das corridas.**
+
+O período vai da 1ª aplicação até 7 dias depois da última.
+
+Para ativar:
+1. No **SQL Editor**, rode `supabase/migrations/20261010000000_treino.sql`.
+2. Rode `supabase/ativar_treino_pedro.sql`, trocando o e-mail. O e-mail fica só no banco, nunca no código.
+
 ### Como os lembretes funcionam
 
 O `pg_cron` chama a função `enviar-lembretes` a cada hora. Para cada usuário, a função calcula a próxima dose com a mesma regra do app: última aplicação real + intervalo, ou a data de início se ainda não houver aplicação.

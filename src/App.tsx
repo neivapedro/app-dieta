@@ -9,6 +9,7 @@ import { Entrar } from './paginas/Entrar';
 import { Inicio } from './paginas/Inicio';
 import { Medidas } from './paginas/Medidas';
 import { Perfil } from './paginas/Perfil';
+import { Treino } from './paginas/Treino';
 
 const ABAS = [
   { para: '/', rotulo: 'Início', icone: 'inicio', titulo: 'Início' },
@@ -18,10 +19,13 @@ const ABAS = [
   { para: '/analise', rotulo: 'Análise', icone: 'analise', titulo: 'Análise do ciclo' },
 ];
 
+const ABA_TREINO = { para: '/treino', rotulo: 'Treino', icone: 'treino', titulo: 'Treino' };
+
 function Estrutura() {
   const { perfil, ciclo, erro } = useDados();
   const { pathname } = useLocation();
-  const titulo = pathname === '/perfil' ? 'Perfil' : ABAS.find((a) => a.para === pathname)?.titulo ?? '';
+  const abas = perfil?.modulo_treino ? [...ABAS.slice(0, 4), ABA_TREINO, ABAS[4]] : ABAS;
+  const titulo = pathname === '/perfil' ? 'Perfil' : abas.find((a) => a.para === pathname)?.titulo ?? '';
   const primeiroNome = perfil?.nome.split(' ')[0];
 
   return (
@@ -50,13 +54,14 @@ function Estrutura() {
             <Route path="/medidas" element={<Medidas />} />
             <Route path="/analise" element={<Analise />} />
             <Route path="/perfil" element={<Perfil />} />
+            {perfil?.modulo_treino && <Route path="/treino" element={<Treino />} />}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
       </div>
       <nav className="nav" aria-label="Navegação principal">
-        <div className="nav-itens">
-          {ABAS.map((a) => (
+        <div className="nav-itens" style={{ gridTemplateColumns: `repeat(${abas.length}, 1fr)` }}>
+          {abas.map((a) => (
             <NavLink key={a.para} to={a.para} end className={({ isActive }) => (isActive ? 'ativo' : '')}>
               <Icone nome={a.icone} />
               {a.rotulo}

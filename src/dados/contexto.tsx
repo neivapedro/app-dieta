@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import type { Aplicacao, Ciclo, Medida, Perfil, RegistroDiario } from '../lib/tipos';
+import type { Aplicacao, Ciclo, Medida, Perfil, RegistroDiario, TreinoDia } from '../lib/tipos';
 import { SUPABASE_KEY, SUPABASE_URL } from '../config';
 import { RepositorioLocal } from './local';
 import type { Repositorio, Usuario } from './repositorio';
@@ -14,9 +14,10 @@ export interface Dados {
   aplicacoes: Aplicacao[];
   diario: RegistroDiario[];
   medidas: Medida[];
+  treinos: TreinoDia[];
 }
 
-const VAZIO: Dados = { perfil: null, ciclo: null, aplicacoes: [], diario: [], medidas: [] };
+const VAZIO: Dados = { perfil: null, ciclo: null, aplicacoes: [], diario: [], medidas: [], treinos: [] };
 
 interface Contexto extends Dados {
   repo: Repositorio;
@@ -49,7 +50,9 @@ export function ProvedorDados({ children }: { children: ReactNode }) {
       repositorio.listarDiario(),
       repositorio.listarMedidas(),
     ]);
-    setDados({ perfil, ciclo, aplicacoes, diario, medidas });
+    // A aba Treino é opcional: só busca (e só exige a tabela) para quem a tem liberada
+    const treinos = perfil?.modulo_treino ? await repositorio.listarTreinos() : [];
+    setDados({ perfil, ciclo, aplicacoes, diario, medidas, treinos });
   }, []);
 
   useEffect(() => {

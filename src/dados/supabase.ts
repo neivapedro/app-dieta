@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import type { Aplicacao, Ciclo, Medida, Perfil, RegistroDiario } from '../lib/tipos';
+import type { Aplicacao, Ciclo, Medida, MetasProjeto, Perfil, RegistroDiario, TreinoDia } from '../lib/tipos';
 import type { Repositorio, Usuario } from './repositorio';
 
 // O isolamento entre contas é garantido no banco (Row Level Security, ver
@@ -78,12 +78,15 @@ export class RepositorioSupabase implements Repositorio {
       hora_lembrete: String(d.hora_lembrete).slice(0, 5),
       fuso_horario: d.fuso_horario,
       token_calendario: d.token_calendario ?? null,
+      modulo_treino: d.modulo_treino === true,
+      metas_projeto: d.metas_projeto ?? null,
     };
   }
 
   async salvarPerfil(p: Perfil) {
     // O token do calendário é gerado pelo banco; aqui ele não é sobrescrito
-    const { token_calendario: _token, ...dados } = p;
+    // Token, liberação da aba Treino e metas têm gravação própria
+    const { token_calendario: _token, modulo_treino: _modulo, metas_projeto: _metas, ...dados } = p;
     erro(await this.sb.from('perfis').upsert({ user_id: await this.uid(), ...dados }));
   }
 
@@ -166,5 +169,25 @@ export class RepositorioSupabase implements Repositorio {
 
   async removerInscricaoPush(endpoint: string) {
     erro(await this.sb.from('inscricoes_push').delete().eq('endpoint', endpoint));
+  }
+
+  async salvarMetas(m: MetasProjeto) {
+    erro(await this.sb.from('perfis').update({ metas_projeto: m }).eq('user_id', await this.uid()));
+  }
+
+  async listarTreinos(): Promise<TreinoDia[]> {
+    const d = lista(await this.sb.from('treino_dias').select('*').order('data'));
+    return d.map((t) => ({
+      id: t.id,
+      data: t.data,
+      treino: t.treino,
+      cardio: t.cardio,
+      corrida_km: numOuNulo(t.corrida_km),
+      corrida_seg: t.corrida_seg ?? null,
+    }));
+  }
+
+  async salvarTreino(t: Omit<TreinoDia, 'id'>) {
+    erro(await this.sb.from('treino_dias').upsert({ ...t, user_id: await this.uid() }, { onConflict: 'user_id,data' }));
   }
 }

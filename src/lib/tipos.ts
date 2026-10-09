@@ -10,6 +10,27 @@ export interface Perfil {
   fuso_horario: string;
   /** Endereço secreto do calendário assinado (só na nuvem) */
   token_calendario?: string | null;
+  /** Aba Treino liberada para esta conta (definido no banco) */
+  modulo_treino?: boolean;
+  metas_projeto?: MetasProjeto | null;
+}
+
+/** Metas para o fim do projeto (massa magra/gorda saem de peso + % gordura) */
+export interface MetasProjeto {
+  pescoco_cm: number | null;
+  cintura_cm: number | null;
+  quadril_cm: number | null;
+  peso_kg: number | null;
+  bf: number | null;
+}
+
+export interface TreinoDia {
+  id: string;
+  data: string;
+  treino: boolean;
+  cardio: boolean;
+  corrida_km: number | null;
+  corrida_seg: number | null;
 }
 
 export interface Fase {

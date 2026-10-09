@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Bar, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { diferencaDias, formatarData, somarDias } from '../lib/datas';
 import { num } from '../lib/formato';
 import type { Composicao } from '../lib/gordura';
@@ -124,6 +124,86 @@ export function GraficoPesoDose({ serie, linhas, hoje }: { serie: PontoPeso[]; l
           <Legend iconType="plainline" />
           <Line yAxisId="kg" dataKey="peso" name="Peso" unit=" kg" stroke={CORES.peso} strokeWidth={2} dot={{ r: 2 }} connectNulls isAnimationActive={false} />
           <Line yAxisId="mg" dataKey="dose" name="Dose" unit=" mg" type="stepAfter" stroke={CORES.dose} strokeWidth={2} strokeDasharray="6 4" dot={false} connectNulls isAnimationActive={false} />
+        </ComposedChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+export type MetricaSemanal = 'cintura_cm' | 'bf' | 'massa_magra_kg' | 'peso_kg';
+
+const ROTULO_METRICA: Record<MetricaSemanal, { nome: string; unidade: string }> = {
+  cintura_cm: { nome: 'Cintura', unidade: ' cm' },
+  bf: { nome: '% de gordura', unidade: '%' },
+  massa_magra_kg: { nome: 'Massa magra', unidade: ' kg' },
+  peso_kg: { nome: 'Peso', unidade: ' kg' },
+};
+
+/** Aderência semanal (barras) × medida da segunda-feira (linha). */
+export function GraficoAderencia({ semanas, metrica }: { semanas: { numero: number; segunda: string; aderencia: number | null; medida: Composicao | null }[]; metrica: MetricaSemanal }) {
+  const CORES = useCores();
+  const r = ROTULO_METRICA[metrica];
+  const pontos = semanas.map((s) => ({
+    semana: `S${s.numero}`,
+    aderencia: s.aderencia === null ? null : Math.round(s.aderencia * 100),
+    medida: s.medida ? (s.medida[metrica] as number | null) : null,
+  }));
+  return (
+    <div className="grafico">
+      <ResponsiveContainer>
+        <ComposedChart data={pontos} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
+          <CartesianGrid vertical={false} />
+          <XAxis dataKey="semana" tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={8} />
+          <YAxis yAxisId="pct" domain={[0, 100]} tickFormatter={(v: number) => `${v}%`} tickLine={false} axisLine={false} width={36} />
+          <YAxis yAxisId="med" orientation="right" domain={['auto', 'auto']} tickFormatter={(v: number) => num(v, 1)} tickLine={false} axisLine={false} width={40} />
+          <Tooltip
+            content={({ active, payload, label }) =>
+              active && payload?.length ? (
+                <div className="dica-grafico">
+                  <b>{label}</b>
+                  {payload
+                    .filter((p) => p.value !== null && p.value !== undefined)
+                    .map((p) => (
+                      <div key={String(p.dataKey)} style={{ color: p.color }}>
+                        {p.name}: {p.dataKey === 'aderencia' ? `${p.value}%` : `${num(Number(p.value), 1)}${r.unidade}`}
+                      </div>
+                    ))}
+                </div>
+              ) : null
+            }
+          />
+          <Legend iconType="plainline" />
+          <Bar yAxisId="pct" dataKey="aderencia" name="Aderência" fill={CORES.magra} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+          <Line yAxisId="med" dataKey="medida" name={r.nome} stroke={CORES.bf} strokeWidth={2} dot={{ r: 3 }} connectNulls isAnimationActive={false} />
+        </ComposedChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+/** Pace das corridas (eixo invertido: subir = ficar mais rápido). */
+export function GraficoPace({ corridas }: { corridas: { data: string; pace: number }[] }) {
+  const CORES = useCores();
+  const pontos = corridas.map((c) => ({ dia: paraDia(c.data), pace: Math.round(c.pace) }));
+  const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`;
+  return (
+    <div className="grafico" style={{ height: 200 }}>
+      <ResponsiveContainer>
+        <ComposedChart data={pontos} margin={{ top: 8, right: 8, left: 4, bottom: 0 }}>
+          <CartesianGrid vertical={false} />
+          {eixoX()}
+          <YAxis reversed domain={['dataMin - 10', 'dataMax + 10']} tickFormatter={mmss} tickLine={false} axisLine={false} width={40} />
+          <Tooltip
+            content={({ active, payload, label }) =>
+              active && payload?.length ? (
+                <div className="dica-grafico">
+                  <b>{formatarData(deDia(Number(label)))}</b>
+                  <div>Pace: {mmss(Number(payload[0].value))} /km</div>
+                </div>
+              ) : null
+            }
+          />
+          <Line dataKey="pace" name="Pace" stroke={CORES.peso} strokeWidth={2} dot={{ r: 3 }} isAnimationActive={false} />
         </ComposedChart>
       </ResponsiveContainer>
     </div>

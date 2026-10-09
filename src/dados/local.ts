@@ -1,4 +1,4 @@
-import type { Aplicacao, Ciclo, Medida, Perfil, RegistroDiario } from '../lib/tipos';
+import type { Aplicacao, Ciclo, Medida, MetasProjeto, Perfil, RegistroDiario, TreinoDia } from '../lib/tipos';
 import type { Repositorio, Usuario } from './repositorio';
 
 // Modo de demonstração: usado quando o Supabase ainda não foi configurado.
@@ -11,6 +11,7 @@ interface Banco {
   aplicacoes: Aplicacao[];
   diario: RegistroDiario[];
   medidas: Medida[];
+  treinos?: TreinoDia[];
 }
 
 const CHAVE_SESSAO = 'app-dieta:sessao';
@@ -97,7 +98,8 @@ export class RepositorioLocal implements Repositorio {
     return this.banco().perfil;
   }
   async salvarPerfil(p: Perfil) {
-    this.alterar((b) => (b.perfil = p));
+    // Preserva a liberação da aba Treino e as metas, como no banco
+    this.alterar((b) => (b.perfil = { ...p, modulo_treino: b.perfil?.modulo_treino, metas_projeto: b.perfil?.metas_projeto }));
   }
 
   async obterCiclo() {
@@ -146,6 +148,22 @@ export class RepositorioLocal implements Repositorio {
     /* sem servidor, não há envio de push agendado */
   }
   async removerInscricaoPush() {}
+
+  async salvarMetas(m: MetasProjeto) {
+    this.alterar((b) => b.perfil && (b.perfil.metas_projeto = m));
+  }
+
+  async listarTreinos() {
+    return this.banco().treinos ?? [];
+  }
+
+  async salvarTreino(t: Omit<TreinoDia, 'id'>) {
+    this.alterar((b) => {
+      b.treinos ??= [];
+      const existente = b.treinos.find((x) => x.data === t.data);
+      upsert(b.treinos, { ...t, id: existente?.id ?? novoId() });
+    });
+  }
 
   async novoTokenCalendario(): Promise<string> {
     throw new Error('O calendário só funciona com a nuvem configurada.');

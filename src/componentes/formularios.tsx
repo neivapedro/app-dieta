@@ -168,7 +168,7 @@ export function FormDiario({ registro, aoFechar }: { registro?: RegistroDiario; 
 
 // ---------- Medidas ----------
 
-export function FormMedida({ medida, aoFechar }: { medida?: Medida; aoFechar: () => void }) {
+export function FormMedida({ medida, aoFechar, aoSalvar }: { medida?: Medida; aoFechar: () => void; aoSalvar?: () => void }) {
   const { perfil, medidas, executar } = useDados();
   const ultima = [...medidas].sort((a, b) => b.data.localeCompare(a.data))[0];
   const sexo = perfil?.sexo ?? 'Masculino';
@@ -208,6 +208,7 @@ export function FormMedida({ medida, aoFechar }: { medida?: Medida; aoFechar: ()
         }),
       );
       aoFechar();
+      aoSalvar?.();
     } catch (e) {
       setErro((e as Error).message);
     }

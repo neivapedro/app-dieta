@@ -251,3 +251,39 @@ details.ajuda[open] summary { margin-bottom: 8px; }
 .marca-mini img { width: 34px; height: 34px; object-fit: contain; }
 .topo-marca { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .nome-app { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--texto-3); }
+
+/* Aba Treino */
+.check-dia {
+  flex: 1; min-width: 0; min-height: 84px; padding: 10px; border-radius: 14px; cursor: pointer;
+  border: 1px solid var(--borda); background: var(--superficie-2);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+}
+.check-dia-icone {
+  width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--texto-3);
+  display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.9rem;
+}
+.check-dia-rotulo { font-weight: 700; }
+.check-dia-detalhe { font-size: 0.75rem; color: var(--texto-2); }
+.check-dia.feito { border-color: var(--bom); background: color-mix(in srgb, var(--bom) 14%, var(--superficie)); }
+.check-dia.feito .check-dia-icone { background: var(--bom); border-color: var(--bom); color: #fff; }
+
+.grade-semanas { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.grade-semanas-cab { text-align: center; font-size: 0.7rem; font-weight: 700; color: var(--texto-3); padding-bottom: 2px; }
+.dia-celula {
+  min-width: 0; padding: 5px 2px; border-radius: 8px; border: 1px solid transparent; background: var(--superficie-2);
+  display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer;
+}
+.dia-celula:disabled { cursor: default; opacity: 0.75; }
+.dia-celula.fora { background: transparent; }
+.dia-celula.hoje, .legenda-hoje { border: 2px solid var(--texto); }
+.legenda-hoje { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: -2px; }
+.dia-data { font-size: 0.66rem; color: var(--texto-2); font-variant-numeric: tabular-nums; }
+.dia-checks { display: flex; gap: 2px; }
+.mini {
+  display: inline-flex; align-items: center; justify-content: center; width: 17px; height: 17px; border-radius: 4px;
+  font-size: 0.62rem; font-weight: 800; background: var(--borda); color: var(--texto-3);
+}
+.mini.ok { background: var(--bom); color: #fff; }
+.mini.falta { background: var(--ruim); color: #fff; }
+.sub-valor { font-size: 0.72rem; font-weight: 600; }
+.tabela-medidas td { vertical-align: top; }

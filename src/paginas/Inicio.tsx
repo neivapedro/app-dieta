@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { FormAplicacao, FormDiario } from '../componentes/formularios';
+import { CartaoTreinoHoje } from '../componentes/treino';
 import { Bloco, Icone } from '../componentes/ui';
 import { useDados } from '../dados/contexto';
 import { useCalculos } from '../dados/useCalculos';
@@ -87,6 +88,8 @@ export function Inicio() {
           <button className="botao" onClick={() => setRegistrar(true)}>Registrar aplicação extra</button>
         </section>
       )}
+
+      <CartaoTreinoHoje />
 
       {resumo.alertas.map((a) => (
         <div className="alerta" key={a}>{a}</div>
