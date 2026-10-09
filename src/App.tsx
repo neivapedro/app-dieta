@@ -25,7 +25,8 @@ const ABAS = [
 const ABA_TREINO = { para: '/treino', rotulo: 'Treino', icone: 'treino', titulo: 'Treino' };
 
 function AvisoNovaVersao() {
-  const [nova, setNova] = useState(false);
+  // O aviso pode chegar antes desta parte da tela existir (ainda carregando)
+  const [nova, setNova] = useState(() => !!(window as { novaVersao?: boolean }).novaVersao);
   useEffect(() => {
     const ver = () => setNova(true);
     window.addEventListener('nova-versao', ver);

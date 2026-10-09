@@ -289,6 +289,7 @@ export function Perfil() {
       <p className="mudo" style={{ textAlign: 'center' }}>
         Este app registra e calcula; decisões de dose devem ser tomadas com acompanhamento médico.
       </p>
+      <p className="mudo" style={{ textAlign: 'center' }}>Versão {__VERSAO_APP__}</p>
     </div>
   );
 }

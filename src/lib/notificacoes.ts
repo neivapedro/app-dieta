@@ -27,7 +27,10 @@ export async function registrarServiceWorker(): Promise<ServiceWorkerRegistratio
     const tinhaControle = !!navigator.serviceWorker.controller;
     const reg = await navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`, { updateViaCache: 'none' });
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (tinhaControle) window.dispatchEvent(new Event('nova-versao'));
+      if (tinhaControle) {
+        (window as { novaVersao?: boolean }).novaVersao = true;
+        window.dispatchEvent(new Event('nova-versao'));
+      }
     });
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') reg.update().catch(() => undefined);
@@ -124,4 +127,25 @@ export async function esquecerAparelho(repo: Repositorio): Promise<void> {
   const reg = await navigator.serviceWorker.getRegistration();
   const sub = await reg?.pushManager?.getSubscription();
   if (sub) await repo.removerInscricaoPush(sub.endpoint);
+}
+
+/**
+ * Confere no servidor se há versão nova publicada (independe do service worker,
+ * que no iPhone pode demorar a perceber). Dispara "nova-versao" para o aviso.
+ */
+export function vigiarVersaoNova(): void {
+  if (import.meta.env.DEV || import.meta.env.VITE_DEMO) return;
+  const conferir = () =>
+    fetch(`${import.meta.env.BASE_URL}versao.json?t=${Date.now()}`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((v: { versao?: string } | null) => {
+        if (v?.versao && v.versao !== __VERSAO_APP__) {
+          (window as { novaVersao?: boolean }).novaVersao = true;
+          window.dispatchEvent(new Event('nova-versao'));
+        }
+      })
+      .catch(() => undefined);
+  conferir();
+  document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && conferir());
+  setInterval(conferir, 10 * 60 * 1000);
 }

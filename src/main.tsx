@@ -2,10 +2,13 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { ProvedorDados } from './dados/contexto';
-import { registrarServiceWorker } from './lib/notificacoes';
+import { registrarServiceWorker, vigiarVersaoNova } from './lib/notificacoes';
 import './estilos.css';
 
-if (!import.meta.env.VITE_DEMO) registrarServiceWorker();
+if (!import.meta.env.VITE_DEMO) {
+  registrarServiceWorker();
+  vigiarVersaoNova();
+}
 
 // Logo após uma publicação, o app aberto pode pedir um arquivo da versão antiga
 // (já apagado do servidor). Recarrega uma vez para pegar a versão nova.
