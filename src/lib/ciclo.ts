@@ -21,7 +21,8 @@ export function cicloPadrao(data_inicio: string): Omit<Ciclo, 'id'> {
     quantidade_total_mg: 60,
     concentracao_mg_ml: 20,
     intervalo_dias: 7,
-    passo_ui: 0.5,
+    // 0,25 UI: todas as doses do plano (1,25 a 2,5 mg) caem exatas na seringa U-100
+    passo_ui: 0.25,
     fases: PLANO_PADRAO.map((f) => ({ ...f })),
   };
 }

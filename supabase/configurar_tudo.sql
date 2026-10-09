@@ -34,7 +34,7 @@ create table public.ciclos (
   quantidade_total_mg numeric(8,3) not null check (quantidade_total_mg > 0),
   concentracao_mg_ml numeric(8,3) not null check (concentracao_mg_ml > 0),
   intervalo_dias int not null default 7 check (intervalo_dias > 0),
-  passo_ui numeric(4,2) not null default 0.5,
+  passo_ui numeric(4,2) not null default 0.25,
   -- [{ nome, semanas, dose_mg, objetivo }]
   fases jsonb not null,
   ativo boolean not null default true,

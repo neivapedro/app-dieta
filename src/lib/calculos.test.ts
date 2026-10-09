@@ -63,11 +63,18 @@ describe('Plano (aba Plano)', () => {
 
   it('converte mg em UI (U-100) e arredonda para a marcação da seringa', () => {
     expect(mgParaUI(2.5, 20)).toBeCloseTo(12.5);
-    expect(marcacao(1.25, ciclo)).toMatchObject({ ui_pratica: 6.5 });
-    expect(marcacao(1.25, ciclo).mg_pratica).toBeCloseTo(1.3);
-    expect(marcacao(1.75, ciclo).ui_pratica).toBe(9);
-    expect(marcacao(2.25, ciclo).ui_pratica).toBe(11.5);
+    // padrão 0,25 UI: a dose do plano sai exata (1,25 mg = 6,25 UI)
+    expect(marcacao(1.25, ciclo)).toMatchObject({ ui_pratica: 6.25 });
+    expect(marcacao(1.25, ciclo).mg_pratica).toBeCloseTo(1.25);
+    expect(marcacao(2.25, ciclo).ui_pratica).toBe(11.25);
+    // seringa lida de meia em meia unidade
+    const meia = { ...ciclo, passo_ui: 0.5 };
+    expect(marcacao(1.25, meia)).toMatchObject({ ui_pratica: 6.5 });
+    expect(marcacao(1.25, meia).mg_pratica).toBeCloseTo(1.3);
+    expect(marcacao(1.75, meia).ui_pratica).toBe(9);
+    expect(marcacao(2.25, meia).ui_pratica).toBe(11.5);
   });
+
 });
 
 describe('Agenda recalculada pela última aplicação', () => {
