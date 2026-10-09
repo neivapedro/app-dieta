@@ -117,7 +117,7 @@ export function Inicio() {
           <Bloco rotulo="Saldo" valor={mg(resumo.saldo_mg)} />
           <Bloco rotulo="Saldo (ml / UI)" valor={`${num(resumo.saldo_ml)} ml · ${num(resumo.saldo_ui, 0)} UI`} />
           <Bloco rotulo="Aplicações feitas" valor={`${resumo.aplicacoes_realizadas} · ${mg(resumo.total_aplicado_mg)}`} />
-          <Bloco rotulo="Doses de manutenção no saldo" valor={`${resumo.doses_manutencao_restantes} × ${num(ciclo.fases[ciclo.fases.length - 1]?.dose_mg)} mg`} />
+          <Bloco rotulo="Doses restantes no plano" valor={`${resumo.projecao.length} ${resumo.projecao.length === 1 ? 'dose' : 'doses'}`} />
         </div>
         {resumo.data_fim_prevista && p && (
           <p className="mudo" style={{ marginTop: 10 }}>
