@@ -1,5 +1,5 @@
 import type { PlanoDieta } from '../lib/dieta';
-import type { RegistroDiario, TreinoDia } from '../lib/tipos';
+import type { Aplicacao, Medida, RegistroDiario, TreinoDia } from '../lib/tipos';
 import type { Repositorio } from './repositorio';
 
 // Fila de gravações guardada no aparelho. A tela muda na hora (otimista) e a
@@ -9,12 +9,17 @@ import type { Repositorio } from './repositorio';
 export type Operacao =
   | { tipo: 'treino'; dado: Omit<TreinoDia, 'id'> }
   | { tipo: 'diario'; dado: Omit<RegistroDiario, 'id'> }
-  | { tipo: 'dieta'; dado: PlanoDieta };
+  | { tipo: 'dieta'; dado: PlanoDieta }
+  // Aplicação e medição levam o id criado no aparelho: reenviar nunca duplica
+  | { tipo: 'aplicacao'; dado: Aplicacao }
+  | { tipo: 'medida'; dado: Medida };
 
 export type ItemFila = Operacao & { chave: string; versao: number };
 
 export function chaveDe(op: Operacao): string {
-  return op.tipo === 'dieta' ? 'dieta' : `${op.tipo}:${op.dado.data}`;
+  if (op.tipo === 'dieta') return 'dieta';
+  if (op.tipo === 'aplicacao' || op.tipo === 'medida') return `${op.tipo}:${op.dado.id}`;
+  return `${op.tipo}:${op.dado.data}`;
 }
 
 const prefixo = 'app-dieta:fila:';
@@ -45,6 +50,8 @@ export function enfileirar(fila: ItemFila[], op: Operacao, versao: number): Item
 export async function executarOperacao(repo: Repositorio, op: Operacao) {
   if (op.tipo === 'treino') return repo.salvarTreino(op.dado);
   if (op.tipo === 'diario') return repo.salvarDiario(op.dado);
+  if (op.tipo === 'aplicacao') return repo.salvarAplicacao(op.dado);
+  if (op.tipo === 'medida') return repo.salvarMedida(op.dado);
   return repo.salvarDieta(op.dado);
 }
 
@@ -52,12 +59,25 @@ interface Aplicavel {
   treinos: TreinoDia[];
   diario: RegistroDiario[];
   dieta: PlanoDieta | null;
+  aplicacoes?: Aplicacao[];
+  medidas?: Medida[];
 }
+
+const porData = <T extends { data: string }>(a: T, b: T) => a.data.localeCompare(b.data);
 
 /** Aplica as operações ainda não enviadas sobre os dados (do servidor ou do cache). */
 export function aplicarFila<T extends Aplicavel>(dados: T, fila: ItemFila[]): T {
-  let { treinos, diario, dieta } = dados;
+  let { treinos, diario, dieta, aplicacoes, medidas } = dados;
   for (const op of fila) {
+    if (op.tipo === 'aplicacao' && aplicacoes) {
+      aplicacoes = [...aplicacoes.filter((a) => a.id !== op.dado.id), op.dado].sort(porData);
+      continue;
+    }
+    if (op.tipo === 'medida' && medidas) {
+      medidas = [...medidas.filter((m) => m.id !== op.dado.id), op.dado].sort(porData);
+      continue;
+    }
+    if (op.tipo === 'aplicacao' || op.tipo === 'medida') continue;
     if (op.tipo === 'treino') {
       const atual = treinos.find((t) => t.data === op.dado.data);
       treinos = [...treinos.filter((t) => t.data !== op.dado.data), { ...op.dado, id: atual?.id ?? `pendente:${op.dado.data}` }].sort((a, b) =>
@@ -72,7 +92,7 @@ export function aplicarFila<T extends Aplicavel>(dados: T, fila: ItemFila[]): T 
       dieta = op.dado;
     }
   }
-  return { ...dados, treinos, diario, dieta };
+  return { ...dados, treinos, diario, dieta, ...(aplicacoes ? { aplicacoes } : {}), ...(medidas ? { medidas } : {}) };
 }
 
 // --- Última cópia dos dados, para abrir sem internet ---

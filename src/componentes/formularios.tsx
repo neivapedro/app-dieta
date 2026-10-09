@@ -17,7 +17,7 @@ function Erro({ msg }: { msg: string | null }) {
 // ---------- Aplicação ----------
 
 export function FormAplicacao({ aplicacao, aoFechar }: { aplicacao?: Aplicacao; aoFechar: () => void }) {
-  const { ciclo, diario, executar } = useDados();
+  const { ciclo, diario, executar, gravar } = useDados();
   const { resumo, hoje } = useCalculos();
   const [data, setData] = useState(aplicacao?.data ?? hoje);
   const numero = aplicacao ? resumo!.linhas.find((l) => l.aplicacao.id === aplicacao.id)!.numero : resumo!.aplicacoes_realizadas + 1;
@@ -49,20 +49,20 @@ export function FormAplicacao({ aplicacao, aoFechar }: { aplicacao?: Aplicacao; 
     if (!doseNum || doseNum <= 0) return setErro('Informe a dose em mg.');
     if (!data) return setErro('Informe a data.');
     setSalvando(true);
-    try {
-      await executar(async (repo) => {
-        await repo.salvarAplicacao({ id: aplicacao?.id, ciclo_id: ciclo!.id, data, dose_mg: doseNum, local: local || null, observacoes: obs.trim() || null });
-        const pesoNum = paraNumero(peso);
-        if (mexeuDiario && (pesoNum !== null || nausea !== null)) {
-          const { id: _id, ...resto } = regDia ?? ({} as Partial<RegistroDiario>);
-          await repo.salvarDiario({ ...resto, data, peso_kg: pesoNum ?? regDia?.peso_kg ?? null, nausea: nausea ?? regDia?.nausea ?? null, observacoes: regDia?.observacoes ?? null });
-        }
+    // Pela fila: aparece na hora e, sem sinal, é enviada quando a internet voltar
+    gravar({
+      tipo: 'aplicacao',
+      dado: { id: aplicacao?.id ?? crypto.randomUUID(), ciclo_id: ciclo!.id, data, dose_mg: doseNum, local: local || null, observacoes: obs.trim() || null },
+    });
+    const pesoNum = paraNumero(peso);
+    if (mexeuDiario && (pesoNum !== null || nausea !== null)) {
+      const { id: _id, ...resto } = regDia ?? ({} as Partial<RegistroDiario>);
+      gravar({
+        tipo: 'diario',
+        dado: { ...resto, data, peso_kg: pesoNum ?? regDia?.peso_kg ?? null, nausea: nausea ?? regDia?.nausea ?? null, observacoes: regDia?.observacoes ?? null },
       });
-      aoFechar();
-    } catch (e) {
-      setErro((e as Error).message);
-      setSalvando(false);
     }
+    aoFechar();
   }
 
   async function excluir() {
@@ -286,7 +286,7 @@ function Leituras({
 }
 
 export function FormMedida({ medida, aoFechar, aoSalvar }: { medida?: Medida; aoFechar: () => void; aoSalvar?: () => void }) {
-  const { perfil, medidas, executar } = useDados();
+  const { perfil, medidas, executar, gravar } = useDados();
   const ultima = [...medidas].sort((a, b) => b.data.localeCompare(a.data))[0];
   const sexo = perfil?.sexo ?? 'Masculino';
   const [data, setData] = useState(medida?.data ?? hojeLocal());
@@ -323,24 +323,21 @@ export function FormMedida({ medida, aoFechar, aoSalvar }: { medida?: Medida; ao
     if (!medida && medidas.some((m) => m.data === data)) return setErro('Já existe uma medição nesta data. Toque nela no histórico para editar.');
     if (salvando) return;
     setSalvando(true);
-    try {
-      await executar((repo) =>
-        repo.salvarMedida({
-          id: medida?.id,
-          data,
-          altura_cm: valores.altura_cm!,
-          pescoco_cm: valores.pescoco_cm!,
-          cintura_cm: valores.cintura_cm!,
-          quadril_cm: sexo === 'Feminino' ? valores.quadril_cm : null,
-          peso_kg: valores.peso_kg!,
-        }),
-      );
-      aoFechar();
-      aoSalvar?.();
-    } catch (e) {
-      setErro((e as Error).message);
-      setSalvando(false);
-    }
+    // Pela fila: aparece na hora e, sem sinal, é enviada quando a internet voltar
+    gravar({
+      tipo: 'medida',
+      dado: {
+        id: medida?.id ?? crypto.randomUUID(),
+        data,
+        altura_cm: valores.altura_cm!,
+        pescoco_cm: valores.pescoco_cm!,
+        cintura_cm: valores.cintura_cm!,
+        quadril_cm: sexo === 'Feminino' ? valores.quadril_cm : null,
+        peso_kg: valores.peso_kg!,
+      },
+    });
+    aoFechar();
+    aoSalvar?.();
   }
 
   async function excluir() {

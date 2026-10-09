@@ -236,6 +236,26 @@ for e in extras:
     i, nome, grupo, p, c, g, fib, a, por, fonte = e
     itens.append([i, nome, grupo, p, c, g, fib, a, por, fonte])
 
+# Alimentos que na TACO só existem crus: versão pronta estimada pelo rendimento
+# (peso pronto ÷ peso cru). Peixe e fígado grelhados/assados perdem ~25% de água;
+# canjica cozida absorve água (~2,6×).
+COZIDOS_ESTIMADOS = [
+    ('t291', 'Corvina de água doce, assada (estimado)', 0.75),
+    ('t292', 'Corvina do mar, assada (estimado)', 0.75),
+    ('t310', 'Pescadinha, assada (estimado)', 0.75),
+    ('t314', 'Porquinho (peixe), assado (estimado)', 0.75),
+    ('t322', 'Tucunaré, filé, assado (estimado)', 0.75),
+    ('t400', 'Frango, fígado, grelhado (estimado)', 0.75),
+    ('t434', 'Porco, orelha, cozida (estimado)', 0.85),
+    ('t437', 'Porco, rabo, cozido (estimado)', 0.85),
+    ('t19', 'Canjica, branca, cozida (estimado)', 2.6),
+]
+por_id = {x[0]: x for x in itens}
+for orig, nome, rendimento in COZIDOS_ESTIMADOS:
+    x = por_id[orig]
+    f = lambda v: round(v / rendimento, 2)
+    itens.append([orig + 'p', nome, x[2], f(x[3]), f(x[4]), f(x[5]), f(x[6]), x[7], [], f'TACO cru ÷ rendimento {str(rendimento).replace(".", ",")}'])
+
 ids = [x[0] for x in itens]
 assert len(ids) == len(set(ids))
 saida_itens = []

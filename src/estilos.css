@@ -376,3 +376,5 @@ details.ajuda summary { min-height: 32px; display: flex; align-items: center; }
   tr { break-inside: avoid; }
   .grafico { height: 220px; }
 }
+
+.grafico-fixo { height: auto; overflow: hidden; }

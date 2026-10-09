@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Bloco, Vazio } from '../componentes/ui';
 import { useDados } from '../dados/contexto';
@@ -61,7 +61,25 @@ export function Analise() {
   const { resumo, geral, fases, serie, hoje, composicoes } = useCalculos();
   const treino = useTreino();
   const { banco } = useAlimentos();
+  // Na impressão o gráfico ganha largura fixa de página A4
+  const [imprimindo, setImprimindo] = useState(false);
+  useEffect(() => {
+    const antes = () => setImprimindo(true);
+    const depois = () => setImprimindo(false);
+    window.addEventListener('beforeprint', antes);
+    window.addEventListener('afterprint', depois);
+    return () => {
+      window.removeEventListener('beforeprint', antes);
+      window.removeEventListener('afterprint', depois);
+    };
+  }, []);
   if (!resumo) return null;
+
+  function imprimir() {
+    setImprimindo(true);
+    // Dá tempo de redesenhar o gráfico na largura da página antes de abrir a impressão
+    setTimeout(() => window.print(), 300);
+  }
 
   const datasAplic = resumo.linhas.map((l) => l.aplicacao.data);
   const compFases = composicaoPorFase(fases, composicoes, treino ? treinos : null, hoje);
@@ -83,7 +101,7 @@ export function Analise() {
     <div className="pilha relatorio">
       <div className="linha entre nao-imprimir">
         <span className="texto-2">Relatório de uma página para levar ao médico ou nutricionista.</span>
-        <button className="botao pequeno" onClick={() => window.print()}>
+        <button className="botao pequeno" onClick={imprimir}>
           Imprimir / PDF
         </button>
       </div>
@@ -128,7 +146,7 @@ export function Analise() {
         <h2>Peso × dose</h2>
         {serie.length > 0 || resumo.linhas.length > 0 ? (
           <Suspense fallback={<div className="grafico" />}>
-            <GraficoPesoDose serie={serie} linhas={resumo.linhas} hoje={hoje} />
+            <GraficoPesoDose serie={serie} linhas={resumo.linhas} hoje={hoje} larguraFixa={imprimindo ? 680 : undefined} />
           </Suspense>
         ) : (
           <Vazio>Registre pesos no Diário ou nas Medidas para ver o gráfico.</Vazio>

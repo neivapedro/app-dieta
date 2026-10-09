@@ -20,3 +20,16 @@ describe('Fila de gravação', () => {
     expect(d.outro).toBe(1);
   });
 });
+
+describe('Fila: aplicação e medição', () => {
+  it('nova aplicação aparece na hora e reenviar não duplica (mesmo id)', () => {
+    const base = { treinos: [], diario: [], dieta: null, aplicacoes: [], medidas: [] };
+    const ap = { id: 'x1', ciclo_id: 'c', data: '2026-10-15', dose_mg: 1.5, local: null, observacoes: null };
+    let f = enfileirar([], { tipo: 'aplicacao', dado: ap }, 1);
+    f = enfileirar(f, { tipo: 'aplicacao', dado: { ...ap, dose_mg: 1.25 } }, 2);
+    expect(f).toHaveLength(1);
+    const d = aplicarFila(base, f);
+    expect(d.aplicacoes).toEqual([{ ...ap, dose_mg: 1.25 }]);
+    expect(aplicarFila({ ...d }, f).aplicacoes).toHaveLength(1);
+  });
+});

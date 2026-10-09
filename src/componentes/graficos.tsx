@@ -99,7 +99,7 @@ export function GraficoComposicao({ dados }: { dados: Composicao[] }) {
 }
 
 /** Peso ao longo do ciclo × degraus de dose aplicada. */
-export function GraficoPesoDose({ serie, linhas, hoje }: { serie: PontoPeso[]; linhas: LinhaAplicacao[]; hoje: string }) {
+export function GraficoPesoDose({ serie, linhas, hoje, larguraFixa }: { serie: PontoPeso[]; linhas: LinhaAplicacao[]; hoje: string; larguraFixa?: number }) {
   const CORES = useCores();
   const mapa = new Map<number, { dia: number; peso?: number; dose?: number }>();
   for (const p of serie) mapa.set(paraDia(p.data), { dia: paraDia(p.data), peso: p.peso_kg });
@@ -112,10 +112,9 @@ export function GraficoPesoDose({ serie, linhas, hoje }: { serie: PontoPeso[]; l
     mapa.set(ultimoDia, { ...(mapa.get(ultimoDia) ?? { dia: ultimoDia }), dose: linhas[linhas.length - 1].aplicacao.dose_mg });
   }
   const pontos = [...mapa.values()].sort((a, b) => a.dia - b.dia);
-  return (
-    <div className="grafico">
-      <ResponsiveContainer>
-        <ComposedChart data={pontos} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
+  // Na impressão, largura fixa: o gráfico responsivo não se redimensiona para a página
+  const grafico = (
+        <ComposedChart data={pontos} margin={{ top: 8, right: 4, left: 4, bottom: 0 }} {...(larguraFixa ? { width: larguraFixa, height: 240 } : {})}>
           <CartesianGrid vertical={false} />
           {eixoX()}
           <YAxis yAxisId="kg" domain={['auto', 'auto']} tickFormatter={(v: number) => num(v, 0)} tickLine={false} axisLine={false} width={36} />
@@ -125,7 +124,11 @@ export function GraficoPesoDose({ serie, linhas, hoje }: { serie: PontoPeso[]; l
           <Line yAxisId="kg" dataKey="peso" name="Peso" unit=" kg" stroke={CORES.peso} strokeWidth={2} dot={{ r: 2 }} connectNulls isAnimationActive={false} />
           <Line yAxisId="mg" dataKey="dose" name="Dose" unit=" mg" type="stepAfter" stroke={CORES.dose} strokeWidth={2} strokeDasharray="6 4" dot={false} connectNulls isAnimationActive={false} />
         </ComposedChart>
-      </ResponsiveContainer>
+  );
+  if (larguraFixa) return <div className="grafico grafico-fixo">{grafico}</div>;
+  return (
+    <div className="grafico">
+      <ResponsiveContainer>{grafico}</ResponsiveContainer>
     </div>
   );
 }

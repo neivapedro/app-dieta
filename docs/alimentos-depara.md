@@ -1,6 +1,6 @@
 # De-para do banco de alimentos
 
-O banco da aba Dieta (`src/dados/alimentos.json`, 654 itens) junta três fontes:
+O banco da aba Dieta (`src/dados/alimentos.json`, 665 itens) junta três fontes:
 
 1. **TACO 4ª edição (NEPA/Unicamp):** 590 alimentos brasileiros por 100 g. CSV em [raulfdm/taco-api](https://github.com/raulfdm/taco-api).
 2. **Planilha Gorgonoidiana:** os 32 itens da aba de alimentos, conferidos abaixo.
@@ -14,7 +14,8 @@ O banco da aba Dieta (`src/dados/alimentos.json`, 654 itens) junta três fontes:
   - frango: peito assado, coxa sem pele assada, asa assada, moela cozida;
   - bacon frito, linguiça calabresa, salsicha;
   - ovo mexido, atum fresco grelhado, tilápia frita;
-  - acompanhamentos: batata-doce assada e inhame cozido.
+  - acompanhamentos: batata-doce assada, inhame, grão-de-bico e guandu cozidos.
+- **Só existiam crus na TACO:** corvinas, pescadinha, porquinho, tucunaré, fígado de frango, orelha e rabo de porco e canjica ganharam uma versão pronta **estimada** pelo rendimento (peixe e fígado assados ≈ 75% do peso cru; orelha e rabo cozidos ≈ 85%; canjica cozida ≈ 2,6× o peso crua). O nome traz "(estimado)".
 
 - **kcal:** o app sempre calcula as kcal pelos macros (proteína 4, carbo 4, gordura 9), como a planilha de dieta. Assim o total do plano bate com a soma dos macros.
 - **Proteína animal:** carnes, peixes, ovos, leite e derivados, whey/albumina e pratos com carne contam como **proteína animal**. O resto conta como **proteína vegetal**.

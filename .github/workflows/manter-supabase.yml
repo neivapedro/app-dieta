@@ -11,12 +11,19 @@ on:
 
 permissions:
   contents: read
+  # Para reativar este próprio agendamento (o GitHub desliga agendamentos após 60 dias sem commits)
+  actions: write
 
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Manter este agendamento ativo
+        run: |
+          curl -s -o /dev/null -w "reativar agendamento: %{http_code}\n" -X PUT \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/manter-supabase.yml/enable"
       - name: Consulta leve no banco
         run: |
           URL=$(grep -o "https://[a-z0-9]*\.supabase\.co" src/config.ts | head -1)
