@@ -1,0 +1,221 @@
+import { jsPDF } from 'jspdf';
+import { autoTable } from 'jspdf-autotable';
+
+// Relatório da Análise em PDF de verdade, gerado no próprio aparelho.
+// No iPhone com o app instalado, window.print() não funciona; o PDF vai para o
+// menu Compartilhar (Salvar em Arquivos, Imprimir, WhatsApp, e-mail).
+
+export interface TabelaRelatorio {
+  titulo: string;
+  cabecalho: string[];
+  linhas: string[][];
+  nota?: string;
+}
+
+export interface GraficoRelatorio {
+  /** Dia (número de dias desde 1970) e valor */
+  pesos: { dia: number; kg: number }[];
+  /** Doses aplicadas, em degraus */
+  doses: { dia: number; mg: number }[];
+  diaFinal: number;
+  rotulo: (dia: number) => string;
+}
+
+export interface ModeloRelatorio {
+  titulo: string;
+  subtitulo: string;
+  resumo: [string, string][];
+  ritmo: string;
+  grafico: GraficoRelatorio | null;
+  tabelas: TabelaRelatorio[];
+  rodape: string;
+}
+
+/** As fontes padrão do PDF não têm alguns símbolos: troca por equivalentes. */
+export function textoPdf(s: string): string {
+  return s
+    .replace(/−/g, '-')
+    .replace(/→/g, '->')
+    .replace(/≈/g, '~')
+    .replace(/✓/g, 'ok')
+    .replace(/ | /g, ' ')
+    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '')
+    .trim();
+}
+
+const MARGEM = 14;
+const LARGURA = 210 - MARGEM * 2;
+const ESCURO: [number, number, number] = [24, 24, 27];
+const CINZA: [number, number, number] = [110, 110, 115];
+
+function fimTabela(doc: jsPDF): number {
+  return (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
+}
+
+function garantirEspaco(doc: jsPDF, y: number, altura: number): number {
+  if (y + altura > 297 - 16) {
+    doc.addPage();
+    return 18;
+  }
+  return y;
+}
+
+function titulo(doc: jsPDF, y: number, texto: string): number {
+  y = garantirEspaco(doc, y, 20);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(...ESCURO);
+  doc.text(textoPdf(texto), MARGEM, y);
+  return y + 3;
+}
+
+function nota(doc: jsPDF, y: number, texto: string): number {
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(...CINZA);
+  const linhas = doc.splitTextToSize(textoPdf(texto), LARGURA);
+  y = garantirEspaco(doc, y, linhas.length * 3.4 + 2);
+  doc.text(linhas, MARGEM, y + 3);
+  return y + linhas.length * 3.4 + 3;
+}
+
+function desenharGrafico(doc: jsPDF, y: number, g: GraficoRelatorio): number {
+  const altura = 62;
+  y = garantirEspaco(doc, y, altura + 14);
+  const x0 = MARGEM + 10;
+  const x1 = MARGEM + LARGURA - 10;
+  const yTopo = y + 4;
+  const yBase = y + altura - 8;
+  const dias = [...g.pesos.map((p) => p.dia), ...g.doses.map((d) => d.dia), g.diaFinal];
+  const dMin = Math.min(...dias);
+  const dMax = Math.max(Math.max(...dias), dMin + 1);
+  const px = (d: number) => x0 + ((d - dMin) / (dMax - dMin)) * (x1 - x0);
+
+  // Eixo do peso (esquerda) e da dose (direita)
+  const kgs = g.pesos.map((p) => p.kg);
+  let kMin = kgs.length ? Math.floor(Math.min(...kgs) - 0.5) : 0;
+  let kMax = kgs.length ? Math.ceil(Math.max(...kgs) + 0.5) : 1;
+  if (kMax - kMin < 2) kMax = kMin + 2;
+  const mgMax = Math.max(1, Math.ceil(Math.max(0, ...g.doses.map((d) => d.mg)) + 0.5));
+  const pyKg = (v: number) => yBase - ((v - kMin) / (kMax - kMin)) * (yBase - yTopo);
+  const pyMg = (v: number) => yBase - (v / mgMax) * (yBase - yTopo);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(...CINZA);
+  doc.setDrawColor(225, 225, 228);
+  doc.setLineWidth(0.2);
+  for (let i = 0; i <= 4; i++) {
+    const yy = yTopo + ((yBase - yTopo) * i) / 4;
+    doc.line(x0, yy, x1, yy);
+    doc.text((kMax - ((kMax - kMin) * i) / 4).toFixed(1).replace('.', ','), x0 - 1.5, yy + 1, { align: 'right' });
+    doc.text((mgMax - (mgMax * i) / 4).toFixed(1).replace('.', ','), x1 + 1.5, yy + 1);
+  }
+  // Datas no eixo X: início, meio e fim
+  for (const d of [dMin, Math.round((dMin + dMax) / 2), dMax]) doc.text(g.rotulo(d), px(d), yBase + 4, { align: 'center' });
+
+  // Dose em degraus (tracejada)
+  if (g.doses.length) {
+    doc.setDrawColor(150, 150, 155);
+    doc.setLineWidth(0.5);
+    doc.setLineDashPattern([1.5, 1.2], 0);
+    const degraus = [...g.doses].sort((a, b) => a.dia - b.dia);
+    for (let i = 0; i < degraus.length; i++) {
+      const atual = degraus[i];
+      const prox = degraus[i + 1]?.dia ?? g.diaFinal;
+      doc.line(px(atual.dia), pyMg(atual.mg), px(prox), pyMg(atual.mg));
+      if (degraus[i + 1]) doc.line(px(prox), pyMg(atual.mg), px(prox), pyMg(degraus[i + 1].mg));
+    }
+    doc.setLineDashPattern([], 0);
+  }
+  // Peso (linha cheia com pontos)
+  if (g.pesos.length) {
+    doc.setDrawColor(...ESCURO);
+    doc.setFillColor(...ESCURO);
+    doc.setLineWidth(0.6);
+    const pts = [...g.pesos].sort((a, b) => a.dia - b.dia);
+    for (let i = 1; i < pts.length; i++) doc.line(px(pts[i - 1].dia), pyKg(pts[i - 1].kg), px(pts[i].dia), pyKg(pts[i].kg));
+    for (const p of pts) doc.circle(px(p.dia), pyKg(p.kg), 0.7, 'F');
+  }
+  // Legenda
+  doc.setTextColor(...ESCURO);
+  doc.setFontSize(7.5);
+  const yl = y + altura - 1;
+  doc.setDrawColor(...ESCURO);
+  doc.setLineWidth(0.6);
+  doc.line(MARGEM + LARGURA / 2 - 32, yl - 1, MARGEM + LARGURA / 2 - 26, yl - 1);
+  doc.text('Peso (kg, esquerda)', MARGEM + LARGURA / 2 - 25, yl);
+  doc.setDrawColor(150, 150, 155);
+  doc.setLineDashPattern([1.5, 1.2], 0);
+  doc.line(MARGEM + LARGURA / 2 + 8, yl - 1, MARGEM + LARGURA / 2 + 14, yl - 1);
+  doc.setLineDashPattern([], 0);
+  doc.text('Dose (mg, direita)', MARGEM + LARGURA / 2 + 15, yl);
+  return y + altura + 2;
+}
+
+export function gerarRelatorioPdf(m: ModeloRelatorio): Blob {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  doc.setProperties({ title: textoPdf(m.titulo) });
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.setTextColor(...ESCURO);
+  doc.text(textoPdf(m.titulo), MARGEM, 18);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(...CINZA);
+  doc.text(textoPdf(m.subtitulo), MARGEM, 23.5);
+
+  // Resumo em 2 pares por linha
+  let y = titulo(doc, 32, 'Resumo do ciclo');
+  const pares: string[][] = [];
+  for (let i = 0; i < m.resumo.length; i += 2) {
+    const a = m.resumo[i];
+    const b = m.resumo[i + 1];
+    pares.push([textoPdf(a[0]), textoPdf(a[1]), b ? textoPdf(b[0]) : '', b ? textoPdf(b[1]) : '']);
+  }
+  autoTable(doc, {
+    startY: y,
+    body: pares,
+    theme: 'plain',
+    margin: { left: MARGEM, right: MARGEM },
+    styles: { fontSize: 8.5, cellPadding: 1.3, textColor: ESCURO },
+    columnStyles: { 0: { textColor: CINZA, cellWidth: 34 }, 1: { fontStyle: 'bold', cellWidth: 57 }, 2: { textColor: CINZA, cellWidth: 34 }, 3: { fontStyle: 'bold' } },
+  });
+  y = nota(doc, fimTabela(doc) + 1, m.ritmo);
+
+  if (m.grafico && (m.grafico.pesos.length || m.grafico.doses.length)) {
+    y = titulo(doc, y + 5, 'Peso x dose');
+    y = desenharGrafico(doc, y, m.grafico);
+  }
+
+  for (const t of m.tabelas) {
+    if (!t.linhas.length) continue;
+    y = titulo(doc, y + 6, t.titulo);
+    autoTable(doc, {
+      startY: y + 1,
+      head: [t.cabecalho.map(textoPdf)],
+      body: t.linhas.map((l) => l.map(textoPdf)),
+      theme: 'grid',
+      margin: { left: MARGEM, right: MARGEM, top: 18 },
+      styles: { fontSize: 7.5, cellPadding: 1.4, textColor: ESCURO, lineColor: [225, 225, 228], lineWidth: 0.2 },
+      headStyles: { fillColor: [38, 38, 41], textColor: 255, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [247, 247, 248] },
+    });
+    y = fimTabela(doc);
+    if (t.nota) y = nota(doc, y + 1, t.nota);
+  }
+
+  y = nota(doc, y + 6, m.rodape);
+
+  // Número das páginas
+  const total = doc.getNumberOfPages();
+  for (let i = 1; i <= total; i++) {
+    doc.setPage(i);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(...CINZA);
+    doc.text(`${i}/${total}`, 210 - MARGEM, 290, { align: 'right' });
+  }
+  return doc.output('blob');
+}
