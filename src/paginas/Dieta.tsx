@@ -190,14 +190,17 @@ export function Dieta() {
         </div>
         {metas && corpo && ultima ? (
           <div className="pilha" style={{ gap: 8 }}>
-            <div className="linha entre" style={{ alignItems: 'baseline' }}>
-              <div className="grande">{kcal(metas.meta_kcal)}</div>
-              <div className="texto-2" style={{ textAlign: 'right', fontSize: '0.85rem' }}>
-                {ajuste < 0 ? `déficit de ${num(-ajuste, 0)}` : ajuste > 0 ? `superávit de ${num(ajuste, 0)}` : 'manutenção'}
-                <br />
-                gasto {kcal(metas.gasto_total)}
-              </div>
+            <div className="grande">{kcal(metas.meta_kcal)}</div>
+            {/* De onde vem a meta: basal → gasto total → ajuste */}
+            <div className="grade grade-3">
+              <Bloco rotulo="Basal (TMB)" valor={num(metas.tmb, 0)} />
+              <Bloco rotulo="Gasto total" valor={num(metas.gasto_total, 0)} />
+              <Bloco rotulo={ajuste < 0 ? 'Déficit' : ajuste > 0 ? 'Superávit' : 'Ajuste'} valor={ajuste === 0 ? '0' : `${ajuste < 0 ? '−' : '+'} ${num(Math.abs(ajuste), 0)}`} />
             </div>
+            <p className="texto-2">
+              kcal por dia. Basal pela sua massa magra ({kg(corpo.massa_magra_kg)}, medição de {formatarData(ultima.data)}); gasto total = basal × dia a dia +
+              exercícios; meta = gasto total {ajuste < 0 ? '−' : '+'} {ajuste < 0 ? 'déficit' : 'superávit'}.
+            </p>
             {diasMedicao > 10 && (
               <div className="alerta">Meta calculada com a medição de {formatarData(ultima.data)}. Faça uma nova medição para atualizar.</div>
             )}
@@ -260,7 +263,10 @@ export function Dieta() {
             </details>
           </div>
         ) : (
-          <div className="alerta">Registre uma medição na aba Medidas: a meta usa seu peso e sua massa magra.</div>
+          <div className="alerta" style={{ display: 'block' }}>
+            O basal (taxa metabólica basal) é calculado pela sua massa magra, que vem da medição de cintura, pescoço e peso. Registre uma medição na aba{' '}
+            <b>Medidas</b> e aqui aparecem o basal, o gasto total e a meta do dia.
+          </div>
         )}
       </section>
 
