@@ -7,12 +7,13 @@ import { useAlimentos } from '../dados/useAlimentos';
 import { useCalculos } from '../dados/useCalculos';
 import { useTreino } from '../dados/useTreino';
 import { composicaoPorFase, sintomasPorFase } from '../lib/analise';
-import { ritmoPercentual, tendenciaPeso, textoQualidade } from '../lib/conferencia';
+import { ritmoPercentual, tendenciaMedidas, tendenciaPeso, textoQualidade } from '../lib/conferencia';
 import { diferencaDias, formatarData } from '../lib/datas';
 import type { ModeloRelatorio } from '../lib/relatorioPdf';
 import { calcularMetas, macrosDaRefeicao } from '../lib/dieta';
 import { cm, corVariacao, kg, mg, num, pct, pp, sinal } from '../lib/formato';
 import { MDC, type ChaveMdc, type Composicao } from '../lib/gordura';
+import { conselhoConferencia, dietaNaTendencia, textoDietaSemana, textoPlanoSeguido } from '../lib/semana';
 import { aderenciaRecente, formatarTempo } from '../lib/treino';
 
 const GraficoPesoDose = lazy(() => import('../componentes/graficos').then((m) => ({ default: m.GraficoPesoDose })).catch(() => ({ default: SemGrafico })));
@@ -95,6 +96,15 @@ export function Analise() {
   const ultimaComp = [...composicoes].reverse().find((c) => c.massa_magra_kg !== null);
   const metasDieta = dieta && ultimaComp ? calcularMetas(dieta.config, { peso_kg: ultimaComp.peso_kg, massa_magra_kg: ultimaComp.massa_magra_kg! }, treino ? aderenciaRecente(treinos, treino.inicio, hoje, 28, treino.fim) : null) : null;
   const refeicoes = dieta && banco ? dieta.refeicoes.filter((r) => r.itens.length).map((r) => ({ r, m: macrosDaRefeicao(r, banco.mapa) })) : [];
+  // "Segui o plano?" na janela da tendência das medidas, com o mesmo conselho da Conferência da Dieta
+  const tendMedidas = tendenciaMedidas(composicoes);
+  const seguido = tendMedidas ? dietaNaTendencia(diario, tendMedidas) : null;
+  const kcalPlano = refeicoes.reduce((s, x) => s + x.m.kcal, 0);
+  const deficitPlano = metasDieta && dieta ? (kcalPlano > 0 ? metasDieta.gasto_total - kcalPlano : -dieta.config.ajuste_kcal) : null;
+  const conselho =
+    tendMedidas && seguido && ultimaComp && dieta && (banco || !dieta.refeicoes.some((r) => r.itens.length))
+      ? conselhoConferencia(tendMedidas, ultimaComp.peso_kg, seguido, deficitPlano, dieta.config.ajuste_kcal)
+      : null;
 
   function montarModelo(): ModeloRelatorio {
     const dia = (d: string) => diferencaDias('1970-01-01', d);
@@ -227,6 +237,7 @@ export function Analise() {
         ['Massa magra', dif('massa_magra_kg') === null ? kg(ini?.massa_magra_kg) : sinal(dif('massa_magra_kg'), 1, ' kg')],
         ['Peso', `${sinal(geral.variacao_kg, 1, ' kg')}${geral.variacao_percentual !== null ? ` (${sinal(geral.variacao_percentual * 100, 1, '%')})` : ''}`],
         ...(qualidade ? [['Qualidade da perda', `${textoQualidade(qualidade)} (últimas ${qualidade.medicoes} medições)`] as [string, string]] : []),
+        ...(seguido && seguido.respondidos ? [['Dieta seguida', `${textoPlanoSeguido(seguido).replace('Plano seguido: ', '')} · ${textoDietaSemana(seguido)}`] as [string, string]] : []),
       ],
       ritmo: ritmo
         ? `Ritmo atual: ${ritmo.faixa === 'ganho' ? 'peso subindo' : `${num(ritmo.pct, 2)}% do peso por semana`} (${sinal(tend!.kg_semana, 2, ' kg')}/sem, tendência de ${tend!.pontos} ${pesagens} nas últimas 4 semanas). Para quem treina, 0,5 a 1% por semana preserva melhor a massa magra.`
@@ -575,6 +586,22 @@ export function Analise() {
             kcal) · proteína animal {num(dieta.config.ptn_gkg, 1)} g/kg de massa magra ({num(metasDieta.ptn_animal_g, 0)} g) · gordura{' '}
             {num(dieta.config.gord_gkg, 1)} g/kg ({num(metasDieta.gord_g, 0)} g) · carboidrato fecha a conta.
           </p>
+          {seguido && tendMedidas && (
+            <div className="pilha" style={{ gap: 4, marginTop: 8 }}>
+              <p>
+                <b>{textoPlanoSeguido(seguido)}</b>
+                <span className="texto-2">
+                  {' '}
+                  · {textoDietaSemana(seguido)}, de {formatarData(tendMedidas.de)} à véspera de {formatarData(tendMedidas.ate)} (janela da tendência das medidas)
+                </span>
+              </p>
+              {conselho && (
+                <p className={conselho.tipo === 'bate' || conselho.tipo === 'impreciso' ? 'texto-2' : 'alerta'} style={conselho.tipo === 'bate' || conselho.tipo === 'impreciso' ? undefined : { display: 'block' }}>
+                  {conselho.texto}
+                </p>
+              )}
+            </div>
+          )}
           {refeicoes.length > 0 && (
             <div className="tabela-rolagem" style={{ marginTop: 8 }}>
               <table>

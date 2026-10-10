@@ -1,5 +1,5 @@
 import type { QualidadePerda, Tendencia } from './conferencia';
-import { ritmoPercentual } from './conferencia';
+import { faixaImprecisa, ritmoPercentual } from './conferencia';
 import { diaSemanaCurto, diferencaDias, somarDias } from './datas';
 import type { RegistroDiario, TreinoDia } from './tipos';
 
@@ -141,6 +141,57 @@ export function sugestaoSemana(tendencia: Tendencia | null, peso: number, diario
   if (ritmo > 1 && tendencia.magra_semana < 0) return { tipo: 'reduzir', texto: 'Considere reduzir o déficit.', motivo: base };
   if (ritmo < 0.5) return { tipo: 'aumentar', texto: 'Considere aumentar o déficit.', motivo: base };
   return { tipo: 'manter', texto: 'Manter.', motivo: base };
+}
+
+// ---------- "Segui o plano?" na Conferência da Dieta e na Análise ----------
+
+/** "Segui o plano?" na janela da tendência das medidas (o dia da última medição já é da semana seguinte). */
+export function dietaNaTendencia(diario: RegistroDiario[], tendencia: Tendencia): DietaSemana {
+  return dietaNoPeriodo(diario, tendencia.de, somarDias(tendencia.ate, -1));
+}
+
+/** "Plano seguido: 18 de 28 dias (64%)": "em parte" vale meio dia; conta só os dias respondidos. */
+export function textoPlanoSeguido(d: DietaSemana): string {
+  const seguidos = d.sim + 0.5 * d.parcial;
+  const f = fracaoSeguida(d);
+  const n = seguidos.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
+  return f === null ? 'Plano seguido: nenhum dia respondido' : `Plano seguido: ${n} de ${d.respondidos} dias (${Math.round(f * 100)}%)`;
+}
+
+export type TipoConselho = 'responder' | 'seguir_plano' | 'reduzir' | 'gasto_outro' | 'impreciso' | 'bate';
+
+export interface Conselho {
+  tipo: TipoConselho;
+  texto: string;
+}
+
+/**
+ * Conselho da Conferência (só texto; a meta não muda sozinha), na mesma janela
+ * da tendência. Na ordem: poucos dias respondidos → responder no Diário;
+ * seguiu menos de 80% → seguir o plano antes de mexer no déficit; com déficit,
+ * perda acima de 1%/sem e massa magra caindo → considerar reduzir; plano fora
+ * da faixa de 95% das medidas → o gasto real pode ser outro; faixa larga →
+ * esperar mais medições; senão, o plano e as medidas batem.
+ */
+export function conselhoConferencia(tendencia: Tendencia, peso: number, dieta: DietaSemana, deficitPlano: number | null, ajusteKcal: number | null): Conselho {
+  if (!dieta.dias || dieta.respondidos / dieta.dias < LIMITE_SUGESTAO.respondidos) {
+    return {
+      tipo: 'responder',
+      texto: `Responda o "Segui o plano?" no Diário (${dieta.respondidos} de ${dieta.dias} dias nesta janela): com 80% dos dias respondidos, dá para separar plano não seguido de gasto diferente do previsto.`,
+    };
+  }
+  if ((fracaoSeguida(dieta) ?? 0) < LIMITE_SUGESTAO.seguido) {
+    return { tipo: 'seguir_plano', texto: 'Antes de mexer no déficit, tente seguir o plano: as medidas só dizem algo sobre o plano quando ele é seguido.' };
+  }
+  const ritmo = ritmoPercentual(tendencia.peso_semana, peso).pct;
+  if ((ajusteKcal === null || ajusteKcal < 0) && ritmo > 1 && tendencia.magra_semana < 0) {
+    return { tipo: 'reduzir', texto: 'Perda acima de 1% do peso por semana com a massa magra caindo: considere reduzir o déficit.' };
+  }
+  if (faixaImprecisa(tendencia)) return { tipo: 'impreciso', texto: 'Plano seguido; a faixa das medidas ainda é larga para comparar com o plano. Espere mais medições.' };
+  if (deficitPlano !== null && Math.abs(tendencia.deficit_dia - deficitPlano) > tendencia.ic95_dia) {
+    return { tipo: 'gasto_outro', texto: 'Plano seguido e as medidas mostram outro déficit: o gasto real pode ser outro. Ajuste o déficit se quiser.' };
+  }
+  return { tipo: 'bate', texto: 'Plano seguido e as medidas batem com ele.' };
 }
 
 // ---------- Ação ligada à qualidade da perda ----------

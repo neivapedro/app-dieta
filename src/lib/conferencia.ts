@@ -93,6 +93,40 @@ export function tendenciaMedidas(composicoes: Composicao[], janelaDias = 42): Te
   };
 }
 
+/** Faixa larga demais para decidir: mais de 350 kcal/dia ou 40% do valor. */
+export function faixaImprecisa(t: Tendencia): boolean {
+  return t.ic95_dia > Math.max(350, Math.abs(t.deficit_dia) * 0.4);
+}
+
+// ---------- Ritmo estimado pelo déficit ----------
+
+export interface FracaoMagra {
+  /** Fração da perda que sai de massa magra (0 a 0,5) */
+  p: number;
+  /** 'tendencia' = pelas medidas; 'forbes' = estimativa pela massa gorda */
+  fonte: 'tendencia' | 'forbes';
+}
+
+/**
+ * Quanto da perda sai de massa magra: pela tendência das medidas (limitado a
+ * 0–0,5) quando o peso está caindo; senão, Forbes: p = 10,4 / (10,4 + massa gorda).
+ */
+export function fracaoMagraDaPerda(tendencia: Tendencia | null, massaGorda: number): FracaoMagra {
+  const perda = tendencia ? tendencia.gorda_semana + tendencia.magra_semana : 0;
+  if (tendencia && perda < -0.1) return { p: Math.min(0.5, Math.max(0, tendencia.magra_semana / perda)), fonte: 'tendencia' };
+  return { p: 10.4 / (10.4 + Math.max(0, massaGorda)), fonte: 'forbes' };
+}
+
+/** kcal por kg perdido: ρ = (1 − p) · 9.400 + p · 1.800 */
+export function kcalPorKgPerdido(p: number): number {
+  return (1 - p) * KCAL_KG_GORDA + p * KCAL_KG_MAGRA;
+}
+
+/** Ritmo previsto pelo déficit, em % do peso por semana: déficit × 7 / (ρ × peso) × 100. */
+export function ritmoEstimado(deficitDia: number, peso: number, p: number): number {
+  return peso > 0 ? ((deficitDia * 7) / (kcalPorKgPerdido(p) * peso)) * 100 : 0;
+}
+
 /** Déficit por dia necessário para chegar à massa gorda da meta até a data final (massa magra mantida). */
 export function deficitNecessario(gordaAtual: number, gordaMeta: number, hoje: string, fim: string): number | null {
   const dias = diferencaDias(hoje, fim);

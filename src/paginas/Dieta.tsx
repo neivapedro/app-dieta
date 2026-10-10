@@ -1,25 +1,30 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { FormConfigDieta, FormRefeicao, gr, kcal, LinhaItem, LinhaMacros, novoItem, SeletorAlimento } from '../componentes/dieta';
+import { FolhaTroca, FormConfigDieta, FormRefeicao, gr, kcal, LinhaItem, LinhaMacros, novoItem, SeletorAlimento, type Troca } from '../componentes/dieta';
 import { Bloco } from '../componentes/ui';
 import { useDados } from '../dados/contexto';
 import { useAlimentos } from '../dados/useAlimentos';
 import { useCalculos } from '../dados/useCalculos';
 import { useTreino } from '../dados/useTreino';
-import { deficitNecessario, tendenciaMedidas } from '../lib/conferencia';
+import { deficitNecessario, faixaImprecisa, fracaoMagraDaPerda, kcalPorKgPerdido, ritmoEstimado, ritmoPercentual, tendenciaMedidas } from '../lib/conferencia';
 import { diferencaDias, formatarData } from '../lib/datas';
 import {
   alvoProteinaRefeicao,
   calcularMetas,
   calcularSaldo,
+  distribuicaoProteina,
   exercicioReal,
+  fecharMacro,
   idade,
   macrosDaRefeicao,
   metaFibra,
   novoId,
+  opcoesTroca,
+  proteinaTotal,
+  PTN_TOTAL_MIN_GKG_PESO,
+  MINIMO_REFEICOES_ALVO,
   somar,
   tmbHarris,
   tmbMifflin,
-  trocarAlimento,
   type Alimento,
   type Corpo,
   type ItemRefeicao,
@@ -27,6 +32,7 @@ import {
   type Refeicao,
 } from '../lib/dieta';
 import { kg, num, pp } from '../lib/formato';
+import { conselhoConferencia, dietaNaTendencia, juntar, textoDietaSemana, textoPlanoSeguido } from '../lib/semana';
 import { aderenciaRecente } from '../lib/treino';
 
 type Seletor = { refeicao: string; indice: number | null } | null;
@@ -51,13 +57,15 @@ function proximoNomeRefeicao(refeicoes: Refeicao[]): string {
 }
 
 export function Dieta() {
-  const { dieta, salvarDieta, estadoDieta, dietaIndisponivel, perfil, medidas, treinos } = useDados();
+  const { dieta, salvarDieta, estadoDieta, dietaIndisponivel, perfil, medidas, treinos, diario } = useDados();
   const { composicoes, hoje, sexo } = useCalculos();
   const treino = useTreino();
   const { banco, falhou: falhouAlimentos, tentarDeNovo } = useAlimentos();
   const [config, setConfig] = useState(false);
   const [seletor, setSeletor] = useState<Seletor>(null);
   const [editando, setEditando] = useState<string | null>(null);
+  // Troca de alimento com duas opções (mesmo peso × mesmo macro principal)
+  const [troca, setTroca] = useState<Troca | null>(null);
   // Pilha: remover vários seguidos e desfazer todos
   const [removidos, setRemovidos] = useState<NonNullable<Removido>[]>([]);
 
@@ -73,8 +81,7 @@ export function Dieta() {
   const anos = idade(perfil?.data_nascimento, hoje);
   const aderencia = treino ? aderenciaRecente(treinos, treino.inicio, hoje, 28, treino.fim) : null;
   const tendencia = useMemo(() => tendenciaMedidas(composicoes), [composicoes]);
-  // Faixa larga demais para decidir: mais de 350 kcal/dia ou 40% do valor
-  const impreciso = tendencia !== null && tendencia.ic95_dia > Math.max(350, Math.abs(tendencia.deficit_dia) * 0.4);
+  const impreciso = tendencia !== null && faixaImprecisa(tendencia);
 
   const plano = dieta;
   const mapa = banco?.mapa;
@@ -94,10 +101,13 @@ export function Dieta() {
   const metas = corpo ? calcularMetas(plano.config, corpo, aderencia) : null;
   const saldo = metas ? calcularSaldo(metas, total) : null;
   const alvoRefeicao = corpo ? alvoProteinaRefeicao(corpo.massa_magra_kg) : null;
-  const refeicoesComItens = plano.refeicoes.filter((r) => r.itens.length);
-  const refeicoesProteina = alvoRefeicao
-    ? plano.refeicoes.filter((r, i) => r.itens.length && porRefeicao[i] && porRefeicao[i].ptn_animal >= alvoRefeicao * 0.9).length
-    : 0;
+  const distribuicao = corpo
+    ? distribuicaoProteina(
+        plano.refeicoes.map((r, i) => ({ nome: r.nome, ptn_animal: porRefeicao[i]?.ptn_animal ?? 0, itens: r.itens.length })),
+        corpo.massa_magra_kg,
+      )
+    : null;
+  const ptnTotal = corpo ? proteinaTotal(total, corpo) : null;
   const diasMedicao = ultima ? diferencaDias(ultima.data, hoje) : 0;
 
   // Conferência com as medidas: déficit do plano × o que as medidas mostram × o necessário para a meta
@@ -105,6 +115,12 @@ export function Dieta() {
   const metaProjeto = perfil?.metas_projeto;
   const gordaMeta = metaProjeto?.peso_kg && metaProjeto?.bf ? (metaProjeto.peso_kg * metaProjeto.bf) / 100 : null;
   const necessario = gordaMeta !== null && ultima?.massa_gorda_kg != null && treino ? deficitNecessario(ultima.massa_gorda_kg, gordaMeta, hoje, treino.fim) : null;
+  // "Segui o plano?" na janela da tendência: muda o conselho (só texto)
+  const seguido = tendencia ? dietaNaTendencia(diario, tendencia) : null;
+  const conselho = tendencia && seguido && ultima ? conselhoConferencia(tendencia, ultima.peso_kg, seguido, deficitPlano, plano.config.ajuste_kcal) : null;
+  // Ritmo previsto pelo déficit (ρ pela fração de massa magra da perda) × o medido pela tendência
+  const fracaoMagra = corpo ? fracaoMagraDaPerda(tendencia, corpo.peso_kg - corpo.massa_magra_kg) : null;
+  const ritmoMedido = tendencia && ultima ? ritmoPercentual(tendencia.peso_semana, ultima.peso_kg) : null;
 
   const atualizar = (p: Partial<PlanoDieta>) => salvarDieta({ ...plano, ...p });
   const mudarRefeicao = (id: string, fn: (r: Refeicao) => Refeicao) => atualizar({ refeicoes: plano.refeicoes.map((r) => (r.id === id ? fn(r) : r)) });
@@ -114,13 +130,15 @@ export function Dieta() {
   function escolher(a: Alimento) {
     if (!seletor) return;
     const { refeicao, indice } = seletor;
-    mudarRefeicao(refeicao, (r) =>
-      indice === null
-        ? { ...r, itens: [...r.itens, novoItem(a)] }
-        : // Trocar o alimento mantém o peso que já estava no item
-          { ...r, itens: r.itens.map((x, i) => (i === indice ? trocarAlimento(x, mapa?.get(x.alimento_id), a) : x)) },
-    );
     setSeletor(null);
+    if (indice === null) return mudarRefeicao(refeicao, (r) => ({ ...r, itens: [...r.itens, novoItem(a)] }));
+    const atual = plano!.refeicoes.find((r) => r.id === refeicao)?.itens[indice];
+    if (!atual) return;
+    const antigo = mapa?.get(atual.alimento_id);
+    const opcoes = opcoesTroca(atual, antigo, a);
+    // Sem uma segunda opção que faça diferença, troca direto mantendo o peso
+    if (!opcoes.mesmo_macro) return mudarItem(refeicao, indice, opcoes.mesmo_peso);
+    setTroca({ refeicao, indice, antigo, novo: a, opcoes });
   }
 
   function remover(refeicao: string, indice: number) {
@@ -215,6 +233,17 @@ export function Dieta() {
               <Bloco rotulo="Gasto total" valor={num(metas.gasto_total, 0)} />
               <Bloco rotulo={ajuste < 0 ? 'Déficit' : ajuste > 0 ? 'Superávit' : 'Ajuste'} valor={ajuste === 0 ? '0' : `${ajuste < 0 ? '−' : '+'} ${num(Math.abs(ajuste), 0)}`} />
             </div>
+            {ajuste < 0 && fracaoMagra && (
+              <p className="texto-2">
+                Ritmo pelo déficit: <b>≈ {num(ritmoEstimado(-ajuste, corpo.peso_kg, fracaoMagra.p), 1)}% do peso por semana</b>
+                {ritmoMedido && (
+                  <>
+                    {' '}
+                    · medido: <b>{ritmoMedido.faixa === 'ganho' ? 'peso subindo' : `${num(ritmoMedido.pct, 1)}%/sem`}</b>
+                  </>
+                )}
+              </p>
+            )}
             <p className="texto-2">
               kcal por dia. Basal pela sua massa magra ({kg(corpo.massa_magra_kg)}, medição de {formatarData(ultima.data)}); gasto total = basal × dia a dia +
               exercícios; meta = gasto total{ajuste === 0 ? ' (sem ajuste)' : ajuste < 0 ? ' − déficit' : ' + superávit'}.
@@ -239,6 +268,15 @@ export function Dieta() {
                   Basal pela <b>Katch-McArdle</b>: 370 + 21,6 × massa magra. Gasto total = basal × fator do dia a dia + média diária dos exercícios (soma da
                   semana ÷ 7).
                 </p>
+                {ajuste < 0 && fracaoMagra && (
+                  <p className="texto-2">
+                    Ritmo pelo déficit = déficit × 7 ÷ (ρ × peso), com ρ = (1 − p) × 9.400 + p × 1.800 kcal por kg perdido ({num(kcalPorKgPerdido(fracaoMagra.p), 0)}{' '}
+                    kcal/kg) e p = {num(fracaoMagra.p * 100, 0)}% da perda saindo de massa magra
+                    {fracaoMagra.fonte === 'tendencia' ? ', pela tendência das suas medidas' : ', estimado pela massa gorda (Forbes: 10,4 ÷ (10,4 + massa gorda))'}.
+                    {ritmoMedido ? ' "Medido" vem da tendência das medições.' : ' O ritmo medido aparece com 4 medições em 3 semanas.'} Você continua
+                    definindo o déficit em Ajustar.
+                  </p>
+                )}
                 {aderencia && (
                   <p className="texto-2">
                     Pelo que você marcou no Treino ({num(aderencia.treino * 100, 0)}% dos treinos, {num(aderencia.cardio * 100, 0)}% dos cardios), o
@@ -275,10 +313,20 @@ export function Dieta() {
                   <p className="texto-2">
                     Déficit em kcal por dia. "As medidas mostram" vem da tendência de {tendencia.medicoes} medições ({formatarData(tendencia.de)} a{' '}
                     {formatarData(tendencia.ate)}): massa gorda {num(tendencia.gorda_semana, 2)} kg/sem e massa magra {num(tendencia.magra_semana, 2)}{' '}
-                    kg/sem, a ~9.400 kcal por kg de gordura e ~1.800 por kg de massa magra. Se ficar muito diferente do plano por semanas seguidas, o gasto
-                    real é outro: ajuste o déficit.
+                    kg/sem, a ~9.400 kcal por kg de gordura e ~1.800 por kg de massa magra.
                     {necessario !== null && ' "Para a meta" é o déficit que leva a massa gorda da meta até o fim do projeto.'}
                   </p>
+                  {seguido && conselho && (
+                    <div className="pilha" style={{ gap: 4 }}>
+                      <p>
+                        <b>{textoPlanoSeguido(seguido)}</b>
+                        <span className="texto-2"> · {textoDietaSemana(seguido)}, "em parte" vale meio dia</span>
+                      </p>
+                      <p className={conselho.tipo === 'bate' || conselho.tipo === 'impreciso' ? 'texto-2' : 'alerta'} style={conselho.tipo === 'bate' || conselho.tipo === 'impreciso' ? undefined : { display: 'block' }}>
+                        {conselho.texto}
+                      </p>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <p className="texto-2">Com 4 medições em pelo menos 3 semanas, o app compara o déficit do plano com o que as suas medidas mostram.</p>
@@ -334,6 +382,7 @@ export function Dieta() {
                   aoRemover={() => remover(r.id, i)}
                   aoTrocar={() => setSeletor({ refeicao: r.id, indice: i })}
                   faltaNoFoco={chipsFalta()}
+                  fechar={saldo ? fecharMacro(item, banco.mapa.get(item.alimento_id), saldo) : null}
                 />
               ))}
               <div className="refeicao-rodape">
@@ -431,11 +480,40 @@ export function Dieta() {
               </tbody>
             </table>
           </div>
-          {alvoRefeicao !== null && refeicoesComItens.length > 0 && (
-            <p className="texto-2" style={{ marginTop: 8 }}>
-              Refeições com proteína suficiente (~{num(alvoRefeicao, 0)} g de proteína animal, 0,4 g/kg de massa magra): {refeicoesProteina} de{' '}
-              {refeicoesComItens.length}. Distribuir a proteína ao longo do dia ajuda a preservar a massa magra.
-            </p>
+          {ptnTotal && total.kcal > 0 && (
+            <>
+              <p className="texto-2" style={{ marginTop: 8 }}>
+                <b>Proteína total (animal + vegetal): {gr(ptnTotal.g)} g</b> = {num(ptnTotal.gkg_magra, 1)} g/kg de massa magra · {num(ptnTotal.gkg_peso, 1)} g/kg
+                de peso. A meta continua só a animal.
+              </p>
+              {ptnTotal.abaixo && (
+                <div className="alerta" style={{ marginTop: 8 }}>
+                  A proteína total do plano está abaixo de {num(PTN_TOTAL_MIN_GKG_PESO, 1)} g/kg de peso ({gr(PTN_TOTAL_MIN_GKG_PESO * corpo.peso_kg)} g).
+                </div>
+              )}
+            </>
+          )}
+          {distribuicao && distribuicao.com_itens > 0 && (
+            <div className={distribuicao.concentracao || distribuicao.no_alvo < MINIMO_REFEICOES_ALVO ? 'alerta' : 'texto-2'} style={{ marginTop: 8, display: 'block' }}>
+              <b>
+                Refeições no alvo:{' '}
+                {distribuicao.no_alvo >= MINIMO_REFEICOES_ALVO
+                  ? `${distribuicao.no_alvo} (mínimo ${MINIMO_REFEICOES_ALVO}) ✓`
+                  : `${distribuicao.no_alvo} de ${MINIMO_REFEICOES_ALVO} (mínimo)`}
+              </b>
+              {distribuicao.com_itens !== MINIMO_REFEICOES_ALVO && ` · ${distribuicao.com_itens} com alimentos no plano`}
+              {distribuicao.concentracao && (
+                <>
+                  {' '}
+                  · {distribuicao.concentracao.nome} tem {gr(distribuicao.concentracao.g)} g ({num(distribuicao.concentracao.fracao_dia * 100, 0)}% do dia): passar ~
+                  {num(distribuicao.concentracao.mover, 0)} g para {juntar(distribuicao.concentracao.para)}.
+                </>
+              )}
+              <div className="sub-linha" style={{ marginTop: 4 }}>
+                No alvo = {gr(distribuicao.corte)} g ou mais de proteína animal (90% de ~{gr(distribuicao.alvo)} g, 0,4 g/kg de massa magra). Refeição sem
+                alimentos fica fora da contagem.
+              </div>
+            </div>
           )}
           {saldo.meta.carb < 0 && (
             <div className="alerta erro" style={{ marginTop: 10 }}>
@@ -470,7 +548,26 @@ export function Dieta() {
       )}
 
       {config && (
-        <FormConfigDieta config={plano.config} corpo={corpo} aderencia={aderencia} aoSalvar={(c) => atualizar({ config: c })} aoFechar={() => setConfig(false)} />
+        <FormConfigDieta
+          config={plano.config}
+          corpo={corpo}
+          aderencia={aderencia}
+          fracaoMagra={fracaoMagra?.p ?? null}
+          ritmoMedido={ritmoMedido && ritmoMedido.faixa !== 'ganho' ? ritmoMedido.pct : null}
+          ptnVegetalPlano={total.ptn_vegetal}
+          aoSalvar={(c) => atualizar({ config: c })}
+          aoFechar={() => setConfig(false)}
+        />
+      )}
+      {troca && (
+        <FolhaTroca
+          troca={troca}
+          aoEscolher={(item) => {
+            mudarItem(troca.refeicao, troca.indice, item);
+            setTroca(null);
+          }}
+          aoFechar={() => setTroca(null)}
+        />
       )}
       {seletor && banco && <SeletorAlimento lista={banco.lista} usados={usados} aoEscolher={escolher} aoFechar={() => setSeletor(null)} />}
       {refeicaoEditando && (

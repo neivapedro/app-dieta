@@ -336,3 +336,195 @@ export function metaFibra(kcal: number): number {
 export function alvoProteinaRefeicao(massaMagra: number): number {
   return 0.4 * massaMagra;
 }
+
+// ---------------------------------------------------------------------------
+// Proteína total e por refeição
+// ---------------------------------------------------------------------------
+
+/** Abaixo disto (g de proteína total por kg de peso) o plano pede atenção (Morton, 2018: ~1,6 g/kg). */
+export const PTN_TOTAL_MIN_GKG_PESO = 1.6;
+
+export interface ProteinaTotal {
+  g: number;
+  gkg_magra: number;
+  gkg_peso: number;
+  /** Total do plano abaixo de 1,6 g/kg de peso */
+  abaixo: boolean;
+}
+
+/** Proteína animal + vegetal do plano: a meta continua só animal; isto mostra o total. */
+export function proteinaTotal(plano: Pick<Macros, 'ptn_animal' | 'ptn_vegetal'>, corpo: Corpo): ProteinaTotal {
+  const g = plano.ptn_animal + plano.ptn_vegetal;
+  const gkg_peso = corpo.peso_kg > 0 ? g / corpo.peso_kg : 0;
+  return { g, gkg_magra: corpo.massa_magra_kg > 0 ? g / corpo.massa_magra_kg : 0, gkg_peso, abaixo: gkg_peso < PTN_TOTAL_MIN_GKG_PESO };
+}
+
+/** Refeições no alvo que valem como mínimo do dia (Schoenfeld & Aragon, 2018: 4 ou mais). */
+export const MINIMO_REFEICOES_ALVO = 4;
+/** Acima de ~0,55 g/kg de massa magra numa refeição, o excesso pode ir para as refeições que estão abaixo. */
+export const TETO_REFEICAO_GKG = 0.55;
+
+export interface RefeicaoProteina {
+  nome: string;
+  ptn_animal: number;
+  /** Quantos alimentos a refeição tem (vazia fica fora da contagem) */
+  itens: number;
+}
+
+export interface Concentracao {
+  nome: string;
+  g: number;
+  /** Fração da proteína animal do dia nessa refeição */
+  fracao_dia: number;
+  /** Quanto passar para as outras (g, arredondado de 5 em 5) */
+  mover: number;
+  /** Refeições que recebem, na ordem do plano */
+  para: string[];
+}
+
+export interface DistribuicaoProteina {
+  alvo: number;
+  /** 90% do alvo: a partir daqui a refeição conta como no alvo */
+  corte: number;
+  teto: number;
+  no_alvo: number;
+  com_itens: number;
+  /** A refeição com mais proteína acima do teto e para onde repartir o excesso */
+  concentracao: Concentracao | null;
+}
+
+/**
+ * Proteína animal por refeição: quantas refeições (com alimentos) chegam a 90%
+ * do alvo e, na refeição com mais excesso acima de ~0,55 × massa magra, quanto
+ * passar para as refeições abaixo do corte. Cada uma recebe até chegar ao alvo,
+ * começando pela que mais falta. Só sugere: o plano não muda sozinho.
+ */
+export function distribuicaoProteina(refeicoes: RefeicaoProteina[], massaMagra: number): DistribuicaoProteina {
+  const alvo = alvoProteinaRefeicao(massaMagra);
+  const corte = alvo * 0.9;
+  const teto = TETO_REFEICAO_GKG * massaMagra;
+  const comItens = refeicoes.filter((r) => r.itens > 0);
+  const totalDia = comItens.reduce((s, r) => s + r.ptn_animal, 0);
+  const no_alvo = comItens.filter((r) => r.ptn_animal >= corte).length;
+  const base = { alvo, corte, teto, no_alvo, com_itens: comItens.length, concentracao: null };
+  const maior = comItens.reduce<RefeicaoProteina | null>((m, r) => (r.ptn_animal > (m?.ptn_animal ?? 0) ? r : m), null);
+  if (!maior || maior.ptn_animal <= teto) return base;
+  let sobra = maior.ptn_animal - teto;
+  const abaixo = comItens.filter((r) => r !== maior && r.ptn_animal < corte);
+  const recebe = new Set<RefeicaoProteina>();
+  let movido = 0;
+  for (const r of [...abaixo].sort((a, b) => a.ptn_animal - b.ptn_animal)) {
+    if (sobra <= 0) break;
+    const parte = Math.min(alvo - r.ptn_animal, sobra);
+    recebe.add(r);
+    movido += parte;
+    sobra -= parte;
+  }
+  const mover = Math.round(movido / 5) * 5;
+  if (mover < 5) return base;
+  return {
+    ...base,
+    concentracao: {
+      nome: maior.nome,
+      g: maior.ptn_animal,
+      fracao_dia: totalDia > 0 ? maior.ptn_animal / totalDia : 0,
+      mover,
+      para: comItens.filter((r) => recebe.has(r)).map((r) => r.nome),
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Fechar a meta e trocar alimento
+// ---------------------------------------------------------------------------
+
+/** Macro com meta: o "principal" de um alimento é o que mais dá kcal entre eles. */
+export type MacroMeta = 'ptn_animal' | 'carb' | 'gord';
+
+export const ROTULO_MACRO: Record<MacroMeta, string> = { ptn_animal: 'Ptn A', carb: 'Carb', gord: 'Gord' };
+/** "mesma proteína", "mesmo carbo", "mesma gordura" */
+export const MESMO_MACRO: Record<MacroMeta, string> = { ptn_animal: 'mesma proteína', carb: 'mesmo carbo', gord: 'mesma gordura' };
+
+/** g do macro por g de alimento (proteína vegetal não tem meta e fica fora) */
+function macroPorGrama(a: Alimento, macro: MacroMeta): number {
+  if (macro === 'ptn_animal') return a.animal ? a.prot / 100 : 0;
+  return a[macro] / 100;
+}
+
+/**
+ * Macro principal do alimento. Fonte animal com 20% ou mais das kcal vindas da
+ * proteína (ovo, queijo, leite, carnes) é proteína, mesmo com mais kcal de
+ * gordura; nos outros, o macro que mais pesa nas kcal. Menos de 1 g por 100 g não conta.
+ */
+export function macroPrincipal(a: Alimento): MacroMeta | null {
+  const total = a.prot * 4 + a.carb * 4 + a.gord * 9;
+  if (a.animal && a.prot >= 1 && a.prot * 4 >= total * 0.2) return 'ptn_animal';
+  const kcal: [MacroMeta, number, number][] = [
+    ['ptn_animal', a.animal ? a.prot * 4 : 0, a.animal ? a.prot : 0],
+    ['carb', a.carb * 4, a.carb],
+    ['gord', a.gord * 9, a.gord],
+  ];
+  const [macro, , g] = kcal.reduce((m, x) => (x[1] > m[1] ? x : m));
+  return g >= 1 ? macro : null;
+}
+
+export interface Fechamento {
+  macro: MacroMeta;
+  item: ItemRefeicao;
+  /** Gramas do item depois de fechar e a diferença para o que está hoje */
+  gramas: number;
+  delta: number;
+}
+
+/**
+ * Quantidade do item que zera a falta do macro principal no dia. O carboidrato
+ * fecha a conta das kcal descontando a proteína vegetal do plano, então cada
+ * grama de um alimento com proteína vegetal mexe na falta de carbo pelas duas.
+ * Some quando a falta já está dentro da tolerância (1 g ou 2% da meta).
+ */
+export function fecharMacro(item: ItemRefeicao, alimento: Alimento | undefined, saldo: Pick<Saldo, 'meta' | 'falta'>): Fechamento | null {
+  if (!alimento) return null;
+  const macro = macroPrincipal(alimento);
+  if (!macro) return null;
+  const falta = saldo.falta[macro];
+  if (Math.abs(falta) <= Math.max(1, Math.abs(saldo.meta[macro]) * 0.02)) return null;
+  const efeito = macro === 'carb' ? (alimento.carb + (alimento.animal ? 0 : alimento.prot)) / 100 : macroPorGrama(alimento, macro);
+  if (efeito <= 0) return null;
+  const atual = gramasDoItem(item, alimento);
+  const alvo = atual + falta / efeito;
+  if (alvo <= 0) return null;
+  const porcao = item.unidade === 'g' ? null : alimento.porcoes.find((p) => p.nome === item.unidade);
+  // Em porções (fatia, unidade, dose), de meia em meia
+  const novo: ItemRefeicao = porcao ? { ...item, quantidade: Math.round((alvo / porcao.g) * 2) / 2 } : { ...item, unidade: 'g', quantidade: Math.round(alvo) };
+  if (!(novo.quantidade > 0)) return null;
+  const gramas = gramasDoItem(novo, alimento);
+  const delta = gramas - atual;
+  if (Math.abs(delta) < 1 || novo.quantidade === item.quantidade) return null;
+  return { macro, item: novo, gramas, delta };
+}
+
+export interface OpcoesTroca {
+  /** Mesmo peso (ou a mesma porção, se o novo alimento tiver) */
+  mesmo_peso: ItemRefeicao;
+  /** Gramas do novo alimento com a mesma quantidade do macro principal do antigo */
+  mesmo_macro: { item: ItemRefeicao; macro: MacroMeta } | null;
+}
+
+/**
+ * Duas opções ao trocar o alimento de um item: manter o peso, ou manter o macro
+ * principal do alimento antigo (240 g de patinho → 270 g de frango com a mesma
+ * proteína). A segunda some quando o novo quase não tem esse macro ou quando dá
+ * praticamente o mesmo peso.
+ */
+export function opcoesTroca(item: ItemRefeicao, antigo: Alimento | undefined, novo: Alimento): OpcoesTroca {
+  const mesmo_peso = trocarAlimento(item, antigo, novo);
+  const macro = antigo ? macroPrincipal(antigo) : null;
+  if (!antigo || !macro) return { mesmo_peso, mesmo_macro: null };
+  const quanto = macroPorGrama(antigo, macro) * gramasDoItem(item, antigo);
+  const porGrama = macroPorGrama(novo, macro);
+  if (quanto <= 0 || porGrama < 0.01) return { mesmo_peso, mesmo_macro: null };
+  const g = Math.round(quanto / porGrama);
+  const peso = gramasDoItem(mesmo_peso, novo);
+  if (g <= 0 || g > 2000 || Math.abs(g - peso) < Math.max(5, peso * 0.03)) return { mesmo_peso, mesmo_macro: null };
+  return { mesmo_peso, mesmo_macro: { item: { alimento_id: novo.id, quantidade: g, unidade: 'g' }, macro } };
+}
