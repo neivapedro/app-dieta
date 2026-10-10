@@ -342,8 +342,10 @@ export interface ComparacaoEsforco {
 }
 
 function compararEsforco(dias: TreinoDia[], hoje: string, campo: 'esforco_treino' | 'esforco_cardio'): ComparacaoEsforco {
+  // Só vale o esforço de sessão marcada (desmarcar o treino ou o cardio tira o número da conta)
+  const marcado = campo === 'esforco_treino' ? 'treino' : 'cardio';
   const valores = (de: string, ate: string) =>
-    dias.filter((d) => d.data >= de && d.data <= ate && typeof d[campo] === 'number').map((d) => d[campo] as number);
+    dias.filter((d) => d.data >= de && d.data <= ate && d[marcado] && typeof d[campo] === 'number').map((d) => d[campo] as number);
   const media = (l: number[]) => (l.length ? l.reduce((a, b) => a + b, 0) / l.length : null);
   const semana = valores(somarDias(hoje, -6), hoje);
   const ref = valores(somarDias(hoje, -34), somarDias(hoje, -7));
@@ -368,9 +370,9 @@ const MIN_CORRIDA_ESTIMADA = 30;
 /**
  * Horas de treino e cardio do dia: o que foi marcado; no dia de hoje, o que ainda
  * não foi marcado conta como previsto (o dia está em aberto). Corrida com tempo
- * anotado usa o tempo real.
+ * anotado usa o tempo real. hoje = null: nada em aberto (fora do período do projeto).
  */
-export function horasExercicioDia(data: string, reg: TreinoDia | undefined | null, hoje: string): number {
+export function horasExercicioDia(data: string, reg: TreinoDia | undefined | null, hoje: string | null): number {
   const aberto = data === hoje;
   const treino = reg?.treino || aberto ? MIN_MUSCULACAO : 0;
   let cardio = 0;

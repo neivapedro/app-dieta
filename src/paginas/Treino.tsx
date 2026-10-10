@@ -404,8 +404,8 @@ function CartaoEsforco({ treino, cardio }: { treino: ComparacaoEsforco; cardio: 
       )}
       {subiu.map(([nome, d]) => (
         <div key={nome} className="alerta" style={{ display: 'block', marginTop: 10 }}>
-          Esforço da {nome} subiu {num(d, 1)} ponto{d >= 2 ? 's' : ''} na última semana em relação às 4 anteriores. Pode ser fadiga acumulando; sono,
-          dieta, náusea e a fase da dose também mexem no esforço. Um dia leve (mesmos exercícios, menos carga ou séries) mantém a sequência.
+          Esforço {nome === 'cardio' ? 'do cardio' : 'da musculação'} subiu {num(d, 1)} ponto{d >= 2 ? 's' : ''} na última semana em relação às 4
+          anteriores. Pode ser fadiga acumulando; sono, dieta, náusea e a fase da dose também mexem no esforço.
         </div>
       ))}
       {!semDados && (

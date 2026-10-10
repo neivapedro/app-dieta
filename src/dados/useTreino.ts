@@ -32,12 +32,17 @@ export function useTreino() {
  */
 export function useMetaAgua() {
   const { perfil, treinos, hoje } = useDados();
+  const t = useTreino();
   const comTreino = !!perfil?.modulo_treino;
+  // O treino de hoje ainda não marcado só conta como previsto dentro do período do projeto
+  const inicio = t?.inicio ?? null;
+  const fim = t?.fim ?? null;
   return useCallback(
     (data: string) => {
-      const horas = comTreino ? horasExercicioDia(data, treinos.find((t) => t.data === data), hoje) : 0;
+      const noProjeto = inicio !== null && fim !== null && data >= inicio && data <= fim;
+      const horas = comTreino ? horasExercicioDia(data, treinos.find((x) => x.data === data), noProjeto ? hoje : null) : 0;
       return { meta: metaAgua(horas), horas };
     },
-    [comTreino, treinos, hoje],
+    [comTreino, treinos, hoje, inicio, fim],
   );
 }

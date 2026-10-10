@@ -236,6 +236,12 @@ describe('Esforço percebido', () => {
     expect(r.treino.n7).toBe(2);
     expect(resumoEsforco([], hoje).treino.media7).toBeNull();
   });
+
+  it('esforço de sessão desmarcada fica fora da conta', () => {
+    const r = resumoEsforco([dia('2026-11-29', false, true, { esforco_treino: 9, esforco_cardio: 4 })], hoje);
+    expect(r.treino.n7).toBe(0);
+    expect(r.cardio.media7).toBe(4);
+  });
 });
 
 describe('Horas de exercício do dia (meta de água)', () => {
@@ -251,5 +257,9 @@ describe('Horas de exercício do dia (meta de água)', () => {
   it('hoje em aberto conta o previsto', () => {
     expect(horasExercicioDia('2026-10-20', undefined, '2026-10-20')).toBe(1.5);
     expect(horasExercicioDia('2026-10-20', dia('2026-10-20', true, false), '2026-10-20')).toBe(1.5);
+  });
+  it('fora do projeto (hoje = null) nada fica em aberto', () => {
+    expect(horasExercicioDia('2026-10-20', undefined, null)).toBe(0);
+    expect(horasExercicioDia('2026-10-20', dia('2026-10-20', true, false), null)).toBe(1);
   });
 });

@@ -65,7 +65,7 @@ export interface IndiceForca {
   /** Referência (1RM médio das 2 primeiras semanas) por exercício, pelo nome comparável */
   referencias: Map<string, number>;
   nivel: NivelForca;
-  /** Últimas 2 leituras suavizadas (anterior, última) quando há alerta */
+  /** Última leitura suavizada quando há atenção ou alerta */
   queda: number | null;
 }
 

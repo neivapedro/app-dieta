@@ -56,10 +56,10 @@ export function CartaoTreinoHoje() {
         cardio: campo === 'cardio' ? !atual?.cardio : !!atual?.cardio,
         corrida_km: atual?.corrida_km ?? null,
         corrida_seg: atual?.corrida_seg ?? null,
-        // Tipo do cardio e esforço já anotados continuam como estavam
+        // Tipo do cardio e esforço já anotados continuam como estavam (desmarcar apaga o esforço daquela sessão)
         cardio_tipo: atual?.cardio_tipo ?? null,
-        esforco_treino: atual?.esforco_treino ?? null,
-        esforco_cardio: atual?.esforco_cardio ?? null,
+        esforco_treino: campo === 'treino' && atual?.treino ? null : (atual?.esforco_treino ?? null),
+        esforco_cardio: campo === 'cardio' && atual?.cardio ? null : (atual?.esforco_cardio ?? null),
       },
     });
   };
