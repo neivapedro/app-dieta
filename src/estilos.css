@@ -223,7 +223,7 @@ th:first-child, td:first-child { text-align: left; }
 .grafico .recharts-cartesian-axis-tick-value { fill: var(--texto-3); font-size: 11px; }
 .grafico .recharts-cartesian-grid line { stroke: var(--borda); }
 .grafico .recharts-legend-item-text { color: var(--texto-2) !important; font-size: 12px; }
-.dica-grafico { background: var(--superficie); border: 1px solid var(--borda); border-radius: 10px; padding: 8px 10px; font-size: 0.8rem; box-shadow: var(--sombra); }
+.dica-grafico { background: var(--superficie); border: 1px solid var(--borda); border-radius: 10px; padding: 8px 10px; font-size: 0.8rem; box-shadow: var(--sombra); max-width: min(240px, 62vw); }
 
 .folha-fundo { position: fixed; inset: 0; z-index: 50; background: rgb(0 0 0 / 0.5); display: flex; align-items: flex-end; justify-content: center; }
 .folha {

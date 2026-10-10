@@ -114,4 +114,11 @@ describe('Histórico dos alertas (Eventos do PDF)', () => {
     expect(ev[0].texto).toContain('3 dias seguidos');
     expect(resumoAlerta(ev[1].texto)).toBe('Vômito no dia seguinte à dose (20/10)');
   });
+
+  it('dia passado não enxerga medições futuras', () => {
+    // Perda rápida só a partir de 12/10 (4ª medição): antes disso não havia tendência
+    const rapido = [0, 7, 14, 21].map((d, i) => comp(somarDias('2026-09-21', d), 100 - 2 * i));
+    const ev = historicoAlertas({ diario: [], composicoes: rapido, aplicacoes: [ap('2026-09-21')] }, '2026-09-21', '2026-10-14');
+    expect(ev.map((e) => [e.regra, e.desde])).toEqual([['ritmo_rapido', '2026-10-12']]);
+  });
 });

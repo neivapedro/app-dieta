@@ -33,7 +33,7 @@ function dataDoBackup(iso: string): string {
 }
 
 export function Perfil() {
-  const { perfil, ciclo, aplicacoes, diario, medidas, treinos, dieta, registroDecisoes, usuario, repo, executar, sair, limparErro } = useDados();
+  const { perfil, ciclo, aplicacoes, diario, medidas, treinos, dieta, registroDecisoes, registroIndisponivel, usuario, repo, executar, sair, limparErro } = useDados();
   const [nome, setNome] = useState(perfil?.nome ?? '');
   const [sexo, setSexo] = useState<Sexo>(perfil?.sexo ?? 'Masculino');
   const [altura, setAltura] = useState(paraTexto(perfil?.altura_cm));
@@ -178,7 +178,11 @@ export function Perfil() {
         }
         if (b.dieta) await r.salvarDieta(b.dieta);
         // Id novo: o banco é compartilhado entre contas e o id do backup pode já existir em outra
-        for (const d of plano.registro_decisoes) await r.salvarRegistroDecisao({ ...d, id: crypto.randomUUID() });
+        if (plano.registro_decisoes.length && registroIndisponivel) {
+          // Banco sem a tabela do registro: o resto já foi importado; avisa o que ficou de fora
+          const aviso = 'o registro de decisões não foi importado: falta rodar o SQL de evolução no Supabase.';
+          emParte = emParte ? `${emParte} Além disso, ${aviso}` : aviso;
+        } else for (const d of plano.registro_decisoes) await r.salvarRegistroDecisao({ ...d, id: crypto.randomUUID() });
       });
       setImportacao(null);
       setMsgBackup(emParte ? { tipo: 'erro', texto: `Backup importado, com uma ressalva: ${emParte}` } : { tipo: 'info', texto: 'Backup importado.' });
@@ -282,7 +286,7 @@ export function Perfil() {
       <section className="cartao pilha">
         <h2>Backup</h2>
         <p className="mudo">
-          Exporta todos os seus dados (perfil e metas, ciclo, aplicações, diário, medidas, treinos e dieta) em um arquivo. Ao importar, nada é
+          Exporta todos os seus dados (perfil e metas, ciclo, aplicações, diário, medidas, treinos, dieta e registro de decisões) em um arquivo. Ao importar, nada é
           duplicado: aplicações e medidas de datas que já existem são puladas, e diário e treino substituem o mesmo dia.
         </p>
         <div className="linha">

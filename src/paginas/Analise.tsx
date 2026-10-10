@@ -23,7 +23,7 @@ import {
   textoTolerancia,
   toleranciaIntervalo,
 } from '../lib/consulta';
-import { dataPorExtenso, diferencaDias, formatarData } from '../lib/datas';
+import { dataPorExtenso, diferencaDias, formatarData, somarDias } from '../lib/datas';
 import { decisoesPorDia, marcosDasDecisoes } from '../lib/registroDecisoes';
 import { historicoAlertas } from '../lib/seguranca';
 import type { ModeloRelatorio } from '../lib/relatorioPdf';
@@ -212,12 +212,13 @@ export function Analise() {
       linhas: fases.map((f, i) => [
         `${rotuloBloco(f)}${f.em_andamento ? ' (atual)' : ''}`,
         `${f.doses} x ${num(f.dose_mg)} mg`,
-        `${formatarData(f.inicio, true)} – ${formatarData(f.fim, true)}`,
+        // Bloco que não é o último termina na véspera do seguinte (o dia da troca fica com o novo)
+        `${formatarData(f.inicio, true)} – ${formatarData(i === fases.length - 1 ? f.fim : somarDias(f.fim, -1), true)}`,
         `${num(f.peso_inicio, 1)} -> ${num(f.peso_fim, 1)}`,
         ritmoDoBloco(serie, f, i === fases.length - 1),
         `${num(f.nausea_media, 1)} / ${f.nausea_max ?? '–'}`,
       ]),
-      nota: 'kg/sem. pela regressão das pesagens do bloco (dose realmente aplicada), com a faixa provável de 95%. Blocos seguidos também mudam tempo de uso, dieta e treino: a diferença entre eles não se atribui só à dose.',
+      nota: !fases.length ? undefined : 'kg/sem. pela regressão das pesagens do bloco (dose realmente aplicada), com a faixa provável de 95%. Blocos seguidos também mudam tempo de uso, dieta e treino: a diferença entre eles não se atribui só à dose.',
     });
     if (!sintomas.every((x) => x.nausea_por_dia.every((n) => n === null)) || temSintomas) {
       tabelas.push({
@@ -246,7 +247,7 @@ export function Analise() {
         l.atraso_dias === 0 ? '–' : `${l.atraso_dias > 0 ? '+' : ''}${l.atraso_dias} d`,
         textoTolerancia(toleranciaIntervalo(diario, l.aplicacao.data, resumo!.linhas[i + 1]?.aplicacao.data ?? null, hoje)),
       ]),
-      nota: 'Náusea máxima (0 a 3) e dias com sintoma no Diário entre esta dose e a seguinte.',
+      nota: resumo!.linhas.length ? 'Náusea máxima (0 a 3) e dias com sintoma no Diário entre esta dose e a seguinte.' : undefined,
     });
     // Eventos: alertas de segurança que dispararam no período e as anotações para o médico
     const alertas = aplicacoes.length ? historicoAlertas({ diario, composicoes, aplicacoes }, inicioCiclo, hoje) : [];

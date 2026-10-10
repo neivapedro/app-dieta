@@ -184,7 +184,7 @@ export function colunasQuadro(
   return { atual: coluna(n - 1), anterior: coluna(n - 2) };
 }
 
-const dMais = (d: number | null) => (d === null ? '' : `D${d}`);
+const dMais = (d: number | null) => (d === null ? '' : `D+${d}`);
 
 export function montarQuadro(q: { atual: ColunaQuadro; anterior: ColunaQuadro | null }, comTreino: boolean, proxima: string): QuadroRelatorio {
   const cols = [q.anterior, q.atual];
@@ -340,10 +340,12 @@ export function tabelaTendencias(composicoes: Composicao[]): TabelaRelatorio {
 }
 
 /** kg/semana de um bloco de dose pela regressão das pesagens do bloco, com a faixa: "− 0,45 ± 0,20 (8 pesagens)". */
-export function ritmoDoBloco(serie: PontoPeso[], f: Pick<AnaliseFase, 'inicio' | 'fim'>, ultimoDoBloco: boolean): string {
+export function ritmoDoBloco(serie: PontoPeso[], f: Pick<AnaliseFase, 'inicio' | 'fim' | 'kg_por_semana'>, ultimoDoBloco: boolean): string {
   const fim = ultimoDoBloco ? f.fim : somarDias(f.fim, -1);
   const r = ritmoComFaixa(serie.filter((p) => p.data >= f.inicio && p.data <= fim).map((p) => ({ data: p.data, valor: p.peso_kg })));
-  return r ? `${sinal(r.semana, 2)} ± ${num(r.ic95, 2)} (${r.n} pesagens)` : 'poucas pesagens';
+  if (r) return `${sinal(r.semana, 2)} ± ${num(r.ic95, 2)} (${r.n} pesagens)`;
+  // Bloco curto com pesagem só às segundas: fica a conta entre a primeira e a última pesagem, sem faixa
+  return f.kg_por_semana !== null ? `${sinal(f.kg_por_semana, 2)} (sem faixa: poucas pesagens)` : 'poucas pesagens';
 }
 
 // ---------- Registro de decisões ----------

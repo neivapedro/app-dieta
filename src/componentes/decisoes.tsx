@@ -34,7 +34,14 @@ function ItemDecisao({ r }: { r: RegistroDecisao }) {
       {r.motivo && !editando && <div className="mudo">Motivo: {r.motivo}</div>}
       {!editando && (
         <div className="linha" style={{ gap: 6 }}>
-          <button className="botao pequeno" onClick={() => setEditando(true)}>
+          <button
+            className="botao pequeno"
+            onClick={() => {
+              // Parte do motivo atual (a linha pode ter mudado depois de aberta a tela)
+              setMotivo(r.motivo ?? '');
+              setEditando(true);
+            }}
+          >
             {r.motivo ? 'Editar motivo' : 'Motivo'}
           </button>
           <button className="botao pequeno" onClick={excluir} aria-label="Apagar do registro">
@@ -125,7 +132,7 @@ export function ListaDecisoes() {
       )}
       {misturadas.map((m) => (
         <div className="alerta info" key={m.dose}>
-          Dose e dieta mudaram {m.dose === m.dieta ? `no mesmo dia (${curta(m.dose)})` : `na mesma semana (${curta(m.dose)} e ${curta(m.dieta)})`}: o resultado
+          Dose e dieta mudaram {m.dose === m.dieta ? `no mesmo dia (${curta(m.dose)})` : `com menos de 7 dias de diferença (dose em ${curta(m.dose)}, dieta em ${curta(m.dieta)})`}: o resultado
           das semanas seguintes não dá para atribuir a uma coisa só.
         </div>
       ))}

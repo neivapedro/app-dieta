@@ -128,7 +128,7 @@ describe('Quadro de decisão', () => {
     expect(rotulos(com)).toContain('Treino');
     expect(rotulos(sem)).not.toContain('Treino');
     expect(sem.secoes[0].linhas[0][1]).toBe('–');
-    expect(com.secoes[1].linhas[1]).toEqual(['Vômitos', '07/10 D2', '20/10 D1']);
+    expect(com.secoes[1].linhas[1]).toEqual(['Vômitos', '07/10 D+2', '20/10 D+1']);
     expect(com.colunas[1]).toContain('Fase atual');
     expect(com.regras.length).toBeGreaterThan(0);
   });
@@ -172,9 +172,11 @@ describe('Tendências, eventos e decisões no PDF', () => {
 
   it('kg/semana do bloco pela regressão, com a faixa', () => {
     const serie = ['2026-10-05', '2026-10-12', '2026-10-19', '2026-10-26'].map((data, i) => ({ data, peso_kg: 95 - i * 0.5 + (i === 2 ? 0.1 : 0), origem: 'diario' as const }));
-    expect(ritmoDoBloco(serie, { inicio: '2026-10-05', fim: '2026-10-26' }, true)).toMatch(/^− 0,\d\d ± 0,\d\d \(4 pesagens\)$/);
+    expect(ritmoDoBloco(serie, { inicio: '2026-10-05', fim: '2026-10-26', kg_por_semana: -0.45 }, true)).toMatch(/^− 0,\d\d ± 0,\d\d \(4 pesagens\)$/);
     // Bloco que não é o último: o dia da troca fica com o bloco seguinte
-    expect(ritmoDoBloco(serie, { inicio: '2026-10-05', fim: '2026-10-19' }, false)).toBe('poucas pesagens');
+    expect(ritmoDoBloco(serie, { inicio: '2026-10-05', fim: '2026-10-19', kg_por_semana: null }, false)).toBe('poucas pesagens');
+    // Sem regressão (pesagem só às segundas), fica a conta entre as pesagens, sem faixa
+    expect(ritmoDoBloco(serie, { inicio: '2026-10-05', fim: '2026-10-19', kg_por_semana: -0.5 }, false)).toBe('− 0,50 (sem faixa: poucas pesagens)');
   });
 
   it('eventos juntam alertas e anotações em ordem de data; decisões com motivo', () => {
