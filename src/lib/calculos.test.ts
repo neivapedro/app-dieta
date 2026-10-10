@@ -221,6 +221,16 @@ describe('Análise do ciclo', () => {
     const s = sintomasPorFase(fases, ['2026-10-08', '2026-10-15'], diario, '2026-10-20');
     expect(s[0].nausea_por_dia[1]).toBe(1.5);
     expect(s[0].vomito).toBe(0.5);
+    // Só marcar quando acontece: os dias registrados sem marcar contam como "não"
+    const soSim: RegistroDiario[] = [
+      { id: 'a', data: '2026-10-09', peso_kg: null, nausea: 2, observacoes: null, vomito: true },
+      { id: 'b', data: '2026-10-10', peso_kg: null, nausea: 1, observacoes: null },
+      { id: 'c', data: '2026-10-11', peso_kg: null, nausea: 0, observacoes: null },
+      { id: 'd', data: '2026-10-12', peso_kg: null, nausea: 0, observacoes: null },
+    ];
+    const s2 = sintomasPorFase(fases, ['2026-10-08', '2026-10-15'], soSim, '2026-10-20');
+    expect(s2[0].vomito).toBe(0.25);
+    expect(s2[0].diarreia).toBeNull();
   });
 
   it('fase concluída não aparece como atual quando a próxima dose já é da fase seguinte', () => {

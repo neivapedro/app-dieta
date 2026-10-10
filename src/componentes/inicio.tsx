@@ -44,7 +44,7 @@ export function CartaoDietaHoje() {
   const { banco } = useAlimentos();
   if (!dieta || !dieta.refeicoes.some((r) => r.itens.length)) return null;
   const ultima = [...composicoes].reverse().find((c) => c.massa_magra_kg !== null) ?? null;
-  const aderencia = treino ? aderenciaRecente(treinos, treino.inicio, hoje) : null;
+  const aderencia = treino ? aderenciaRecente(treinos, treino.inicio, hoje, 28, treino.fim) : null;
   const metas = ultima ? calcularMetas(dieta.config, { peso_kg: ultima.peso_kg, massa_magra_kg: ultima.massa_magra_kg! }, aderencia) : null;
   const total = banco ? somar(dieta.refeicoes.map((r) => macrosDaRefeicao(r, banco.mapa))) : null;
   const saldo = metas && total ? calcularSaldo(metas, total) : null;

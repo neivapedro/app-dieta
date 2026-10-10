@@ -86,6 +86,10 @@ function Avisos() {
 function Estrutura() {
   const { perfil, ciclo } = useDados();
   const { pathname } = useLocation();
+  // Cada aba abre do topo, não na altura em que a anterior estava
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
   const abas = perfil?.modulo_treino ? [...ABAS.slice(0, 4), ABA_TREINO, ABAS[4]] : ABAS;
   const titulo = pathname === '/perfil' ? 'Perfil' : abas.find((a) => a.para === pathname)?.titulo ?? '';
   const primeiroNome = perfil?.nome.split(' ')[0];

@@ -249,9 +249,11 @@ export function medidaInicial(composicoes: Composicao[], inicio: string): Compos
 
 /**
  * Aderência das últimas 4 semanas (só dias do projeto já vencidos; hoje entra se marcado).
- * Null com menos de 7 dias de histórico.
+ * Null com menos de 7 dias de histórico ou depois do fim do projeto (os dias
+ * não podem mais ser marcados e virariam falta).
  */
-export function aderenciaRecente(dias: TreinoDia[], inicio: string, hoje: string, janela = 28): { treino: number; cardio: number; dias: number } | null {
+export function aderenciaRecente(dias: TreinoDia[], inicio: string, hoje: string, janela = 28, fim?: string): { treino: number; cardio: number; dias: number } | null {
+  if (fim && hoje > fim) return null;
   const de = diferencaDias(inicio, somarDias(hoje, -janela)) > 0 ? somarDias(hoje, -janela) : inicio;
   const porData = new Map(dias.map((d) => [d.data, d]));
   const datas = datasEntre(de, somarDias(hoje, -1));

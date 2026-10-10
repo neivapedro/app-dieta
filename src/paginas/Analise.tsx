@@ -87,7 +87,7 @@ export function Analise() {
 
   // Plano alimentar (para o relatório)
   const ultimaComp = [...composicoes].reverse().find((c) => c.massa_magra_kg !== null);
-  const metasDieta = dieta && ultimaComp ? calcularMetas(dieta.config, { peso_kg: ultimaComp.peso_kg, massa_magra_kg: ultimaComp.massa_magra_kg! }, treino ? aderenciaRecente(treinos, treino.inicio, hoje) : null) : null;
+  const metasDieta = dieta && ultimaComp ? calcularMetas(dieta.config, { peso_kg: ultimaComp.peso_kg, massa_magra_kg: ultimaComp.massa_magra_kg! }, treino ? aderenciaRecente(treinos, treino.inicio, hoje, 28, treino.fim) : null) : null;
   const refeicoes = dieta && banco ? dieta.refeicoes.filter((r) => r.itens.length).map((r) => ({ r, m: macrosDaRefeicao(r, banco.mapa) })) : [];
 
   function montarModelo(): ModeloRelatorio {
@@ -157,7 +157,7 @@ export function Analise() {
             ? [x.vomito, x.diarreia, x.intestino_preso].map((t) => (t === null ? '–' : pct(t, 0)))
             : []),
         ]),
-        nota: 'D0 = dia da dose. Náusea média (0 a 3) e % dos dias com o sintoma marcado.',
+        nota: 'D0 = dia da dose. Náusea média (0 a 3). Sintomas: % dos dias registrados no Diário na fase.',
       });
     }
     tabelas.push({
@@ -482,7 +482,7 @@ export function Analise() {
           </div>
         )}
         <p className="mudo" style={{ marginTop: 8 }}>
-          D0 = dia da dose. Náusea média (0 a 3) e % dos dias com o sintoma marcado no Diário. Use para decidir, com seu médico, se sobe de dose ou repete
+          D0 = dia da dose. Náusea média (0 a 3). Vômito, diarreia e intestino preso: % dos dias registrados no Diário naquela fase (dia sem marcar conta como "não teve"). Use para decidir, com seu médico, se sobe de dose ou repete
           a fase.
         </p>
       </section>

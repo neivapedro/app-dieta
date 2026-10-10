@@ -79,6 +79,8 @@ export function LinhaItem({
 }) {
   const [texto, setTexto] = useState(paraTexto(item.quantidade));
   const [foco, setFoco] = useState(false);
+  const saida = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(saida.current), []);
   // Mantém o campo em sincronia quando a quantidade muda por fora (troca de unidade)
   useEffect(() => {
     if (paraNumero(texto) !== item.quantidade) setTexto(paraTexto(item.quantidade));
@@ -111,13 +113,16 @@ export function LinhaItem({
           aria-label="Quantidade"
           value={texto}
           onFocus={(e) => {
+            window.clearTimeout(saida.current);
             setFoco(true);
             // Seleciona o número: é só digitar o novo
             const alvo = e.currentTarget;
             setTimeout(() => alvo.select(), 0);
           }}
           onBlur={() => {
-            setFoco(false);
+            // Esconde o "falta" só depois do toque: se sumisse na hora, a tela
+            // subiria e o toque em "+ Alimento" cairia fora do botão
+            saida.current = window.setTimeout(() => setFoco(false), 350);
             // Campo vazio vale zero; ao sair, mostra o que está valendo
             setTexto(paraTexto(item.quantidade));
           }}

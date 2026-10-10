@@ -61,8 +61,10 @@ export function Dieta() {
   const corpo: Corpo | null = ultima ? { peso_kg: ultima.peso_kg, massa_magra_kg: ultima.massa_magra_kg! } : null;
   const altura = medidas.find((m) => m.data === ultima?.data)?.altura_cm ?? perfil?.altura_cm ?? null;
   const anos = idade(perfil?.data_nascimento, hoje);
-  const aderencia = treino ? aderenciaRecente(treinos, treino.inicio, hoje) : null;
+  const aderencia = treino ? aderenciaRecente(treinos, treino.inicio, hoje, 28, treino.fim) : null;
   const tendencia = useMemo(() => tendenciaMedidas(composicoes), [composicoes]);
+  // Faixa larga demais para decidir: mais de 350 kcal/dia ou 40% do valor
+  const impreciso = tendencia !== null && tendencia.ic95_dia > Math.max(350, Math.abs(tendencia.deficit_dia) * 0.4);
 
   const plano = dieta;
   const mapa = banco?.mapa;
@@ -246,9 +248,14 @@ export function Dieta() {
                 <div className="pilha" style={{ gap: 8 }}>
                   <div className="grade grade-3">
                     <Bloco rotulo="O plano prevê" valor={deficitPlano !== null ? `${num(deficitPlano, 0)}/dia` : '–'} />
-                    <Bloco rotulo="As medidas mostram" valor={`${num(tendencia.deficit_dia, 0)} ± ${num(tendencia.margem_dia, 0)}`} />
+                    <Bloco rotulo="As medidas mostram" valor={`≈ ${num(tendencia.deficit_dia, 0)}/dia`} />
                     <Bloco rotulo="Para a meta" valor={necessario !== null ? `${num(necessario, 0)}/dia` : '–'} />
                   </div>
+                  <p className={impreciso ? 'alerta' : 'texto-2'} style={impreciso ? { display: 'block' } : undefined}>
+                    {impreciso ? 'Ainda impreciso: ' : 'Faixa provável (95%): '}entre {num(tendencia.deficit_dia - tendencia.ic95_dia, 0)} e{' '}
+                    {num(tendencia.deficit_dia + tendencia.ic95_dia, 0)} kcal/dia. A fita e a balança têm ruído; com mais medições a faixa estreita.
+                    {impreciso && ' Não mude o plano por esse número ainda.'}
+                  </p>
                   <p className="texto-2">
                     Déficit em kcal por dia. "As medidas mostram" vem da tendência de {tendencia.medicoes} medições ({formatarData(tendencia.de)} a{' '}
                     {formatarData(tendencia.ate)}): massa gorda {num(tendencia.gorda_semana, 2)} kg/sem e massa magra {num(tendencia.magra_semana, 2)}{' '}

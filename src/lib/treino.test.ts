@@ -3,6 +3,7 @@ import { calcularCiclo, cicloPadrao } from './ciclo';
 import { composicao } from './gordura';
 import type { Ciclo, TreinoDia } from './tipos';
 import {
+  aderenciaRecente,
   calcularPlacar,
   digitosParaTempo,
   paceValido,
@@ -142,5 +143,17 @@ describe('Semanas e medidas', () => {
     expect(s[0].medida?.cintura_cm).toBe(97);
     expect(s[1].medida).toBeNull();
     expect(medidaInicial([med], '2026-10-15')?.data).toBe('2026-10-19');
+  });
+});
+
+describe('Aderência recente', () => {
+  it('depois do fim do projeto não vira falta: volta ao planejado', () => {
+    const dias: TreinoDia[] = [];
+    for (let i = 0; i < 40; i++) {
+      const d = new Date(Date.UTC(2026, 8, 20 + i)).toISOString().slice(0, 10);
+      if (d <= '2026-10-27') dias.push({ id: d, data: d, treino: true, cardio: true, corrida_km: null, corrida_seg: null });
+    }
+    expect(aderenciaRecente(dias, '2026-09-20', '2026-10-20', 28, '2026-10-27')?.treino).toBe(1);
+    expect(aderenciaRecente(dias, '2026-09-20', '2026-11-10', 28, '2026-10-27')).toBeNull();
   });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { somarDias } from './datas';
-import { deficitNecessario, ritmoPercentual, tendenciaMedidas } from './conferencia';
+import { deficitNecessario, ritmoPercentual, tendenciaMedidas, tStudent95 } from './conferencia';
 import type { Composicao } from './gordura';
 
 const comp = (dia: number, gorda: number, magra: number): Composicao => ({
@@ -22,7 +22,26 @@ describe('Conferência com as medidas', () => {
     expect(t.gorda_semana).toBeCloseTo(-0.5, 6);
     expect(t.magra_semana).toBeCloseTo(-0.1, 6);
     expect(t.deficit_dia).toBeCloseTo((0.5 * 9400 + 0.1 * 1800) / 7, 3);
-    expect(t.margem_dia).toBeCloseTo(0, 6);
+    expect(t.ic95_dia).toBeCloseTo(0, 6);
+  });
+  it('faixa de 95% com t de Student e ruído que move gorda e magra em sentidos opostos', () => {
+    // A fita erra 0,4 kg na medição do dia 14: a gordura sobe e a magra desce o mesmo tanto
+    const lista = [0, 7, 14, 21].map((d) => {
+      const erro = d === 14 ? 0.4 : 0;
+      return comp(d, 23 - (d / 7) * 0.5 + erro, 72.5 - erro);
+    });
+    const t = tendenciaMedidas(lista)!;
+    const e = lista.map((c) => c.massa_gorda_kg! * 9400 + c.massa_magra_kg! * 1800);
+    const xs = [0, 7, 14, 21];
+    const mx = 10.5;
+    const my = e.reduce((a, b) => a + b) / 4;
+    const sxx = xs.reduce((a, x) => a + (x - mx) ** 2, 0);
+    const b = xs.reduce((a, x, i) => a + (x - mx) * (e[i] - my), 0) / sxx;
+    const s2 = xs.reduce((a, x, i) => a + (e[i] - my - b * (x - mx)) ** 2, 0) / 2;
+    expect(t.deficit_dia).toBeCloseTo(-b, 6);
+    expect(t.ic95_dia).toBeCloseTo(4.303 * Math.sqrt(s2 / sxx), 6);
+    expect(tStudent95(2)).toBe(4.303);
+    expect(tStudent95(100)).toBe(1.96);
   });
   it('precisa de 4 medições em 3 semanas', () => {
     expect(tendenciaMedidas([0, 7, 14].map((d) => comp(d, 23, 72)))).toBeNull();

@@ -22,6 +22,16 @@ function reta(xs: number[], ys: number[]): Reta {
   return { inclinacao, erro: Math.sqrt(s2 / sxx) };
 }
 
+/** t(0,975) para poucos graus de liberdade; acima de 30, ≈ 1,96. */
+export function tStudent95(gl: number): number {
+  const tabela = [12.706, 4.303, 3.182, 2.776, 2.571, 2.447, 2.365, 2.306, 2.262, 2.228];
+  if (gl < 1) return Infinity;
+  if (gl <= tabela.length) return tabela[gl - 1];
+  if (gl <= 20) return 2.228 - ((gl - 10) * (2.228 - 2.086)) / 10;
+  if (gl <= 30) return 2.086 - ((gl - 20) * (2.086 - 2.042)) / 10;
+  return 1.96;
+}
+
 export interface Tendencia {
   de: string;
   ate: string;
@@ -34,8 +44,8 @@ export interface Tendencia {
   bf_semana: number;
   /** Déficit médio por dia que as medidas mostram (positivo = déficit) */
   deficit_dia: number;
-  /** ± incerteza do déficit (1 erro padrão) */
-  margem_dia: number;
+  /** Meia-largura da faixa de 95% do déficit (t de Student, n−2 graus de liberdade) */
+  ic95_dia: number;
 }
 
 /**
@@ -54,8 +64,11 @@ export function tendenciaMedidas(composicoes: Composicao[], janelaDias = 42): Te
   const p = reta(xs, janela.map((c) => c.peso_kg));
   const ci = reta(xs, janela.map((c) => c.cintura_cm));
   const bf = reta(xs, janela.map((c) => c.bf!));
-  const deficit_dia = -(g.inclinacao * KCAL_KG_GORDA + m.inclinacao * KCAL_KG_MAGRA);
-  const margem_dia = Math.sqrt((g.erro * KCAL_KG_GORDA) ** 2 + (m.erro * KCAL_KG_MAGRA) ** 2);
+  // Uma série só de energia: massa gorda e magra vêm da mesma fita e da mesma
+  // balança, então os erros delas andam juntos (não dá para somar como independentes).
+  const e = reta(xs, janela.map((c) => c.massa_gorda_kg! * KCAL_KG_GORDA + c.massa_magra_kg! * KCAL_KG_MAGRA));
+  const deficit_dia = -e.inclinacao;
+  const ic95_dia = tStudent95(janela.length - 2) * e.erro;
   return {
     de: janela[0].data,
     ate: ultima,
@@ -66,7 +79,7 @@ export function tendenciaMedidas(composicoes: Composicao[], janelaDias = 42): Te
     cintura_semana: ci.inclinacao * 7,
     bf_semana: bf.inclinacao * 7,
     deficit_dia,
-    margem_dia,
+    ic95_dia,
   };
 }
 

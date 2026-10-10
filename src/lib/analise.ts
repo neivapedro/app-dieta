@@ -238,10 +238,11 @@ export function sintomasPorFase(fases: AnaliseFase[], datasAplicacoes: string[],
       soma[d] += r.nausea;
       qtd[d]++;
     }
-    const taxa = (k: 'vomito' | 'diarreia' | 'intestino_preso') => {
-      const marcados = regs.filter((r) => r[k] !== undefined && r[k] !== null);
-      return marcados.length ? marcados.filter((r) => r[k]).length / marcados.length : null;
-    };
+    // Dia registrado sem o sintoma marcado conta como "não teve": só marcar
+    // quando acontece não pode virar 100%.
+    const algumMarcado = (k: 'vomito' | 'diarreia' | 'intestino_preso') => regs.some((r) => r[k] !== undefined && r[k] !== null);
+    const taxa = (k: 'vomito' | 'diarreia' | 'intestino_preso') =>
+      regs.length && algumMarcado(k) ? regs.filter((r) => r[k]).length / regs.length : null;
     return {
       indice: f.indice,
       nausea_por_dia: soma.map((s, d) => (qtd[d] ? s / qtd[d] : null)),
