@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Diario } from './Diario';
 import { AvisoRapido } from '../componentes/dose';
 import { FormAplicacao } from '../componentes/formularios';
@@ -50,6 +50,12 @@ export function Ciclo() {
       {aba === 'diario' && <Diario />}
       {aba === 'plano' && <Plano />}
       {aba === 'ajustes' && <Ajustes />}
+      <Link to="/retatrutida" className="cartao cartao-link">
+        <span className="cresce">
+          <strong>Entenda a retatrutida →</strong>
+          <span className="mudo">Como age no corpo, o que os estudos mostram e comparação com semaglutida e tirzepatida.</span>
+        </span>
+      </Link>
     </div>
   );
 }
