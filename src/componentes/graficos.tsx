@@ -118,7 +118,7 @@ export function GraficoPesoDose({ serie, linhas, hoje, larguraFixa }: { serie: P
           <CartesianGrid vertical={false} />
           {eixoX()}
           <YAxis yAxisId="kg" domain={['auto', 'auto']} tickFormatter={(v: number) => num(v, 0)} tickLine={false} axisLine={false} width={36} />
-          <YAxis yAxisId="mg" orientation="right" domain={[0, (max: number) => Math.ceil(max + 0.5)]} tickFormatter={(v: number) => num(v, 1)} tickLine={false} axisLine={false} width={36} />
+          <YAxis yAxisId="mg" orientation="right" domain={[0, (max: number) => Math.ceil(max + 0.5)]} tickFormatter={(v: number) => String(Math.round(v * 100) / 100).replace('.', ',')} tickLine={false} axisLine={false} width={36} />
           <Tooltip content={<Dica />} />
           <Legend iconType="plainline" />
           <Line yAxisId="kg" dataKey="peso" name="Peso" unit=" kg" stroke={CORES.peso} strokeWidth={2} dot={{ r: 2 }} connectNulls isAnimationActive={false} />

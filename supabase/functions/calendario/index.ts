@@ -64,7 +64,7 @@ const fmt = (n: number, casas = 2) => n.toLocaleString('pt-BR', { minimumFractio
 const fmtMg = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 function escapar(t: string): string {
-  return t.replace(/\\/g, '\\\\').replace(/;/g, '\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+  return t.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
 }
 
 /** Dobra linhas em 75 octetos (RFC 5545), sem quebrar caracteres UTF-8. */
@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
 
   const { data: ciclo } = await db
     .from('ciclos')
-    .select('id, nome, data_inicio, quantidade_total_mg, concentracao_mg_ml, intervalo_dias, fases')
+    .select('id, nome, data_inicio, quantidade_total_mg, concentracao_mg_ml, intervalo_dias, fases, passo_ui')
     .eq('user_id', perfil.user_id)
     .eq('ativo', true)
     .order('criado_em', { ascending: false })
@@ -144,7 +144,9 @@ Deno.serve(async (req) => {
       const { fase, indice } = faseDaDose(fases, n);
       if (saldo + EPS < fase.dose_mg) break;
       saldo -= fase.dose_mg;
-      const ui = (fase.dose_mg / conc) * 100;
+      // Arredonda à marcação da seringa, como o app (marcacao() em src/lib/ciclo.ts)
+      const passo = Number(ciclo.passo_ui) > 0 ? Number(ciclo.passo_ui) : 0.5;
+      const ui = Math.floor(((fase.dose_mg / conc) * 100) / passo + 0.5 + EPS) * passo;
       const inicio = localParaUtc(data, hora, fuso);
       const atrasada = n === lista.length + 1 && prevista < hoje;
       eventos.push(

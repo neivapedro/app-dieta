@@ -91,7 +91,7 @@ a { color: var(--destaque); }
   padding: calc(12px + env(safe-area-inset-top)) 0 12px;
   background: var(--fundo);
 }
-.topo .sub { color: var(--texto-2); font-size: 0.85rem; }
+.topo .sub { color: var(--texto-2); font-size: 0.85rem; overflow-wrap: anywhere; }
 
 .nav {
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 20;
@@ -133,7 +133,9 @@ a { color: var(--destaque); }
 @media (min-width: 560px) { .grade-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .bloco { background: var(--superficie-2); border-radius: 10px; padding: 10px 12px; min-width: 0; }
 .bloco .rotulo { font-size: 0.75rem; }
-.bloco .valor { font-weight: 650; font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.bloco .valor { font-weight: 650; font-size: 1.05rem; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; hyphens: auto; }
+.grade-3 .bloco .valor { font-size: 0.95rem; }
+@media (max-width: 380px) { .bloco { padding: 10px 8px; } }
 
 .etiqueta {
   display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px;
@@ -201,12 +203,15 @@ a { color: var(--destaque); }
   background: var(--superficie-2); font-weight: 700; font-size: 0.85rem; font-variant-numeric: tabular-nums;
 }
 .item .marcador.feito { background: color-mix(in srgb, var(--destaque) 20%, transparent); color: var(--destaque); }
-.item .titulo { font-weight: 600; }
-.item .detalhe { color: var(--texto-2); font-size: 0.82rem; }
+.item .titulo { font-weight: 600; overflow-wrap: anywhere; }
+.item .detalhe { color: var(--texto-2); font-size: 0.82rem; overflow-wrap: anywhere; }
+/* Texto digitado pela pessoa (link colado, palavra longa) não cria rolagem lateral */
+.cartao, .alerta, .folha { overflow-wrap: anywhere; }
 
 .tabela-rolagem { overflow-x: auto; margin: 0 -16px; padding: 0 16px; }
 table { width: 100%; border-collapse: collapse; font-size: 0.85rem; font-variant-numeric: tabular-nums; }
 th, td { padding: 8px 6px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--borda); }
+@media (max-width: 400px) { table { font-size: 0.78rem; } th, td { padding: 7px 4px; } }
 th { color: var(--texto-2); font-weight: 600; font-size: 0.75rem; }
 th:first-child, td:first-child { text-align: left; }
 
@@ -346,7 +351,7 @@ details.ajuda[open] summary { margin-bottom: 8px; }
 .falta-inline { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 8px; width: 100%; font-size: 0.78rem; font-variant-numeric: tabular-nums; }
 .item-dieta .falta-inline { padding: 6px 8px; border-radius: 8px; background: var(--superficie-2); }
 .estado-gravacao { width: 100%; font-size: 0.72rem; font-weight: 600; color: var(--texto-2); }
-.desfazer { position: sticky; bottom: calc(var(--nav-altura) + env(safe-area-inset-bottom) + 64px); z-index: 6; align-items: center; background: var(--superficie); }
+.alerta.desfazer { position: sticky; bottom: calc(var(--nav-altura) + env(safe-area-inset-bottom) + 64px); z-index: 6; align-items: center; background: linear-gradient(color-mix(in srgb, var(--info) 12%, transparent), color-mix(in srgb, var(--info) 12%, transparent)), var(--superficie); }
 .refeicao-titulo { min-height: 36px; }
 details.ajuda summary { min-height: 32px; display: flex; align-items: center; }
 
@@ -378,3 +383,4 @@ details.ajuda summary { min-height: 32px; display: flex; align-items: center; }
 }
 
 .grafico-fixo { height: auto; overflow: hidden; }
+.obs-curta { display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }

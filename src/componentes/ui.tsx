@@ -36,7 +36,7 @@ const caminhos: Record<string, ReactNode> = {
 
 export function Icone({ nome }: { nome: keyof typeof caminhos | string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       {caminhos[nome]}
     </svg>
   );

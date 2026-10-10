@@ -376,7 +376,7 @@ export function FormConfigDieta({
             <Campo
               rotulo="Exercício na meta"
               grupo
-              dica={`Nas últimas ${Math.round(aderencia.dias / 7)} semanas você fez ${num(aderencia.treino * 100, 0)}% dos treinos e ${num(
+              dica={`${Math.round(aderencia.dias / 7) <= 1 ? 'Na última semana' : `Nas últimas ${Math.round(aderencia.dias / 7)} semanas`} você fez ${num(aderencia.treino * 100, 0)}% dos treinos e ${num(
                 aderencia.cardio * 100,
                 0,
               )}% dos cardios: ≈ ${num(exercicioReal(montar().atividades, aderencia), 0)} kcal/dia de exercício real.`}

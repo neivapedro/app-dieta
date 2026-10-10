@@ -114,6 +114,8 @@ export function Analise() {
           linha('Massa magra', 'massa_magra_kg', kg, ' kg'),
           linha('Peso', 'peso_kg', kg, ' kg'),
           linha('Pescoço', 'pescoco_cm', cm, ' cm'),
+          // Na fórmula feminina, o quadril entra no % de gordura
+          ...(ini.quadril_cm !== null ? [linha('Quadril', 'quadril_cm', cm, ' cm')] : []),
         ],
         nota: 'Método da Marinha dos EUA (fita métrica), medido em jejum às segundas.',
       });
@@ -396,8 +398,8 @@ export function Analise() {
           </div>
         )}
         <p className="mudo" style={{ marginTop: 8 }}>
-          Última medição até o início da fase × última antes da fase seguinte. Uma fase com pouca perda e baixa aderência ao treino pede ajuste de rotina,
-          não necessariamente de dose.
+          Última medição até o início da fase (ou a primeira dentro dela) × última antes da fase seguinte.
+          {treino && ' Uma fase com pouca perda e baixa aderência ao treino pede ajuste de rotina, não necessariamente de dose.'}
         </p>
       </section>
 
@@ -447,7 +449,7 @@ export function Analise() {
 
       <section className="cartao">
         <h2>Náusea por dia depois da dose</h2>
-        {sintomas.every((s) => s.nausea_por_dia.every((n) => n === null)) ? (
+        {sintomas.every((s) => s.nausea_por_dia.every((n) => n === null)) && !temSintomas ? (
           <Vazio>Registre a náusea no Diário (0 a 3) para ver em que dia depois da dose ela aparece.</Vazio>
         ) : (
           <div className="tabela-rolagem">

@@ -154,11 +154,20 @@ export function Inicio() {
           <Bloco rotulo="Saldo" valor={mg(resumo.saldo_mg)} />
           <Bloco rotulo="Saldo (ml / UI)" valor={`${num(resumo.saldo_ml)} ml · ${num(resumo.saldo_ui, 0)} UI`} />
           <Bloco rotulo="Aplicações feitas" valor={`${resumo.aplicacoes_realizadas} · ${mg(resumo.total_aplicado_mg)}`} />
-          <Bloco rotulo="Doses restantes no plano" valor={`${resumo.projecao.length} ${resumo.projecao.length === 1 ? 'dose' : 'doses'}`} />
+          <Bloco
+            rotulo="Doses restantes no plano"
+            valor={
+              resumo.doses_plano_restantes > resumo.projecao.length
+                ? `${resumo.doses_plano_restantes} · frasco cobre ${resumo.projecao.length}`
+                : `${resumo.projecao.length} ${resumo.projecao.length === 1 ? 'dose' : 'doses'}`
+            }
+          />
         </div>
         {resumo.data_fim_prevista && resumo.projecao.length > 0 && (
           <p className="mudo" style={{ marginTop: 10 }}>
-            Mantendo o plano, a última dose fica para {formatarData(resumo.data_fim_prevista)}.
+            {resumo.doses_plano_restantes > resumo.projecao.length
+              ? `O frasco acaba em ${formatarData(resumo.data_fim_prevista)}: faltarão ${resumo.doses_plano_restantes - resumo.projecao.length} dose(s) do plano.`
+              : `Mantendo o plano, a última dose fica para ${formatarData(resumo.data_fim_prevista)}.`}
           </p>
         )}
         {resumo.sobra_doses > 0 && (
@@ -181,13 +190,17 @@ export function Inicio() {
             <Bloco
               rotulo="Sintomas"
               valor={
-                [regHoje.vomito && 'vômito', regHoje.diarreia && 'diarreia', regHoje.intestino_preso && 'intestino preso'].filter(Boolean).join(', ') ||
-                regHoje.observacoes ||
-                '–'
+                [regHoje.vomito && 'vômito', regHoje.diarreia && 'diarreia', regHoje.intestino_preso && 'intestino preso'].filter(Boolean).join(', ') || '–'
               }
             />
           </div>
-        ) : (
+        ) : null}
+        {regHoje?.observacoes && (
+          <p className="mudo obs-curta" style={{ marginTop: 8 }}>
+            Obs.: {regHoje.observacoes}
+          </p>
+        )}
+        {regHoje ? null : (
           <p className="mudo">Anote peso, náusea e efeitos de hoje. Vale para qualquer dia, não só o da aplicação.</p>
         )}
       </section>

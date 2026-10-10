@@ -79,6 +79,11 @@ function nota(doc: jsPDF, y: number, texto: string): number {
   return y + linhas.length * 3.4 + 3;
 }
 
+/** Até 2 casas, sem zeros à direita (0,75 e não 0,8). */
+function rotuloEixo(v: number): string {
+  return String(Math.round(v * 100) / 100).replace('.', ',');
+}
+
 function desenharGrafico(doc: jsPDF, y: number, g: GraficoRelatorio): number {
   const altura = 62;
   y = garantirEspaco(doc, y, altura + 14);
@@ -108,8 +113,8 @@ function desenharGrafico(doc: jsPDF, y: number, g: GraficoRelatorio): number {
   for (let i = 0; i <= 4; i++) {
     const yy = yTopo + ((yBase - yTopo) * i) / 4;
     doc.line(x0, yy, x1, yy);
-    doc.text((kMax - ((kMax - kMin) * i) / 4).toFixed(1).replace('.', ','), x0 - 1.5, yy + 1, { align: 'right' });
-    doc.text((mgMax - (mgMax * i) / 4).toFixed(1).replace('.', ','), x1 + 1.5, yy + 1);
+    doc.text(rotuloEixo(kMax - ((kMax - kMin) * i) / 4), x0 - 1.5, yy + 1, { align: 'right' });
+    doc.text(rotuloEixo(mgMax - (mgMax * i) / 4), x1 + 1.5, yy + 1);
   }
   // Datas no eixo X: início, meio e fim
   for (const d of [dMin, Math.round((dMin + dMax) / 2), dMax]) doc.text(g.rotulo(d), px(d), yBase + 4, { align: 'center' });
@@ -190,7 +195,14 @@ export function gerarRelatorioPdf(m: ModeloRelatorio): Blob {
   }
 
   for (const t of m.tabelas) {
-    if (!t.linhas.length) continue;
+    if (!t.linhas.length) {
+      // Sem linhas, mas com nota (ex.: metas do plano alimentar sem refeições): mostra a nota
+      if (t.nota) {
+        y = titulo(doc, y + 6, t.titulo);
+        y = nota(doc, y + 1, t.nota);
+      }
+      continue;
+    }
     y = titulo(doc, y + 6, t.titulo);
     autoTable(doc, {
       startY: y + 1,

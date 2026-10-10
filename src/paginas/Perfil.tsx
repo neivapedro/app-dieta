@@ -25,6 +25,12 @@ const TEXTO_ESTADO: Record<EstadoNotificacao, string> = {
 };
 
 
+/** Data do backup no fuso do aparelho (o arquivo guarda em UTC). */
+function dataDoBackup(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? formatarData(iso.slice(0, 10)) : formatarData(hojeLocal(d));
+}
+
 export function Perfil() {
   const { perfil, ciclo, aplicacoes, diario, medidas, treinos, dieta, usuario, repo, executar, sair, limparErro } = useDados();
   const [nome, setNome] = useState(perfil?.nome ?? '');
@@ -34,6 +40,16 @@ export function Perfil() {
   const [ativos, setAtivos] = useState(perfil?.lembretes_ativos ?? true);
   const [hora, setHora] = useState(perfil?.hora_lembrete ?? '08:00');
   const [msg, setMsg] = useState<{ tipo: string; texto: string } | null>(null);
+  // Perfil mudou por fora (importação de backup): o formulário mostra o que está salvo
+  useEffect(() => {
+    if (!perfil) return;
+    setNome(perfil.nome ?? '');
+    setSexo(perfil.sexo ?? 'Masculino');
+    setAltura(paraTexto(perfil.altura_cm));
+    setNascimento(perfil.data_nascimento ?? '');
+    setAtivos(perfil.lembretes_ativos ?? true);
+    setHora(perfil.hora_lembrete ?? '08:00');
+  }, [perfil]);
   const [estado, setEstado] = useState<EstadoNotificacao | null>(null);
   const [msgCal, setMsgCal] = useState<string | null>(null);
   const arquivo = useRef<HTMLInputElement>(null);
@@ -272,10 +288,21 @@ export function Perfil() {
         {importacao && (
           <div className="alerta info pilha" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div>
-              <b>Backup de {formatarData(importacao.backup.exportado_em.slice(0, 10))}.</b> Vai importar:{' '}
+              <b>Backup de {dataDoBackup(importacao.backup.exportado_em)}.</b> Vai importar:{' '}
               {importacao.plano.aplicacoes.length} aplicação(ões), {importacao.plano.medidas.length} medição(ões),{' '}
               {importacao.plano.diario.length} dia(s) do diário, {importacao.plano.treinos.length} dia(s) de treino
               {importacao.backup.dieta ? ' e o plano da dieta (substitui o atual)' : ''}.
+              {(importacao.backup.perfil || importacao.backup.ciclo) && (
+                <>
+                  {' '}
+                  <b>
+                    Também substitui
+                    {importacao.backup.perfil ? ' seus dados pessoais e metas' : ''}
+                    {importacao.backup.perfil && importacao.backup.ciclo ? ' e' : ''}
+                    {importacao.backup.ciclo ? ` o ciclo e o plano de doses (início em ${formatarData(importacao.backup.ciclo.data_inicio)})` : ''}.
+                  </b>
+                </>
+              )}
               {importacao.plano.ignoradas.aplicacoes + importacao.plano.ignoradas.medidas > 0 &&
                 ` ${importacao.plano.ignoradas.aplicacoes + importacao.plano.ignoradas.medidas} registro(s) já existentes serão pulados.`}
             </div>

@@ -175,7 +175,8 @@ export function composicaoPorFase(fases: AnaliseFase[], composicoes: Composicao[
     const prox = fases[i + 1]?.inicio ?? null;
     const ultimoDia = prox ? somarDias(prox, -1) : hoje;
     const ate = [...composicoes].reverse().find((c) => c.data <= ultimoDia && c.data >= f.inicio) ?? null;
-    const de = [...composicoes].reverse().find((c) => c.data <= f.inicio) ?? null;
+    // Sem medição antes da fase (1ª medição depois da 1ª dose), vale a primeira dentro dela
+    const de = [...composicoes].reverse().find((c) => c.data <= f.inicio) ?? composicoes.find((c) => c.data >= f.inicio && c.data <= ultimoDia) ?? null;
     const ok = de && ate && ate.data > de.data;
     const dif = (k: 'cintura_cm' | 'massa_gorda_kg' | 'massa_magra_kg') =>
       ok && de![k] !== null && ate![k] !== null ? (ate![k] as number) - (de![k] as number) : null;

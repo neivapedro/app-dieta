@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
     resultado.avaliados++;
     const { data: ciclo } = await db
       .from('ciclos')
-      .select('id, data_inicio, quantidade_total_mg, concentracao_mg_ml, intervalo_dias, fases')
+      .select('id, data_inicio, quantidade_total_mg, concentracao_mg_ml, intervalo_dias, fases, passo_ui')
       .eq('user_id', perfil.user_id)
       .eq('ativo', true)
       .order('criado_em', { ascending: false })
@@ -115,7 +115,9 @@ Deno.serve(async (req) => {
 
     const numero = lista.length + 1;
     const fase = faseDaDose(ciclo.fases as Fase[], numero);
-    const ui = (fase.dose_mg / Number(ciclo.concentracao_mg_ml)) * 100;
+    // Arredonda à marcação da seringa, como o app (marcacao() em src/lib/ciclo.ts)
+    const passo = Number(ciclo.passo_ui) > 0 ? Number(ciclo.passo_ui) : 0.5;
+    const ui = Math.floor(((fase.dose_mg / Number(ciclo.concentracao_mg_ml)) * 100) / passo + 0.5 + 1e-9) * passo;
     const titulo = atraso === 0 ? '💉 Hoje é dia de aplicação' : `⚠️ Aplicação atrasada há ${atraso} dia(s)`;
     const corpo = `${numero}ª dose · ${fmt(fase.dose_mg)} mg (${fmt(ui)} UI) · fase ${fase.nome}. Toque para registrar.`;
 

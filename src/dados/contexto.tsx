@@ -132,7 +132,7 @@ export function ProvedorDados({ children }: { children: ReactNode }) {
       let dieta: PlanoDieta | null = null;
       let dietaIndisponivel: string | null = null;
       try {
-        dieta = (await repositorio.obterDieta()) ?? planoPadrao();
+        dieta = (await repositorio.obterDieta()) ?? planoPadrao(!!perfil?.modulo_treino);
       } catch (e) {
         if (ehErroDeRede(e)) throw e;
         dietaIndisponivel = e instanceof Error ? e.message : String(e);

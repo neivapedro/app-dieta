@@ -32,7 +32,16 @@ export function lerBackup(texto: string): Backup {
   } catch {
     throw new Error('Arquivo de backup não reconhecido.');
   }
-  if ((b?.versao !== 1 && b?.versao !== 2) || !Array.isArray(b.aplicacoes)) throw new Error('Arquivo de backup não reconhecido.');
+  const listaOk = (v: unknown) => v === undefined || Array.isArray(v);
+  if (
+    (b?.versao !== 1 && b?.versao !== 2) ||
+    !Array.isArray(b.aplicacoes) ||
+    typeof b.exportado_em !== 'string' ||
+    !listaOk(b.medidas) ||
+    !listaOk(b.diario) ||
+    !listaOk((b as { treinos?: unknown }).treinos)
+  )
+    throw new Error('Arquivo de backup não reconhecido.');
   return b;
 }
 

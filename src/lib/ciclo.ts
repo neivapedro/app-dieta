@@ -166,6 +166,8 @@ export interface ResumoCiclo {
   /** Doses da última fase que sobram no frasco depois de cumprir o plano */
   sobra_doses: number;
   sobra_mg: number;
+  /** Doses que o plano ainda tem (mesmo que o frasco não cubra todas) */
+  doses_plano_restantes: number;
   data_fim_prevista: string | null;
   sugestao_local: string;
   alertas: string[];
@@ -251,7 +253,8 @@ export function calcularCiclo(
     const fase = faseDaDose(ciclo.fases, numero);
     const data = ultima ? somarDias(ultima.data, intervalo) : ciclo.data_inicio;
     const dias = diferencaDias(hoje, data);
-    const dose = fase.fase.dose_mg;
+    // Dose extra (depois do plano) é a sobra: nunca mais do que o frasco tem
+    const dose = numero > totalPlano ? Math.min(fase.fase.dose_mg, Math.round(saldo * 100) / 100) : fase.fase.dose_mg;
     proxima = {
       numero,
       data,
@@ -263,7 +266,7 @@ export function calcularCiclo(
       extra: numero > totalPlano,
       ...marcacao(dose, ciclo),
     };
-    if (!proxima.saldo_suficiente) {
+    if (!proxima.saldo_suficiente && !proxima.extra) {
       alertas.push(`O saldo (${fmt(saldo)} mg) não cobre a próxima dose prevista de ${fmt(dose)} mg.`);
     }
 
@@ -300,6 +303,7 @@ export function calcularCiclo(
     sobra_doses: doseManutencao > 0 ? Math.floor(sobraMg / doseManutencao + EPS) : 0,
     sobra_mg: sobraMg,
     data_fim_prevista: projecao.length ? projecao[projecao.length - 1].data : ultima?.data ?? null,
+    doses_plano_restantes: Math.max(totalPlano - ordenadas.length, 0),
     sugestao_local: sugerirLocal(ultima?.local),
     alertas,
   };

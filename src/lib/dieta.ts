@@ -91,6 +91,9 @@ const UNIDADES_DE_COLHER = /^(colher|concha|escumadeira|pegador)/;
 export function itemPadrao(a: Alimento): ItemRefeicao {
   const p = a.porcoes[0];
   if (p && !UNIDADES_DE_COLHER.test(p.nome)) return { alimento_id: a.id, quantidade: 1, unidade: p.nome };
+  // Gordura, açúcar, mel, pasta de amendoim: denso e servido em colherinha (≤ 20 g) entra em 1 colher, não 100 g
+  const kcal100 = a.prot * 4 + a.carb * 4 + a.gord * 9;
+  if (p && p.g <= 20 && kcal100 >= 300) return { alimento_id: a.id, quantidade: 1, unidade: p.nome };
   return { alimento_id: a.id, quantidade: 100, unidade: 'g' };
 }
 
@@ -157,8 +160,8 @@ export function novoId(): string {
   return crypto.randomUUID();
 }
 
-export function planoPadrao(): PlanoDieta {
-  const nomes = ['Refeição 1', 'Refeição 2', 'Refeição 3', 'Refeição 4', 'Refeição 5', 'Pós-treino'];
+export function planoPadrao(comTreino = true): PlanoDieta {
+  const nomes = ['Refeição 1', 'Refeição 2', 'Refeição 3', 'Refeição 4', 'Refeição 5', comTreino ? 'Pós-treino' : 'Refeição 6'];
   return { config: configPadrao(), refeicoes: nomes.map((nome) => ({ id: novoId(), nome, horario: null, itens: [] })) };
 }
 

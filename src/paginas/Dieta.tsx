@@ -41,6 +41,15 @@ function falta(valor: number, meta: number, sufixo: string, tolerancia: number) 
 
 const TEXTO_ESTADO = { salvo: 'Salvo', salvando: 'Salvando…', pendente: 'Sem conexão · guardado no aparelho', erro: 'Não salvo' } as const;
 
+/** Próximo "Refeição N" livre, sempre depois do maior número em uso. */
+function proximoNomeRefeicao(refeicoes: Refeicao[]): string {
+  const n = 1 + Math.max(0, refeicoes.length, ...refeicoes.map((r) => Number(/^Refeição (\d+)$/.exec(r.nome)?.[1] ?? 0)));
+  const usados = new Set(refeicoes.map((r) => r.nome));
+  let k = n;
+  while (usados.has(`Refeição ${k}`)) k++;
+  return `Refeição ${k}`;
+}
+
 export function Dieta() {
   const { dieta, salvarDieta, estadoDieta, dietaIndisponivel, perfil, medidas, treinos } = useDados();
   const { composicoes, hoje, sexo } = useCalculos();
@@ -49,13 +58,14 @@ export function Dieta() {
   const [config, setConfig] = useState(false);
   const [seletor, setSeletor] = useState<Seletor>(null);
   const [editando, setEditando] = useState<string | null>(null);
-  const [removido, setRemovido] = useState<Removido>(null);
+  // Pilha: remover vários seguidos e desfazer todos
+  const [removidos, setRemovidos] = useState<NonNullable<Removido>[]>([]);
 
   useEffect(() => {
-    if (!removido) return;
-    const t = setTimeout(() => setRemovido(null), 6000);
+    if (!removidos.length) return;
+    const t = setTimeout(() => setRemovidos([]), 6000);
     return () => clearTimeout(t);
-  }, [removido]);
+  }, [removidos]);
 
   const ultima = [...composicoes].reverse().find((c) => c.massa_magra_kg !== null) ?? null;
   const corpo: Corpo | null = ultima ? { peso_kg: ultima.peso_kg, massa_magra_kg: ultima.massa_magra_kg! } : null;
@@ -117,18 +127,24 @@ export function Dieta() {
     const r = plano!.refeicoes.find((x) => x.id === refeicao);
     const item = r?.itens[indice];
     if (!item) return;
-    setRemovido({ refeicao, indice, item, nome: mapa?.get(item.alimento_id)?.nome ?? 'Alimento' });
+    setRemovidos((p) => [...p, { refeicao, indice, item, nome: mapa?.get(item.alimento_id)?.nome ?? 'Alimento' }]);
     mudarRefeicao(refeicao, (x) => ({ ...x, itens: x.itens.filter((_, j) => j !== indice) }));
   }
 
   function desfazer() {
-    if (!removido) return;
-    mudarRefeicao(removido.refeicao, (x) => {
-      const itens = [...x.itens];
-      itens.splice(Math.min(removido.indice, itens.length), 0, removido.item);
-      return { ...x, itens };
-    });
-    setRemovido(null);
+    if (!removidos.length) return;
+    // Do último para o primeiro: cada item volta à posição em que estava
+    let refeicoes = plano!.refeicoes;
+    for (const r of [...removidos].reverse()) {
+      refeicoes = refeicoes.map((x) => {
+        if (x.id !== r.refeicao) return x;
+        const itens = [...x.itens];
+        itens.splice(Math.min(r.indice, itens.length), 0, r.item);
+        return { ...x, itens };
+      });
+    }
+    atualizar({ refeicoes });
+    setRemovidos([]);
   }
 
   const mover = (id: string, passo: -1 | 1) => {
@@ -201,7 +217,7 @@ export function Dieta() {
             </div>
             <p className="texto-2">
               kcal por dia. Basal pela sua massa magra ({kg(corpo.massa_magra_kg)}, medição de {formatarData(ultima.data)}); gasto total = basal × dia a dia +
-              exercícios; meta = gasto total {ajuste < 0 ? '−' : '+'} {ajuste < 0 ? 'déficit' : 'superávit'}.
+              exercícios; meta = gasto total{ajuste === 0 ? ' (sem ajuste)' : ajuste < 0 ? ' − déficit' : ' + superávit'}.
             </p>
             {diasMedicao > 10 && (
               <div className="alerta">Meta calculada com a medição de {formatarData(ultima.data)}. Faça uma nova medição para atualizar.</div>
@@ -341,7 +357,7 @@ export function Dieta() {
       <button
         type="button"
         className="botao"
-        onClick={() => atualizar({ refeicoes: [...plano.refeicoes, { id: novoId(), nome: `Refeição ${plano.refeicoes.length + 1}`, horario: null, itens: [] }] })}
+        onClick={() => atualizar({ refeicoes: [...plano.refeicoes, { id: novoId(), nome: proximoNomeRefeicao(plano.refeicoes), horario: null, itens: [] }] })}
       >
         + Refeição
       </button>
@@ -432,9 +448,9 @@ export function Dieta() {
         </section>
       )}
 
-      {removido && (
+      {removidos.length > 0 && (
         <div className="alerta info desfazer" role="status">
-          <span className="cresce">{removido.nome} removido.</span>
+          <span className="cresce">{removidos.length === 1 ? `${removidos[0].nome} removido.` : `${removidos.length} alimentos removidos.`}</span>
           <button className="botao pequeno primario" onClick={desfazer}>
             Desfazer
           </button>

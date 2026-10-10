@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useDados } from '../dados/contexto';
 import { useCalculos } from '../dados/useCalculos';
-import { faseDaDose, guiaSeringa, marcacao } from '../lib/ciclo';
+import { faseDaDose, guiaSeringa, marcacao, totalDosesPlano } from '../lib/ciclo';
 import { diaDaSemana, formatarData, hojeLocal } from '../lib/datas';
 import { cm, kg, num, lerPeso, paraNumero, paraTexto, pp, ui } from '../lib/formato';
 import { composicao } from '../lib/gordura';
@@ -26,7 +26,12 @@ export function FormAplicacao({ aplicacao, aoFechar }: { aplicacao?: Aplicacao; 
   const numero = numeroDe(data);
   const fase = faseDaDose(ciclo!.fases, numero);
   const renumera = !!data && outras.some((l) => l.aplicacao.data > data);
-  const [dose, setDose] = useState(paraTexto(aplicacao?.dose_mg ?? fase.fase.dose_mg));
+  // Depois do fim do plano, a dose extra é a sobra do frasco (nunca mais que o saldo)
+  const doseSugerida = (n: number) => {
+    const d = faseDaDose(ciclo!.fases, n).fase.dose_mg;
+    return n > totalDosesPlano(ciclo!.fases) ? Math.min(d, Math.round(resumo!.saldo_mg * 100) / 100) : d;
+  };
+  const [dose, setDose] = useState(paraTexto(aplicacao?.dose_mg ?? doseSugerida(numero)));
   const [mexeuDose, setMexeuDose] = useState(false);
   const [local, setLocal] = useState(aplicacao?.local ?? resumo!.sugestao_local);
   const [obs, setObs] = useState(aplicacao?.observacoes ?? '');
@@ -47,7 +52,7 @@ export function FormAplicacao({ aplicacao, aoFechar }: { aplicacao?: Aplicacao; 
     if (!mexeuPeso) setPeso(paraTexto(r?.peso_kg));
     if (!mexeuNausea) setNausea(r?.nausea ?? null);
     // Dose ainda não mexida acompanha a fase da nova posição
-    if (!mexeuDose && !aplicacao) setDose(paraTexto(faseDaDose(ciclo!.fases, numeroDe(nova)).fase.dose_mg));
+    if (!mexeuDose && !aplicacao) setDose(paraTexto(doseSugerida(numeroDe(nova))));
   }
 
   const doseNum = paraNumero(dose);
