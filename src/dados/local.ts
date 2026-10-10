@@ -219,7 +219,8 @@ export class RepositorioLocal implements Repositorio {
   }
 
   async salvarDieta(p: PlanoDieta) {
-    this.alterar((b) => (b.dieta = p));
+    // Sem campos antigos (ex.: backup de versão anterior)
+    this.alterar((b) => (b.dieta = { ...p, config: lerConfigDieta(p.config) }));
   }
 
   async listarRegistroDecisoes() {

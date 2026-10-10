@@ -264,7 +264,8 @@ export function Dieta() {
             </p>
             {diasMedicao > 10 && (
               <div className="alerta">
-                Última medição em {formatarData(ultima.data)}: meta calculada {textoBaseMetas(corpo)}. Faça uma nova medição para atualizar.
+                {corpo.medicoes > 1 ? `Última medição em ${formatarData(ultima.data)}: meta calculada` : 'Meta calculada'} {textoBaseMetas(corpo)}. Faça uma nova
+                medição para atualizar.
               </div>
             )}
             <details className="ajuda">

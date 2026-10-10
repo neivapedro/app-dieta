@@ -393,7 +393,7 @@ export function CartaoDietaHoje({ semPergunta }: { semPergunta?: boolean }) {
       )}
       {ultima && corpo && diferencaDias(ultima.data, hoje) > 10 && (
         <p className="texto-2" style={{ marginBottom: 8 }}>
-          Última medição em {formatarData(ultima.data)}: meta calculada {textoBaseMetas(corpo)}.
+          {corpo.medicoes > 1 ? `Última medição em ${formatarData(ultima.data)}: meta calculada` : 'Meta calculada'} {textoBaseMetas(corpo)}.
         </p>
       )}
       {prox && banco && (

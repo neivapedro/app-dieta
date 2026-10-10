@@ -461,7 +461,7 @@ export class RepositorioSupabase implements Repositorio {
     erro(
       await this.sb
         .from('dieta_planos')
-        .upsert({ user_id: await this.uid(), config: p.config, refeicoes: p.refeicoes, atualizado_em: new Date().toISOString() }),
+        .upsert({ user_id: await this.uid(), config: lerConfigDieta(p.config), refeicoes: p.refeicoes, atualizado_em: new Date().toISOString() }),
     );
   }
 
