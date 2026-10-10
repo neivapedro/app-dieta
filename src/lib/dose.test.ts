@@ -7,6 +7,7 @@ import {
   cicloPadrao,
   descreverFaseAtual,
   guiaSeringa,
+  limiarPausaLonga,
   localizarDegraus,
   marcacao,
   marcasVizinhas,
@@ -151,6 +152,26 @@ describe('Próxima dose pela dose realmente aplicada', () => {
     expect(r.pausa_dias).toBe(28);
     expect(r.proxima!.dose_mg).toBe(1.5);
     expect(calcularCiclo(base, aps, [], '2026-09-02').pausa_dias).toBeNull();
+  });
+
+  it('limiar da pausa: 14 dias ou 2 intervalos do ciclo, o que for maior (app e Edge Functions)', async () => {
+    const edge = await import('../../supabase/functions/_shared/dose');
+    for (const f of [limiarPausaLonga, edge.limiarPausaLonga]) {
+      expect(f(7)).toBe(14);
+      expect(f(14)).toBe(28);
+      expect(f(5)).toBe(14);
+      expect(f(0)).toBe(14);
+    }
+    // Intervalo 7: alerta a partir do 14º dia sem aplicar
+    const aps = semanas('2026-07-16', 3, 1.25);
+    expect(calcularCiclo(base, aps, [], somarDias('2026-07-30', 13)).pausa_dias).toBeNull();
+    expect(calcularCiclo(base, aps, [], somarDias('2026-07-30', 14)).pausa_dias).toBe(14);
+    // Intervalo 14: o dia de dose (14 dias depois) não é pausa; só a partir de 28
+    const quinzenal = { ...base, intervalo_dias: 14 };
+    const aps14 = [ap('2026-07-16', 1.25), ap('2026-07-30', 1.25)];
+    expect(calcularCiclo(quinzenal, aps14, [], somarDias('2026-07-30', 14)).pausa_dias).toBeNull();
+    expect(calcularCiclo(quinzenal, aps14, [], somarDias('2026-07-30', 27)).pausa_dias).toBeNull();
+    expect(calcularCiclo(quinzenal, aps14, [], somarDias('2026-07-30', 28)).pausa_dias).toBe(28);
   });
 
   it('projeção: resto do degrau firme, fases seguintes como hipótese', () => {

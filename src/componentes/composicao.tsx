@@ -4,10 +4,10 @@ import { useAlimentos } from '../dados/useAlimentos';
 import { useCalculos } from '../dados/useCalculos';
 import { useTreino } from '../dados/useTreino';
 import { qualidadePerda, textoQualidade, type QualidadePerda } from '../lib/conferencia';
-import { alvoProteinaRefeicao, calcularMetas, macrosDaRefeicao, somar } from '../lib/dieta';
+import { alvoProteinaRefeicao, calcularMetas, corpoParaMetas, macrosDaRefeicao, somar } from '../lib/dieta';
 import { formatarData } from '../lib/datas';
 import { num, pp } from '../lib/formato';
-import { ajusteDoPerfil, AJUSTE_PADRAO, COR_RCA, faixaRca, percentualGorduraBruto, rca, rfm, TEXTO_RCA, ultimaNormal, type Composicao } from '../lib/gordura';
+import { ajusteDoPerfil, AJUSTE_PADRAO, COR_RCA, faixaRca, percentualGorduraBruto, rca, rfm, TEXTO_RCA, type Composicao } from '../lib/gordura';
 import { acaoQualidade } from '../lib/semana';
 import { aderenciaRecente } from '../lib/treino';
 import type { Perfil } from '../lib/tipos';
@@ -56,12 +56,12 @@ function AcaoQualidadeLink({ q }: { q: QualidadePerda }) {
   const { composicoes, hoje } = useCalculos();
   const treino = useTreino();
   const { banco } = useAlimentos();
-  // A mesma medição que a aba Dieta usa nas metas, para os números baterem ao abrir a Dieta
-  const ultima = ultimaNormal(composicoes);
+  // O mesmo corpo que a aba Dieta usa nas metas (média das últimas medições), para os números baterem ao abrir a Dieta
+  const corpo = corpoParaMetas(composicoes);
   const aderencia = treino ? aderenciaRecente(treinos, treino.inicio, hoje, 28, treino.fim) : null;
   const refeicoes = dieta && banco ? dieta.refeicoes.filter((r) => r.itens.length).map((r) => ({ r, m: macrosDaRefeicao(r, banco.mapa) })) : [];
-  const alvo = ultima ? alvoProteinaRefeicao(ultima.massa_magra_kg!) : null;
-  const metas = dieta && ultima ? calcularMetas(dieta.config, { peso_kg: ultima.peso_kg, massa_magra_kg: ultima.massa_magra_kg! }, aderencia) : null;
+  const alvo = corpo ? alvoProteinaRefeicao(corpo.massa_magra_kg) : null;
+  const metas = dieta && corpo ? calcularMetas(dieta.config, corpo, aderencia) : null;
   const acao = acaoQualidade(q, {
     refeicoesAbaixo: alvo ? refeicoes.filter(({ m }) => m.ptn_animal < alvo * 0.9).map(({ r }) => r.nome) : [],
     alvoRefeicao: alvo,

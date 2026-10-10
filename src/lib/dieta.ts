@@ -1,3 +1,5 @@
+import { formatarData } from './datas';
+import type { Composicao } from './gordura';
 import type { Sexo } from './tipos';
 
 // ---------------------------------------------------------------------------
@@ -139,8 +141,16 @@ export interface ConfigDieta {
   gord_gkg: number;
   /** Exercício da meta ajustado pelo que a aba Treino registrou */
   usar_aderencia?: boolean;
-  /** Fase pós-remédio: última medição em que a sugestão de degrau do déficit foi aplicada ou dispensada */
-  pos_degrau_medicao?: string | null;
+}
+
+/** Campos que versões antigas gravavam na config e o app não usa mais. */
+const CAMPOS_ANTIGOS_CONFIG = ['pos_degrau_medicao'];
+
+/** Config lida do banco ou do aparelho: completa com o padrão e descarta campos antigos. */
+export function lerConfigDieta(bruta: unknown): ConfigDieta {
+  const c: Record<string, unknown> = { ...configPadrao(), ...(bruta && typeof bruta === 'object' ? (bruta as object) : {}) };
+  for (const k of CAMPOS_ANTIGOS_CONFIG) delete c[k];
+  return c as unknown as ConfigDieta;
 }
 
 export interface PlanoDieta {
@@ -249,6 +259,51 @@ export function calcularMetas(config: ConfigDieta, corpo: Corpo, aderencia?: Ade
     ptn_animal_g: Math.max(0, config.ptn_gkg) * corpo.massa_magra_kg,
     gord_g: Math.max(0, config.gord_gkg) * corpo.peso_kg,
   };
+}
+
+/** Quantas medições entram na média das metas */
+export const MEDICOES_METAS = 3;
+
+export interface CorpoMetas extends Corpo {
+  /** Medições que entraram na média (1 a MEDICOES_METAS) */
+  medicoes: number;
+  /** Primeira e última medição da média */
+  de: string;
+  ate: string;
+}
+
+/**
+ * Corpo usado nas metas da Dieta (basal, proteína animal, gordura e, por
+ * consequência, kcal e carbo): média do peso e da massa magra das 3 últimas
+ * medições válidas (não atípicas, com massa magra calculada); com menos de 3,
+ * as que houver. A média suaviza o ruído da fita e da balança de uma medição
+ * só. Se todas forem atípicas, vale a última delas (a meta não some).
+ */
+export function corpoParaMetas(
+  composicoes: Pick<Composicao, 'data' | 'peso_kg' | 'massa_magra_kg' | 'atipica'>[],
+  n = MEDICOES_METAS,
+): CorpoMetas | null {
+  const com = composicoes
+    .filter((c) => c.massa_magra_kg !== null && Number.isFinite(c.massa_magra_kg) && Number.isFinite(c.peso_kg))
+    .sort((a, b) => a.data.localeCompare(b.data));
+  const validas = com.filter((c) => !c.atipica);
+  const usadas = validas.length ? validas.slice(-Math.max(1, n)) : com.slice(-1);
+  if (!usadas.length) return null;
+  const media = (f: (c: (typeof usadas)[number]) => number) => usadas.reduce((s, c) => s + f(c), 0) / usadas.length;
+  return {
+    peso_kg: media((c) => c.peso_kg),
+    massa_magra_kg: media((c) => c.massa_magra_kg!),
+    medicoes: usadas.length,
+    de: usadas[0].data,
+    ate: usadas[usadas.length - 1].data,
+  };
+}
+
+/** "pela medição de 15/09/2026" · "pela média das últimas 3 medições (01/09 a 15/09)" */
+export function textoBaseMetas(c: Pick<CorpoMetas, 'medicoes' | 'de' | 'ate'>): string {
+  if (c.medicoes <= 1) return `pela medição de ${formatarData(c.ate)}`;
+  const curta = (d: string) => formatarData(d).slice(0, 5);
+  return `pela média das últimas ${c.medicoes} medições (${curta(c.de)} a ${curta(c.ate)})`;
 }
 
 // ---------------------------------------------------------------------------

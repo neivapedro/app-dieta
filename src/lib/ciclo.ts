@@ -421,14 +421,24 @@ export interface ResumoCiclo {
   data_fim_prevista: string | null;
   /** A data de fim conta com subidas de fase ainda não decididas */
   fim_hipotese: boolean;
-  /** Dias sem aplicar quando passam de 14 (pausa longa); senão null */
+  /** Dias sem aplicar a partir do limiar de pausa longa (limiarPausaLonga); senão null */
   pausa_dias: number | null;
   sugestao_local: string;
   alertas: string[];
 }
 
-/** A partir de 14 dias sem aplicar, o app pede para confirmar a dose com o médico. */
+/** Pausa longa mínima: a partir daqui o app pede para confirmar a dose com o médico. */
 export const DIAS_PAUSA_LONGA = 14;
+
+/**
+ * Dias sem aplicar que contam como pausa longa: 14 ou 2 intervalos do ciclo, o
+ * que for maior (com intervalo de 14 dias, o aviso não aparece em todo dia de
+ * dose). Mesma regra em supabase/functions/_shared/dose.ts.
+ */
+export function limiarPausaLonga(intervaloDias: number | null | undefined): number {
+  const intervalo = intervaloDias && intervaloDias > 0 ? intervaloDias : 7;
+  return Math.max(DIAS_PAUSA_LONGA, 2 * intervalo);
+}
 
 export function ordenarAplicacoes(aplicacoes: Aplicacao[]): Aplicacao[] {
   return [...aplicacoes].sort((a, b) => a.data.localeCompare(b.data) || a.id.localeCompare(b.id));
@@ -618,7 +628,7 @@ export function calcularCiclo(
     data_fim_prevista: projecao.length ? projecao[projecao.length - 1].data : ultima?.data ?? null,
     fim_hipotese: projecao.some((p) => p.hipotese),
     doses_plano_restantes: dosesPlano,
-    pausa_dias: proxima && diasSemAplicar !== null && diasSemAplicar >= DIAS_PAUSA_LONGA ? diasSemAplicar : null,
+    pausa_dias: proxima && diasSemAplicar !== null && diasSemAplicar >= limiarPausaLonga(intervalo) ? diasSemAplicar : null,
     sugestao_local: sugerirLocal(ultima?.local),
     alertas,
   };

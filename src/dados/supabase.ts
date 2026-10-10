@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { configPadrao, type PlanoDieta } from '../lib/dieta';
+import { lerConfigDieta, type PlanoDieta } from '../lib/dieta';
 import { tipoCardioEfetivo } from '../lib/treino';
 import type { Aplicacao, Ciclo, Medida, MetasProjeto, Perfil, RegistroDecisao, RegistroDiario, RegistroForca, TreinoDia } from '../lib/tipos';
 import { ehErroDeRede } from '../lib/erros';
@@ -454,7 +454,7 @@ export class RepositorioSupabase implements Repositorio {
 
   async obterDieta(): Promise<PlanoDieta | null> {
     const d = erro(await this.sb.from('dieta_planos').select('config, refeicoes').maybeSingle());
-    return d ? { config: { ...configPadrao(), ...d.config }, refeicoes: d.refeicoes ?? [] } : null;
+    return d ? { config: lerConfigDieta(d.config), refeicoes: d.refeicoes ?? [] } : null;
   }
 
   async salvarDieta(p: PlanoDieta) {

@@ -98,7 +98,7 @@ Detalhes:
 
 ### Aba Dieta (todas as contas)
 
-- **Basal (TMB) pela Katch-McArdle:** `370 + 21,6 × massa magra`. A massa magra vem da última medição (fórmula da Gorgonoidiana), então a meta se atualiza sozinha a cada medição. Para conferência, o app mostra também Mifflin-St Jeor e Harris-Benedict (a fórmula das duas planilhas), que exigem a data de nascimento no Perfil.
+- **Basal (TMB) pela Katch-McArdle:** `370 + 21,6 × massa magra`. O peso e a massa magra das metas (basal, proteína animal e gordura) são a média das 3 últimas medições válidas (atípicas ficam fora; com menos de 3, as que houver), o que suaviza o ruído da fita e da balança; a meta se atualiza sozinha a cada medição. Para conferência, o app mostra também Mifflin-St Jeor e Harris-Benedict (a fórmula das duas planilhas), que exigem a data de nascimento no Perfil.
 - **Gasto total** = basal × fator do dia a dia (sentado 1,2 · em pé 1,3 · braçal 1,45) + média diária dos exercícios (Σ kcal da sessão × vezes por semana ÷ 7).
 - **Meta do dia** = gasto total ± déficit/superávit em kcal.
 - **Macros:** proteína animal em g/kg de **massa magra** (padrão 2), gordura em g/kg de **peso** (padrão 1). O **carboidrato fecha a conta**: `(meta − ptn animal × 4 − gordura × 9 − ptn vegetal do plano × 4) ÷ 4`. A proteína vegetal (arroz, feijão, pão…) aparece separada, sem meta, e consome kcal do carbo.

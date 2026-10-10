@@ -4,14 +4,12 @@ import type { Aplicacao, Ciclo, DecisaoFase, MetasProjeto, Sexo } from './tipos'
 
 // Fim do projeto e fase pós-remédio. A fase pós-remédio começa na data da
 // última dose, dura 52 semanas e é iniciada pelo usuário (decisão registrada
-// junto das decisões de fase). Nada aqui muda meta, dose ou plano sozinho:
-// o que sai daqui é sugestão ou aviso para o usuário decidir.
+// junto das decisões de fase). Nada aqui muda meta, dose ou plano, e a fase
+// pós-remédio não tem sugestão de meta: o que sai daqui é só informação.
 
 export const SEMANAS_POS = 52;
 /** Semanas 0 a 5 depois da última dose: o remédio ainda está saindo do corpo */
 export const SEMANAS_SAIDA = 5;
-/** Degrau de redução do déficit sugerido a cada medição de segunda (kcal/dia) */
-export const DEGRAU_DEFICIT = 300;
 /** Medições seguidas subindo que geram o aviso de reganho */
 export const SUBIDAS_AVISO = 3;
 
@@ -95,40 +93,8 @@ export function avisoReganho(todas: Composicao[], inicioPos: string): AvisoRegan
     cintura,
     peso,
     data: serie[serie.length - 1].data,
-    texto: `Depois da última dose, ${partes.join(' e ')} medições seguidas. Só um aviso: revise o plano da Dieta e o treino; se continuar, converse com o seu médico.`,
+    texto: `Depois da última dose, ${partes.join(' e ')} medições seguidas. Só um aviso: nada muda sozinho.`,
   };
-}
-
-export interface SugestaoDegrau {
-  /** Ajuste atual (negativo = déficit) e o sugerido */
-  de: number;
-  para: number;
-  /** Medição de segunda que gerou a sugestão */
-  medicao: string;
-}
-
-/**
- * Na fase pós-remédio, cada medição de segunda sugere reduzir o déficit um
- * degrau (−600 → −300 → 0). Só sugere: aplicar é sempre um toque do usuário.
- * `tratada` é a última medição em que a sugestão já foi aplicada ou dispensada.
- */
-export function sugestaoDegrau({
-  ajuste,
-  inicioPos,
-  datasMedicoes,
-  tratada,
-  passo = DEGRAU_DEFICIT,
-}: {
-  ajuste: number;
-  inicioPos: string;
-  datasMedicoes: string[];
-  tratada?: string | null;
-  passo?: number;
-}): SugestaoDegrau | null {
-  if (!(ajuste < 0) || !(passo > 0)) return null;
-  const novas = datasMedicoes.filter((d) => d > inicioPos && (!tratada || d > tratada)).sort();
-  if (!novas.length) return null;
-  return { de: ajuste, para: Math.min(0, ajuste + passo), medicao: novas[novas.length - 1] };
 }
 
 // ---------- Balanço do projeto ----------

@@ -57,8 +57,8 @@ export function CartaoForca({ esforcoSubiu }: { esforcoSubiu?: boolean }) {
               <b>
                 {indice.nivel === 'alerta' ? 'Força 10% ou mais abaixo da referência' : 'Força caindo'} há 2 semanas ({variacao(indice.queda)}).
               </b>{' '}
-              Pode ser perda de massa magra, mas também fadiga acumulada (sem dia de folga), sono curto, náusea ou pouca comida.
-              {esforcoSubiu ? ' O esforço percebido da musculação também subiu.' : ''} Vale conferir sono, proteína e o tamanho do déficit.
+              Queda de força pode indicar perda de massa magra; fadiga acumulada, sono curto, náusea e pouca comida também derrubam a força.
+              {esforcoSubiu ? ' O esforço percebido da musculação também subiu.' : ''}
             </div>
           )}
           <div className="tabela-rolagem" style={{ marginTop: 10 }}>

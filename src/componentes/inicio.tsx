@@ -6,7 +6,7 @@ import { useCalculos } from '../dados/useCalculos';
 import { useMetaAgua, useTreino } from '../dados/useTreino';
 import { diaDeSintoma, mediaSono7, TEXTO_SINTOMA_AGUA, TEXTO_SONO_BAIXO } from '../lib/bemestar';
 import { diferencaDias, formatarData, hojeLocal, somarDias } from '../lib/datas';
-import { calcularMetas, calcularSaldo, macrosDaRefeicao, proximaRefeicao, resumoPlano, somar, textoItemPlano } from '../lib/dieta';
+import { calcularMetas, calcularSaldo, corpoParaMetas, macrosDaRefeicao, proximaRefeicao, resumoPlano, somar, textoBaseMetas, textoItemPlano } from '../lib/dieta';
 import { kg, lerPeso, num, paraTexto } from '../lib/formato';
 import { ultimaNormal } from '../lib/gordura';
 import { diaCurto, horaDaFaixaOntem, pendenciasDeOntem, textoPendencias } from '../lib/rotina';
@@ -342,9 +342,11 @@ export function CartaoDietaHoje({ semPergunta }: { semPergunta?: boolean }) {
   const { banco } = useAlimentos();
   const gravarDia = useGravarDia();
   if (!dieta || !temPlano(dieta)) return null;
+  // Aviso de medição antiga pela última medição; metas pela média das últimas (a mesma da aba Dieta)
   const ultima = ultimaNormal(composicoes);
+  const corpo = corpoParaMetas(composicoes);
   const aderencia = treino ? aderenciaRecente(treinos, treino.inicio, hoje, 28, treino.fim) : null;
-  const metas = ultima ? calcularMetas(dieta.config, { peso_kg: ultima.peso_kg, massa_magra_kg: ultima.massa_magra_kg! }, aderencia) : null;
+  const metas = corpo ? calcularMetas(dieta.config, corpo, aderencia) : null;
   const total = banco ? somar(dieta.refeicoes.map((r) => macrosDaRefeicao(r, banco.mapa))) : null;
   const saldo = metas && total ? calcularSaldo(metas, total) : null;
   const plano = saldo ? resumoPlano(saldo) : null;
@@ -389,9 +391,9 @@ export function CartaoDietaHoje({ semPergunta }: { semPergunta?: boolean }) {
           Registre uma medição para calcular a meta.
         </p>
       )}
-      {ultima && diferencaDias(ultima.data, hoje) > 10 && (
+      {ultima && corpo && diferencaDias(ultima.data, hoje) > 10 && (
         <p className="texto-2" style={{ marginBottom: 8 }}>
-          Meta calculada com a medição de {formatarData(ultima.data)}.
+          Última medição em {formatarData(ultima.data)}: meta calculada {textoBaseMetas(corpo)}.
         </p>
       )}
       {prox && banco && (

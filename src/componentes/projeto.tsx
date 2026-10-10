@@ -5,15 +5,10 @@ import { useProjeto } from '../dados/useProjeto';
 import { useTreino } from '../dados/useTreino';
 import { formatarData, somarDias } from '../lib/datas';
 import { cm, kg, mg, num, pct, pp, sinal } from '../lib/formato';
-import { avisoReganho, DEGRAU_DEFICIT, linhasBalanco, SEMANAS_POS, SEMANAS_SAIDA, sugestaoDegrau, type FasePos } from '../lib/projeto';
+import { avisoReganho, linhasBalanco, SEMANAS_POS, SEMANAS_SAIDA, type FasePos } from '../lib/projeto';
 import type { DecisaoFase } from '../lib/tipos';
 import { formatarTempo, medidaInicial } from '../lib/treino';
 import { Bloco } from './ui';
-
-/** −600 · 0 · + 200 (ajuste da meta em kcal/dia) */
-function ajusteTexto(n: number): string {
-  return n === 0 ? '0' : `${n < 0 ? '−' : '+'} ${num(Math.abs(n), 0)}`;
-}
 
 const fmtUnidade = (unidade: string) => (unidade === ' cm' ? cm : unidade === ' p.p.' ? pp : kg);
 
@@ -117,10 +112,10 @@ function SaidaDoRemedio({ pos }: { pos: FasePos }) {
 /**
  * No fim do remédio, no lugar de "Ciclo concluído": o balanço do projeto e os
  * botões do PDF final e da fase pós-remédio. Com a fase iniciada, mostra a
- * semana dela, o aviso de reganho e a sugestão pendente da Dieta.
+ * semana dela e o aviso de reganho (só informação: sem sugestão de meta).
  */
 export function CartaoFimProjeto({ aoRegistrar }: { aoRegistrar: () => void }) {
-  const { ciclo, gravar, hoje, dieta, medidas } = useDados();
+  const { ciclo, gravar, hoje } = useDados();
   const { resumo, composicoes } = useCalculos();
   const proj = useProjeto();
   const t = useTreino();
@@ -148,10 +143,6 @@ export function CartaoFimProjeto({ aoRegistrar }: { aoRegistrar: () => void }) {
   const { pos, decisao } = proj;
   if (pos && decisao) {
     const aviso = avisoReganho(composicoes, pos.inicio);
-    // Depois das 52 semanas a fase acabou: sem sugestão de degrau
-    const sugestao = dieta && !pos.encerrada
-      ? sugestaoDegrau({ ajuste: dieta.config.ajuste_kcal, inicioPos: pos.inicio, datasMedicoes: medidas.filter((m) => !m.atipica).map((m) => m.data), tratada: dieta.config.pos_degrau_medicao })
-      : null;
     return (
       <section className="cartao pilha" style={{ gap: 10 }}>
         <div className="cartao-cab" style={{ marginBottom: 0 }}>
@@ -160,11 +151,6 @@ export function CartaoFimProjeto({ aoRegistrar }: { aoRegistrar: () => void }) {
         </div>
         <SaidaDoRemedio pos={pos} />
         {aviso && <div className="alerta info">{aviso.texto}</div>}
-        {sugestao && !aviso && (
-          <Link to="/dieta" className="alerta info" style={{ color: 'inherit', textDecoration: 'none' }}>
-            Sugestão na Dieta: reduzir o déficit de {ajusteTexto(sugestao.de)} para {ajusteTexto(sugestao.para)} kcal/dia. Você decide se aplica.
-          </Link>
-        )}
         {t && (
           <p className="texto-2">
             {t.placarPos
@@ -215,8 +201,8 @@ export function CartaoFimProjeto({ aoRegistrar }: { aoRegistrar: () => void }) {
       </div>
       {ultima && (
         <p className="mudo">
-          A fase pós-remédio começa na data da última dose ({formatarData(ultima.data)}) e dura {SEMANAS_POS} semanas. {t ? 'O check de treino e cardio continua num placar novo e a ' : 'A '}
-          Dieta sugere reduzir o déficit aos poucos; nada muda sem você aplicar.
+          A fase pós-remédio começa na data da última dose ({formatarData(ultima.data)}) e dura {SEMANAS_POS} semanas.
+          {t ? ' O check de treino e cardio continua num placar novo.' : ''} A meta da Dieta continua a que você definir.
         </p>
       )}
       {!resumo.proxima && (
@@ -228,21 +214,18 @@ export function CartaoFimProjeto({ aoRegistrar }: { aoRegistrar: () => void }) {
   );
 }
 
-/** Dieta na fase pós-remédio: sugestão de reduzir o déficit um degrau por medição de segunda (nunca aplica sozinha). */
-export function SugestaoPosDieta() {
-  const { dieta, salvarDieta, medidas } = useDados();
+/**
+ * Dieta na fase pós-remédio: só informação (semana da fase, saída do remédio
+ * e aviso de reganho). Sem sugestão de mudar a meta: ela continua a que o
+ * usuário definir em Ajustar.
+ */
+export function FasePosDieta() {
   const { composicoes } = useCalculos();
   const proj = useProjeto();
   const pos = proj?.pos;
-  if (!pos || pos.encerrada || !dieta) return null;
-  const ajuste = dieta.config.ajuste_kcal;
-  const sugestao = sugestaoDegrau({ ajuste, inicioPos: pos.inicio, datasMedicoes: medidas.filter((m) => !m.atipica).map((m) => m.data), tratada: dieta.config.pos_degrau_medicao });
+  if (!pos || pos.encerrada) return null;
   const aviso = avisoReganho(composicoes, pos.inicio);
-
-  const tratar = (aplicar: boolean) =>
-    sugestao &&
-    salvarDieta({ ...dieta, config: { ...dieta.config, ...(aplicar ? { ajuste_kcal: sugestao.para } : {}), pos_degrau_medicao: sugestao.medicao } });
-
+  if (!pos.saida && !aviso) return null;
   return (
     <section className="cartao pilha" style={{ gap: 10 }}>
       <div className="cartao-cab" style={{ marginBottom: 0 }}>
@@ -252,29 +235,8 @@ export function SugestaoPosDieta() {
       <SaidaDoRemedio pos={pos} />
       {aviso && (
         <div className="alerta info" style={{ display: 'block' }}>
-          {aviso.texto} A sugestão de reduzir o déficit fica suspensa enquanto isso.
+          {aviso.texto}
         </div>
-      )}
-      {sugestao && !aviso ? (
-        <div className="alerta info" style={{ display: 'block' }}>
-          Sugestão pela medição de {formatarData(sugestao.medicao)}: reduzir o déficit um degrau, de {ajusteTexto(sugestao.de)} para {ajusteTexto(sugestao.para)} kcal/dia.
-          <div className="linha" style={{ marginTop: 8 }}>
-            <button className="botao pequeno primario" onClick={() => tratar(true)}>
-              Aplicar {ajusteTexto(sugestao.para)}
-            </button>
-            <button className="botao pequeno" onClick={() => tratar(false)}>
-              Agora não
-            </button>
-          </div>
-        </div>
-      ) : ajuste < 0 ? (
-        <p className="texto-2">
-          A cada medição de segunda, o app sugere reduzir o déficit um degrau ({num(DEGRAU_DEFICIT, 0)} kcal) até chegar a 0. A meta só muda se você aplicar.
-        </p>
-      ) : (
-        <p className="texto-2">
-          Sem déficit: a meta está {ajuste === 0 ? 'no gasto total' : `${num(ajuste, 0)} kcal acima do gasto total`}. Ajuste quando quiser em Ajustar.
-        </p>
       )}
     </section>
   );

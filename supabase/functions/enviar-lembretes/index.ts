@@ -11,7 +11,7 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import webpush from 'npm:web-push@3.6.7';
-import { planoDeDoses, type Decisao, type Fase } from '../_shared/dose.ts';
+import { limiarPausaLonga, planoDeDoses, type Decisao, type Fase } from '../_shared/dose.ts';
 
 const MAX_DIAS_ATRASO = 14;
 
@@ -113,7 +113,7 @@ Deno.serve(async (req) => {
     const titulo = atraso === 0 ? '💉 Hoje é dia de aplicação' : `⚠️ Aplicação atrasada há ${atraso} dia(s)`;
     const fase = proxima.fase_indice !== null ? `fase ${fases[proxima.fase_indice].nome}` : 'dose fora do plano';
     const nota =
-      semAplicar >= 14
+      semAplicar >= limiarPausaLonga(Number(ciclo.intervalo_dias))
         ? ` Pausa de ${Math.floor(semAplicar / 7)} semanas: confirme a dose com o médico antes de aplicar.`
         : estado === 'pendente'
           ? ' Fim da fase: decida no app se sobe de dose.'

@@ -29,7 +29,7 @@ import { dataPorExtenso, diferencaDias, formatarData, somarDias } from '../lib/d
 import { decisoesPorDia, marcosDasDecisoes } from '../lib/registroDecisoes';
 import { historicoAlertas } from '../lib/seguranca';
 import type { ModeloRelatorio } from '../lib/relatorioPdf';
-import { calcularMetas, idade, macrosDaRefeicao } from '../lib/dieta';
+import { calcularMetas, corpoParaMetas, idade, macrosDaRefeicao, textoBaseMetas } from '../lib/dieta';
 import { cm, corVariacao, kg, mg, num, pct, pp, sinal } from '../lib/formato';
 import { MDC, ultimaNormal, type ChaveMdc, type Composicao } from '../lib/gordura';
 import { conselhoConferencia, dietaNaTendencia, textoDietaSemana, textoPlanoSeguido } from '../lib/semana';
@@ -134,7 +134,10 @@ export function Analise() {
 
   // Plano alimentar (para o relatório)
   const ultimaComp = ultimaNormal(composicoes);
-  const metasDieta = dieta && ultimaComp ? calcularMetas(dieta.config, { peso_kg: ultimaComp.peso_kg, massa_magra_kg: ultimaComp.massa_magra_kg! }, treino ? aderenciaRecente(treinos, treino.inicio, hoje, 28, treino.fim) : null) : null;
+  // Metas pela média das últimas medições válidas (a mesma da aba Dieta)
+  const corpoMetas = corpoParaMetas(composicoes);
+  const metasDieta = dieta && corpoMetas ? calcularMetas(dieta.config, corpoMetas, treino ? aderenciaRecente(treinos, treino.inicio, hoje, 28, treino.fim) : null) : null;
+  const baseMetas = corpoMetas ? ` Peso e massa magra ${textoBaseMetas(corpoMetas)}.` : '';
   const refeicoes = dieta && banco ? dieta.refeicoes.filter((r) => r.itens.length).map((r) => ({ r, m: macrosDaRefeicao(r, banco.mapa) })) : [];
   // "Segui o plano?" na janela da tendência das medidas, com o mesmo conselho da Conferência da Dieta
   const tendMedidas = tendenciaMedidas(composicoes);
@@ -304,7 +307,7 @@ export function Analise() {
         )} kcal) · proteína animal ${num(dieta.config.ptn_gkg, 1)} g/kg de massa magra (${num(metasDieta.ptn_animal_g, 0)} g) · gordura ${num(
           dieta.config.gord_gkg,
           1,
-        )} g/kg (${num(metasDieta.gord_g, 0)} g) · carboidrato fecha a conta.`,
+        )} g/kg (${num(metasDieta.gord_g, 0)} g) · carboidrato fecha a conta.${baseMetas}`,
       });
     }
     if (treino && treino.placar.iniciado) {
@@ -743,7 +746,7 @@ export function Analise() {
           <p className="texto-2">
             Meta {num(metasDieta.meta_kcal, 0)} kcal/dia (gasto estimado {num(metasDieta.gasto_total, 0)} kcal; basal Katch-McArdle {num(metasDieta.tmb, 0)}{' '}
             kcal) · proteína animal {num(dieta.config.ptn_gkg, 1)} g/kg de massa magra ({num(metasDieta.ptn_animal_g, 0)} g) · gordura{' '}
-            {num(dieta.config.gord_gkg, 1)} g/kg ({num(metasDieta.gord_g, 0)} g) · carboidrato fecha a conta.
+            {num(dieta.config.gord_gkg, 1)} g/kg ({num(metasDieta.gord_g, 0)} g) · carboidrato fecha a conta.{baseMetas}
           </p>
           {seguido && tendMedidas && (
             <div className="pilha" style={{ gap: 4, marginTop: 8 }}>

@@ -384,7 +384,7 @@ export function FormConfigDieta({
   const [erro, setErro] = useState<string | null>(null);
 
   const montar = (): ConfigDieta => ({
-    // Mantém o que o formulário não edita (ex.: sugestão do pós-remédio já tratada)
+    // Mantém o que o formulário não edita
     ...config,
     fator_atividade: fator,
     atividades: atividades

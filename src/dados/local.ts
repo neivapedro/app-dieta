@@ -1,4 +1,4 @@
-import type { PlanoDieta } from '../lib/dieta';
+import { lerConfigDieta, type PlanoDieta } from '../lib/dieta';
 import type { Aplicacao, Ciclo, Medida, MetasProjeto, Perfil, RegistroDecisao, RegistroDiario, RegistroForca, TreinoDia } from '../lib/tipos';
 import type { DecisoesCiclo, Repositorio, Usuario } from './repositorio';
 
@@ -214,7 +214,8 @@ export class RepositorioLocal implements Repositorio {
   }
 
   async obterDieta() {
-    return this.banco().dieta ?? null;
+    const d = this.banco().dieta;
+    return d ? { ...d, config: lerConfigDieta(d.config) } : null;
   }
 
   async salvarDieta(p: PlanoDieta) {

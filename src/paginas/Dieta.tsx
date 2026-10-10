@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { FolhaTroca, FormConfigDieta, FormRefeicao, gr, kcal, LinhaItem, LinhaMacros, novoItem, SeletorAlimento, type Troca } from '../componentes/dieta';
-import { SugestaoPosDieta } from '../componentes/projeto';
+import { FasePosDieta } from '../componentes/projeto';
 import { Bloco } from '../componentes/ui';
 import { useDados } from '../dados/contexto';
 import { useAlimentos } from '../dados/useAlimentos';
@@ -13,6 +13,7 @@ import {
   alvoProteinaRefeicao,
   calcularMetas,
   calcularSaldo,
+  corpoParaMetas,
   distribuicaoProteina,
   exercicioReal,
   fecharMacro,
@@ -25,11 +26,12 @@ import {
   proteinaTotal,
   PTN_TOTAL_MIN_GKG_PESO,
   MINIMO_REFEICOES_ALVO,
+  MEDICOES_METAS,
   somar,
   tmbHarris,
   tmbMifflin,
+  textoBaseMetas,
   type Alimento,
-  type Corpo,
   type ItemRefeicao,
   type PlanoDieta,
   type Refeicao,
@@ -78,8 +80,10 @@ export function Dieta() {
     return () => clearTimeout(t);
   }, [removidos]);
 
+  // Última medição: aviso de medição antiga, ritmo medido e "Para a meta"
   const ultima = ultimaNormal(composicoes);
-  const corpo: Corpo | null = ultima ? { peso_kg: ultima.peso_kg, massa_magra_kg: ultima.massa_magra_kg! } : null;
+  // Metas pela média das 3 últimas medições válidas (peso e massa magra)
+  const corpo = useMemo(() => corpoParaMetas(composicoes), [composicoes]);
   const altura = medidas.find((m) => m.data === ultima?.data)?.altura_cm ?? perfil?.altura_cm ?? null;
   const anos = idade(perfil?.data_nascimento, hoje);
   const aderencia = treino ? aderenciaRecente(treinos, treino.inicio, hoje, 28, treino.fim) : null;
@@ -224,7 +228,7 @@ export function Dieta() {
 
   return (
     <div className="pilha">
-      <SugestaoPosDieta />
+      <FasePosDieta />
 
       {/* Meta do dia (compacta: o detalhe fica em "Como é calculado") */}
       <section className="cartao">
@@ -255,11 +259,13 @@ export function Dieta() {
               </p>
             )}
             <p className="texto-2">
-              kcal por dia. Basal pela sua massa magra ({kg(corpo.massa_magra_kg)}, medição de {formatarData(ultima.data)}); gasto total = basal × dia a dia +
+              kcal por dia. Basal pela sua massa magra de {kg(corpo.massa_magra_kg)}, {textoBaseMetas(corpo)}; gasto total = basal × dia a dia +
               exercícios; meta = gasto total{ajuste === 0 ? ' (sem ajuste)' : ajuste < 0 ? ' − déficit' : ' + superávit'}.
             </p>
             {diasMedicao > 10 && (
-              <div className="alerta">Meta calculada com a medição de {formatarData(ultima.data)}. Faça uma nova medição para atualizar.</div>
+              <div className="alerta">
+                Última medição em {formatarData(ultima.data)}: meta calculada {textoBaseMetas(corpo)}. Faça uma nova medição para atualizar.
+              </div>
             )}
             <details className="ajuda">
               <summary>Como é calculado</summary>
@@ -271,8 +277,11 @@ export function Dieta() {
                   <Bloco rotulo="Gasto total" valor={kcal(metas.gasto_total)} />
                 </div>
                 <p className="texto-2">
-                  Medição de {formatarData(ultima.data)}: {kg(corpo.peso_kg)}, {pp(ultima.bf)} de gordura, massa magra {kg(corpo.massa_magra_kg)}. Atualiza
-                  sozinho a cada nova medição.
+                  {corpo.medicoes === 1
+                    ? `Medição de ${formatarData(corpo.ate)}: ${kg(corpo.peso_kg)}${corpo.ate === ultima.data ? `, ${pp(ultima.bf)} de gordura` : ''}, massa magra ${kg(corpo.massa_magra_kg)}.`
+                    : `Média das últimas ${corpo.medicoes} medições válidas (${formatarData(corpo.de)} a ${formatarData(corpo.ate)}): peso ${kg(corpo.peso_kg)}, massa magra ${kg(corpo.massa_magra_kg)}.`}{' '}
+                  Basal, proteína animal e gordura usam a média do peso e da massa magra das {MEDICOES_METAS} últimas medições (atípicas ficam fora), o que
+                  suaviza o ruído da fita e da balança. Atualiza sozinho a cada nova medição.
                 </p>
                 <p className="texto-2">
                   Basal pela <b>Katch-McArdle</b>: 370 + 21,6 × massa magra. Gasto total = basal × fator do dia a dia + média diária dos exercícios (soma da

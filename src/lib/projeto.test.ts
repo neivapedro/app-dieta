@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { calcularCiclo, cicloPadrao } from './ciclo';
 import type { Composicao } from './gordura';
-import { avisoReganho, decisaoPosRemedio, fasePos, linhasBalanco, periodoTreinoPos, subidasSeguidas, sugestaoDegrau } from './projeto';
+import { avisoReganho, decisaoPosRemedio, fasePos, linhasBalanco, periodoTreinoPos, subidasSeguidas } from './projeto';
 import type { Aplicacao, Ciclo, DecisaoFase } from './tipos';
 import { periodoProjeto } from './treino';
 
@@ -85,20 +85,11 @@ describe('Fase pós-remédio', () => {
     expect(avisoReganho(comAtipica, inicio)).toBeNull();
   });
 
-  it('sugere reduzir o déficit um degrau por medição nova, até 0, sem aplicar nada', () => {
-    const base = { inicioPos: '2027-02-20', datasMedicoes: ['2027-02-15', '2027-02-22'] };
-    expect(sugestaoDegrau({ ...base, ajuste: -600 })).toEqual({ de: -600, para: -300, medicao: '2027-02-22' });
-    expect(sugestaoDegrau({ ...base, ajuste: -200 })).toEqual({ de: -200, para: 0, medicao: '2027-02-22' });
-    // Já tratada (aplicada ou dispensada) nesta medição: espera a próxima
-    expect(sugestaoDegrau({ ...base, ajuste: -300, tratada: '2027-02-22' })).toBeNull();
-    expect(sugestaoDegrau({ ...base, datasMedicoes: [...base.datasMedicoes, '2027-03-01'], ajuste: -300, tratada: '2027-02-22' })).toEqual({
-      de: -300,
-      para: 0,
-      medicao: '2027-03-01',
-    });
-    // Sem déficit, ou sem medição depois da última dose: nada
-    expect(sugestaoDegrau({ ...base, ajuste: 0 })).toBeNull();
-    expect(sugestaoDegrau({ ...base, datasMedicoes: ['2027-02-15'], ajuste: -600 })).toBeNull();
+  it('o aviso é só informativo: sem sugestão de mudar a meta', () => {
+    const lista = [comp('2027-02-15', 88, 88), comp('2027-02-22', 88.5, 88.2), comp('2027-03-01', 89, 88.4), comp('2027-03-08', 89.4, 88.6)];
+    const a = avisoReganho(lista, '2027-02-20')!;
+    expect(a.texto).toContain('a cintura subiu 3 e o peso subiu 3');
+    expect(a.texto).not.toMatch(/déficit|revise|reduz/i);
   });
 });
 

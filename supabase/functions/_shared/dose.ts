@@ -29,6 +29,15 @@ export interface DoseFutura {
   hipotese: boolean;
 }
 
+/** Pausa longa mínima (dias sem aplicar): o lembrete pede para confirmar a dose com o médico. */
+export const DIAS_PAUSA_LONGA = 14;
+
+/** Dias sem aplicar que contam como pausa longa: 14 ou 2 intervalos do ciclo, o que for maior (igual a limiarPausaLonga() do app). */
+export function limiarPausaLonga(intervaloDias: number | null | undefined): number {
+  const intervalo = intervaloDias && intervaloDias > 0 ? intervaloDias : 7;
+  return Math.max(DIAS_PAUSA_LONGA, 2 * intervalo);
+}
+
 const EPS = 1e-9;
 const mesma = (a: number, b: number) => Math.abs(a - b) <= 0.01 + EPS;
 
