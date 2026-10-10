@@ -69,6 +69,25 @@ function Texto({ texto }: { texto: string }) {
 // "1. A aplicação. A injeção é…": o início numerado do passo vai em negrito
 const PASSO = /^(\d+\.\s+[^.]{2,60}\.)\s+/;
 
+// "Dose esquecida: cada remédio…": rótulo curto (até 4 palavras) antes de ":" vai em negrito
+const ROTULO = /^([^.:[\]]{2,40}:)\s+/;
+
+/** Texto corrido com o começo destacado: passo numerado ou rótulo curto antes de ":". */
+function TextoComInicio({ texto }: { texto: string }) {
+  const passo = texto.match(PASSO);
+  const rotulo = passo ? null : texto.match(ROTULO);
+  const inicio = passo ?? (rotulo && rotulo[1].trim().split(/\s+/).length <= 4 ? rotulo : null);
+  if (!inicio) return <Texto texto={texto} />;
+  return (
+    <>
+      <strong>
+        <Texto texto={inicio[1]} />
+      </strong>{' '}
+      <Texto texto={texto.slice(inicio[0].length)} />
+    </>
+  );
+}
+
 function Paragrafo({ texto }: { texto: string }) {
   // Parágrafo curto terminado em ":" é um subtítulo do que vem a seguir ("Onde aplicar:")
   if (texto.length <= 70 && texto.trimEnd().endsWith(':')) {
@@ -78,17 +97,9 @@ function Paragrafo({ texto }: { texto: string }) {
       </h3>
     );
   }
-  const passo = texto.match(PASSO);
-  if (passo) {
-    return (
-      <p>
-        <strong>{passo[1]}</strong> <Texto texto={texto.slice(passo[0].length)} />
-      </p>
-    );
-  }
   return (
     <p>
-      <Texto texto={texto} />
+      <TextoComInicio texto={texto} />
     </p>
   );
 }
@@ -142,7 +153,7 @@ function Bloco({ bloco, secao }: { bloco: BlocoRetatrutida; secao: SecaoRetatrut
       return (
         <div className="alerta info">
           <p>
-            <Texto texto={bloco.texto} />
+            <TextoComInicio texto={bloco.texto} />
           </p>
         </div>
       );
@@ -248,12 +259,26 @@ function Secao({ secao }: { secao: SecaoRetatrutida }) {
   );
 }
 
-function dominio(url: string): string {
+/** Texto do link da referência: o site, avisando quando o link é uma busca e não o artigo em si. */
+function rotuloLink(url: string): { site: string; busca: boolean } {
   try {
-    return new URL(url).hostname.replace(/^www\./, '');
+    const u = new URL(url);
+    const busca = /search/i.test(u.pathname) || /[?&](term|query|search_api_fulltext)=/.test(u.search);
+    return { site: u.hostname.replace(/^www\./, ''), busca };
   } catch {
-    return url;
+    return { site: url, busca: false };
   }
+}
+
+function LinkReferencia({ url }: { url: string }) {
+  const { site, busca } = rotuloLink(url);
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer">
+      {busca && 'busca em '}
+      {/* O endereço não quebra no meio; "busca em" pode ir para a linha de cima */}
+      <span className="sem-quebra">{site} ↗</span>
+    </a>
+  );
 }
 
 export function Retatrutida() {
@@ -326,9 +351,7 @@ export function Retatrutida() {
                 {r.url && (
                   <>
                     {' '}
-                    <a href={r.url} target="_blank" rel="noopener noreferrer">
-                      {dominio(r.url)} ↗
-                    </a>
+                    <LinkReferencia url={r.url} />
                   </>
                 )}
               </span>

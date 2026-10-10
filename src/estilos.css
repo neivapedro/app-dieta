@@ -403,9 +403,10 @@ details.ajuda summary { min-height: 32px; display: flex; align-items: center; }
 .subtitulo-leitura { font-size: 1rem; font-weight: 650; margin-top: 6px; line-height: 1.4; }
 .lista-leitura { margin: 0; padding-left: 1.25rem; display: flex; flex-direction: column; gap: 8px; }
 .lista-leitura li::marker { color: var(--texto-3); }
-.citacao { font-size: 0.82em; color: var(--texto-3); white-space: nowrap; }
+.citacao { font-size: 0.82em; color: var(--texto-2); white-space: nowrap; }
 .citacao a { color: var(--texto-2); text-decoration: underline; text-underline-offset: 2px; padding: 2px 1px; }
-.preliminar { color: var(--aviso); font-size: 0.92em; }
+/* Um pouco mais escuro que o --aviso puro: no tema claro, sobre o fundo amarelado do alerta, o laranja puro ficava abaixo de 4,5:1 */
+.preliminar { color: color-mix(in srgb, var(--aviso) 80%, var(--texto)); font-size: 0.92em; }
 .voltar-indice { display: inline-flex; align-items: center; min-height: 36px; margin-top: 10px; font-size: 0.85rem; color: var(--texto-3); text-decoration: none; }
 
 .indice-leitura { margin: 6px 0 0; padding-left: 1.6rem; display: flex; flex-direction: column; }
@@ -447,7 +448,8 @@ details.ajuda summary { min-height: 32px; display: flex; align-items: center; }
 @keyframes piscar-ref { from { background: var(--superficie-2); } to { background: transparent; } }
 .ref-num { flex: none; min-width: 1.6rem; color: var(--texto-3); font-variant-numeric: tabular-nums; }
 .ref-texto { min-width: 0; color: var(--texto-2); }
-.ref-texto a { color: var(--texto); white-space: nowrap; }
+.ref-texto a { color: var(--texto); }
+.ref-texto .sem-quebra { white-space: nowrap; }
 
 /* Atalho discreto no fim da aba Ciclo */
 .cartao-link { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 16px; text-decoration: none; color: var(--texto); box-shadow: none; }

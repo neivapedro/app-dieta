@@ -41,6 +41,13 @@ describe('Conteúdo da retatrutida', () => {
     }
   });
 
+  it('subtítulo curto terminado em ":" nunca fica sozinho no fim da seção', () => {
+    for (const s of conteudo.secoes) {
+      const ultimo = s.blocos[s.blocos.length - 1];
+      if (ultimo.tipo === 'paragrafo') expect(ultimo.texto.trimEnd().endsWith(':')).toBe(false);
+    }
+  });
+
   it('separa citações simples e múltiplas do texto', () => {
     expect(partesTexto('Meia-vida de 6 dias [7]. Bulas [5, 34].')).toEqual([
       { tipo: 'texto', texto: 'Meia-vida de 6 dias ' },

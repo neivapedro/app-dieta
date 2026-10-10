@@ -761,7 +761,11 @@
     },
     {
      "tipo": "paragrafo",
-     "texto": "Como ler a seringa U-100: a escala é em “unidades”, mas essas unidades medem VOLUME. 100 unidades = 1 mL, então 1 unidade = 0,01 mL [53]. A seringa não diz quantos miligramas entram: isso depende da concentração do frasco."
+     "texto": "Como ler a seringa U-100:"
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "A escala é em “unidades”, mas essas unidades medem VOLUME. 100 unidades = 1 mL, então 1 unidade = 0,01 mL [53]. A seringa não diz quantos miligramas entram: isso depende da concentração do frasco."
     },
     {
      "tipo": "lista",
@@ -776,7 +780,11 @@
     },
     {
      "tipo": "paragrafo",
-     "texto": "Se o produto vier em pó (liofilizado): produtos vendidos como “retatrutida de pesquisa” costumam vir em pó, para dissolver. Não existe estudo publicado de estabilidade da retatrutida depois de dissolvida; os prazos que circulam em fóruns são palpite. Boa prática geral para medicamentos estéreis:"
+     "texto": "Se o produto vier em pó (liofilizado):"
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Produtos vendidos como “retatrutida de pesquisa” costumam vir em pó, para dissolver. Não existe estudo publicado de estabilidade da retatrutida depois de dissolvida; os prazos que circulam em fóruns são palpite. Boa prática geral para medicamentos estéreis:"
     },
     {
      "tipo": "lista",
@@ -807,7 +815,11 @@
     },
     {
      "tipo": "paragrafo",
-     "texto": "Dose esquecida: cada remédio aprovado tem sua regra, e ela NÃO vale automaticamente para a retatrutida, que não tem regra oficial. Combine com o médico o que fazer. Só como referência, as regras desses medicamentos são:"
+     "texto": "Dose esquecida:"
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Cada remédio aprovado tem sua regra, e ela NÃO vale automaticamente para a retatrutida, que não tem regra oficial. Combine com o médico o que fazer. Só como referência, as regras desses medicamentos são:"
     },
     {
      "tipo": "lista",
@@ -820,7 +832,11 @@
     },
     {
      "tipo": "paragrafo",
-     "texto": "Descarte: agulhas e seringas vão logo para um coletor de perfurocortantes ou, na falta dele, para um frasco plástico rígido com tampa (tipo frasco de amaciante), cheio até no máximo 3/4. Entregue numa UBS ou farmácia que receba. Nunca solte no lixo comum nem no reciclável [57]."
+     "texto": "Descarte:"
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Agulhas e seringas vão logo para um coletor de perfurocortantes ou, na falta dele, para um frasco plástico rígido com tampa (tipo frasco de amaciante), cheio até no máximo 3/4. Entregue numa UBS ou farmácia que receba. Nunca solte no lixo comum nem no reciclável [57]."
     },
     {
      "tipo": "paragrafo",
@@ -1036,7 +1052,7 @@
   },
   {
    "termo": "GLP-1",
-   "definicao": "Incretina que reduz a fome, retarda o estômago e aumenta a insulina quando a glicose está alta."
+   "definicao": "Incretina que reduz a fome, retarda o esvaziamento do estômago e aumenta a insulina quando a glicose está alta."
   },
   {
    "termo": "GIP",
