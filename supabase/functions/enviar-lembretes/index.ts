@@ -11,7 +11,7 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import webpush from 'npm:web-push@3.6.7';
-import { limiarPausaLonga, planoDeDoses, type Decisao, type Fase } from '../_shared/dose.ts';
+import { emFasePosRemedio, limiarPausaLonga, planoDeDoses, type Decisao, type Fase } from '../_shared/dose.ts';
 
 const MAX_DIAS_ATRASO = 14;
 
@@ -88,6 +88,9 @@ Deno.serve(async (req) => {
     const lista = aplicacoes ?? [];
     const usado = lista.reduce((s, a) => s + Number(a.dose_mg), 0);
     if (Number(ciclo.quantidade_total_mg) - usado <= 1e-9) continue; // ciclo concluído
+    const decisoes = (Array.isArray(ciclo.decisoes) ? ciclo.decisoes : []) as Decisao[];
+    // Fase pós-remédio iniciada no app: não há próxima dose para lembrar
+    if (emFasePosRemedio(decisoes, lista as { data: string }[])) continue;
 
     const ultima = lista[lista.length - 1]?.data as string | undefined;
     const prevista = ultima ? somarDias(ultima, ciclo.intervalo_dias) : (ciclo.data_inicio as string);
@@ -103,7 +106,6 @@ Deno.serve(async (req) => {
 
     const numero = lista.length + 1;
     const fases = ciclo.fases as Fase[];
-    const decisoes = (Array.isArray(ciclo.decisoes) ? ciclo.decisoes : []) as Decisao[];
     const { estado, proxima } = planoDeDoses(fases, lista as { data: string; dose_mg: number }[], decisoes);
     const dose = estado === 'fim_plano' ? Math.min(proxima.dose_mg, Math.round((Number(ciclo.quantidade_total_mg) - usado) * 100) / 100) : proxima.dose_mg;
     // Arredonda à marcação da seringa, como o app (marcacao() em src/lib/ciclo.ts)
@@ -111,7 +113,8 @@ Deno.serve(async (req) => {
     const ui = Math.floor(((dose / Number(ciclo.concentracao_mg_ml)) * 100) / passo + 0.5 + 1e-9) * passo;
     const semAplicar = ultima ? diferencaDias(ultima, dia) : 0;
     const titulo = atraso === 0 ? '💉 Hoje é dia de aplicação' : `⚠️ Aplicação atrasada há ${atraso} dia(s)`;
-    const fase = proxima.fase_indice !== null ? `fase ${fases[proxima.fase_indice].nome}` : 'dose fora do plano';
+    const fase =
+      estado === 'fim_plano' ? 'dose extra (sobra do frasco)' : proxima.fase_indice !== null ? `fase ${fases[proxima.fase_indice].nome}` : 'dose fora do plano';
     const nota =
       semAplicar >= limiarPausaLonga(Number(ciclo.intervalo_dias))
         ? ` Pausa de ${Math.floor(semAplicar / 7)} semanas: confirme a dose com o médico antes de aplicar.`

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useDados } from '../dados/contexto';
 import { useCalculos } from '../dados/useCalculos';
 import { composicaoPorFase, numerosDaFase } from '../lib/analise';
-import { REGRAS_FASE, marcacao } from '../lib/ciclo';
+import { REGRAS_FASE, decisaoDoBloco, marcacao, repetirFase } from '../lib/ciclo';
 import { formatarData } from '../lib/datas';
 import { corVariacao, num, sinal, ui } from '../lib/formato';
 import type { DecisaoFase, Fase } from '../lib/tipos';
@@ -23,7 +23,7 @@ const dias = (n: number) => `${n} ${n === 1 ? 'dia' : 'dias'}`;
  * Bloco "Fim da fase" do cartão da dose: aparece quando o degrau completou.
  * Mostra os números da fase e as regras do Plano; o app nunca sobe sozinho.
  */
-export function FimDeFase() {
+export function FimDeFase({ aoDecidir }: { aoDecidir?: () => void } = {}) {
   const { ciclo, diario } = useDados();
   const { resumo, fases, composicoes, hoje } = useCalculos();
   const { decisoes, salvar, nova } = useDecisoes();
@@ -44,11 +44,15 @@ export function FimDeFase() {
   // O último bloco da Análise é este degrau
   const bloco = fases[fases.length - 1];
   const comp = bloco ? composicaoPorFase(fases, composicoes, null, hoje)[fases.length - 1] : null;
-  const anotacoes = decisoes.filter((x) => x.escolha === 'anotacao' && x.apos_aplicacao === n);
+  const ordenadas = resumo.linhas.map((l) => l.aplicacao);
+  // Anotações deste bloco (uma dose esquecida registrada depois não as esconde)
+  const anotacoes = decisoes.filter((x) => x.escolha === 'anotacao' && decisaoDoBloco(x, d.bloco, ordenadas));
   const regs = numeros.dias_registrados;
 
   function subir() {
     salvar([...decisoes, nova({ escolha: 'subir', apos_aplicacao: n, dose_mg: doseAtual, fase_indice: d!.ultima_fase! + 1, dose_nova_mg: doseNova })]);
+    // Mantém o cartão aberto para mostrar a decisão e o "Desfazer"
+    aoDecidir?.();
   }
 
   function desfazer() {
@@ -57,7 +61,8 @@ export function FimDeFase() {
 
   function repetir(semanas: number) {
     const i = d!.ultima_fase!;
-    const fasesNovas = ciclo!.fases.map((f, j) => (j === i ? { ...f, semanas: f.semanas + semanas } : f));
+    // Conta a partir das doses já feitas: +1 semana = mais 1 dose a partir de agora
+    const fasesNovas = repetirFase(ciclo!.fases, d!, i, semanas);
     salvar([...decisoes, nova({ escolha: 'repetir', apos_aplicacao: n, dose_mg: doseAtual, fase_indice: i, semanas })], fasesNovas);
     setModo(null);
   }
@@ -144,7 +149,9 @@ export function FimDeFase() {
 
       {modo === 'repetir' && (
         <div className="pilha">
-          <p className="texto-2">Estende a fase {d.ultima_fase + 1} no Plano, mantendo {num(doseAtual)} mg:</p>
+          <p className="texto-2">
+            Estende a fase {d.ultima_fase + 1} no Plano, mantendo {num(doseAtual)} mg: +1 semana = mais 1 dose, +4 semanas = mais 4 doses a partir da próxima.
+          </p>
           <div className="linha">
             <button className="botao pequeno" onClick={() => repetir(1)}>
               +1 semana

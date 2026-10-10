@@ -110,7 +110,7 @@ export function Treino() {
         </div>
         <div className="grade grade-4" style={{ marginTop: 14 }}>
           <Bloco rotulo="Dias decorridos" valor={`${p.diasDecorridos} de ${p.totalDias}`} />
-          <Bloco rotulo="Faltam" valor={`${p.diasRestantes} dias`} />
+          <Bloco rotulo="Faltam" valor={`${p.diasRestantes} ${p.diasRestantes === 1 ? 'dia' : 'dias'}`} />
           <Bloco rotulo="Sequência atual" valor={`🔥 ${p.sequenciaAtual} ${p.sequenciaAtual === 1 ? 'dia' : 'dias'}`} />
           <Bloco rotulo="Recorde" valor={`${p.recorde} ${p.recorde === 1 ? 'dia' : 'dias'}`} />
         </div>
@@ -178,7 +178,7 @@ export function Treino() {
         </div>
         {t.semanas.length > semanasGrade.length || todasSemanas ? (
           <button className="botao pequeno bloco-largo" style={{ marginTop: 8 }} onClick={() => setTodasSemanas(!todasSemanas)}>
-            {todasSemanas ? 'Mostrar só as semanas recentes' : `Ver todas as semanas do projeto (${t.semanas.length})`}
+            {todasSemanas ? 'Mostrar só as semanas recentes' : `Ver todas as semanas ${t.placarPos ? 'da fase' : 'do projeto'} (${t.semanas.length})`}
           </button>
         ) : null}
         <div className="linha mudo" style={{ marginTop: 10, fontSize: '0.8rem', gap: 14 }}>

@@ -61,6 +61,9 @@ export interface FaltasTreino {
   cardio: string[];
   /** Dias do período que já eram do projeto */
   dias: number;
+  /** Treinos e cardios feitos nesses dias */
+  treinos_feitos: number;
+  cardios_feitos: number;
 }
 
 /** Dias do período (dentro do projeto) em que faltou treino ou cardio. */
@@ -68,11 +71,9 @@ export function faltasNoPeriodo(treinos: TreinoDia[], de: string, ate: string, i
   const porData = new Map(treinos.map((t) => [t.data, t]));
   const datas: string[] = [];
   for (let d = de > inicioProjeto ? de : inicioProjeto; d <= ate && d <= fimProjeto; d = somarDias(d, 1)) datas.push(d);
-  return {
-    treino: datas.filter((d) => !porData.get(d)?.treino),
-    cardio: datas.filter((d) => !porData.get(d)?.cardio),
-    dias: datas.length,
-  };
+  const treino = datas.filter((d) => !porData.get(d)?.treino);
+  const cardio = datas.filter((d) => !porData.get(d)?.cardio);
+  return { treino, cardio, dias: datas.length, treinos_feitos: datas.length - treino.length, cardios_feitos: datas.length - cardio.length };
 }
 
 /** "Qua e Sáb" */

@@ -56,8 +56,10 @@ export interface LinhaSemana {
   /** Treinos e cardios feitos na semana; null = conta sem a aba Treino */
   treino: number | null;
   cardio: number | null;
-  /** Dias da semana já passados (a semana atual conta só até hoje) */
+  /** Dias da semana já passados (a semana atual conta só até hoje; a 1ª, só a partir do início) */
   dias: number;
+  /** Peso ou medição da semana marcados como atípicos (ficam fora das tendências) */
+  atipica: boolean;
 }
 
 export function semanasDoCiclo(e: {
@@ -79,18 +81,23 @@ export function semanasDoCiclo(e: {
     const pesos = na(e.serie);
     const regs = na(e.diario);
     const nauseas = regs.map((r) => r.nausea).filter((n): n is number => n !== null);
-    const treinos = e.treinos ? na(e.treinos) : null;
+    // Treino · cardio só a partir do início (os dias antes da 1ª dose não contam como falta)
+    const de = seg < e.inicio ? e.inicio : seg;
+    const treinos = e.treinos ? e.treinos.filter((x) => x.data >= de && x.data <= ate) : null;
+    const peso = pesos.find((p) => p.data === seg) ?? pesos[0];
+    const composicao = na(e.composicoes)[0] ?? null;
     linhas.push({
       segunda: seg,
       dose_mg: aplic.length ? aplic[aplic.length - 1].dose_mg : null,
-      peso_kg: (pesos.find((p) => p.data === seg) ?? pesos[0])?.peso_kg ?? null,
-      composicao: na(e.composicoes)[0] ?? null,
+      peso_kg: peso?.peso_kg ?? null,
+      composicao,
+      atipica: !!peso?.atipica || !!composicao?.atipica,
       nausea_max: nauseas.length ? Math.max(...nauseas) : null,
       dias_sintoma: regs.filter(temSintoma).length,
       dieta: contarDieta(regs),
       treino: treinos ? treinos.filter((t) => t.treino).length : null,
       cardio: treinos ? treinos.filter((t) => t.cardio).length : null,
-      dias: diferencaDias(seg, ate) + 1,
+      dias: diferencaDias(de, ate) + 1,
     });
   }
   return linhas;
@@ -106,8 +113,8 @@ export function tabelaSemanal(linhas: LinhaSemana[], comTreino: boolean): Tabela
     linhas: linhas.map((l) => [
       formatarData(l.segunda, true),
       l.dose_mg === null ? '–' : num(l.dose_mg, 2),
-      casas(l.peso_kg),
-      casas(l.composicao?.cintura_cm),
+      `${casas(l.peso_kg)}${l.atipica && l.peso_kg !== null ? '*' : ''}`,
+      `${casas(l.composicao?.cintura_cm)}${l.composicao?.atipica ? '*' : ''}`,
       casas(l.composicao?.bf),
       casas(l.composicao?.massa_magra_kg),
       casas(l.composicao?.massa_gorda_kg),
@@ -116,7 +123,9 @@ export function tabelaSemanal(linhas: LinhaSemana[], comTreino: boolean): Tabela
       dieta(l.dieta),
       ...(comTreino ? [l.treino === null ? '–' : `${l.treino}/${l.dias} · ${l.cardio}/${l.dias}`] : []),
     ]),
-    nota: 'Peso da segunda em jejum. Medidas pela fita (Marinha dos EUA) quando houve medição na semana. Náusea de 0 a 3; sintomas = vômito, diarreia ou intestino preso. Dieta: dias "segui o plano?" sim/parcial/não.',
+    nota: `Peso da segunda em jejum. Medidas pela fita (Marinha dos EUA) quando houve medição na semana. Náusea de 0 a 3; sintomas = vômito, diarreia ou intestino preso. Dieta: dias "segui o plano?" sim/parcial/não.${
+      linhas.some((l) => l.atipica) ? ' * medição atípica (doente, inchado, viagem): fica fora das tendências.' : ''
+    }`,
   };
 }
 
@@ -185,14 +194,20 @@ export function colunasQuadro(
 
 const dMais = (d: number | null) => (d === null ? '' : `D+${d}`);
 
-export function montarQuadro(q: { atual: ColunaQuadro; anterior: ColunaQuadro | null }, comTreino: boolean, proxima: string): QuadroRelatorio {
+export function montarQuadro(
+  q: { atual: ColunaQuadro; anterior: ColunaQuadro | null },
+  comTreino: boolean,
+  proxima: string,
+  /** Remédio concluído (frasco no fim ou fase pós-remédio): a última fase não "termina" para subir, e sem regras de subir */
+  remedioConcluido = false,
+): QuadroRelatorio {
   const cols = [q.anterior, q.atual];
   const linha = (rotulo: string, f: (c: ColunaQuadro) => string): [string, string, string] => [rotulo, ...cols.map((c) => (c ? f(c) : '–'))] as [string, string, string];
   const cab = (c: ColunaQuadro | null, papel: string) =>
     c ? `${papel}: ${c.rotulo}\n${formatarData(c.inicio, true)} a ${formatarData(c.fim, true)}${c.em_andamento ? ' (em curso)' : ''}` : `${papel}: –`;
   return {
     titulo: 'Quadro de decisão',
-    colunas: [cab(q.anterior, 'Fase anterior'), cab(q.atual, q.atual.em_andamento ? 'Fase atual' : 'Fase que termina')],
+    colunas: [cab(q.anterior, 'Fase anterior'), cab(q.atual, remedioConcluido ? 'Última fase do remédio' : q.atual.em_andamento ? 'Fase atual' : 'Fase que termina')],
     secoes: [
       {
         titulo: 'Eficácia (pela fita, por semana)',
@@ -220,7 +235,7 @@ export function montarQuadro(q: { atual: ColunaQuadro; anterior: ColunaQuadro | 
       },
     ],
     proxima,
-    regras: REGRAS_FASE,
+    regras: remedioConcluido ? [] : REGRAS_FASE,
     nota: 'Cada fase é um bloco de doses seguidas iguais (dose realmente aplicada). Fases seguidas também mudam tempo de uso, dieta e treino: a diferença entre elas não se atribui só à dose.',
   };
 }
@@ -339,9 +354,15 @@ export function tabelaTendencias(composicoes: Composicao[]): TabelaRelatorio {
 }
 
 /** kg/semana de um bloco de dose pela regressão das pesagens do bloco, com a faixa: "− 0,45 ± 0,20 (8 pesagens)". */
-export function ritmoDoBloco(serie: PontoPeso[], f: Pick<AnaliseFase, 'inicio' | 'fim' | 'kg_por_semana'>, ultimoDoBloco: boolean): string {
+export function ritmoDoBloco(
+  serie: PontoPeso[],
+  f: Pick<AnaliseFase, 'inicio' | 'fim' | 'kg_por_semana'> & { pontos_peso?: { data: string; peso_kg: number }[] },
+  ultimoDoBloco: boolean,
+): string {
   const fim = ultimoDoBloco ? f.fim : somarDias(f.fim, -1);
-  const r = ritmoComFaixa(serie.filter((p) => !p.atipica && p.data >= f.inicio && p.data <= fim).map((p) => ({ data: p.data, valor: p.peso_kg })));
+  // Os mesmos pontos da tela (com a pesagem de referência de até 7 dias antes do bloco)
+  const pontos = f.pontos_peso?.length ? f.pontos_peso : serie.filter((p) => !p.atipica && p.data >= f.inicio && p.data <= fim);
+  const r = ritmoComFaixa(pontos.map((p) => ({ data: p.data, valor: p.peso_kg })));
   if (r) return `${sinal(r.semana, 2)} ± ${num(r.ic95, 2)} (${r.n} pesagens)`;
   // Bloco curto com pesagem só às segundas: fica a conta entre a primeira e a última pesagem, sem faixa
   return f.kg_por_semana !== null ? `${sinal(f.kg_por_semana, 2)} (sem faixa: poucas pesagens)` : 'poucas pesagens';

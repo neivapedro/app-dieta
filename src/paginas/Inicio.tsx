@@ -18,7 +18,7 @@ import { Bloco, Icone } from '../componentes/ui';
 import { useDados } from '../dados/contexto';
 import { useCalculos } from '../dados/useCalculos';
 import { useProjeto } from '../dados/useProjeto';
-import { guiaSeringa, marcasVizinhas, semanasDoDegrau, seringaDo, textoSeringa } from '../lib/ciclo';
+import { capacidadeSeringa, guiaSeringa, marcasVizinhas, semanasDoDegrau, seringaDo, textoSeringa } from '../lib/ciclo';
 import { diaDaSemana, diferencaDias, formatarData } from '../lib/datas';
 import { cm, corVariacao, kg, mg, num, pct, pp, sinal, ui } from '../lib/formato';
 import { cinturaAlvoRca, MDC, type ChaveMdc } from '../lib/gordura';
@@ -28,7 +28,7 @@ import { mostrarAtalhoResumo } from '../lib/semana';
 import { segundaDaSemana } from '../lib/treino';
 
 /** Cartão completo da próxima dose (na véspera, no dia, atrasada ou com decisão pendente). */
-function CartaoDose({ aoRegistrar, aoRecolher }: { aoRegistrar: () => void; aoRecolher?: () => void }) {
+function CartaoDose({ aoRegistrar, aoRecolher, aoDecidir }: { aoRegistrar: () => void; aoRecolher?: () => void; aoDecidir?: () => void }) {
   const { ciclo } = useDados();
   const { resumo } = useCalculos();
   if (!ciclo || !resumo?.proxima) return null;
@@ -91,15 +91,21 @@ function CartaoDose({ aoRegistrar, aoRecolher }: { aoRegistrar: () => void; aoRe
         {p.fase ? <Bloco rotulo={`Fase ${p.fase.indice + 1}`} valor={`${p.fase.fase.nome}${posicao}`} /> : <Bloco rotulo="Fase" valor="Fora do plano" />}
         <Bloco rotulo="Local sugerido" valor={resumo.sugestao_local} />
       </div>
-      <p className="mudo" style={{ marginTop: 10 }}>
-        Na {textoSeringa(ciclo)}: {guiaSeringa(p.ui_pratica, seringa.marca)}.
-      </p>
-      {vizinhas && (
+      {p.ui_pratica > capacidadeSeringa(ciclo) ? (
+        <div className="alerta erro" style={{ marginTop: 10 }}>
+          {ui(p.ui_pratica)} passa da capacidade da sua seringa de {capacidadeSeringa(ciclo)} UI: confira a seringa (Ciclo › Ajustes) ou a dose antes de aplicar.
+        </div>
+      ) : (
+        <p className="mudo" style={{ marginTop: 10 }}>
+          Na {textoSeringa(ciclo)}: {guiaSeringa(p.ui_pratica, seringa.marca)}.
+        </p>
+      )}
+      {vizinhas && p.ui_pratica <= capacidadeSeringa(ciclo) && (
         <p className="mudo vizinhas" style={{ marginTop: 4 }}>
           Marcas vizinhas: {vizinhas.map((v) => `${ui(v.ui)} = ${mg(v.mg)}`).join(' · ')}.
         </p>
       )}
-      <FimDeFase />
+      <FimDeFase aoDecidir={aoDecidir} />
       <ForaDoPlano />
       <button className="botao primario bloco-largo" style={{ marginTop: 14 }} onClick={aoRegistrar}>
         <Icone nome="mais" /> Registrar aplicação
@@ -199,7 +205,11 @@ export function Inicio() {
         <CartaoFimProjeto aoRegistrar={() => setRegistrar(true)} />
       ) : p ? (
         destaque || doseAberta ? (
-          <CartaoDose aoRegistrar={() => setRegistrar(true)} aoRecolher={destaque ? undefined : () => setDoseAberta(false)} />
+          <CartaoDose
+            aoRegistrar={() => setRegistrar(true)}
+            aoRecolher={destaque ? undefined : () => setDoseAberta(false)}
+            aoDecidir={() => setDoseAberta(true)}
+          />
         ) : (
           <button type="button" className="linha-dose" onClick={() => setDoseAberta(true)} aria-expanded="false">
             <span className="cresce">

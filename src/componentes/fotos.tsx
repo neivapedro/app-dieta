@@ -107,7 +107,7 @@ export function CartaoFotos() {
   const alvo = useRef<{ sessao: Sessao; pose: Pose } | null>(null);
   const [preparando, setPreparando] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
-  const [nova, setNova] = useState<{ sessao: Sessao; pose: Pose; imagem: ImagemPronta; url: string } | null>(null);
+  const [nova, setNova] = useState<{ sessao: Sessao; pose: Pose; imagem: ImagemPronta; url: string; dataInicial?: string } | null>(null);
   const [vendo, setVendo] = useState<{ sessao: Sessao; pose: Pose } | null>(null);
   if (!usuario) return null;
 
@@ -124,7 +124,8 @@ export function CartaoFotos() {
     try {
       const imagem = await prepararFoto(arquivo);
       setVendo(null);
-      setNova({ ...a, imagem, url: URL.createObjectURL(imagem.blob) });
+      // Trocar a imagem de uma foto já salva propõe a data dela, não hoje
+      setNova({ ...a, imagem, url: URL.createObjectURL(imagem.blob), dataInicial: achar(fotos, a.sessao, a.pose)?.data });
     } catch (e) {
       setMsg((e as Error).message);
     } finally {
@@ -259,12 +260,12 @@ function FolhaNova({
   aoFechar,
   aoSalvar,
 }: {
-  nova: { sessao: Sessao; pose: Pose; url: string };
+  nova: { sessao: Sessao; pose: Pose; url: string; dataInicial?: string };
   hoje: string;
   aoFechar: () => void;
   aoSalvar: (data: string) => Promise<void>;
 }) {
-  const [data, setData] = useState(hoje);
+  const [data, setData] = useState(nova.dataInicial ?? hoje);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   async function salvar() {

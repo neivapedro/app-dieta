@@ -36,10 +36,9 @@ export function ResumoSemana({ data, aoFechar }: { data?: string; aoFechar: () =
   const ate = somarDias(atual.data, -1);
   const naSemana = <T extends { data: string }>(l: T[]) => l.filter((x) => x.data >= de && x.data <= ate);
   const doses = naSemana(aplicacoes);
-  const dias = naSemana(treinos);
-  // Dias da semana que já eram do projeto (antes do início não contam como falta)
-  const diasProjeto = treino ? Math.max(0, Math.min(7, diferencaDias(treino.inicio > de ? treino.inicio : de, ate) + 1)) : 7;
+  // Só os dias da semana dentro do placar (antes do início e depois do fim não contam)
   const faltas = treino ? faltasNoPeriodo(treinos, de, ate, treino.inicio, treino.fim) : null;
+  const diasProjeto = faltas?.dias ?? 0;
   const planoDieta = dietaNoPeriodo(diario, de, ate);
   const usaDieta = planoDieta.respondidos > 0 || !!dieta?.refeicoes.some((r) => r.itens.length);
   const efeitos = efeitosNoPeriodo(diario, de, ate);
@@ -104,11 +103,13 @@ export function ResumoSemana({ data, aoFechar }: { data?: string; aoFechar: () =
             <div className="rotulo">Doses na semana</div>
             <div className="valor">{doses.length ? doses.map((d) => mg(d.dose_mg)).join(' · ') : '–'}</div>
           </div>
-          {treino && (
+          {faltas && diasProjeto > 0 && (
             <div className="bloco">
-              <div className="rotulo">Treino · cardio ({diasProjeto} dias)</div>
+              <div className="rotulo">
+                Treino · cardio ({diasProjeto} {diasProjeto === 1 ? 'dia' : 'dias'})
+              </div>
               <div className="valor">
-                {dias.filter((d) => d.treino).length}/{diasProjeto} · {dias.filter((d) => d.cardio).length}/{diasProjeto}
+                {faltas.treinos_feitos}/{diasProjeto} · {faltas.cardios_feitos}/{diasProjeto}
               </div>
             </div>
           )}

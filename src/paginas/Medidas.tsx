@@ -149,7 +149,8 @@ export function Medidas() {
               <tbody>
                 {[...composicoes].reverse().map((c, i) => {
                   const m = ordenadas[ordenadas.length - 1 - i];
-                  const prev = composicoes[composicoes.length - 2 - i];
+                  // Δ contra a última medição normal anterior; na atípica, sem Δ (fica fora das comparações)
+                  const prev = c.atipica ? undefined : composicoes.slice(0, composicoes.length - 1 - i).reverse().find((x) => !x.atipica);
                   const dc = prev ? c.cintura_cm - prev.cintura_cm : null;
                   const r = rca(c.cintura_cm, alturaDe(m));
                   return (

@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useDados } from '../dados/contexto';
 import { useTreino } from '../dados/useTreino';
 import { diaDaSemana, formatarData, hojeLocal } from '../lib/datas';
-import { cm, kg, num, paraNumero, paraTexto, pp } from '../lib/formato';
+import { cm, kg, lerFaixa, num, paraNumero, paraTexto, pp } from '../lib/formato';
 import { ajusteDoPerfil, cenariosPesoMeta, cinturaAlvoRca, cinturaNecessaria, percentualGordura, type Composicao } from '../lib/gordura';
 import { compararMetas } from '../lib/registroDecisoes';
 import {
@@ -111,7 +111,7 @@ function textoEsforco(v: number | null): string {
 /** Edição de um dia: treino, cardio (corrida ou bike, em qualquer dia), distância e tempo da corrida e esforço. */
 export function FormDiaTreino({ data, marcarCardio, aoFechar }: { data: string; marcarCardio?: boolean; aoFechar: () => void }) {
   const t = useTreino();
-  const { gravar } = useDados();
+  const { gravar, hoje } = useDados();
   const reg = t?.doDia(data);
   const [treino, setTreino] = useState(!!reg?.treino);
   // Cardio pré-marcado só quando o formulário vem do botão "Cardio" do dia
@@ -159,7 +159,7 @@ export function FormDiaTreino({ data, marcarCardio, aoFechar }: { data: string; 
           <Marcador rotulo="Cardio" detalhe={rotuloTipoCardio(tipo)} feito={cardio} aoTocar={() => setCardio(!cardio)} />
         </div>
         {cardio && (
-          <Campo rotulo="Cardio de hoje" grupo dica="A corrida pode ser em qualquer dia; a meta continua 2 corridas e 5 bikes por semana.">
+          <Campo rotulo={data === hoje ? 'Cardio de hoje' : 'Cardio do dia'} grupo dica="A corrida pode ser em qualquer dia; a meta continua 2 corridas e 5 bikes por semana.">
             <Escolhas opcoes={OPCOES_TIPO} valor={tipo} aoMudar={(v) => v && (setTipo(v), setErro(null))} />
           </Campo>
         )}
@@ -224,19 +224,31 @@ export function FormMetas({ base, aoFechar, primeiraVez }: { base: Composicao | 
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
 
-  const pesoN = paraNumero(peso);
-  const bfN = paraNumero(bf);
+  // Fora da faixa não entra nas contas de prévia (cintura necessária, massa magra na meta)
+  const naFaixa = (v: number | null, min: number, max: number) => (v !== null && v >= min && v <= max ? v : null);
+  const pesoN = naFaixa(paraNumero(peso), 30, 300);
+  const bfN = naFaixa(paraNumero(bf), 2, 75);
   // O aviso some assim que algum campo é preenchido
   useEffect(() => setErro(null), [pescoco, cintura, quadril, peso, bf]);
 
   async function salvar(e: FormEvent) {
     e.preventDefault();
+    // Mesmas faixas da medição: medidas de 20 a 250 cm, % de 2 a 75, peso de 30 a 300 kg
+    const lidos = {
+      cintura_cm: lerFaixa(cintura, 20, 250, 'Cintura', 'cm'),
+      pescoco_cm: lerFaixa(pescoco, 20, 250, 'Pescoço', 'cm'),
+      quadril_cm: feminino ? lerFaixa(quadril, 20, 250, 'Quadril', 'cm') : { valor: null },
+      bf: lerFaixa(bf, 2, 75, '% de gordura', '%'),
+      peso_kg: lerFaixa(peso, 30, 300, 'Peso', 'kg'),
+    };
+    const ruim = Object.values(lidos).find((l) => l.erro);
+    if (ruim?.erro) return setErro(ruim.erro);
     const metas: MetasProjeto = {
-      pescoco_cm: paraNumero(pescoco),
-      cintura_cm: paraNumero(cintura),
-      quadril_cm: feminino ? paraNumero(quadril) : null,
-      peso_kg: pesoN,
-      bf: bfN,
+      pescoco_cm: lidos.pescoco_cm.valor,
+      cintura_cm: lidos.cintura_cm.valor,
+      quadril_cm: lidos.quadril_cm.valor,
+      peso_kg: lidos.peso_kg.valor,
+      bf: lidos.bf.valor,
     };
     if (Object.values(metas).every((v) => v === null)) return setErro('Preencha ao menos uma meta.');
     if (salvando) return;

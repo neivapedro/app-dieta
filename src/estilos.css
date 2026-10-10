@@ -354,7 +354,8 @@ details.ajuda[open] summary { margin-bottom: 8px; }
   flex: none; width: 40px; height: 40px; margin: -6px -6px 0 0; border-radius: 8px; border: 1px solid var(--borda); background: var(--superficie-2);
   color: var(--texto-2); font-size: 1.1rem; line-height: 1; cursor: pointer;
 }
-.atividade { display: grid; grid-template-columns: minmax(0, 1fr) 70px 62px 30px; gap: 6px; align-items: center; }
+.atividade { display: grid; grid-template-columns: minmax(0, 1fr) 70px 62px 40px; gap: 6px; align-items: center; }
+.atividade .remover { margin: 0; }
 
 .resultado { width: 100%; border: 0; border-top: 1px solid var(--borda); background: none; text-align: left; cursor: pointer; }
 .resultado:first-child { border-top: 0; }

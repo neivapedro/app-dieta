@@ -4,7 +4,8 @@ import { useCalculos } from '../dados/useCalculos';
 import { useProjeto } from '../dados/useProjeto';
 import { useTreino } from '../dados/useTreino';
 import { formatarData, somarDias } from '../lib/datas';
-import { cm, kg, mg, num, pct, pp, sinal } from '../lib/formato';
+import { cm, corVariacao, kg, mg, num, pct, pp, sinal } from '../lib/formato';
+import { MDC } from '../lib/gordura';
 import { avisoReganho, linhasBalanco, SEMANAS_POS, SEMANAS_SAIDA, type FasePos } from '../lib/projeto';
 import type { DecisaoFase } from '../lib/tipos';
 import { formatarTempo, medidaInicial } from '../lib/treino';
@@ -59,7 +60,7 @@ function Balanco() {
                     <td>
                       {f(l.final)}
                       {l.variacao !== null && (
-                        <div className={`sub-valor ${Math.abs(l.variacao) < 1e-6 ? '' : (l.variacao < 0) === l.menorMelhor ? 'bom' : 'ruim'}`}>
+                        <div className={`sub-valor ${corVariacao(l.variacao, l.menorMelhor, MDC[l.chave])}`}>
                           {sinal(l.variacao, 1, l.unidade)}
                         </div>
                       )}

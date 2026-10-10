@@ -82,7 +82,7 @@ const COR_FAIXA = { ideal: 'bom', rapido: 'ruim', lento: '', ganho: 'ruim' } as 
 
 export function Analise() {
   const { perfil, ciclo, diario, medidas, treinos, dieta, registroDecisoes } = useDados();
-  const { resumo, geral, fases, serie, hoje, composicoes } = useCalculos();
+  const { resumo, geral, fases, serie, hoje, composicoes, fimRemedio, fimFases } = useCalculos();
   const treino = useTreino();
   const { banco } = useAlimentos();
   // O gerador de PDF é baixado ao abrir a aba: no toque, o PDF sai na hora
@@ -110,10 +110,11 @@ export function Analise() {
   if (!resumo) return null;
 
   const datasAplic = resumo.linhas.map((l) => l.aplicacao.data);
-  const compFases = composicaoPorFase(fases, composicoes, treino ? treinos : null, hoje);
-  const sintomas = sintomasPorFase(fases, datasAplic, diario, hoje);
+  // Com o remédio concluído, as fases vão até o fim do período do remédio (fimFases), não até hoje
+  const compFases = composicaoPorFase(fases, composicoes, treino ? treinos : null, fimFases);
+  const sintomas = sintomasPorFase(fases, datasAplic, diario, fimFases);
   // Sono por fase ao lado da massa magra e da cintura (associação, não causa)
-  const sonoFases = sonoPorFase(fases, diario, hoje);
+  const sonoFases = sonoPorFase(fases, diario, fimFases);
   const temSono = sonoFases.some((v) => v !== null);
   const sono7 = mediaSono7(diario, hoje);
   const agua = aguaSemana(diario, hoje, (d) => metaAguaDe(d).meta);
@@ -161,6 +162,28 @@ export function Analise() {
       ? conselhoConferencia(tendMedidas, ultimaComp.peso_kg, seguido, deficitPlano, dieta.config.ajuste_kcal)
       : null;
 
+  // Treino: o resultado do período do remédio e, na fase pós-remédio, o placar da fase nova numa linha à parte
+  const blocosTreino = treino
+    ? [
+        { rotulo: treino.placarPos ? 'Período do remédio' : '', placar: treino.projeto.placar, de: treino.projeto.inicio, ate: treino.projeto.fim },
+        ...(treino.placarPos ? [{ rotulo: 'Fase pós-remédio', placar: treino.placar, de: treino.inicio, ate: treino.fim }] : []),
+      ]
+        .filter((b) => b.placar.iniciado)
+        .map((b) => {
+          const corridas = treino.corridas.filter((c) => c.data >= b.de && c.data <= b.ate);
+          return {
+            rotulo: b.rotulo,
+            valores: [
+              `${b.placar.treino.feito} de ${b.placar.treino.meta} · ${pct(b.placar.treino.aderencia, 0)}`,
+              `${b.placar.cardio.feito} de ${b.placar.cardio.meta} · ${pct(b.placar.cardio.aderencia, 0)}`,
+              `${b.placar.corrida.feito} · ${num(b.placar.corrida.km, 1)} km`,
+              corridas.length ? `${formatarTempo(Math.min(...corridas.map((c) => c.pace)))} /km` : '–',
+            ],
+          };
+        })
+    : [];
+  const doisBlocosTreino = blocosTreino.length > 1;
+
   function montarModelo(imagens: Map<string, ImagemPdf> | null): ModeloRelatorio {
     const dia = (d: string) => diferencaDias('1970-01-01', d);
     const rotulo = (n: number) => {
@@ -199,8 +222,8 @@ export function Analise() {
                 : ''
         }`
       : 'Próxima dose prevista: nenhuma (plano ou frasco concluído).';
-    const colunas = colunasQuadro(fases, compFases, diario, datasAplic, hoje);
-    const quadro = colunas.atual ? montarQuadro({ atual: colunas.atual, anterior: colunas.anterior }, !!treino, proxima) : null;
+    const colunas = colunasQuadro(fases, compFases, diario, datasAplic, fimFases);
+    const quadro = colunas.atual ? montarQuadro({ atual: colunas.atual, anterior: colunas.anterior }, !!treino, proxima, !!fimRemedio) : null;
     const semanal = aplicacoes.length
       ? tabelaSemanal(semanasDoCiclo({ inicio: inicioCiclo, hoje, aplicacoes, serie, composicoes, diario, treinos: treino ? treinos : null }), !!treino)
       : null;
@@ -243,7 +266,9 @@ export function Analise() {
           ...(treino ? [c.treino === null ? '–' : pct(c.treino, 0), c.cardio === null ? '–' : pct(c.cardio, 0)] : []),
         ];
       }),
-      nota: 'Cada linha é um bloco de doses seguidas iguais (dose realmente aplicada). Última medição até o início do bloco x última antes do seguinte.',
+      nota: fases.length
+        ? 'Cada linha é um bloco de doses seguidas iguais (dose realmente aplicada). Última medição até o início do bloco x última antes do seguinte.'
+        : undefined,
     });
     tabelas.push({
       titulo: 'Peso e náusea por fase',
@@ -322,18 +347,11 @@ export function Analise() {
         )} g/kg (${num(metasDieta.gord_g, 0)} g) · carboidrato fecha a conta.${baseMetas}`,
       });
     }
-    if (treino && treino.placar.iniciado) {
+    if (blocosTreino.length) {
       tabelas.push({
         titulo: 'Treino',
-        cabecalho: ['Treinos', 'Cardios', 'Corridas', 'Melhor pace'],
-        linhas: [
-          [
-            `${treino.placar.treino.feito} de ${treino.placar.treino.meta} · ${pct(treino.placar.treino.aderencia, 0)}`,
-            `${treino.placar.cardio.feito} de ${treino.placar.cardio.meta} · ${pct(treino.placar.cardio.aderencia, 0)}`,
-            `${treino.placar.corrida.feito} · ${num(treino.placar.corrida.km, 1)} km`,
-            treino.corridas.length ? `${formatarTempo(Math.min(...treino.corridas.map((c) => c.pace)))} /km` : '–',
-          ],
-        ],
+        cabecalho: [...(doisBlocosTreino ? ['Período'] : []), 'Treinos', 'Cardios', 'Corridas', 'Melhor pace'],
+        linhas: blocosTreino.map((b) => [...(doisBlocosTreino ? [b.rotulo] : []), ...b.valores]),
       });
     }
     return {
@@ -581,13 +599,15 @@ export function Analise() {
             </table>
           </div>
         )}
-        <p className="mudo" style={{ marginTop: 8 }}>
-          Cada linha é um bloco de doses seguidas iguais, rotulado pela dose realmente aplicada. Última medição até o início do bloco (ou a primeira dentro
-          dele) × última antes do bloco seguinte. % magra e gordura/sem.: regressão com todas as medições do bloco (3 ou mais cobrindo 14 dias); % magra =
-          parte da perda de peso que saiu de massa magra (acima de 25% fica em destaque). Medições atípicas ficam de fora.
-          {treino && ' Uma fase com pouca perda e baixa aderência ao treino pede ajuste de rotina, não necessariamente de dose.'}
-          {temSono && ' Sono: média das noites registradas na fase (4 ou mais); é associação, não causa.'}
-        </p>
+        {fases.length > 0 && (
+          <p className="mudo" style={{ marginTop: 8 }}>
+            Cada linha é um bloco de doses seguidas iguais, rotulado pela dose realmente aplicada. Última medição até o início do bloco (ou a primeira dentro
+            dele) × última antes do bloco seguinte. % magra e gordura/sem.: regressão com todas as medições do bloco (3 ou mais cobrindo 14 dias); % magra =
+            parte da perda de peso que saiu de massa magra (acima de 25% fica em destaque). Medições atípicas ficam de fora.
+            {treino && ' Uma fase com pouca perda e baixa aderência ao treino pede ajuste de rotina, não necessariamente de dose.'}
+            {temSono && ' Sono: média das noites registradas na fase (4 ou mais); é associação, não causa.'}
+          </p>
+        )}
       </section>
 
       {(sono7.noites > 0 || agua.dias > 0 || temUrina) && (
@@ -650,7 +670,8 @@ export function Analise() {
                       {f.doses} × {num(f.dose_mg)} mg
                     </td>
                     <td>
-                      {formatarData(f.inicio, true)} – {f.fim === hoje ? 'hoje' : formatarData(f.fim, true)}
+                      {formatarData(f.inicio, true)} –{' '}
+                      {i < fases.length - 1 ? formatarData(somarDias(f.fim, -1), true) : f.fim === hoje ? 'hoje' : formatarData(f.fim, true)}
                     </td>
                     <td>
                       {num(f.peso_inicio, 1)} → {num(f.peso_fim, 1)}
@@ -845,15 +866,20 @@ export function Analise() {
         </section>
       )}
 
-      {treino && treino.placar.iniciado && (
-        <section className="cartao">
+      {blocosTreino.length > 0 && (
+        <section className="cartao pilha">
           <h2>Treino</h2>
-          <div className="grade grade-4">
-            <Bloco rotulo="Treinos" valor={`${treino.placar.treino.feito} de ${treino.placar.treino.meta} · ${pct(treino.placar.treino.aderencia, 0)}`} />
-            <Bloco rotulo="Cardios" valor={`${treino.placar.cardio.feito} de ${treino.placar.cardio.meta} · ${pct(treino.placar.cardio.aderencia, 0)}`} />
-            <Bloco rotulo="Corridas" valor={`${treino.placar.corrida.feito} · ${num(treino.placar.corrida.km, 1)} km`} />
-            <Bloco rotulo="Melhor pace" valor={treino.corridas.length ? `${formatarTempo(Math.min(...treino.corridas.map((c) => c.pace)))} /km` : '–'} />
-          </div>
+          {blocosTreino.map((b) => (
+            <div key={b.rotulo} className="pilha" style={{ gap: 6 }}>
+              {b.rotulo && <span className="rotulo">{b.rotulo}</span>}
+              <div className="grade grade-4">
+                <Bloco rotulo="Treinos" valor={b.valores[0]} />
+                <Bloco rotulo="Cardios" valor={b.valores[1]} />
+                <Bloco rotulo="Corridas" valor={b.valores[2]} />
+                <Bloco rotulo="Melhor pace" valor={b.valores[3]} />
+              </div>
+            </div>
+          ))}
         </section>
       )}
 

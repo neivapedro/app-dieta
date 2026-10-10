@@ -12,6 +12,8 @@ export interface Fase {
 }
 
 export interface Decisao {
+  /** Dia em que a decisão foi registrada */
+  data?: string;
   apos_aplicacao: number;
   dose_mg: number;
   fase_indice: number | null;
@@ -48,6 +50,8 @@ function achar(fases: Fase[], dose: number, de: number, ate = fases.length): num
 
 interface Degrau {
   dose: number;
+  /** Data da 1ª aplicação do bloco */
+  inicio: string;
   aplicacoes: number;
   primeira: number | null;
   ultima: number | null;
@@ -75,12 +79,12 @@ export function degraus(fases: Fase[], aplicacoes: { data: string; dose_mg: numb
         confirmada = true;
       }
     }
-    if (i === null) return { dose: b.dose, aplicacoes: b.aplicacoes, primeira: null, ultima: null, semanas: 0, confirmada };
+    if (i === null) return { dose: b.dose, inicio: b.inicio, aplicacoes: b.aplicacoes, primeira: null, ultima: null, semanas: 0, confirmada };
     let j = i;
     let semanas = fases[i].semanas;
     if (!confirmada) while (j + 1 < fases.length && mesma(fases[j + 1].dose_mg, fases[i].dose_mg)) semanas += fases[++j].semanas;
     busca = j;
-    return { dose: b.dose, aplicacoes: b.aplicacoes, primeira: i, ultima: j, semanas, confirmada };
+    return { dose: b.dose, inicio: b.inicio, aplicacoes: b.aplicacoes, primeira: i, ultima: j, semanas, confirmada };
   });
 }
 
@@ -93,6 +97,33 @@ export function faseNoDegrau(fases: Fase[], d: Degrau, p: number): number | null
     if (p <= acc) return f;
   }
   return d.ultima;
+}
+
+/**
+ * Decisão tomada com este bloco em curso e ainda valendo: nenhuma aplicação
+ * registrada depois dela (igual a decisaoDoBloco() do app). Uma dose esquecida,
+ * de data anterior, registrada depois não a invalida.
+ */
+export function decisaoDoBloco(x: Decisao, d: Pick<Degrau, 'dose' | 'inicio'>, aplicacoes: { data: string }[]): boolean {
+  if (!mesma(Number(x.dose_mg), d.dose)) return false;
+  if (x.apos_aplicacao === aplicacoes.length) return true;
+  if (!x.data || x.data < d.inicio) return false;
+  return !aplicacoes.some((a) => a.data > x.data!);
+}
+
+/**
+ * Fase pós-remédio iniciada no app (igual a decisaoPosRemedio() de src/lib/projeto.ts):
+ * vale a decisão "pos_remedio" mais recente, se nenhuma aplicação veio depois de bloco_inicio.
+ * Com ela, não há próxima dose: nada de lembrete nem de dose futura no calendário.
+ */
+export function emFasePosRemedio(decisoes: Decisao[] | null | undefined, aplicacoes: { data: string }[]): boolean {
+  const lista = decisoes ?? [];
+  for (let i = lista.length - 1; i >= 0; i--) {
+    const d = lista[i];
+    if (d.escolha !== 'pos_remedio' || !d.bloco_inicio) continue;
+    return !aplicacoes.some((a) => a.data > d.bloco_inicio!);
+  }
+  return false;
 }
 
 /** Próxima dose oficial e as doses que o plano ainda tem (as que dependem de subir são hipótese). */
@@ -136,8 +167,7 @@ export function planoDeDoses(
     return { estado: 'em_curso', proxima: resto[0], resto };
   }
   if (d.ultima === fases.length - 1) return { estado: 'fim_plano', proxima: { dose_mg: doseDe(d.ultima), fase_indice: d.ultima, hipotese: false }, resto };
-  const n = aplicacoes.length;
-  const subir = decisoes.some((x) => x.escolha === 'subir' && x.apos_aplicacao === n && mesma(Number(x.dose_mg), d.dose));
+  const subir = decisoes.some((x) => x.escolha === 'subir' && decisaoDoBloco(x, d, aplicacoes));
   if (subir) {
     degrauInteiro(d.ultima + 1);
     return { estado: 'subir', proxima: resto[0], resto };

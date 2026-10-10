@@ -22,7 +22,7 @@ import {
   type Refeicao,
 } from '../lib/dieta';
 import { fracaoMagraDaPerda, ritmoEstimado } from '../lib/conferencia';
-import { num, paraNumero, paraTexto } from '../lib/formato';
+import { num, paraKcal, paraNumero, paraTexto } from '../lib/formato';
 import { BotaoExcluir, Campo, CampoNumero, Escolhas, Folha } from './ui';
 
 /** Gramas: 1 casa abaixo de 10, inteiro acima */
@@ -388,9 +388,9 @@ export function FormConfigDieta({
     ...config,
     fator_atividade: fator,
     atividades: atividades
-      .map<Atividade>((a) => ({ nome: a.nome.trim(), kcal: paraNumero(a.kcal) ?? 0, vezes_semana: paraNumero(a.vezes) ?? 0 }))
+      .map<Atividade>((a) => ({ nome: a.nome.trim(), kcal: paraKcal(a.kcal) ?? 0, vezes_semana: paraNumero(a.vezes) ?? 0 }))
       .filter((a) => a.nome || a.kcal),
-    ajuste_kcal: sentido === 'manter' ? 0 : (sentido === 'deficit' ? -1 : 1) * Math.abs(paraNumero(ajuste) ?? 0),
+    ajuste_kcal: sentido === 'manter' ? 0 : (sentido === 'deficit' ? -1 : 1) * Math.abs(paraKcal(ajuste) ?? 0),
     ptn_gkg: paraNumero(ptn) ?? config.ptn_gkg,
     gord_gkg: paraNumero(gord) ?? config.gord_gkg,
     usar_aderencia: usarAderencia,
@@ -399,9 +399,11 @@ export function FormConfigDieta({
 
   function salvar(e: FormEvent) {
     e.preventDefault();
-    const aj = paraNumero(ajuste);
+    const aj = paraKcal(ajuste);
     if (sentido !== 'manter' && (aj === null || aj <= 0 || aj > 1500))
-      return setErro(`Informe o ${sentido === 'deficit' ? 'déficit' : 'superávit'} por dia (1 a 1.500 kcal) ou escolha Manter.`);
+      return setErro(`Informe o ${sentido === 'deficit' ? 'déficit' : 'superávit'} por dia (1 a 1500 kcal) ou escolha Manter.`);
+    const ativRuim = atividades.find((a) => a.kcal.trim() && ((paraKcal(a.kcal) ?? -1) < 0 || (paraKcal(a.kcal) ?? 0) > 3000));
+    if (ativRuim) return setErro(`kcal por sessão${ativRuim.nome.trim() ? ` de ${ativRuim.nome.trim()}` : ''}: informe de 0 a 3000 kcal.`);
     const p = paraNumero(ptn);
     const g = paraNumero(gord);
     if (p === null || p < 0 || p > 5) return setErro('Proteína animal: informe de 0 a 5 g/kg.');
@@ -499,9 +501,9 @@ export function FormConfigDieta({
             aoMudar={setAjuste}
             dica={
               previa
-                ? `${num((Math.abs(paraNumero(ajuste) ?? 0) / previa.gasto_total) * 100, 0)}% do gasto total${
+                ? `${num((Math.abs(paraKcal(ajuste) ?? 0) / previa.gasto_total) * 100, 0)}% do gasto total${
                     sentido === 'deficit' && corpo
-                      ? ` · ≈ ${num(ritmoEstimado(Math.abs(paraNumero(ajuste) ?? 0), corpo.peso_kg, fracaoMagra ?? fracaoMagraDaPerda(null, corpo.peso_kg - corpo.massa_magra_kg).p), 1)}% do peso por semana${
+                      ? ` · ≈ ${num(ritmoEstimado(Math.abs(paraKcal(ajuste) ?? 0), corpo.peso_kg, fracaoMagra ?? fracaoMagraDaPerda(null, corpo.peso_kg - corpo.massa_magra_kg).p), 1)}% do peso por semana${
                           ritmoMedido != null ? ` (medido: ${num(ritmoMedido, 1)}%/sem)` : ''
                         }`
                       : ''

@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useDados } from '../dados/contexto';
 import { useAlimentos } from '../dados/useAlimentos';
@@ -173,6 +173,12 @@ export function CartaoFecharDia({ etiqueta }: { etiqueta?: string }) {
   const gravarTreino = useGravarTreino();
   const reg = diario.find((r) => r.data === hoje);
   const [peso, setPeso] = useState(paraTexto(reg?.peso_kg));
+  // Campo não mexido acompanha o peso gravado (ex.: peso salvo junto com a aplicação)
+  const [mexeuPeso, setMexeuPeso] = useState(false);
+  const pesoGravado = reg?.peso_kg ?? null;
+  useEffect(() => {
+    if (!mexeuPeso) setPeso(paraTexto(pesoGravado));
+  }, [pesoGravado, hoje, mexeuPeso]);
   const [erroPeso, setErroPeso] = useState<string | null>(null);
   const [corridaAberta, setCorridaAberta] = useState(false);
   const comTreino = !!t && t.placar.iniciado && !t.placar.encerrado;
@@ -184,6 +190,7 @@ export function CartaoFecharDia({ etiqueta }: { etiqueta?: string }) {
     const p = lerPeso(peso);
     if (p.erro) return setErroPeso(p.erro);
     setErroPeso(null);
+    setMexeuPeso(false);
     gravarDia(hoje, { peso_kg: p.valor });
   }
 
@@ -217,7 +224,7 @@ export function CartaoFecharDia({ etiqueta }: { etiqueta?: string }) {
               key={k}
               aria-pressed={reg?.[k] === true}
               className={`sintoma ${reg?.[k] === true ? 'sim' : ''}`}
-              onClick={() => gravarDia(hoje, { [k]: reg?.[k] !== true })}
+              onClick={() => gravarDia(hoje, { [k]: reg?.[k] === true ? null : true })}
             >
               {rotulo}
               {reg?.[k] === true ? ': sim' : ''}
@@ -239,6 +246,7 @@ export function CartaoFecharDia({ etiqueta }: { etiqueta?: string }) {
             value={peso}
             onChange={(e) => {
               setPeso(e.target.value.replace(/[^\d.,]/g, ''));
+              setMexeuPeso(true);
               setErroPeso(null);
             }}
           />

@@ -275,7 +275,8 @@ export function semanasDoProjeto(
     }
     // A medição de segunda (em jejum) mostra o resultado da semana ANTERIOR: junta com a semana que terminou
     const proxSeg = somarDias(seg, 7);
-    const daSemana = composicoes.filter((c) => c.data >= proxSeg && c.data <= somarDias(proxSeg, 6));
+    // Medição atípica fica só no histórico: não vira o resultado da semana
+    const daSemana = composicoes.filter((c) => !c.atipica && c.data >= proxSeg && c.data <= somarDias(proxSeg, 6));
     semanas.push({
       numero: n,
       segunda: seg,

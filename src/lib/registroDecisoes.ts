@@ -42,7 +42,7 @@ function empurrar(lista: Alteracao[], tipo: TipoDecisao, campo: string, de: stri
   if (de !== para) lista.push({ tipo, campo, de, para });
 }
 
-/** Mudanças relevantes da Dieta: déficit, fator, proteína, gordura e exercício da meta. */
+/** Mudanças relevantes da Dieta: déficit, fator, proteína, gordura, exercício da meta e como ele entra (planejado ou feito). */
 export function compararDieta(antes: ConfigDieta, depois: ConfigDieta): Alteracao[] {
   const r: Alteracao[] = [];
   empurrar(r, 'dieta', 'Déficit/superávit', kcal(antes.ajuste_kcal), kcal(depois.ajuste_kcal));
@@ -50,6 +50,9 @@ export function compararDieta(antes: ConfigDieta, depois: ConfigDieta): Alteraca
   empurrar(r, 'dieta', 'Proteína animal', `${num(antes.ptn_gkg, 1)} g/kg`, `${num(depois.ptn_gkg, 1)} g/kg`);
   empurrar(r, 'dieta', 'Gordura', `${num(antes.gord_gkg, 1)} g/kg`, `${num(depois.gord_gkg, 1)} g/kg`);
   empurrar(r, 'dieta', 'Exercício da meta', exercicioSemana(antes), exercicioSemana(depois));
+  // "Como planejado" × "Pelo que fiz" também muda a meta de kcal
+  const modo = (c: ConfigDieta) => (c.usar_aderencia ? 'pelo que fiz' : 'como planejado');
+  empurrar(r, 'dieta', 'Exercício na meta', modo(antes), modo(depois));
   return r;
 }
 

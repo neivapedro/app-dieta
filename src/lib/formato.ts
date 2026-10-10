@@ -50,6 +50,16 @@ export function paraNumero(s: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/**
+ * kcal (inteiro): o ponto seguido de 3 dígitos é separador de milhar
+ * ("1.000" = 1000, "1.200" = 1200); a vírgula continua decimal.
+ */
+export function paraKcal(s: string): number | null {
+  const t = s.trim().replace(/\s/g, '');
+  if (/^\d{1,3}(\.\d{3})+(,\d*)?$/.test(t)) return paraNumero(t.replace(/\./g, ''));
+  return paraNumero(t);
+}
+
 export function paraTexto(n: number | null | undefined): string {
   return n === null || n === undefined ? '' : String(n).replace('.', ',');
 }

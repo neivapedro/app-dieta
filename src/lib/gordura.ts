@@ -66,6 +66,19 @@ export function percentualGordura(
   return bf >= 2 && bf <= 75 ? bf : null;
 }
 
+/**
+ * Por que a % de gordura não sai: texto para o formulário de medição. Separa
+ * medidas sem base para a fórmula (cintura ≤ pescoço; no feminino, cintura +
+ * quadril ≤ pescoço) de um resultado fora da faixa possível (2 a 75%).
+ */
+export function motivoSemGordura(sexo: Sexo, pescoco_cm: number, cintura_cm: number, quadril_cm: number | null): string {
+  const fmt = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
+  if (sexo === 'Masculino' && !(cintura_cm - pescoco_cm > 0)) return `a cintura precisa ser maior que o pescoço (${fmt(pescoco_cm)} cm). Confira as medidas`;
+  if (sexo === 'Feminino' && !(cintura_cm + (quadril_cm ?? 0) - pescoco_cm > 0))
+    return `cintura + quadril precisam ser maiores que o pescoço (${fmt(pescoco_cm)} cm). Confira as medidas`;
+  return `o resultado sai da faixa possível (2 a 75%). Confira cintura e pescoço${sexo === 'Feminino' ? ' (e o quadril)' : ''}`;
+}
+
 export interface Composicao {
   data: string;
   peso_kg: number;

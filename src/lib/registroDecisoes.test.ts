@@ -22,7 +22,8 @@ describe('Registro de decisões: o que mudou', () => {
     const a = configPadrao();
     const b = { ...a, ajuste_kcal: -450, fator_atividade: 1.3, ptn_gkg: 2.2, atividades: [{ nome: 'Musculação', kcal: 300, vezes_semana: 5 }], usar_aderencia: true };
     const alt = compararDieta(a, b);
-    expect(alt.map((x) => x.campo)).toEqual(['Déficit/superávit', 'Fator de atividade', 'Proteína animal', 'Exercício da meta']);
+    expect(alt.map((x) => x.campo)).toEqual(['Déficit/superávit', 'Fator de atividade', 'Proteína animal', 'Exercício da meta', 'Exercício na meta']);
+    expect(alt[4]).toMatchObject({ de: 'como planejado', para: 'pelo que fiz' });
     expect(alt[0]).toMatchObject({ tipo: 'dieta', de: '−300 kcal', para: '−450 kcal' });
     expect(alt[1]).toMatchObject({ de: '1,2', para: '1,3' });
     expect(alt[3]).toMatchObject({ de: 'nenhum', para: '1.500 kcal/sem' });

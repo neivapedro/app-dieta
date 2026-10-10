@@ -138,7 +138,7 @@ export function ListaDecisoes() {
       ))}
       {dias.length === 0 ? (
         !registroIndisponivel && (
-          <Vazio>Quando você mudar o déficit, o fator, a proteína ou a gordura, as fases do Plano, as metas ou a dose, a mudança aparece aqui com a data.</Vazio>
+          <Vazio>Quando você mudar o déficit, o fator, a proteína, a gordura ou o exercício na meta, as fases do Plano, as metas ou a dose, a mudança aparece aqui com a data.</Vazio>
         )
       ) : (
         <div className="lista">

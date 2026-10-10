@@ -249,11 +249,12 @@ export class RepositorioSupabase implements Repositorio {
       if (Math.abs(c.passo_ui * 100 - Math.round(c.passo_ui * 100)) > 1e-9) basica.passo_ui = 0.25;
       const d = erro(await this.sb.from('ciclos').upsert(basica).select('id').single());
       const faltou = [
-        (c.seringa_capacidade_ui ?? null) !== null || (c.seringa_marca_ui ?? null) !== null ? 'A seringa (capacidade e marcas)' : null,
-        c.frasco_aberto_em ? '"Frasco aberto em"' : null,
+        (c.seringa_capacidade_ui ?? null) !== null || (c.seringa_marca_ui ?? null) !== null ? 'a seringa (capacidade e marcas)' : null,
+        c.frasco_aberto_em ? '"frasco aberto em"' : null,
+        (c.decisoes ?? []).length ? 'as decisões do fim de fase (subir, repetir e anotações para o médico)' : null,
       ].filter(Boolean);
       const salvo = { ...c, id: d!.id } as Ciclo;
-      if (faltou.length) throw new CicloSalvoEmParte(`${faltou.join(' e ')} não foi salvo: ${AVISO_EVOLUCAO}`, salvo);
+      if (faltou.length) throw new CicloSalvoEmParte(`Itens não salvos no servidor: ${faltou.join('; ')}. Motivo: ${AVISO_EVOLUCAO}`, salvo);
       return salvo;
     }
     const d = erro(r);

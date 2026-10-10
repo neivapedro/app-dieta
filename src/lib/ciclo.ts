@@ -312,6 +312,32 @@ export interface SituacaoDegrau {
   ultima_fase_conhecida: number | null;
 }
 
+/**
+ * A decisão (subir, anotação) foi tomada com este bloco em curso e continua
+ * valendo: nenhuma aplicação registrada depois dela. Uma dose esquecida, de
+ * data anterior à decisão, registrada depois não a invalida.
+ */
+export function decisaoDoBloco(x: Pick<DecisaoFase, 'data' | 'apos_aplicacao' | 'dose_mg'>, bloco: BlocoDose, ordenadas: Aplicacao[]): boolean {
+  if (!mesmaDose(x.dose_mg, bloco.dose_mg)) return false;
+  if (x.apos_aplicacao === ordenadas.length) return true;
+  if (x.data < bloco.data_inicio) return false;
+  return !ordenadas.some((a) => a.data > x.data);
+}
+
+/** Semanas da fase f do degrau d já cobertas pelas doses feitas (base para "Repetir fase"). */
+export function semanasFeitasNaFase(fases: Fase[], d: DegrauBloco, f: number): number {
+  if (d.primeira_fase === null) return 0;
+  let antes = 0;
+  for (let i = d.primeira_fase; i < f; i++) antes += fases[i].semanas;
+  return Math.max(0, d.bloco.aplicacoes - antes);
+}
+
+/** Fases com a fase f estendida: +semanas a partir do que já foi aplicado (nunca menos que o planejado). */
+export function repetirFase(fases: Fase[], d: DegrauBloco, f: number, semanas: number): Fase[] {
+  const base = Math.max(fases[f].semanas, semanasFeitasNaFase(fases, d, f));
+  return fases.map((x, j) => (j === f ? { ...x, semanas: base + semanas } : x));
+}
+
 export function situacaoDoDegrau(fases: Fase[], ordenadas: Aplicacao[], decisoes: DecisaoFase[] = []): SituacaoDegrau {
   const numeradas = fasesNumeradas(fases);
   const vazio = { degrau: null, feitas: 0, previstas: null, fase_seguinte: null, decisao: null, ultima_fase_conhecida: null };
@@ -333,8 +359,7 @@ export function situacaoDoDegrau(fases: Fase[], ordenadas: Aplicacao[], decisoes
   const atual = numeradas[d.ultima_fase];
   const seguinte = numeradas[d.ultima_fase + 1] ?? null;
   if (!seguinte) return { estado: 'fim_plano', dose_mg: doseDe(atual), fase: atual, ...base, fase_seguinte: null };
-  const n = ordenadas.length;
-  const decisao = ultimaDecisao(decisoes, (x) => x.escolha === 'subir' && x.apos_aplicacao === n && mesmaDose(x.dose_mg, d.bloco.dose_mg));
+  const decisao = ultimaDecisao(decisoes, (x) => x.escolha === 'subir' && decisaoDoBloco(x, d.bloco, ordenadas));
   if (decisao) return { estado: 'subir', dose_mg: seguinte.fase.dose_mg, fase: seguinte, ...base, decisao, fase_seguinte: seguinte };
   return { estado: 'pendente', dose_mg: doseDe(atual), fase: atual, ...base, fase_seguinte: seguinte };
 }

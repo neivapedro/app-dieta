@@ -172,7 +172,8 @@ function desenharQuadro(doc: jsPDF, y: number, q: QuadroRelatorio): number {
   doc.text(prox, MARGEM, y + 4);
   y += prox.length * 4.2 + 3;
 
-  // Regras do Plano com caixas para marcar
+  // Regras do Plano com caixas para marcar (remédio concluído: sem regras de subir de fase)
+  if (!q.regras.length) return y;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(...CINZA);

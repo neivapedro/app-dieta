@@ -111,6 +111,8 @@ export interface LinhaBalanco {
   atingida: boolean | null;
   unidade: string;
   menorMelhor: boolean;
+  /** Medida da linha (para a mudança mínima detectável, MDC) */
+  chave: Chave;
 }
 
 type Chave = 'cintura_cm' | 'quadril_cm' | 'pescoco_cm' | 'bf' | 'massa_gorda_kg' | 'massa_magra_kg' | 'peso_kg';
@@ -145,6 +147,7 @@ export function linhasBalanco(inicial: Composicao | null, final: Composicao | nu
       atingida,
       unidade,
       menorMelhor,
+      chave: k,
     };
   });
 }

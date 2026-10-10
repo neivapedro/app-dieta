@@ -11,6 +11,7 @@ import {
   CAPACIDADES_SERINGA,
   MARCAS_SERINGA,
   REGRAS_FASE,
+  capacidadeSeringa,
   consumoPlano,
   fasesNumeradas,
   guiaSeringa,
@@ -63,6 +64,7 @@ export function Ciclo() {
 // ---------- Agenda (equivale às abas Diário + Semanal da planilha) ----------
 
 function Agenda() {
+  const { ciclo } = useDados();
   const { resumo } = useCalculos();
   const [editando, setEditando] = useState<Aplicacao | null>(null);
   const [novo, setNovo] = useState(false);
@@ -116,6 +118,7 @@ function Agenda() {
                 <div style={{ textAlign: 'right' }}>
                   <div className="titulo numero">{num(d.dose_mg)} mg</div>
                   <div className="detalhe numero">{ui(d.ui)} · saldo {num(d.saldo_apos_mg)}</div>
+                  {ciclo && d.ui > capacidadeSeringa(ciclo) + 1e-9 && <div className="detalhe ruim">passa da seringa de {capacidadeSeringa(ciclo)} UI</div>}
                 </div>
               </div>
             ))}
@@ -235,7 +238,12 @@ function Plano() {
     if (semanasInvalidas) return setErro('Toda fase precisa de um número inteiro de semanas (1 ou mais).');
     setErro(null);
     const antes = ciclo!.fases;
-    await executar((r) => r.salvarCiclo({ ...ciclo!, fases: fasesValidas }));
+    try {
+      await executar((r) => r.salvarCiclo({ ...ciclo!, fases: fasesValidas }));
+    } catch {
+      // O aviso do topo (sem conexão, etc.) já foi mostrado por executar
+      return;
+    }
     // Dose e semanas de cada fase entram no registro de decisões
     registrarAlteracoes(compararFases(antes, fasesValidas));
     setSalvo(true);
@@ -278,9 +286,12 @@ function Plano() {
             <div className="grade grade-4">
               <div className="bloco"><div className="rotulo">Volume</div><div className="valor">{num(mgParaMl(fv.dose_mg, ciclo!.concentracao_mg_ml), 4)} ml</div></div>
               <div className="bloco"><div className="rotulo">Seringa U-100</div><div className="valor">{ui(m.ui)}</div></div>
-              <div className="bloco"><div className="rotulo">Puxar até</div><div className="valor">{ui(m.ui_pratica)}</div></div>
+              <div className="bloco"><div className="rotulo">Puxar até</div><div className={`valor ${m.ui_pratica > capacidadeSeringa(ciclo!) ? 'ruim' : ''}`}>{ui(m.ui_pratica)}</div></div>
               <div className="bloco"><div className="rotulo">Consumo</div><div className="valor">{mg(fv.dose_mg * fv.semanas)}</div></div>
             </div>
+            {m.ui_pratica > capacidadeSeringa(ciclo!) && (
+              <div className="alerta erro">{ui(m.ui_pratica)} passa da capacidade da seringa ({capacidadeSeringa(ciclo!)} UI): confira a dose ou a seringa em Ajustes.</div>
+            )}
             <Campo rotulo="Objetivo da fase">
               <textarea value={f.objetivo} onChange={(e) => alterar(i, 'objetivo', e.target.value)} />
             </Campo>
@@ -346,7 +357,7 @@ const OPCOES_CAPACIDADE = CAPACIDADES_SERINGA.map((c) => ({ valor: c as number, 
 const OPCOES_MARCA = MARCAS_SERINGA.map((m) => ({ valor: m as number, rotulo: `de ${paraTexto(m)} em ${paraTexto(m)} UI` }));
 
 function Ajustes() {
-  const { ciclo, aplicacoes, executar, gravar } = useDados();
+  const { ciclo, aplicacoes, executar, gravar, limparErro } = useDados();
   const { resumo } = useCalculos();
   const c = ciclo!;
   const [nome, setNome] = useState(c.nome);
@@ -410,6 +421,8 @@ function Ajustes() {
       setMudancaConc(null);
       setMsg(emParte ? { tipo: 'erro', texto: `Os outros parâmetros foram salvos. ${emParte}` } : { tipo: 'info', texto: 'Parâmetros salvos. Tudo foi recalculado.' });
     } catch (e) {
+      // Uma mensagem só, perto do botão (executar já tinha posto a mesma no aviso do topo)
+      limparErro();
       setMsg({ tipo: 'erro', texto: (e as Error).message });
     }
   }

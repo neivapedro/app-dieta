@@ -11,13 +11,17 @@ export function ehErroDeRede(e: unknown): boolean {
   const nome = (e as { name?: string })?.name ?? '';
   const status = (e as { status?: unknown })?.status;
   const code = (e as { code?: unknown })?.code;
+  // Tabela ou coluna que falta (SQL de evolução não rodou) é erro de dados, não de rede:
+  // a mensagem também cita o "schema cache", mas tentar de novo não resolve
+  if (typeof code === 'string' && ['PGRST204', 'PGRST205', '42703', '42P01'].includes(code)) return false;
   if (typeof status === 'number' && status >= 500) return true;
   if (code === 'PGRST002') return true;
   const msg = mensagem(e);
+  if (/Could not find the (table|.* column)|column .* does not exist|relation .* does not exist/i.test(msg)) return false;
   return (
     /Retryable/i.test(nome) ||
     /failed to fetch|load failed|networkerror|network request failed|fetch failed|timed? ?out|aborted|ERR_INTERNET|ERR_NETWORK/i.test(msg) ||
-    /schema cache|bad gateway|service unavailable|gateway time-?out|error code: 5\d\d|^\s*<(!doctype|html)/i.test(msg)
+    /Could not query the database for the schema cache|bad gateway|service unavailable|gateway time-?out|error code: 5\d\d|^\s*<(!doctype|html)/i.test(msg)
   );
 }
 

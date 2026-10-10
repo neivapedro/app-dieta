@@ -49,11 +49,12 @@ function CartaoCalibracao({ perfil }: { perfil: TipoPerfil }) {
   const [exameBf, setExameBf] = useState(paraTexto(perfil.exame_gordura_bf));
   const [msg, setMsg] = useState<{ tipo: string; texto: string } | null>(null);
   const [salvando, setSalvando] = useState(false);
+  // Só quando os campos salvos mudam de fato: salvar outro cartão (que recarrega o perfil) não apaga o que foi digitado aqui
   useEffect(() => {
     setAjuste(paraTexto(perfil.ajuste_gordura));
     setExameData(perfil.exame_gordura_data ?? '');
     setExameBf(paraTexto(perfil.exame_gordura_bf));
-  }, [perfil]);
+  }, [perfil.ajuste_gordura, perfil.exame_gordura_data, perfil.exame_gordura_bf]);
 
   const ordenadas = [...medidas].sort((a, b) => a.data.localeCompare(b.data));
   const ultima = ordenadas[ordenadas.length - 1];
@@ -185,7 +186,10 @@ export function Perfil() {
   const [ativos, setAtivos] = useState(perfil?.lembretes_ativos ?? true);
   const [hora, setHora] = useState(perfil?.hora_lembrete ?? '08:00');
   const [msg, setMsg] = useState<{ tipo: string; texto: string } | null>(null);
-  // Perfil mudou por fora (importação de backup): o formulário mostra o que está salvo
+  // A liberação da aba Treino não vem do backup: uma regra só para a prévia e a gravação
+  const comTreino = !!perfil?.modulo_treino;
+  // Perfil mudou por fora (importação de backup): o formulário mostra o que está salvo. Só quando estes
+  // campos mudam de fato: salvar a calibração (que recarrega o perfil) não apaga o que foi digitado aqui
   useEffect(() => {
     if (!perfil) return;
     setNome(perfil.nome ?? '');
@@ -194,7 +198,8 @@ export function Perfil() {
     setNascimento(perfil.data_nascimento ?? '');
     setAtivos(perfil.lembretes_ativos ?? true);
     setHora(perfil.hora_lembrete ?? '08:00');
-  }, [perfil]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [!!perfil, perfil?.nome, perfil?.sexo, perfil?.altura_cm, perfil?.data_nascimento, perfil?.lembretes_ativos, perfil?.hora_lembrete]);
   const [estado, setEstado] = useState<EstadoNotificacao | null>(null);
   const [msgCal, setMsgCal] = useState<string | null>(null);
   const arquivo = useRef<HTMLInputElement>(null);
@@ -293,7 +298,9 @@ export function Perfil() {
   async function prepararImportacao(f: File) {
     try {
       const b = lerBackup(await f.text());
-      setImportacao({ backup: b, plano: planejarImportacao(b, { aplicacoes, medidas, diario, treinos, forca, registro_decisoes: registroDecisoes, fotos }) });
+      const plano = planejarImportacao(b, { aplicacoes, medidas, diario, treinos, forca, registro_decisoes: registroDecisoes, fotos });
+      // Conta sem a aba Treino: treinos e força do arquivo não são importados (nem aparecem na prévia)
+      setImportacao({ backup: b, plano: comTreino ? plano : { ...plano, treinos: [], forca: [] } });
       setMsgBackup(null);
     } catch (e) {
       setMsgBackup({ tipo: 'erro', texto: (e as Error).message });
@@ -322,7 +329,7 @@ export function Perfil() {
         if (b.perfil) {
           await tolerar(r.salvarPerfil(b.perfil));
           if (b.perfil.metas_projeto) await r.salvarMetas(b.perfil.metas_projeto);
-          if (b.perfil.exercicios_forca?.length && (perfil?.modulo_treino || b.perfil.modulo_treino)) await tolerar(r.salvarExerciciosForca(b.perfil.exercicios_forca));
+          if (b.perfil.exercicios_forca?.length && comTreino) await tolerar(r.salvarExerciciosForca(b.perfil.exercicios_forca));
         }
         let cicloId = ciclo?.id;
         if (b.ciclo) {
@@ -348,7 +355,7 @@ export function Perfil() {
           const { id: _id, ...resto } = m;
           await tolerar(r.salvarMedida(resto));
         }
-        if (perfil?.modulo_treino || b.perfil?.modulo_treino) {
+        if (comTreino) {
           for (const t of plano.treinos) {
             const { id: _id, ...resto } = t;
             await tolerar(r.salvarTreino(resto));
@@ -508,7 +515,7 @@ export function Perfil() {
             <div>
               <b>Backup de {dataDoBackup(importacao.backup.exportado_em)}.</b> Vai importar:{' '}
               {importacao.plano.aplicacoes.length} aplicação(ões), {importacao.plano.medidas.length} medição(ões),{' '}
-              {importacao.plano.diario.length} dia(s) do diário, {importacao.plano.treinos.length} dia(s) de treino
+              {importacao.plano.diario.length} dia(s) do diário{comTreino ? `, ${importacao.plano.treinos.length} dia(s) de treino` : ''}
               {importacao.plano.registro_decisoes.length > 0 ? `, ${importacao.plano.registro_decisoes.length} decisão(ões) registrada(s)` : ''}
               {importacao.plano.forca.length ? `, ${importacao.plano.forca.length} série(s) de força` : ''}
               {importacao.plano.fotos.length ? `, ${importacao.plano.fotos.length} foto(s) de antes e depois (ficam só neste aparelho)` : ''}

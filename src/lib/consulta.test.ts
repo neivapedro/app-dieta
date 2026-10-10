@@ -59,7 +59,8 @@ describe('Semana a semana', () => {
   });
 
   it('peso e medição da segunda, náusea máxima, dias com sintoma, dieta e treino', () => {
-    expect(linhas[0]).toMatchObject({ peso_kg: 95, nausea_max: 2, dias_sintoma: 1, dieta: { sim: 1, parcial: 1, nao: 0 }, treino: 1, cardio: 0, dias: 7 });
+    // 1ª semana: treino · cardio só a partir do início (quinta 08 a domingo 11 = 4 dias); o treino de 06/10 fica de fora
+    expect(linhas[0]).toMatchObject({ peso_kg: 95, nausea_max: 2, dias_sintoma: 1, dieta: { sim: 1, parcial: 1, nao: 0 }, treino: 0, cardio: 0, dias: 4 });
     expect(linhas[0].composicao?.cintura_cm).toBe(97);
     expect(linhas[1]).toMatchObject({ peso_kg: 94.4, composicao: null, dieta: { sim: 0, parcial: 0, nao: 1 } });
     // Semana atual conta só até hoje (segunda 19 a quarta 21)
@@ -73,7 +74,7 @@ describe('Semana a semana', () => {
     expect(t.cabecalho).not.toContain('Treino · cardio');
     expect(t.linhas[0]).toHaveLength(t.cabecalho.length);
     expect(t.linhas[0][9]).toBe('1/1/0');
-    expect(tabelaSemanal(linhas, true).linhas[0].at(-1)).toBe('1/7 · 0/7');
+    expect(tabelaSemanal(linhas, true).linhas[0].at(-1)).toBe('0/4 · 0/4');
   });
 
   it('dieta em % dos dias respondidos', () => {
@@ -104,6 +105,7 @@ describe('Quadro de decisão', () => {
     nausea_media: null,
     nausea_max: null,
     em_andamento,
+    pontos_peso: [],
   });
   const fases = [bloco(0, '2026-10-05', '2026-10-19', 1.25, false), bloco(1, '2026-10-19', '2026-11-01', 1.5, true)];
   const compFases: ComposicaoFase[] = [

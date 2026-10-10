@@ -119,6 +119,7 @@ export class RepositorioLocal implements Repositorio {
         modulo_treino: b.perfil?.modulo_treino,
         metas_projeto: b.perfil?.metas_projeto,
         exercicios_forca: b.perfil?.exercicios_forca,
+        data_nascimento: manter('data_nascimento') as string | null,
         ajuste_gordura: manter('ajuste_gordura') as number | null,
         exame_gordura_data: manter('exame_gordura_data') as string | null,
         exame_gordura_bf: manter('exame_gordura_bf') as number | null,
@@ -130,8 +131,15 @@ export class RepositorioLocal implements Repositorio {
     return this.banco().ciclo;
   }
   async salvarCiclo(c: Omit<Ciclo, 'id'> & { id?: string }) {
-    const ciclo = { ...c, id: c.id ?? novoId() } as Ciclo;
-    this.alterar((b) => (b.ciclo = ciclo));
+    let ciclo = { ...c, id: c.id ?? novoId() } as Ciclo;
+    this.alterar((b) => {
+      // Como o upsert do Supabase: campo ausente (backup antigo) não apaga o que já está salvo no mesmo ciclo
+      if (b.ciclo && b.ciclo.id === ciclo.id) {
+        const definidos = Object.fromEntries(Object.entries(ciclo).filter(([, v]) => v !== undefined));
+        ciclo = { ...b.ciclo, ...definidos } as Ciclo;
+      }
+      b.ciclo = ciclo;
+    });
     return ciclo;
   }
   async salvarDecisoes(d: DecisoesCiclo) {

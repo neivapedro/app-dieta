@@ -275,7 +275,8 @@ export const PROJECAO = { janela: 42, medicoes: 5, dias: 28, semana: 6, horizont
  * ponto, que tem o ruído daquela segunda) e dá a faixa de 95% da reta.
  */
 export function projecaoNoRitmo(composicoes: Composicao[], hoje: string, fim: string, semanaProjeto: number): Projecao | null {
-  if (semanaProjeto < PROJECAO.semana || hoje >= fim) return null;
+  // No último dia do projeto o horizonte é o próprio dia; só depois do fim não há projeção
+  if (semanaProjeto < PROJECAO.semana || hoje > fim) return null;
   const validas = composicoes.filter((c) => c.bf !== null && c.massa_gorda_kg !== null && c.massa_magra_kg !== null && !c.atipica && c.data <= hoje);
   if (!validas.length) return null;
   const ultima = validas[validas.length - 1].data;

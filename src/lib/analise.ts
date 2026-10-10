@@ -63,6 +63,8 @@ export interface AnaliseFase {
   nausea_media: number | null;
   nausea_max: number | null;
   em_andamento: boolean;
+  /** Pesagens usadas no ritmo (a de referência e as do bloco, sem atípicas): as mesmas na tela e no PDF */
+  pontos_peso: { data: string; peso_kg: number }[];
 }
 
 export interface ComparacaoFase {
@@ -92,9 +94,12 @@ export function analisarFases(
   serie: PontoPeso[],
   diario: RegistroDiario[],
   hoje: string,
+  /** Último dia do remédio (frasco acabou ou fase pós-remédio iniciada): o último bloco termina nele, não hoje */
+  fimRemedio: string | null = null,
 ): AnaliseFase[] {
-  // O último bloco só está "em andamento" se o degrau ainda não completou
-  const degrauAberto = !!resumo.proxima && (resumo.degrau.estado === 'em_curso' || resumo.degrau.estado === 'fora_do_plano');
+  // O último bloco só está "em andamento" se o degrau ainda não completou e o remédio não acabou
+  const degrauAberto = !fimRemedio && !!resumo.proxima && (resumo.degrau.estado === 'em_curso' || resumo.degrau.estado === 'fora_do_plano');
+  if (fimRemedio && fimRemedio < hoje) hoje = fimRemedio;
   const grupos = new Map<number, typeof resumo.linhas>();
   for (const l of resumo.linhas) {
     const g = grupos.get(l.bloco) ?? [];
@@ -146,6 +151,7 @@ export function analisarFases(
       nausea_media: nauseas.length ? nauseas.reduce((s, n) => s + n, 0) / nauseas.length : null,
       nausea_max: nauseas.length ? Math.max(...nauseas) : null,
       em_andamento,
+      pontos_peso: r ? pontos.map((p) => ({ data: p.data, peso_kg: p.peso_kg })) : [],
     };
   }).map((f, i, todas) => (i > 0 ? { ...f, vs_anterior: compararFases(todas[i - 1], f) } : f));
 }

@@ -7,7 +7,7 @@
 // registrada no app (../_shared/dose.ts). Mantenha em sincronia com src/lib/ciclo.ts.
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { degraus, dosesDoCalendario, faseNoDegrau, planoDeDoses, type Decisao, type Fase } from '../_shared/dose.ts';
+import { degraus, dosesDoCalendario, emFasePosRemedio, faseNoDegrau, planoDeDoses, type Decisao, type Fase } from '../_shared/dose.ts';
 
 const url = Deno.env.get('SUPABASE_URL')!;
 const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -134,7 +134,8 @@ Deno.serve(async (req) => {
     let saldo = Number(ciclo.quantidade_total_mg) - lista.reduce((s, a) => s + Number(a.dose_mg), 0);
     const plano = planoDeDoses(fases, lista, decisoes);
     const { estado, proxima } = plano;
-    const futuras = dosesDoCalendario(plano, saldo);
+    // Fase pós-remédio iniciada no app: só as aplicações feitas, sem doses futuras
+    const futuras = emFasePosRemedio(decisoes, lista) ? [] : dosesDoCalendario(plano, saldo);
     const ultima = lista[lista.length - 1]?.data as string | undefined;
     const prevista = ultima ? somarDias(ultima, intervalo) : (ciclo.data_inicio as string);
     const hoje = hojeNoFuso(fuso);
