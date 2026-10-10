@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { BotaoExcluir, Campo, CampoNumero, Escolhas, Icone } from '../componentes/ui';
 import { CALENDARIO_URL } from '../config';
+import { textoAjuste } from '../componentes/composicao';
 import { useDados } from '../dados/contexto';
 import { lerBackup, montarBackup, planejarImportacao, type Backup, type PlanoImportacao } from '../lib/backup';
-import { formatarData, hojeLocal } from '../lib/datas';
-import { paraNumero, paraTexto } from '../lib/formato';
+import { diferencaDias, formatarData, hojeLocal } from '../lib/datas';
+import { num, paraNumero, paraTexto, pp } from '../lib/formato';
+import { AJUSTE_PADRAO, percentualGorduraBruto } from '../lib/gordura';
 import {
   ativarNotificacoes,
   desativarNotificacoes,
@@ -13,7 +15,7 @@ import {
   notificacaoTeste,
   type EstadoNotificacao,
 } from '../lib/notificacoes';
-import type { Sexo } from '../lib/tipos';
+import type { Medida, Perfil as TipoPerfil, Sexo } from '../lib/tipos';
 
 const TEXTO_ESTADO: Record<EstadoNotificacao, string> = {
   'sem-suporte': 'Este navegador não suporta notificações.',
@@ -24,6 +26,145 @@ const TEXTO_ESTADO: Record<EstadoNotificacao, string> = {
   'ativo-sem-servidor': 'Permissão concedida, mas o envio automático exige a nuvem configurada (Supabase + chaves VAPID).',
 };
 
+
+/** US Navy bruta (sem ajuste) de uma medição, com a altura do perfil. */
+function brutaDaMedida(m: Medida, perfil: TipoPerfil): number | null {
+  return percentualGorduraBruto(perfil.sexo, perfil.altura_cm ?? m.altura_cm, m.pescoco_cm, m.cintura_cm, m.quadril_cm);
+}
+
+/**
+ * Ajuste de calibração do % de gordura: padrão +2 no masculino (o da planilha)
+ * e 0 no feminino; pode ser digitado ou calculado por um exame (DXA,
+ * bioimpedância de qualidade): ajuste = % do exame − US Navy bruta do mesmo dia.
+ */
+function CartaoCalibracao({ perfil }: { perfil: TipoPerfil }) {
+  const { medidas, executar, limparErro } = useDados();
+  const sexo = perfil.sexo ?? 'Masculino';
+  const [ajuste, setAjuste] = useState(paraTexto(perfil.ajuste_gordura));
+  const [exameData, setExameData] = useState(perfil.exame_gordura_data ?? '');
+  const [exameBf, setExameBf] = useState(paraTexto(perfil.exame_gordura_bf));
+  const [msg, setMsg] = useState<{ tipo: string; texto: string } | null>(null);
+  const [salvando, setSalvando] = useState(false);
+  useEffect(() => {
+    setAjuste(paraTexto(perfil.ajuste_gordura));
+    setExameData(perfil.exame_gordura_data ?? '');
+    setExameBf(paraTexto(perfil.exame_gordura_bf));
+  }, [perfil]);
+
+  const ordenadas = [...medidas].sort((a, b) => a.data.localeCompare(b.data));
+  const ultima = ordenadas[ordenadas.length - 1];
+  const ajusteN = ajuste.trim() ? paraNumero(ajuste) : null;
+  const vigente = ajusteN ?? AJUSTE_PADRAO[sexo];
+  const bruta = ultima ? brutaDaMedida(ultima, perfil) : null;
+
+  function calibrar() {
+    setMsg(null);
+    const bf = paraNumero(exameBf);
+    if (!exameData) return setMsg({ tipo: 'erro', texto: 'Informe a data do exame.' });
+    if (bf === null || bf < 2 || bf > 75) return setMsg({ tipo: 'erro', texto: 'Informe o % de gordura do exame (entre 2 e 75).' });
+    // Medição do mesmo dia; sem ela, a mais próxima até 3 dias de distância
+    const perto = ordenadas
+      .map((m) => ({ m, d: Math.abs(diferencaDias(m.data, exameData)) }))
+      .filter((x) => x.d <= 3)
+      .sort((a, b) => a.d - b.d)[0];
+    if (!perto) return setMsg({ tipo: 'erro', texto: 'Registre uma medição de fita no dia do exame (ou até 3 dias de distância) para calibrar.' });
+    const b = brutaDaMedida(perto.m, perfil);
+    if (b === null) return setMsg({ tipo: 'erro', texto: 'A medição desse dia não permite calcular a US Navy.' });
+    const novo = Math.round((bf - b) * 10) / 10;
+    setAjuste(paraTexto(novo));
+    setMsg({
+      tipo: 'info',
+      texto: `Medição de ${formatarData(perto.m.data)}: US Navy bruta ${pp(b)}. Ajuste = ${pp(bf)} − ${pp(b)} = ${num(novo, 1)} p.p. Toque em Salvar para usar.`,
+    });
+  }
+
+  async function salvar() {
+    setMsg(null);
+    if (ajuste.trim() && (ajusteN === null || ajusteN < -15 || ajusteN > 15)) return setMsg({ tipo: 'erro', texto: 'Ajuste entre −15 e 15 p.p. (ex.: 2 ou −1,5).' });
+    const bf = exameBf.trim() ? paraNumero(exameBf) : null;
+    if (exameBf.trim() && (bf === null || bf < 2 || bf > 75)) return setMsg({ tipo: 'erro', texto: 'O % de gordura do exame fica entre 2 e 75.' });
+    if (!!exameData !== (bf !== null)) return setMsg({ tipo: 'erro', texto: 'Para guardar o exame, informe a data e o % de gordura.' });
+    setSalvando(true);
+    try {
+      await executar((r) =>
+        r.salvarPerfil({ ...perfil, ajuste_gordura: ajusteN === null ? null : Math.round(ajusteN * 10) / 10, exame_gordura_data: exameData || null, exame_gordura_bf: bf }),
+      );
+      setMsg({ tipo: 'info', texto: 'Calibração salva. Todo o histórico foi recalculado.' });
+    } catch (e) {
+      limparErro();
+      setMsg({ tipo: 'erro', texto: (e as Error).message });
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <section className="cartao pilha">
+      <h2>Calibração do % de gordura</h2>
+      <p className="mudo">
+        O % de gordura sai da fórmula da Marinha dos EUA (US Navy) somada a um ajuste. Padrão: {num(AJUSTE_PADRAO.Masculino, 1)} p.p. no masculino (o
+        da planilha) e 0 no feminino. Com um exame confiável (DXA ou bioimpedância de qualidade), o ajuste pode ser calibrado: % do exame − US Navy
+        do mesmo dia.
+      </p>
+      {bruta !== null && (
+        <div className="alerta info">
+          {textoAjuste(bruta, vigente)} (última medição, {formatarData(ultima!.data)})
+        </div>
+      )}
+      <CampoNumero
+        rotulo="Ajuste"
+        sufixo="p.p."
+        valor={ajuste}
+        permitirNegativo
+        aoMudar={(v) => {
+          setAjuste(v);
+          // Ajuste digitado à mão deixa de ser "calibrado por exame"
+          setExameData('');
+          setExameBf('');
+        }}
+        dica={`Vazio = padrão (${num(AJUSTE_PADRAO[sexo], 1)} p.p. no ${sexo.toLowerCase()}).`}
+      />
+      <details className="ajuda">
+        <summary>Calibrar por exame</summary>
+        <div className="pilha">
+          <div className="grade">
+            <Campo rotulo="Data do exame">
+              <input type="date" value={exameData} max={hojeLocal()} onChange={(e) => setExameData(e.target.value)} />
+            </Campo>
+            <CampoNumero rotulo="% do exame" sufixo="%" valor={exameBf} aoMudar={setExameBf} />
+          </div>
+          <button type="button" className="botao" onClick={calibrar}>
+            Calcular ajuste
+          </button>
+          <p className="mudo">Use a medição de fita do mesmo dia do exame (ou até 3 dias de distância), em jejum e nas mesmas condições.</p>
+        </div>
+      </details>
+      {perfil.exame_gordura_data && perfil.exame_gordura_bf != null && (
+        <p className="mudo">
+          Calibrado por exame em {formatarData(perfil.exame_gordura_data)}, a {pp(perfil.exame_gordura_bf)}.
+        </p>
+      )}
+      {msg && <div className={`alerta ${msg.tipo}`}>{msg.texto}</div>}
+      <div className="linha">
+        <button type="button" className="botao primario" disabled={salvando} onClick={() => void salvar()}>
+          {salvando ? 'Salvando…' : 'Salvar'}
+        </button>
+        <button
+          type="button"
+          className="botao"
+          onClick={() => {
+            setAjuste('');
+            setExameData('');
+            setExameBf('');
+            setMsg(null);
+          }}
+        >
+          Voltar ao padrão
+        </button>
+      </div>
+    </section>
+  );
+}
 
 /** Data do backup no fuso do aparelho (o arquivo guarda em UTC). */
 function dataDoBackup(iso: string): string {
@@ -77,6 +218,10 @@ export function Perfil() {
           lembretes_ativos: ativos,
           hora_lembrete: hora,
           fuso_horario: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Sao_Paulo',
+          // A calibração tem cartão próprio: aqui fica como está
+          ajuste_gordura: perfil?.ajuste_gordura ?? null,
+          exame_gordura_data: perfil?.exame_gordura_data ?? null,
+          exame_gordura_bf: perfil?.exame_gordura_bf ?? null,
         }),
       );
       setMsg({ tipo: 'info', texto: 'Dados salvos.' });
@@ -187,7 +332,7 @@ export function Perfil() {
         <Campo rotulo="Sexo" dica="Define a fórmula de % de gordura." grupo>
           <Escolhas opcoes={[{ valor: 'Masculino' as Sexo, rotulo: 'Masculino' }, { valor: 'Feminino' as Sexo, rotulo: 'Feminino' }]} valor={sexo} aoMudar={(v) => v && setSexo(v)} />
         </Campo>
-        <CampoNumero rotulo="Altura" sufixo="cm" valor={altura} aoMudar={setAltura} />
+        <CampoNumero rotulo="Altura" sufixo="cm" valor={altura} aoMudar={setAltura} dica="Vale para todas as medições: corrigir aqui corrige o histórico." />
         <Campo rotulo="Data de nascimento" dica="Usada na conferência da taxa basal da aba Dieta.">
           <input type="date" value={nascimento} onChange={(e) => setNascimento(e.target.value)} />
         </Campo>
@@ -203,6 +348,8 @@ export function Perfil() {
         {msg && <div className={`alerta ${msg.tipo}`}>{msg.texto}</div>}
         <button className="botao primario">Salvar</button>
       </form>
+
+      {perfil && <CartaoCalibracao perfil={perfil} />}
 
       <section className="cartao pilha">
         <div className="linha">

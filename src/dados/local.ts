@@ -108,8 +108,19 @@ export class RepositorioLocal implements Repositorio {
     return this.banco().perfil;
   }
   async salvarPerfil(p: Perfil) {
-    // Preserva a liberação da aba Treino e as metas, como no banco
-    this.alterar((b) => (b.perfil = { ...p, modulo_treino: b.perfil?.modulo_treino, metas_projeto: b.perfil?.metas_projeto }));
+    // Preserva a liberação da aba Treino e as metas, como no banco; campos
+    // ausentes (backup antigo) não apagam a calibração do % de gordura
+    this.alterar((b) => {
+      const manter = <K extends keyof Perfil>(k: K) => (p[k] === undefined ? (b.perfil?.[k] ?? null) : p[k]);
+      b.perfil = {
+        ...p,
+        modulo_treino: b.perfil?.modulo_treino,
+        metas_projeto: b.perfil?.metas_projeto,
+        ajuste_gordura: manter('ajuste_gordura') as number | null,
+        exame_gordura_data: manter('exame_gordura_data') as string | null,
+        exame_gordura_bf: manter('exame_gordura_bf') as number | null,
+      };
+    });
   }
 
   async obterCiclo() {

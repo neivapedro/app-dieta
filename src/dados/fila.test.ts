@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { Medida } from '../lib/tipos';
 import { aplicarFila, enfileirar, type ItemFila } from './fila';
 
 const t = (data: string, treino: boolean, cardio: boolean) => ({ data, treino, cardio, corrida_km: null, corrida_seg: null });
@@ -51,4 +52,11 @@ describe('Fila: exclusão', () => {
     expect(f).toHaveLength(1);
     expect(aplicarFila({ treinos: [], diario: [], dieta: null, aplicacoes: [ap], medidas: [] }, f).aplicacoes).toEqual([]);
   });
+
+  it('medição atípica passa pela fila com a marca', () => {
+    const m = { id: 'm1', data: '2026-10-12', altura_cm: 181, pescoco_cm: 41, cintura_cm: 97, quadril_cm: null, peso_kg: 95, atipica: true };
+    const d = aplicarFila({ treinos: [], diario: [], dieta: null, medidas: [] as Medida[] }, enfileirar([], { tipo: 'medida', dado: m }, 1));
+    expect(d.medidas![0].atipica).toBe(true);
+  });
 });
+

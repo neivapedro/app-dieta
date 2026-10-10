@@ -4,7 +4,7 @@ import { useCalculos } from '../dados/useCalculos';
 import { faseDaDose, guiaSeringa, marcacao, totalDosesPlano } from '../lib/ciclo';
 import { diaDaSemana, formatarData, hojeLocal } from '../lib/datas';
 import { cm, kg, num, lerPeso, paraNumero, paraTexto, pp, ui } from '../lib/formato';
-import { composicao } from '../lib/gordura';
+import { ajusteDoPerfil, composicao } from '../lib/gordura';
 import { LOCAIS_APLICACAO, NIVEIS_NAUSEA, type Aplicacao, type Medida, type RegistroDiario } from '../lib/tipos';
 import { BotaoExcluir, Campo, CampoNumero, Escolhas, Folha } from './ui';
 
@@ -335,7 +335,10 @@ export function FormMedida({ medida, aoFechar, aoSalvar }: { medida?: Medida; ao
   const ultima = [...medidas].sort((a, b) => b.data.localeCompare(a.data))[0];
   const sexo = perfil?.sexo ?? 'Masculino';
   const [data, setData] = useState(medida?.data ?? hojeLocal());
-  const [altura, setAltura] = useState(paraTexto(medida?.altura_cm ?? ultima?.altura_cm ?? perfil?.altura_cm));
+  // Altura: campo único do Perfil (não é pedida a cada medição); sem altura no perfil, o formulário pede
+  const alturaPerfil = perfil?.altura_cm && perfil.altura_cm > 0 ? perfil.altura_cm : null;
+  const [altura, setAltura] = useState(paraTexto(alturaPerfil ?? medida?.altura_cm ?? ultima?.altura_cm));
+  const [atipica, setAtipica] = useState(medida?.atipica === true);
   // Até 3 leituras de pescoço e cintura: vale a média
   const [pescocos, setPescocos] = useState<string[]>([paraTexto(medida?.pescoco_cm)]);
   const [cinturas, setCinturas] = useState<string[]>([paraTexto(medida?.cintura_cm)]);
@@ -349,7 +352,7 @@ export function FormMedida({ medida, aoFechar, aoSalvar }: { medida?: Medida; ao
   const [salvando, setSalvando] = useState(false);
 
   const valores = {
-    altura_cm: paraNumero(altura),
+    altura_cm: alturaPerfil ?? paraNumero(altura),
     pescoco_cm: media(pescocos),
     cintura_cm: media(cinturas),
     quadril_cm: paraNumero(quadril),
@@ -360,7 +363,7 @@ export function FormMedida({ medida, aoFechar, aoSalvar }: { medida?: Medida; ao
     positivo(valores.altura_cm) && positivo(valores.pescoco_cm) && positivo(valores.cintura_cm) && positivo(valores.peso_kg) && (sexo === 'Masculino' || positivo(valores.quadril_cm));
   // Medição anterior a esta data, para comparar e pegar erro de digitação
   const anterior = [...medidas].filter((m) => m.data < data && m.id !== medida?.id).sort((a, b) => b.data.localeCompare(a.data))[0];
-  const previa = completo ? composicao({ id: '', data, ...(valores as Omit<Medida, 'id' | 'data'>) }, sexo) : null;
+  const previa = completo ? composicao({ id: '', data, ...(valores as Omit<Medida, 'id' | 'data'>) }, sexo, { ajuste: ajusteDoPerfil(perfil) }) : null;
 
   async function salvar(e: FormEvent) {
     e.preventDefault();
@@ -385,6 +388,7 @@ export function FormMedida({ medida, aoFechar, aoSalvar }: { medida?: Medida; ao
         cintura_cm: valores.cintura_cm!,
         quadril_cm: sexo === 'Feminino' ? valores.quadril_cm : null,
         peso_kg: valores.peso_kg!,
+        atipica,
       },
     });
     aoFechar();
@@ -404,7 +408,16 @@ export function FormMedida({ medida, aoFechar, aoSalvar }: { medida?: Medida; ao
           <input type="date" value={data} max={hojeLocal()} onChange={(e) => setData(e.target.value)} required />
         </Campo>
         <div className="grade">
-          <CampoNumero rotulo="Altura" sufixo="cm" valor={altura} aoMudar={setAltura} dica="Em centímetros, ex.: 182" />
+          {alturaPerfil ? (
+            <div className="campo">
+              <span>Altura</span>
+              <div className="texto-2" style={{ minHeight: 44, display: 'flex', alignItems: 'center' }}>
+                {cm(alturaPerfil)} · do Perfil
+              </div>
+            </div>
+          ) : (
+            <CampoNumero rotulo="Altura" sufixo="cm" valor={altura} aoMudar={setAltura} dica="Em centímetros, ex.: 175. Salve no Perfil para não precisar digitar." />
+          )}
           <CampoNumero
             rotulo="Peso"
             sufixo="kg"
@@ -415,6 +428,10 @@ export function FormMedida({ medida, aoFechar, aoSalvar }: { medida?: Medida; ao
         </div>
         <Leituras rotulo="Pescoço" valores={pescocos} aoMudar={setPescocos} anterior={anterior?.pescoco_cm} dataAnterior={anterior?.data} limite={2} />
         <Leituras rotulo="Cintura" valores={cinturas} aoMudar={setCinturas} anterior={anterior?.cintura_cm} dataAnterior={anterior?.data} limite={3} />
+        <p className="texto-2" style={{ marginTop: -6 }}>
+          Na altura do umbigo, fita paralela ao chão, justa sem afundar a pele. Meça ao fim de uma expiração normal, relaxado: não force o ar para
+          fora, não murche nem estufe a barriga.
+        </p>
         <div className="grade">
           {sexo === 'Feminino' && <CampoNumero rotulo="Quadril" sufixo="cm" valor={quadril} aoMudar={setQuadril} />}
         </div>
@@ -423,11 +440,19 @@ export function FormMedida({ medida, aoFechar, aoSalvar }: { medida?: Medida; ao
           <div className="pilha mudo">
             <p><b>Quando:</b> toda segunda, em jejum, depois de ir ao banheiro e antes de beber água. Mesma fita e mesmo horário.</p>
             <p><b>Pescoço:</b> logo abaixo do pomo de Adão, com a fita levemente inclinada para a frente, sem medir o trapézio.</p>
-            <p><b>Cintura:</b> na altura do umbigo, fita paralela ao chão. Solte todo o ar antes de medir, sem murchar a barriga.</p>
+            <p><b>Cintura:</b> na altura do umbigo, fita paralela ao chão, justa sem afundar a pele. Meça ao fim de uma expiração normal, relaxado: não force o ar para fora, não murche nem estufe a barriga.</p>
             <p><b>Leituras:</b> meça 2 ou 3 vezes; o app usa a média. Diferença maior que 1 cm entre leituras: meça de novo.</p>
             {sexo === 'Feminino' && <p><b>Quadril:</b> na maior circunferência dos glúteos.</p>}
+            <p><b>Altura:</b> vem do Perfil; corrigir lá corrige todo o histórico.</p>
           </div>
         </details>
+        <label className="linha" style={{ flexWrap: 'nowrap', alignItems: 'flex-start', cursor: 'pointer' }}>
+          <input type="checkbox" checked={atipica} onChange={(e) => setAtipica(e.target.checked)} style={{ width: 20, height: 20, flex: 'none', marginTop: 2 }} />
+          <span>
+            Medição atípica (doente, inchado, viagem)
+            <small className="texto-2" style={{ display: 'block' }}>Fica no histórico, mas fora de tendências e projeções.</small>
+          </span>
+        </label>
         {previa && (
           <div className="grade grade-3">
             <div className="bloco"><div className="rotulo">% gordura</div><div className="valor">{pp(previa.bf)}</div></div>

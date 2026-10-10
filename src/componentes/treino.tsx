@@ -3,7 +3,7 @@ import { useDados } from '../dados/contexto';
 import { useTreino } from '../dados/useTreino';
 import { diaDaSemana, formatarData, hojeLocal } from '../lib/datas';
 import { cm, kg, num, paraNumero, paraTexto, pp } from '../lib/formato';
-import { percentualGordura, type Composicao } from '../lib/gordura';
+import { ajusteDoPerfil, cenariosPesoMeta, cinturaAlvoRca, cinturaNecessaria, percentualGordura, type Composicao } from '../lib/gordura';
 import { digitosParaTempo, formatarTempo, KM_CORRIDA_PADRAO, lerTempo, paceValido, rotuloCardio, tipoCardio } from '../lib/treino';
 import type { MetasProjeto } from '../lib/tipos';
 import { Campo, CampoNumero, Folha } from './ui';
@@ -147,8 +147,11 @@ export function FormDiaTreino({ data, marcarCardio, aoFechar }: { data: string; 
 export function FormMetas({ base, aoFechar, primeiraVez }: { base: Composicao | null; aoFechar: () => void; primeiraVez?: boolean }) {
   const { perfil, executar, medidas } = useDados();
   const m = perfil?.metas_projeto;
-  const altura = [...medidas].sort((a, b) => b.data.localeCompare(a.data))[0]?.altura_cm ?? perfil?.altura_cm ?? null;
+  // Altura do perfil (fonte única); sem ela, a da última medição
+  const altura = perfil?.altura_cm ?? [...medidas].sort((a, b) => b.data.localeCompare(a.data))[0]?.altura_cm ?? null;
   const feminino = perfil?.sexo === 'Feminino';
+  const ajuste = ajusteDoPerfil(perfil);
+  const cinturaRca = cinturaAlvoRca(altura);
   const [pescoco, setPescoco] = useState(paraTexto(m?.pescoco_cm));
   const [cintura, setCintura] = useState(paraTexto(m?.cintura_cm));
   const [quadril, setQuadril] = useState(paraTexto(m?.quadril_cm));
@@ -195,7 +198,23 @@ export function FormMetas({ base, aoFechar, primeiraVez }: { base: Composicao | 
           </p>
         )}
         <div className="grade">
-          <CampoNumero rotulo="Cintura" sufixo="cm" valor={cintura} aoMudar={setCintura} dica={atual(base?.cintura_cm, cm)} />
+          <CampoNumero
+            rotulo="Cintura"
+            sufixo="cm"
+            valor={cintura}
+            aoMudar={setCintura}
+            dica={
+              <>
+                {atual(base?.cintura_cm, cm)}
+                {cinturaRca !== null && (
+                  <>
+                    {base ? <br /> : null}
+                    Referência saudável: abaixo de {cm(cinturaRca)} (metade da altura)
+                  </>
+                )}
+              </>
+            }
+          />
           <CampoNumero rotulo="Pescoço" sufixo="cm" valor={pescoco} aoMudar={setPescoco} dica={atual(base?.pescoco_cm, cm)} />
           {feminino && <CampoNumero rotulo="Quadril" sufixo="cm" valor={quadril} aoMudar={setQuadril} dica={atual(base?.quadril_cm, cm)} />}
           <CampoNumero rotulo="% de gordura" sufixo="%" valor={bf} aoMudar={setBf} dica={atual(base?.bf, pp)} />
@@ -205,13 +224,33 @@ export function FormMetas({ base, aoFechar, primeiraVez }: { base: Composicao | 
           // Coerência: no método US Navy o % de gordura sai da cintura, do pescoço e da altura
           const bfDasMedidas =
             altura && paraNumero(cintura) && paraNumero(pescoco)
-              ? percentualGordura(perfil?.sexo ?? 'Masculino', altura, paraNumero(pescoco)!, paraNumero(cintura)!, feminino ? paraNumero(quadril) : null)
+              ? percentualGordura(perfil?.sexo ?? 'Masculino', altura, paraNumero(pescoco)!, paraNumero(cintura)!, feminino ? paraNumero(quadril) : null, ajuste)
               : null;
           const magraMeta = pesoN && bfN ? pesoN * (1 - bfN / 100) : null;
           const magraHoje = base?.massa_magra_kg ?? null;
           const pesoPreserva = bfN && magraHoje ? magraHoje / (1 - bfN / 100) : null;
+          // A meta de % traduzida em cintura (pescoço da meta ou o de hoje; no feminino, o quadril da meta ou o de hoje)
+          const pescocoRef = paraNumero(pescoco) ?? base?.pescoco_cm ?? null;
+          const quadrilRef = (feminino ? paraNumero(quadril) : null) ?? base?.quadril_cm ?? null;
+          const cinturaMeta = bfN && altura && pescocoRef ? cinturaNecessaria(perfil?.sexo ?? 'Masculino', altura, pescocoRef, bfN, ajuste, quadrilRef) : null;
+          const cenarios = bfN && base?.massa_magra_kg ? cenariosPesoMeta(base.massa_magra_kg, base.peso_kg, bfN) : [];
           return (
             <>
+              {cinturaMeta !== null && (
+                <div className="alerta info">
+                  Para {num(bfN, 1)}% a cintura precisa ficar em ≈ {cm(cinturaMeta)} (pescoço {cm(pescocoRef)}
+                  {feminino ? `, quadril ${cm(quadrilRef)}` : ''}).
+                </div>
+              )}
+              {cenarios.length > 0 && (
+                <div className="alerta info" style={{ display: 'block' }}>
+                  Peso para {num(bfN, 1)}%:{' '}
+                  {cenarios
+                    .map((c) => `${c.fracao_magra === 0 ? 'mantendo a massa magra' : `perdendo ${Math.round(c.fracao_magra * 100)}% em massa magra`} ${kg(c.peso_kg)}`)
+                    .join(' · ')}
+                  .
+                </div>
+              )}
               {bfDasMedidas !== null && (
                 <div className={`alerta ${bfN !== null && Math.abs(bfDasMedidas - bfN) > 2 ? '' : 'info'}`}>
                   Cintura {cintura}{feminino ? `, quadril ${quadril}` : ''} e pescoço {pescoco} dão {num(bfDasMedidas, 1)}% de gordura (altura {num(altura, 0)} cm).

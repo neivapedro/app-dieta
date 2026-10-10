@@ -33,10 +33,11 @@ export function sinal(n: number | null | undefined, casas = 1, sufixo = ''): str
 
 /**
  * Classe de cor para uma variação. "menorMelhor" = queda é boa (peso, % gordura,
- * massa gorda, cintura); caso contrário, subida é boa (massa magra).
+ * massa gorda, cintura); caso contrário, subida é boa (massa magra). Abaixo do
+ * `limiar` (mínima mudança detectável, ver MDC em gordura.ts) fica neutra.
  */
-export function corVariacao(n: number | null | undefined, menorMelhor: boolean): string {
-  if (n === null || n === undefined || Math.abs(n) < 0.00001) return '';
+export function corVariacao(n: number | null | undefined, menorMelhor: boolean, limiar = 0): string {
+  if (n === null || n === undefined || Math.abs(n) < Math.max(limiar, 0.00001)) return '';
   return (n < 0) === menorMelhor ? 'bom' : 'ruim';
 }
 

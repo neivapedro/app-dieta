@@ -15,6 +15,11 @@ export interface Perfil {
   /** Aba Treino liberada para esta conta (definido no banco) */
   modulo_treino?: boolean;
   metas_projeto?: MetasProjeto | null;
+  /** Ajuste de calibração do % de gordura em p.p. (null = padrão: +2 no masculino, 0 no feminino) */
+  ajuste_gordura?: number | null;
+  /** Exame usado para calibrar o ajuste (DXA, bioimpedância de qualidade): data e % de gordura */
+  exame_gordura_data?: string | null;
+  exame_gordura_bf?: number | null;
 }
 
 /** Metas para o fim do projeto (massa magra/gorda saem de peso + % gordura) */
@@ -88,6 +93,8 @@ export interface Medida {
   cintura_cm: number;
   quadril_cm: number | null;
   peso_kg: number;
+  /** Medição atípica (doente, inchado, viagem): fica no histórico, fora de tendências e projeções */
+  atipica?: boolean;
 }
 
 export const LOCAIS_APLICACAO = [

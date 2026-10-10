@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { analisarFases, analisarGeral, diaAposDose, serieDePeso, sintomasPorFase } from './analise';
 import { calcularCiclo, cicloPadrao, guiaSeringa, consumoPlano, faseDaDose, marcacao, mgParaUI, verificarPlano } from './ciclo';
 import { diaDaSemana, somarDias } from './datas';
-import { composicao, ganhos, percentualGordura } from './gordura';
+import { composicao, ganhos, historicoComposicao, percentualGordura } from './gordura';
 import type { Aplicacao, Ciclo, Medida, RegistroDiario } from './tipos';
 
 const ciclo: Ciclo = { id: 'c1', ...cicloPadrao('2026-10-08') };
@@ -179,7 +179,7 @@ describe('Análise do ciclo', () => {
   });
 
   it('compara medidas iniciais com as atuais', () => {
-    const g = analisarGeral('2026-10-08', serieDePeso(diario, medidas), medidas, 'Masculino', '2026-11-12');
+    const g = analisarGeral('2026-10-08', serieDePeso(diario, medidas), historicoComposicao(medidas, 'Masculino'), '2026-11-12');
     expect(g.peso_inicial!.peso_kg).toBe(96.5);
     expect(g.peso_atual!.peso_kg).toBe(93);
     expect(g.variacao_kg).toBeCloseTo(-3.5);

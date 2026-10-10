@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { FormAplicacao, FormDiario, FormMedida } from '../componentes/formularios';
+import { TextoRca } from '../componentes/composicao';
 import { CartaoDietaHoje, CartaoMedicaoSegunda } from '../componentes/inicio';
 import { ResumoSemana } from '../componentes/ResumoSemana';
 import { CartaoTreinoHoje } from '../componentes/treino';
@@ -10,17 +11,20 @@ import { useCalculos } from '../dados/useCalculos';
 import { guiaSeringa } from '../lib/ciclo';
 import { diaDaSemana, formatarData } from '../lib/datas';
 import { cm, corVariacao, kg, mg, num, pct, pp, sinal, ui } from '../lib/formato';
+import { cinturaAlvoRca, MDC, type ChaveMdc } from '../lib/gordura';
 import { estadoNotificacao, type EstadoNotificacao } from '../lib/notificacoes';
+import { mostrarAtalhoResumo } from '../lib/semana';
 import { NIVEIS_NAUSEA } from '../lib/tipos';
+import { segundaDaSemana } from '../lib/treino';
 
 export function Inicio() {
   const { ciclo, diario, perfil } = useDados();
-  const { resumo, geral, hoje } = useCalculos();
+  const { resumo, geral, hoje, composicoes } = useCalculos();
   const [params, setParams] = useSearchParams();
   const [registrar, setRegistrar] = useState(params.get('registrar') === '1');
   const [diarioAberto, setDiarioAberto] = useState(false);
   const [medindo, setMedindo] = useState(false);
-  const [resumoSemana, setResumo] = useState(false);
+  const [resumoSemana, setResumo] = useState<string | null>(null);
   const [notif, setNotif] = useState<EstadoNotificacao | null>(null);
 
   useEffect(() => {
@@ -38,6 +42,8 @@ export function Inicio() {
 
   const ini = geral.medida_inicial;
   const atu = geral.medida_atual;
+  const cinturaAgora = atu?.cintura_cm ?? ini?.cintura_cm ?? null;
+  const ultimaMedicao = composicoes.length ? composicoes[composicoes.length - 1].data : null;
   const metas = perfil?.modulo_treino ? perfil.metas_projeto ?? null : null;
   const metaGorda = metas?.peso_kg && metas.bf ? (metas.peso_kg * metas.bf) / 100 : null;
   const metaMagra = metas?.peso_kg && metas.bf ? metas.peso_kg * (1 - metas.bf / 100) : null;
@@ -51,6 +57,7 @@ export function Inicio() {
     fmt: (n: number | null | undefined) => string,
     fmtDelta: (n: number) => string,
     menorMelhor: boolean,
+    chave: ChaveMdc,
   ) => {
     const d = a !== null && b !== null ? b - a : null;
     return (
@@ -58,7 +65,7 @@ export function Inicio() {
         <td>{rotulo}</td>
         <td>{fmt(a)}</td>
         <td>{fmt(b)}</td>
-        <td className={corVariacao(d, menorMelhor)}>{d === null ? '–' : fmtDelta(d)}</td>
+        <td className={corVariacao(d, menorMelhor, MDC[chave])}>{d === null ? '–' : fmtDelta(d)}</td>
         {metas && <td>{meta === null ? '–' : fmt(meta)}</td>}
       </tr>
     );
@@ -120,6 +127,17 @@ export function Inicio() {
       )}
 
       <CartaoMedicaoSegunda aoMedir={() => setMedindo(true)} />
+
+      {ultimaMedicao && mostrarAtalhoResumo(hoje, ultimaMedicao, segundaDaSemana(hoje)) && (
+        <section className="cartao">
+          <div className="linha entre">
+            <span className="texto-2 cresce">Medição da semana feita. Reveja a semana: medidas, dieta, efeitos e a sugestão.</span>
+            <button className="botao pequeno" onClick={() => setResumo(ultimaMedicao)}>
+              Resumo da semana
+            </button>
+          </div>
+        </section>
+      )}
 
       <CartaoTreinoHoje />
 
@@ -225,17 +243,24 @@ export function Inicio() {
               <tbody>
                 {ini && (
                   <>
-                    {linha('Cintura', ini.cintura_cm, atu?.cintura_cm ?? null, metas?.cintura_cm ?? null, cm, (n) => sinal(n, 1, ' cm'), true)}
-                    {linha('% gordura', ini.bf, atu?.bf ?? null, metas?.bf ?? null, pp, (n) => sinal(n, 1, ' p.p.'), true)}
-                    {linha('Massa gorda', ini.massa_gorda_kg, atu?.massa_gorda_kg ?? null, metaGorda, kg, (n) => sinal(n, 1, ' kg'), true)}
-                    {linha('Massa magra', ini.massa_magra_kg, atu?.massa_magra_kg ?? null, metaMagra, kg, (n) => sinal(n, 1, ' kg'), false)}
+                    {linha('Cintura', ini.cintura_cm, atu?.cintura_cm ?? null, metas?.cintura_cm ?? null, cm, (n) => sinal(n, 1, ' cm'), true, 'cintura_cm')}
+                    {linha('% gordura', ini.bf, atu?.bf ?? null, metas?.bf ?? null, pp, (n) => sinal(n, 1, ' p.p.'), true, 'bf')}
+                    {linha('Massa gorda', ini.massa_gorda_kg, atu?.massa_gorda_kg ?? null, metaGorda, kg, (n) => sinal(n, 1, ' kg'), true, 'massa_gorda_kg')}
+                    {linha('Massa magra', ini.massa_magra_kg, atu?.massa_magra_kg ?? null, metaMagra, kg, (n) => sinal(n, 1, ' kg'), false, 'massa_magra_kg')}
                   </>
                 )}
-                {linha('Peso', geral.peso_inicial.peso_kg, geral.peso_atual?.peso_kg ?? null, metas?.peso_kg ?? null, kg, (n) => sinal(n, 1, ' kg'), true)}
+                {linha('Peso', geral.peso_inicial.peso_kg, geral.peso_atual?.peso_kg ?? null, metas?.peso_kg ?? null, kg, (n) => sinal(n, 1, ' kg'), true, 'peso_kg')}
               </tbody>
             </table>
           </div>
-        ) : (
+        ) : null}
+        {geral.peso_inicial && cinturaAgora !== null && perfil?.altura_cm ? (
+          <p className="texto-2" style={{ marginTop: 8 }}>
+            Cintura/altura: <TextoRca cintura={cinturaAgora} altura={perfil.altura_cm} /> (saudável abaixo de 0,50 · cintura abaixo de{' '}
+            {cm(cinturaAlvoRca(perfil.altura_cm))}).
+          </p>
+        ) : null}
+        {geral.peso_inicial ? null : (
           <p className="mudo">
             Registre suas <Link to="/medidas">medidas</Link> para acompanhar a evolução desde o início do ciclo.
           </p>
@@ -244,8 +269,8 @@ export function Inicio() {
 
       {registrar && <FormAplicacao aoFechar={fecharRegistro} />}
       {diarioAberto && <FormDiario registro={regHoje} aoFechar={() => setDiarioAberto(false)} />}
-      {medindo && <FormMedida aoFechar={() => setMedindo(false)} aoSalvar={() => setResumo(true)} />}
-      {resumoSemana && <ResumoSemana aoFechar={() => setResumo(false)} />}
+      {medindo && <FormMedida aoFechar={() => setMedindo(false)} aoSalvar={(data) => setResumo(data)} />}
+      {resumoSemana && <ResumoSemana data={resumoSemana} aoFechar={() => setResumo(null)} />}
     </div>
   );
 }

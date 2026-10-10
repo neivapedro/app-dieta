@@ -35,6 +35,15 @@ function lista<T>(r: { data: T[] | null; error: { message: string; code?: string
   return erro(r) ?? [];
 }
 
+/** Coluna ou tabela que ainda não existe no banco (SQL de evolução não rodou). */
+function faltaNoBanco(e: { message: string; code?: string } | null, coluna: RegExp): boolean {
+  if (!e) return false;
+  const codigo = ['PGRST204', 'PGRST205', '42703', '42P01'].includes(e.code ?? '');
+  return (codigo || /does not exist|Could not find/i.test(e.message)) && coluna.test(e.message);
+}
+
+const AVISO_EVOLUCAO = 'falta rodar o SQL de evolução no Supabase.';
+
 /** Mensagens do login em português. */
 function traduzirAuth(msg: string): string {
   if (/email not confirmed/i.test(msg)) return 'Confirme seu e-mail pelo link que enviamos antes de entrar.';
@@ -151,20 +160,38 @@ export class RepositorioSupabase implements Repositorio {
       token_calendario: d.token_calendario ?? null,
       modulo_treino: d.modulo_treino === true,
       metas_projeto: d.metas_projeto ?? null,
+      // Colunas do SQL de evolução: ausentes no banco antigo viram "padrão"
+      ajuste_gordura: numOuNulo(d.ajuste_gordura),
+      exame_gordura_data: d.exame_gordura_data ?? null,
+      exame_gordura_bf: numOuNulo(d.exame_gordura_bf),
     };
   }
 
   async salvarPerfil(p: Perfil) {
     // O token do calendário é gerado pelo banco; aqui ele não é sobrescrito
     // Token, liberação da aba Treino e metas têm gravação própria
-    const { token_calendario: _token, modulo_treino: _modulo, metas_projeto: _metas, data_nascimento, ...dados } = p;
+    const { token_calendario: _token, modulo_treino: _modulo, metas_projeto: _metas, data_nascimento, ajuste_gordura, exame_gordura_data, exame_gordura_bf, ...dados } = p;
     const base = { user_id: await this.uid(), ...dados };
     // undefined = não mexer (ex.: backup antigo); null = apagar a data
-    const linha: Record<string, unknown> = data_nascimento === undefined ? base : { ...base, data_nascimento };
-    const r = await this.sb.from('perfis').upsert(linha);
-    // Banco sem a coluna (migração da Dieta ainda não rodou): salva o resto
-    if (r.error && /data_nascimento/.test(r.error.message)) erro(await this.sb.from('perfis').upsert(base));
-    else erro(r);
+    const nascimento: Record<string, unknown> = data_nascimento === undefined ? {} : { data_nascimento };
+    const calibracao: Record<string, unknown> = Object.fromEntries(
+      Object.entries({ ajuste_gordura, exame_gordura_data, exame_gordura_bf }).filter(([, v]) => v !== undefined),
+    );
+    let semNascimento = false;
+    let semCalibracao = false;
+    for (;;) {
+      const r = await this.sb.from('perfis').upsert({ ...base, ...(semNascimento ? {} : nascimento), ...(semCalibracao ? {} : calibracao) });
+      // Banco sem a coluna (migração da Dieta ainda não rodou): salva o resto
+      if (!semNascimento && r.error && /data_nascimento/.test(r.error.message)) semNascimento = true;
+      // Banco sem as colunas de calibração (SQL de evolução ainda não rodou): salva o resto
+      else if (!semCalibracao && faltaNoBanco(r.error, /ajuste_gordura|exame_gordura/)) semCalibracao = true;
+      else {
+        erro(r);
+        break;
+      }
+    }
+    const calibrou = [ajuste_gordura, exame_gordura_data, exame_gordura_bf].some((v) => v !== null && v !== undefined);
+    if (semCalibracao && calibrou) throw new Error(`Ajuste de calibração do % de gordura não foi salvo: ${AVISO_EVOLUCAO}`);
   }
 
   async novoTokenCalendario(): Promise<string> {
@@ -250,11 +277,19 @@ export class RepositorioSupabase implements Repositorio {
       cintura_cm: num(m.cintura_cm),
       quadril_cm: numOuNulo(m.quadril_cm),
       peso_kg: num(m.peso_kg),
+      atipica: m.atipica === true,
     }));
   }
 
   async salvarMedida(m: Omit<Medida, 'id'> & { id?: string }) {
-    erro(await this.sb.from('medidas').upsert({ ...m, user_id: await this.uid() }));
+    const linha = { ...m, atipica: m.atipica === true, user_id: await this.uid() };
+    const r = await this.sb.from('medidas').upsert(linha);
+    // Banco sem a coluna "atipica" (SQL de evolução ainda não rodou): grava o resto
+    if (faltaNoBanco(r.error, /atipica/)) {
+      const { atipica: _a, ...basica } = linha;
+      erro(await this.sb.from('medidas').upsert(basica));
+      if (m.atipica) throw new Error(`"Medição atípica" não foi salvo: ${AVISO_EVOLUCAO}`);
+    } else erro(r);
   }
 
   async excluirMedida(id: string) {

@@ -42,4 +42,13 @@ describe('Backup', () => {
     expect(() => lerBackup('{"a":1}')).toThrow('não reconhecido');
     expect(() => lerBackup('xx')).toThrow('não reconhecido');
   });
+
+  it('leva a marca de medição atípica e a calibração do % de gordura', () => {
+    const perfil = { nome: 'P', sexo: 'Masculino' as const, altura_cm: 181, lembretes_ativos: true, hora_lembrete: '08:00', fuso_horario: 'America/Sao_Paulo', ajuste_gordura: 1.5, exame_gordura_data: '2026-10-05', exame_gordura_bf: 23.5 };
+    const c = montarBackup({ perfil, ciclo: null, aplicacoes: [], diario: [], medidas: [{ ...med('2026-10-12'), atipica: true }] }, '2026-10-13T12:00:00Z');
+    const lido = lerBackup(JSON.stringify(c));
+    expect(lido.medidas[0].atipica).toBe(true);
+    expect(lido.perfil).toMatchObject({ ajuste_gordura: 1.5, exame_gordura_data: '2026-10-05', exame_gordura_bf: 23.5 });
+    expect(planejarImportacao(lido, { aplicacoes: [], medidas: [], diario: [], treinos: [] }).medidas[0].atipica).toBe(true);
+  });
 });
