@@ -29,7 +29,9 @@ export function Medidas() {
   const atual = normais.length ? normais[normais.length - 1] : ultimaDeTodas;
   const anterior = normais.length >= 2 ? normais[normais.length - 2] : undefined;
   // "total" desde a medição de referência do início do ciclo (a mesma do Início e da Análise)
-  const ref = geral.medida_inicial;
+  // Sem medição antes desta no início do ciclo (ciclo sem data ou ainda não começado): desde a 1ª normal
+  const doCiclo = geral.medida_inicial && atual && geral.medida_inicial.data < atual.data ? geral.medida_inicial : null;
+  const ref = doCiclo ?? (normais.length >= 2 ? normais[0] : null);
   const g = ref && atual && atual.data > ref.data ? ganhos(ref, atual) : null;
   const ultimo = anterior && atual ? ganhos(anterior, atual) : null;
   const ordenadas = [...medidas].sort((a, b) => a.data.localeCompare(b.data));
@@ -94,7 +96,7 @@ export function Medidas() {
               )}
             </div>
             <p className="mudo" style={{ marginTop: 8 }}>
-              {g && ref ? `“últ.” = desde a medição anterior; “total” = desde o início do ciclo (${formatarData(ref.data)}).` : 'Registre outra medição para ver os ganhos.'}{' '}
+              {g && ref ? `“últ.” = desde a medição anterior; “total” = desde ${doCiclo ? 'o início do ciclo' : 'a 1ª'} (${formatarData(ref.data)}).` : 'Registre outra medição para ver os ganhos.'}{' '}
               Cor só quando a variação passa do erro da fita e da balança (cintura 2,2 cm, massa magra 2,3 kg, massa gorda e % de gordura 1,5, peso
               1,1 kg); abaixo disso, fica neutra. Cintura/altura: abaixo de 0,50 é saudável; 0,50 a 0,59, adiposidade central aumentada; 0,60 ou
               mais, alta (medida no umbigo). Método da Marinha dos EUA (fita métrica).

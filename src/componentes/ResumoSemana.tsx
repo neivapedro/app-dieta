@@ -43,7 +43,7 @@ export function ResumoSemana({ data, aoFechar }: { data?: string; aoFechar: () =
   const planoDieta = dietaNoPeriodo(diario, de, ate);
   const usaDieta = planoDieta.respondidos > 0 || !!dieta?.refeicoes.some((r) => r.itens.length);
   const efeitos = efeitosNoPeriodo(diario, de, ate);
-  const sugestao = sugestaoSemana(tend, atual.peso_kg, diario);
+  const sugestao = sugestaoSemana(tend, atual.peso_kg, diario, dieta?.config.ajuste_kcal ?? null);
 
   const linhas: [string, number | null, number | null, (n: number | null | undefined) => string, string, boolean, ChaveMdc][] = [
     ['Cintura', ant?.cintura_cm ?? null, atual.cintura_cm, cm, ' cm', true, 'cintura_cm'],
@@ -192,6 +192,7 @@ export function ResumoSemana({ data, aoFechar }: { data?: string; aoFechar: () =
               <p>2. Ritmo acima de 1% do peso por semana com a massa magra caindo → considere reduzir o déficit.</p>
               <p>3. Ritmo abaixo de 0,5% por semana, seguindo bem o plano → considere aumentar o déficit.</p>
               <p>4. Fora isso → manter.</p>
+              <p>Com o plano sem déficit (manutenção ou superávit, definido por você na Dieta), as regras 2 e 3 não se aplicam.</p>
               <p>É só uma sugestão: nada muda sozinho. A meta de kcal e a dose ficam com você (e o médico).</p>
             </div>
           </details>

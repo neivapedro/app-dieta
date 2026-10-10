@@ -334,6 +334,10 @@ describe('Sugestão da semana', () => {
     expect(sugestaoSemana(tend(-1.2, -0.2), 95, dias('sim')).tipo).toBe('reduzir');
     expect(sugestaoSemana(tend(-1.2, 0.05), 95, dias('sim')).tipo).toBe('manter');
     expect(sugestaoSemana(tend(-0.3, 0), 95, dias('sim')).tipo).toBe('aumentar');
+    // Plano em manutenção ou superávit (escolha do usuário): sem regras do déficit
+    expect(sugestaoSemana(tend(-0.3, 0), 95, dias('sim'), 200).tipo).toBe('manter');
+    expect(sugestaoSemana(tend(-1.2, -0.2), 95, dias('sim'), 0).tipo).toBe('manter');
+    expect(sugestaoSemana(tend(-0.3, 0), 95, dias('sim'), -300).tipo).toBe('aumentar');
     expect(sugestaoSemana(tend(-0.7, -0.1), 95, dias('sim')).tipo).toBe('manter');
     // Metade "em parte" = 50% seguido
     expect(sugestaoSemana(tend(-0.7, 0), 95, dias('parcial', 28)).tipo).toBe('seguir_plano');

@@ -156,7 +156,7 @@ function CartaoCalibracao({ perfil }: { perfil: TipoPerfil }) {
             setAjuste('');
             setExameData('');
             setExameBf('');
-            setMsg(null);
+            setMsg({ tipo: 'info', texto: `Ajuste padrão: ${num(AJUSTE_PADRAO[sexo], 1)} p.p. Toque em Salvar para usar.` });
           }}
         >
           Voltar ao padrão

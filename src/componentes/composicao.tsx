@@ -56,7 +56,8 @@ function AcaoQualidadeLink({ q }: { q: QualidadePerda }) {
   const { composicoes, hoje } = useCalculos();
   const treino = useTreino();
   const { banco } = useAlimentos();
-  const ultima = [...composicoes].reverse().find((c) => c.massa_magra_kg !== null && !c.atipica) ?? null;
+  // A mesma medição que a aba Dieta usa nas metas, para os números baterem ao abrir a Dieta
+  const ultima = [...composicoes].reverse().find((c) => c.massa_magra_kg !== null) ?? null;
   const aderencia = treino ? aderenciaRecente(treinos, treino.inicio, hoje, 28, treino.fim) : null;
   const refeicoes = dieta && banco ? dieta.refeicoes.filter((r) => r.itens.length).map((r) => ({ r, m: macrosDaRefeicao(r, banco.mapa) })) : [];
   const alvo = ultima ? alvoProteinaRefeicao(ultima.massa_magra_kg!) : null;

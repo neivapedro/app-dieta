@@ -18,7 +18,7 @@ import { NIVEIS_NAUSEA } from '../lib/tipos';
 import { segundaDaSemana } from '../lib/treino';
 
 export function Inicio() {
-  const { ciclo, diario, perfil } = useDados();
+  const { ciclo, diario, perfil, medidas } = useDados();
   const { resumo, geral, hoje, composicoes } = useCalculos();
   const [params, setParams] = useSearchParams();
   const [registrar, setRegistrar] = useState(params.get('registrar') === '1');
@@ -43,6 +43,8 @@ export function Inicio() {
   const ini = geral.medida_inicial;
   const atu = geral.medida_atual;
   const cinturaAgora = atu?.cintura_cm ?? ini?.cintura_cm ?? null;
+  // Altura do Perfil; sem ela, a gravada na medição (como em Medidas)
+  const alturaRca = perfil?.altura_cm || medidas.find((m) => m.data === (atu ?? ini)?.data)?.altura_cm || null;
   const ultimaMedicao = composicoes.length ? composicoes[composicoes.length - 1].data : null;
   const metas = perfil?.modulo_treino ? perfil.metas_projeto ?? null : null;
   const metaGorda = metas?.peso_kg && metas.bf ? (metas.peso_kg * metas.bf) / 100 : null;
@@ -254,10 +256,10 @@ export function Inicio() {
             </table>
           </div>
         ) : null}
-        {geral.peso_inicial && cinturaAgora !== null && perfil?.altura_cm ? (
+        {geral.peso_inicial && cinturaAgora !== null && alturaRca ? (
           <p className="texto-2" style={{ marginTop: 8 }}>
-            Cintura/altura: <TextoRca cintura={cinturaAgora} altura={perfil.altura_cm} /> (saudável abaixo de 0,50 · cintura abaixo de{' '}
-            {cm(cinturaAlvoRca(perfil.altura_cm))}).
+            Cintura/altura: <TextoRca cintura={cinturaAgora} altura={alturaRca} /> (saudável abaixo de 0,50 · cintura abaixo de{' '}
+            {cm(cinturaAlvoRca(alturaRca))}).
           </p>
         ) : null}
         {geral.peso_inicial ? null : (

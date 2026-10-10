@@ -113,9 +113,10 @@ export const LIMITE_SUGESTAO = { respondidos: 0.8, seguido: 0.8 } as const;
  * respondido. Depois, na ordem: seguiu menos de 80% → seguir o plano; ritmo
  * acima de 1%/sem com massa magra caindo → considerar reduzir o déficit; ritmo
  * abaixo de 0,5%/sem tendo seguido bem → considerar aumentar; senão, manter.
- * É só texto: nada muda sozinho.
+ * Plano sem déficit (`ajusteKcal` ≥ 0: manutenção ou superávit, escolha do
+ * usuário) não recebe as regras do déficit. É só texto: nada muda sozinho.
  */
-export function sugestaoSemana(tendencia: Tendencia | null, peso: number, diario: RegistroDiario[]): Sugestao {
+export function sugestaoSemana(tendencia: Tendencia | null, peso: number, diario: RegistroDiario[], ajusteKcal: number | null = null): Sugestao {
   if (!tendencia) {
     return { tipo: 'sem_dados', texto: 'Sem sugestão por enquanto.', motivo: 'A regra precisa da tendência das medidas (4 medições cobrindo 3 semanas).' };
   }
@@ -134,6 +135,9 @@ export function sugestaoSemana(tendencia: Tendencia | null, peso: number, diario
   const ritmo = ritmoPercentual(tendencia.peso_semana, peso).pct;
   const base = `Plano seguido em ${pctTxt(seguido)} dos dias respondidos · ritmo ${ritmo.toLocaleString('pt-BR', { maximumFractionDigits: 2, minimumFractionDigits: 2 })}%/sem · massa magra ${tendencia.magra_semana < 0 ? 'caindo' : 'estável ou subindo'} na tendência.`;
   if (seguido < LIMITE_SUGESTAO.seguido) return { tipo: 'seguir_plano', texto: 'Siga o plano antes de mexer no déficit.', motivo: base };
+  if (ajusteKcal !== null && ajusteKcal >= 0) {
+    return { tipo: 'manter', texto: 'Manter.', motivo: `${base} O plano está sem déficit (manutenção ou superávit): as regras de reduzir ou aumentar o déficit não se aplicam.` };
+  }
   if (ritmo > 1 && tendencia.magra_semana < 0) return { tipo: 'reduzir', texto: 'Considere reduzir o déficit.', motivo: base };
   if (ritmo < 0.5) return { tipo: 'aumentar', texto: 'Considere aumentar o déficit.', motivo: base };
   return { tipo: 'manter', texto: 'Manter.', motivo: base };
