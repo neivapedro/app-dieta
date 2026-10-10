@@ -8,7 +8,7 @@ import { digitosParaTempo, formatarTempo, KM_CORRIDA_PADRAO, lerTempo, paceValid
 import type { MetasProjeto } from '../lib/tipos';
 import { Campo, CampoNumero, Folha } from './ui';
 
-function Marcador({ rotulo, detalhe, feito, aoTocar }: { rotulo: string; detalhe: string; feito: boolean; aoTocar: () => void }) {
+export function Marcador({ rotulo, detalhe, feito, aoTocar }: { rotulo: string; detalhe: string; feito: boolean; aoTocar: () => void }) {
   return (
     <button type="button" className={`check-dia ${feito ? 'feito' : ''}`} onClick={aoTocar} aria-pressed={feito}>
       <span className="check-dia-icone">{feito ? '✓' : ''}</span>

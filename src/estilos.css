@@ -390,3 +390,13 @@ details.ajuda summary { min-height: 32px; display: flex; align-items: center; }
 .regras-fase { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 0.82rem; color: var(--texto-2); }
 .botoes-fase .botao { flex: 1 1 auto; }
 .vizinhas { font-size: 0.8rem; }
+
+/* Início na ordem do que fazer agora */
+.faixa-ontem { border-color: color-mix(in srgb, var(--aviso) 45%, var(--borda)); }
+.linha-dose {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px; border-radius: var(--raio); text-align: left; cursor: pointer;
+  border: 1px solid var(--borda); background: var(--superficie); color: var(--texto); font-size: 0.9rem; font-variant-numeric: tabular-nums;
+}
+.linha-dose .seta { margin-left: auto; color: var(--texto-3); flex: none; }
+.resumo-plano { display: block; margin-bottom: 8px; color: inherit; text-decoration: none; font-size: 0.9rem; }
+.itens-plano { margin: 4px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 2px; }

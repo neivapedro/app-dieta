@@ -6,6 +6,7 @@ import { diaDaSemana, diferencaDias, formatarData, hojeLocal, somarDias } from '
 import { cm, kg, num, lerPeso, paraNumero, paraTexto, pp, ui } from '../lib/formato';
 import { composicao } from '../lib/gordura';
 import { LOCAIS_APLICACAO, NIVEIS_NAUSEA, type Aplicacao, type Medida, type RegistroDiario } from '../lib/tipos';
+import { AlertasSeguranca } from './inicio';
 import { BotaoExcluir, Campo, CampoNumero, Escolhas, Folha } from './ui';
 
 const OPCOES_NAUSEA = NIVEIS_NAUSEA.map((r, i) => ({ valor: i, rotulo: `${i} · ${r}` }));
@@ -153,6 +154,8 @@ export function FormAplicacao({ aplicacao, aoFechar, aoSalvar }: { aplicacao?: A
           <span className="etiqueta">Prevista: {num(prevista)} mg</span>
           {sit.estado === 'pendente' && <span className="etiqueta aviso">Fim da fase: decisão pendente</span>}
         </div>
+        {/* Só ao registrar uma aplicação nova: os alertas da semana antes de aplicar */}
+        {!aplicacao && <AlertasSeguranca compacto />}
         <Campo
           rotulo="Data da aplicação"
           dica={

@@ -78,11 +78,12 @@ export interface DecisaoFase {
   dose_mg: number;
   /** Fase do plano a que a decisão se refere (subir: a fase nova) */
   fase_indice: number | null;
-  escolha: 'subir' | 'repetir' | 'confirmar_fase' | 'anotacao';
+  /** pos_remedio: início da fase pós-remédio (bloco_inicio = data da última dose) */
+  escolha: 'subir' | 'repetir' | 'confirmar_fase' | 'anotacao' | 'pos_remedio';
   dose_nova_mg?: number | null;
   /** Repetir: semanas acrescentadas à fase */
   semanas?: number | null;
-  /** Confirmar fase (dose fora do plano): 1ª data do bloco de doses */
+  /** Confirmar fase (dose fora do plano): 1ª data do bloco de doses · pos_remedio: data da última dose */
   bloco_inicio?: string | null;
   /** Anotação para o médico (vai para o PDF) */
   texto?: string | null;

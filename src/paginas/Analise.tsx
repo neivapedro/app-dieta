@@ -81,7 +81,7 @@ export function Analise() {
   const temSintomas = sintomas.some((s) => s.vomito !== null || s.diarreia !== null || s.intestino_preso !== null);
   const faseAtual = descreverFaseAtual(resumo);
   // Decisões do fim de fase e anotações para o médico (vão para o PDF)
-  const ESCOLHAS = { subir: 'Subir', repetir: 'Repetir fase', confirmar_fase: 'Confirmou fase', anotacao: 'Anotação' } as const;
+  const ESCOLHAS = { subir: 'Subir', repetir: 'Repetir fase', confirmar_fase: 'Confirmou fase', anotacao: 'Anotação', pos_remedio: 'Fase pós-remédio' } as const;
   const decisoes = [...(ciclo?.decisoes ?? [])].sort((a, b) => a.data.localeCompare(b.data) || a.apos_aplicacao - b.apos_aplicacao);
   const detalheDecisao = (d: (typeof decisoes)[number]) =>
     d.escolha === 'subir'
@@ -90,7 +90,9 @@ export function Analise() {
         ? `+${d.semanas} sem. na fase ${(d.fase_indice ?? 0) + 1} (${num(d.dose_mg)} mg)`
         : d.escolha === 'confirmar_fase'
           ? `${num(d.dose_mg)} mg seguindo a fase ${(d.fase_indice ?? 0) + 1}`
-          : (d.texto ?? '');
+          : d.escolha === 'pos_remedio'
+            ? `início em ${formatarData(d.bloco_inicio ?? d.data, true)} (última dose, ${num(d.dose_mg)} mg)`
+            : (d.texto ?? '');
   const tend = tendenciaPeso(serie, hoje);
   const pesoAtual = geral.peso_atual?.peso_kg ?? null;
   const ritmo = tend && pesoAtual ? ritmoPercentual(tend.kg_semana, pesoAtual) : null;

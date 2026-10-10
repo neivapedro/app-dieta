@@ -27,10 +27,14 @@ export function rotuloCardio(data: string): string {
   return tipoCardio(data) === 'corrida' ? `Corrida ${KM_CORRIDA_PADRAO} km` : `Bike ${MIN_BIKE} min`;
 }
 
-/** Do dia da 1ª aplicação até 7 dias depois da última (real ou prevista). */
-export function periodoProjeto(ciclo: Ciclo, resumo: ResumoCiclo): { inicio: string; fim: string } {
+/**
+ * Período do remédio: do dia da 1ª aplicação até 7 dias depois da última (real
+ * ou prevista). Com a fase pós-remédio iniciada, a última é a da decisão (data
+ * da última dose) e o treino segue num placar separado (periodoTreinoPos).
+ */
+export function periodoProjeto(ciclo: Ciclo, resumo: ResumoCiclo, inicioPos?: string | null): { inicio: string; fim: string } {
   const inicio = resumo.linhas[0]?.aplicacao.data ?? ciclo.data_inicio;
-  const ultima = resumo.data_fim_prevista ?? inicio;
+  const ultima = inicioPos ?? resumo.data_fim_prevista ?? inicio;
   return { inicio, fim: somarDias(ultima, 7) };
 }
 
