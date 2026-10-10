@@ -139,6 +139,8 @@ export interface ConfigDieta {
   gord_gkg: number;
   /** Exercício da meta ajustado pelo que a aba Treino registrou */
   usar_aderencia?: boolean;
+  /** Fase pós-remédio: última medição em que a sugestão de degrau do déficit foi aplicada ou dispensada */
+  pos_degrau_medicao?: string | null;
 }
 
 export interface PlanoDieta {
@@ -335,4 +337,97 @@ export function metaFibra(kcal: number): number {
 /** Proteína por refeição que o músculo aproveita bem: ~0,4 g por kg de massa magra */
 export function alvoProteinaRefeicao(massaMagra: number): number {
   return 0.4 * massaMagra;
+}
+
+// ---------------------------------------------------------------------------
+// Resumo do plano no Início
+// ---------------------------------------------------------------------------
+
+function minutosDe(h: string | null): number | null {
+  if (!h || !/^\d{1,2}:\d{2}/.test(h)) return null;
+  const [a, b] = h.split(':').map(Number);
+  return a * 60 + b;
+}
+
+/**
+ * Próxima refeição pelo horário (até 30 min depois de passar). Depois da
+ * última com horário, vem a refeição sem horário que está depois dela na lista
+ * (a ceia). Sem nenhum horário, a primeira com alimentos.
+ */
+export function proximaRefeicao(refeicoes: Refeicao[], agoraMin: number): Refeicao | null {
+  const comItens = refeicoes.filter((r) => r.itens.length);
+  if (!comItens.length) return null;
+  const comHora = comItens.filter((r) => minutosDe(r.horario) !== null).sort((a, b) => minutosDe(a.horario)! - minutosDe(b.horario)!);
+  if (!comHora.length) return comItens[0];
+  const proxima = comHora.find((r) => minutosDe(r.horario)! >= agoraMin - 30);
+  if (proxima) return proxima;
+  // Já passou de todas com horário: a ceia é a sem horário depois da última com horário na lista
+  const ultima = comHora[comHora.length - 1];
+  const depois = refeicoes.slice(refeicoes.indexOf(ultima) + 1);
+  return depois.find((r) => r.itens.length && minutosDe(r.horario) === null) ?? null;
+}
+
+/**
+ * Plural da porção: o nome e os adjetivos vão para o plural, o complemento
+ * depois de "de" e o que está entre parênteses não. unidade → unidades,
+ * colher de sopa cheia → colheres de sopa cheias, unidade média → unidades médias.
+ */
+export function pluralPorcao(nome: string): string {
+  const palavras = nome.split(' ');
+  if (!palavras[0] || /^\d/.test(palavras[0])) return nome;
+  const plural = (w: string) =>
+    w.endsWith('ão') ? `${w.slice(0, -2)}ões` : /[rz]$/.test(w) ? `${w}es` : /[aeiouáéíóúâêô]$/.test(w) ? `${w}s` : w;
+  let parenteses = false;
+  return palavras
+    .map((w, i) => {
+      if (w.startsWith('(')) parenteses = true;
+      if (parenteses || w === 'de' || palavras[i - 1] === 'de') return w;
+      return plural(w);
+    })
+    .join(' ');
+}
+
+function qtd(n: number): string {
+  return n.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+}
+
+/** "Ovo, de galinha, inteiro, cozido · 2 unidades" ou "Arroz, tipo 1, cozido · 150 g": a unidade do plano, nome completo. */
+export function textoItemPlano(item: ItemRefeicao, alimento: Alimento | undefined): string {
+  const nome = alimento?.nome ?? 'Alimento';
+  if (item.unidade === 'g' || !alimento?.porcoes.some((p) => p.nome === item.unidade)) return `${nome} · ${qtd(Math.round(gramasDoItem(item, alimento)))} g`;
+  return `${nome} · ${qtd(item.quantidade)} ${item.quantidade > 1 ? pluralPorcao(item.unidade) : item.unidade}`;
+}
+
+export interface ResumoPlano {
+  /** Plano bate com a meta (kcal e macros dentro da tolerância) */
+  fechado: boolean;
+  kcal_plano: number;
+  kcal_meta: number;
+  /** Macros que ainda faltam (g, positivos) */
+  faltam: { nome: string; g: number }[];
+  /** Macros que passaram da meta (g, positivos) */
+  passam: { nome: string; g: number }[];
+}
+
+/** Tolerância da coluna "Falta" da Dieta: 1 g nos macros, 15 kcal, ou 2% da meta. */
+function dentro(valor: number, meta: number, tolerancia: number): boolean {
+  return Math.abs(valor) <= Math.max(tolerancia, Math.abs(meta) * 0.02);
+}
+
+/** "Plano fechado ✓" ou quanto falta de cada macro, com as mesmas tolerâncias da Dieta. */
+export function resumoPlano(saldo: Saldo): ResumoPlano {
+  const macros: [string, number, number][] = [
+    ['Ptn A', saldo.falta.ptn_animal, saldo.meta.ptn_animal],
+    ['Carb', saldo.falta.carb, saldo.meta.carb],
+    ['Gord', saldo.falta.gord, saldo.meta.gord],
+  ];
+  const faltam = macros.filter(([, f, m]) => f > 0 && !dentro(f, m, 1)).map(([nome, g]) => ({ nome, g }));
+  const passam = macros.filter(([, f, m]) => f < 0 && !dentro(f, m, 1)).map(([nome, g]) => ({ nome, g: -g }));
+  return {
+    fechado: !faltam.length && !passam.length && dentro(saldo.falta.kcal, saldo.meta.kcal, 15),
+    kcal_plano: saldo.plano.kcal,
+    kcal_meta: saldo.meta.kcal,
+    faltam,
+    passam,
+  };
 }

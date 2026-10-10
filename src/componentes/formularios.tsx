@@ -1,11 +1,12 @@
 import { useState, type FormEvent } from 'react';
 import { useDados } from '../dados/contexto';
 import { useCalculos } from '../dados/useCalculos';
-import { faseDaDose, guiaSeringa, marcacao, totalDosesPlano } from '../lib/ciclo';
-import { diaDaSemana, formatarData, hojeLocal } from '../lib/datas';
+import { calcularCiclo, capacidadeSeringa, concentracaoDe, guiaSeringa, marcacao, marcasVizinhas, seringaDo, situacaoDoDegrau } from '../lib/ciclo';
+import { diaDaSemana, diferencaDias, formatarData, hojeLocal, somarDias } from '../lib/datas';
 import { cm, kg, num, lerPeso, paraNumero, paraTexto, pp, ui } from '../lib/formato';
 import { composicao } from '../lib/gordura';
 import { LOCAIS_APLICACAO, NIVEIS_NAUSEA, type Aplicacao, type Medida, type RegistroDiario } from '../lib/tipos';
+import { AlertasSeguranca } from './inicio';
 import { BotaoExcluir, Campo, CampoNumero, Escolhas, Folha } from './ui';
 
 const OPCOES_NAUSEA = NIVEIS_NAUSEA.map((r, i) => ({ valor: i, rotulo: `${i} · ${r}` }));
@@ -16,22 +17,26 @@ function Erro({ msg }: { msg: string | null }) {
 
 // ---------- Aplicação ----------
 
-export function FormAplicacao({ aplicacao, aoFechar }: { aplicacao?: Aplicacao; aoFechar: () => void }) {
-  const { ciclo, diario, gravar } = useDados();
+export function FormAplicacao({ aplicacao, aoFechar, aoSalvar }: { aplicacao?: Aplicacao; aoFechar: () => void; aoSalvar?: (aviso: string) => void }) {
+  const { ciclo, diario, aplicacoes, gravar } = useDados();
   const { resumo, hoje } = useCalculos();
   const [data, setData] = useState(aplicacao?.data ?? hoje);
   // Posição pela data escolhida: uma dose esquecida registrada depois entra no lugar certo
   const outras = resumo!.linhas.filter((l) => l.aplicacao.id !== aplicacao?.id);
-  const numeroDe = (d: string) => (d ? outras.filter((l) => l.aplicacao.data <= d).length + 1 : outras.length + 1);
+  const antesDe = (d: string) => outras.filter((l) => !d || l.aplicacao.data <= d).map((l) => l.aplicacao);
+  const numeroDe = (d: string) => antesDe(d).length + 1;
   const numero = numeroDe(data);
-  const fase = faseDaDose(ciclo!.fases, numero);
+  // Dose indicada pela dose realmente aplicada antes (o app não sobe sem decisão)
+  const situacaoEm = (d: string) => situacaoDoDegrau(ciclo!.fases, antesDe(d), ciclo!.decisoes ?? []);
+  const sit = situacaoEm(data);
   const renumera = !!data && outras.some((l) => l.aplicacao.data > data);
   // Depois do fim do plano, a dose extra é a sobra do frasco (nunca mais que o saldo)
-  const doseSugerida = (n: number) => {
-    const d = faseDaDose(ciclo!.fases, n).fase.dose_mg;
-    return n > totalDosesPlano(ciclo!.fases) ? Math.min(d, Math.round(resumo!.saldo_mg * 100) / 100) : d;
+  const doseSugerida = (d: string) => {
+    const x = situacaoEm(d);
+    return x.estado === 'fim_plano' ? Math.min(x.dose_mg, Math.round(resumo!.saldo_mg * 100) / 100) : x.dose_mg;
   };
-  const [dose, setDose] = useState(paraTexto(aplicacao?.dose_mg ?? doseSugerida(numero)));
+  const prevista = doseSugerida(data);
+  const [dose, setDose] = useState(paraTexto(aplicacao?.dose_mg ?? prevista));
   const [mexeuDose, setMexeuDose] = useState(false);
   const [local, setLocal] = useState(aplicacao?.local ?? resumo!.sugestao_local);
   const [obs, setObs] = useState(aplicacao?.observacoes ?? '');
@@ -51,12 +56,21 @@ export function FormAplicacao({ aplicacao, aoFechar }: { aplicacao?: Aplicacao; 
     const r = diario.find((x) => x.data === nova);
     if (!mexeuPeso) setPeso(paraTexto(r?.peso_kg));
     if (!mexeuNausea) setNausea(r?.nausea ?? null);
-    // Dose ainda não mexida acompanha a fase da nova posição
-    if (!mexeuDose && !aplicacao) setDose(paraTexto(doseSugerida(numeroDe(nova))));
+    // Dose ainda não mexida acompanha a dose indicada na nova posição
+    if (!mexeuDose && !aplicacao) setDose(paraTexto(doseSugerida(nova)));
   }
 
   const doseNum = paraNumero(dose);
-  const m = doseNum ? marcacao(doseNum, ciclo!) : null;
+  // Aplicação já registrada mantém a concentração do frasco daquele dia
+  const conc = aplicacao ? concentracaoDe(aplicacao, ciclo!) : ciclo!.concentracao_mg_ml;
+  const m = doseNum ? marcacao(doseNum, { concentracao_mg_ml: conc, passo_ui: ciclo!.passo_ui }) : null;
+  const capacidade = capacidadeSeringa(ciclo!);
+  const marca = seringaDo(ciclo!).marca;
+  const vizinhas = m ? marcasVizinhas(m.ui_pratica, marca, conc) : null;
+  // Data prevista para esta posição: anterior + intervalo (a 1ª, a data de início)
+  const anterior = antesDe(data).at(-1);
+  const dataPrevista = anterior ? somarDias(anterior.data, ciclo!.intervalo_dias > 0 ? ciclo!.intervalo_dias : 7) : ciclo!.data_inicio;
+  const desvio = data ? diferencaDias(dataPrevista, data) : 0;
 
   async function salvar(e: FormEvent) {
     e.preventDefault();
@@ -65,23 +79,38 @@ export function FormAplicacao({ aplicacao, aoFechar }: { aplicacao?: Aplicacao; 
     const p = lerPeso(peso);
     if (mexeuPeso && p.erro) return setErro(p.erro);
     // Pontos para conferir antes de gravar (segundo toque confirma)
+    const avisosDose: string[] = [];
     const avisos: string[] = [];
     const saldo = resumo!.saldo_mg + (aplicacao?.dose_mg ?? 0);
-    if (m && m.ui_pratica > 100) avisos.push('passa da capacidade da seringa U-100 (100 UI)');
-    if (doseNum > saldo + 1e-9) avisos.push(`é maior que o saldo do frasco (${num(saldo)} mg)`);
-    if (doseNum > fase.fase.dose_mg * 2) avisos.push(`é mais que o dobro da prevista (${num(fase.fase.dose_mg)} mg)`);
+    if (m && m.ui_pratica > capacidade) avisosDose.push(`passa da capacidade da seringa (${capacidade} UI)`);
+    if (doseNum > saldo + 1e-9) avisosDose.push(`é maior que o saldo do frasco (${num(saldo)} mg)`);
+    if (doseNum > prevista * 2) avisosDose.push(`é mais que o dobro da prevista (${num(prevista)} mg)`);
+    if (avisosDose.length) avisos.push(`a dose de ${num(doseNum)} mg ${avisosDose.join('; ')}`);
     if (outras.some((l) => l.aplicacao.data === data)) avisos.push('já existe uma aplicação nesta data');
+    // Data 2 dias ou mais fora da prevista desloca a agenda inteira
+    if (Math.abs(desvio) >= 2 && aplicacao?.data !== data) {
+      avisos.push(
+        `a data fica ${Math.abs(desvio)} dias ${desvio > 0 ? 'depois' : 'antes'} da prevista (${diaDaSemana(dataPrevista).slice(0, 3).toLowerCase()}, ${formatarData(dataPrevista)}): isso muda todas as próximas datas`,
+      );
+    }
     const chave = `${data}|${doseNum}`;
     if (avisos.length && confirmado !== chave) {
       setConfirmado(chave);
-      return setErro(`Confira: a dose de ${num(doseNum)} mg ${avisos.join('; ')}. Toque em Salvar de novo para confirmar.`);
+      return setErro(`Confira: ${avisos.join('; ')}. Toque em Salvar de novo para confirmar.`);
     }
     setSalvando(true);
+    const nova: Aplicacao = {
+      id: aplicacao?.id ?? crypto.randomUUID(),
+      ciclo_id: ciclo!.id,
+      data,
+      dose_mg: doseNum,
+      local: local || null,
+      observacoes: obs.trim() || null,
+      // Concentração do frasco no momento do registro (editar não muda a de um registro antigo)
+      concentracao_mg_ml: aplicacao ? (aplicacao.concentracao_mg_ml ?? null) : ciclo!.concentracao_mg_ml,
+    };
     // Pela fila: aparece na hora e, sem sinal, é enviada quando a internet voltar
-    gravar({
-      tipo: 'aplicacao',
-      dado: { id: aplicacao?.id ?? crypto.randomUUID(), ciclo_id: ciclo!.id, data, dose_mg: doseNum, local: local || null, observacoes: obs.trim() || null },
-    });
+    gravar({ tipo: 'aplicacao', dado: nova });
     if (mexeuPeso || mexeuNausea) {
       const { id: _id, ...resto } = regDia ?? ({} as Partial<RegistroDiario>);
       const pesoFinal = mexeuPeso ? p.valor : regDia?.peso_kg ?? null;
@@ -90,6 +119,17 @@ export function FormAplicacao({ aplicacao, aoFechar }: { aplicacao?: Aplicacao; 
       if (regDia || pesoFinal !== null || nauseaFinal !== null) {
         gravar({ tipo: 'diario', dado: { ...resto, data, peso_kg: pesoFinal, nausea: nauseaFinal, observacoes: regDia?.observacoes ?? null } });
       }
+    }
+    if (aoSalvar) {
+      // Confirmação curta com a próxima dose já recalculada
+      const depois = calcularCiclo(ciclo!, [...aplicacoes.filter((a) => a.id !== nova.id), nova], diario, hoje).proxima;
+      aoSalvar(
+        depois
+          ? `Salvo · próxima: ${diaDaSemana(depois.data).slice(0, 3).toLowerCase()} ${formatarData(depois.data).slice(0, 5)}, ${ui(depois.ui_pratica)}${
+              depois.estado === 'pendente' ? ' · fim da fase: decida no Início' : ''
+            }`
+          : 'Salvo · ciclo concluído',
+      );
     }
     aoFechar();
   }
@@ -104,12 +144,27 @@ export function FormAplicacao({ aplicacao, aoFechar }: { aplicacao?: Aplicacao; 
     <Folha titulo={aplicacao ? `Editar ${numero}ª aplicação` : `Registrar ${numero}ª aplicação`} aoFechar={aoFechar}>
       <form className="pilha" onSubmit={salvar}>
         <div className="linha">
-          <span className="etiqueta destaque">Fase {fase.indice + 1} · {fase.fase.nome}</span>
-          <span className="etiqueta">Prevista: {num(fase.fase.dose_mg)} mg</span>
+          {sit.fase ? (
+            <span className="etiqueta destaque">
+              Fase {sit.fase.indice + 1} · {sit.fase.fase.nome}
+            </span>
+          ) : (
+            <span className="etiqueta aviso">Dose fora do plano</span>
+          )}
+          <span className="etiqueta">Prevista: {num(prevista)} mg</span>
+          {sit.estado === 'pendente' && <span className="etiqueta aviso">Fim da fase: decisão pendente</span>}
         </div>
+        {/* Só ao registrar uma aplicação nova: os alertas da semana antes de aplicar */}
+        {!aplicacao && <AlertasSeguranca compacto />}
         <Campo
           rotulo="Data da aplicação"
-          dica={data ? `${diaDaSemana(data)}${renumera ? '. Fica antes de aplicações já registradas: a numeração das seguintes muda.' : ''}` : undefined}
+          dica={
+            data
+              ? `${diaDaSemana(data)}${renumera ? '. Fica antes de aplicações já registradas: a numeração das seguintes muda.' : ''}${
+                  Math.abs(desvio) >= 2 && aplicacao?.data !== data ? `. Prevista: ${formatarData(dataPrevista)}.` : ''
+                }`
+              : undefined
+          }
         >
           <input type="date" value={data} max={hojeLocal()} onChange={(e) => trocarData(e.target.value)} required />
         </Campo>
@@ -124,10 +179,12 @@ export function FormAplicacao({ aplicacao, aoFechar }: { aplicacao?: Aplicacao; 
           }}
           obrigatorio
           dica={
-            m && m.ui_pratica > 100
-              ? `Passa da capacidade da seringa U-100 (100 UI): confira a dose.`
+            m && m.ui_pratica > capacidade
+              ? `Passa da capacidade da seringa (${capacidade} UI): confira a dose.`
               : m
-                ? `Puxar até ${ui(m.ui_pratica)} na seringa U-100 (${guiaSeringa(m.ui_pratica)}) · entrega ${num(m.mg_pratica)} mg`
+                ? `Puxar até ${ui(m.ui_pratica)} na seringa U-100 (${guiaSeringa(m.ui_pratica, marca)}) · entrega ${num(m.mg_pratica)} mg${
+                    vizinhas ? `. Marcas vizinhas: ${vizinhas.map((v) => `${ui(v.ui)} = ${num(v.mg)} mg`).join(' · ')}` : ''
+                  }`
                 : undefined
           }
         />

@@ -29,9 +29,17 @@ function pesoReferencia(serie: PontoPeso[], data: string): PontoPeso | null {
   return antes;
 }
 
+/**
+ * Resultado de um bloco de aplicações seguidas com a mesma dose aplicada.
+ * Blocos separados com a mesma dose não se juntam (ex.: voltou a 1,25 mg).
+ */
 export interface AnaliseFase {
+  /** Índice do bloco (não da fase do plano) */
   indice: number;
+  /** Fase do plano em que o bloco se encaixa; null = dose fora do plano */
+  fase_indice: number | null;
   nome: string;
+  /** Dose realmente aplicada no bloco */
   dose_mg: number;
   doses: number;
   inicio: string;
@@ -54,20 +62,21 @@ export function analisarFases(
   diario: RegistroDiario[],
   hoje: string,
 ): AnaliseFase[] {
-  const faseProxima = resumo.proxima?.fase.indice ?? null;
+  // O último bloco só está "em andamento" se o degrau ainda não completou
+  const degrauAberto = !!resumo.proxima && (resumo.degrau.estado === 'em_curso' || resumo.degrau.estado === 'fora_do_plano');
   const grupos = new Map<number, typeof resumo.linhas>();
   for (const l of resumo.linhas) {
-    const g = grupos.get(l.fase.indice) ?? [];
+    const g = grupos.get(l.bloco) ?? [];
     g.push(l);
-    grupos.set(l.fase.indice, g);
+    grupos.set(l.bloco, g);
   }
   const indices = [...grupos.keys()].sort((a, b) => a - b);
   return indices.map((indice, pos) => {
     const linhas = grupos.get(indice)!;
     const inicio = linhas[0].aplicacao.data;
     const proximoInicio = indices[pos + 1] !== undefined ? grupos.get(indices[pos + 1])![0].aplicacao.data : null;
-    // A última fase com aplicações só está "em andamento" se a próxima dose ainda for dela
-    const em_andamento = proximoInicio === null && faseProxima === indice;
+    const em_andamento = proximoInicio === null && degrauAberto;
+    const fase = linhas[linhas.length - 1].fase;
     const fim = proximoInicio ?? hoje;
     const dias = Math.max(diferencaDias(inicio, fim), 0);
     // Pesagens da fase: até 3 dias antes do início e, no fim, só até a véspera da fase seguinte
@@ -85,8 +94,9 @@ export function analisarFases(
       .map((r) => r.nausea as number);
     return {
       indice,
-      nome: linhas[0].fase.fase.nome,
-      dose_mg: linhas[0].fase.fase.dose_mg,
+      fase_indice: fase?.indice ?? null,
+      nome: fase?.fase.nome ?? 'Fora do plano',
+      dose_mg: linhas[0].aplicacao.dose_mg,
       doses: linhas.length,
       inicio,
       fim,
@@ -253,4 +263,40 @@ export function sintomasPorFase(fases: AnaliseFase[], datasAplicacoes: string[],
       intestino_preso: taxa('intestino_preso'),
     };
   });
+}
+
+/** "1,25 mg · fase 1" — rótulo de um bloco pela dose aplicada. */
+export function rotuloBloco(f: Pick<AnaliseFase, 'dose_mg' | 'fase_indice'>): string {
+  const dose = f.dose_mg.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return `${dose} mg · ${f.fase_indice === null ? 'fora do plano' : `fase ${f.fase_indice + 1}`}`;
+}
+
+// ---------- Números do fim da fase ----------
+
+export interface NumerosFase {
+  /** Dias com registro no Diário no período */
+  dias_registrados: number;
+  nausea_media: number | null;
+  nausea_max: number | null;
+  vomito: number;
+  diarreia: number;
+  intestino_preso: number;
+  /** Dias com "segui o plano?" = não */
+  dieta_nao: number;
+}
+
+/** Contagens do Diário de `de` até `ate` (inclusive), para o bloco "Fim da fase". */
+export function numerosDaFase(diario: RegistroDiario[], de: string, ate: string): NumerosFase {
+  const regs = diario.filter((r) => r.data >= de && r.data <= ate);
+  const nauseas = regs.map((r) => r.nausea).filter((n): n is number => n !== null);
+  const conta = (k: 'vomito' | 'diarreia' | 'intestino_preso') => regs.filter((r) => r[k] === true).length;
+  return {
+    dias_registrados: regs.length,
+    nausea_media: nauseas.length ? nauseas.reduce((s, n) => s + n, 0) / nauseas.length : null,
+    nausea_max: nauseas.length ? Math.max(...nauseas) : null,
+    vomito: conta('vomito'),
+    diarreia: conta('diarreia'),
+    intestino_preso: conta('intestino_preso'),
+    dieta_nao: regs.filter((r) => r.dieta_seguida === 'nao').length,
+  };
 }

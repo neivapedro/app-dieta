@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import { autoTable } from 'jspdf-autotable';
+import { autoTable, type RowInput } from 'jspdf-autotable';
 
 // Relatório da Análise em PDF de verdade, gerado no próprio aparelho.
 // No iPhone com o app instalado, window.print() não funciona; o PDF vai para o
@@ -19,11 +19,31 @@ export interface GraficoRelatorio {
   doses: { dia: number; mg: number }[];
   diaFinal: number;
   rotulo: (dia: number) => string;
+  /** Dias com decisão registrada: linhas verticais pontilhadas */
+  marcos?: number[];
+}
+
+/** Quadro de decisão da 1ª página: fase anterior × fase atual (ou que termina). */
+export interface QuadroRelatorio {
+  titulo: string;
+  /** Cabeçalho das colunas: [anterior, atual] */
+  colunas: [string, string];
+  secoes: { titulo: string; linhas: [string, string, string][] }[];
+  /** "Próxima dose prevista: data · mg" */
+  proxima: string;
+  /** Regras do Plano (situação, o que fazer), com caixa para o médico marcar */
+  regras: [string, string][];
+  nota?: string;
 }
 
 export interface ModeloRelatorio {
   titulo: string;
   subtitulo: string;
+  /** Uma linha: remédio e concentração, idade, altura, peso e % de gordura no início */
+  cabecalho?: string;
+  /** Quadro de decisão e tabela semana a semana, antes do resumo */
+  quadro?: QuadroRelatorio | null;
+  semanal?: TabelaRelatorio | null;
   resumo: [string, string][];
   ritmo: string;
   grafico: GraficoRelatorio | null;
@@ -84,6 +104,79 @@ function rotuloEixo(v: number): string {
   return String(Math.round(v * 100) / 100).replace('.', ',');
 }
 
+function tabela(doc: jsPDF, y: number, t: TabelaRelatorio, fonte = 7.5): number {
+  if (!t.linhas.length) {
+    // Sem linhas, mas com nota (ex.: metas do plano alimentar sem refeições): mostra a nota
+    if (!t.nota) return y;
+    y = titulo(doc, y + 6, t.titulo);
+    return nota(doc, y + 1, t.nota);
+  }
+  y = titulo(doc, y + 6, t.titulo);
+  autoTable(doc, {
+    startY: y + 1,
+    head: [t.cabecalho.map(textoPdf)],
+    body: t.linhas.map((l) => l.map(textoPdf)),
+    theme: 'grid',
+    margin: { left: MARGEM, right: MARGEM, top: 18 },
+    styles: { fontSize: fonte, cellPadding: 1.4, textColor: ESCURO, lineColor: [225, 225, 228], lineWidth: 0.2 },
+    headStyles: { fillColor: [38, 38, 41], textColor: 255, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [247, 247, 248] },
+  });
+  y = fimTabela(doc);
+  if (t.nota) y = nota(doc, y + 1, t.nota);
+  return y;
+}
+
+function desenharQuadro(doc: jsPDF, y: number, q: QuadroRelatorio): number {
+  y = titulo(doc, y, q.titulo);
+  const corpo: RowInput[] = [];
+  for (const s of q.secoes) {
+    corpo.push([{ content: textoPdf(s.titulo), colSpan: 3, styles: { fontStyle: 'bold', fillColor: [236, 236, 239], textColor: ESCURO } }]);
+    for (const l of s.linhas) corpo.push(l.map(textoPdf));
+  }
+  autoTable(doc, {
+    startY: y + 1,
+    head: [['', ...q.colunas.map(textoPdf)]],
+    body: corpo,
+    theme: 'grid',
+    margin: { left: MARGEM, right: MARGEM, top: 18 },
+    styles: { fontSize: 8, cellPadding: 1.4, textColor: ESCURO, lineColor: [225, 225, 228], lineWidth: 0.2 },
+    headStyles: { fillColor: [38, 38, 41], textColor: 255, fontStyle: 'bold' },
+    columnStyles: { 0: { cellWidth: 48, textColor: CINZA } },
+  });
+  y = fimTabela(doc);
+  if (q.nota) y = nota(doc, y + 1, q.nota);
+
+  // Próxima dose prevista
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9.5);
+  doc.setTextColor(...ESCURO);
+  const prox = doc.splitTextToSize(textoPdf(q.proxima), LARGURA);
+  y = garantirEspaco(doc, y + 3, prox.length * 4.2 + 2);
+  doc.text(prox, MARGEM, y + 4);
+  y += prox.length * 4.2 + 3;
+
+  // Regras do Plano com caixas para marcar
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(...CINZA);
+  y = garantirEspaco(doc, y, 8);
+  doc.text(textoPdf('Regras do Plano para o fim da fase (marcar a decisão combinada):'), MARGEM, y + 3);
+  y += 5;
+  doc.setTextColor(...ESCURO);
+  doc.setDrawColor(...ESCURO);
+  doc.setLineWidth(0.3);
+  const itens = [...q.regras.map(([sit, acao]) => `${sit} -> ${acao}`), 'Outra decisão: ____________________________________________'];
+  for (const item of itens) {
+    const linhas = doc.splitTextToSize(textoPdf(item), LARGURA - 7);
+    y = garantirEspaco(doc, y, linhas.length * 3.6 + 2);
+    doc.rect(MARGEM, y + 0.6, 3, 3);
+    doc.text(linhas, MARGEM + 5.5, y + 3);
+    y += linhas.length * 3.6 + 1.6;
+  }
+  return y;
+}
+
 function desenharGrafico(doc: jsPDF, y: number, g: GraficoRelatorio): number {
   const altura = 62;
   y = garantirEspaco(doc, y, altura + 14);
@@ -119,6 +212,14 @@ function desenharGrafico(doc: jsPDF, y: number, g: GraficoRelatorio): number {
   // Datas no eixo X: início, meio e fim
   for (const d of [dMin, Math.round((dMin + dMax) / 2), dMax]) doc.text(g.rotulo(d), px(d), yBase + 4, { align: 'center' });
 
+  // Decisões registradas: linhas verticais pontilhadas, discretas
+  if (g.marcos?.length) {
+    doc.setDrawColor(190, 190, 195);
+    doc.setLineWidth(0.25);
+    doc.setLineDashPattern([0.6, 1], 0);
+    for (const d of g.marcos) if (d >= dMin && d <= dMax) doc.line(px(d), yTopo, px(d), yBase);
+    doc.setLineDashPattern([], 0);
+  }
   // Dose em degraus (tracejada)
   if (g.doses.length) {
     doc.setDrawColor(150, 150, 155);
@@ -155,6 +256,12 @@ function desenharGrafico(doc: jsPDF, y: number, g: GraficoRelatorio): number {
   doc.line(MARGEM + LARGURA / 2 + 8, yl - 1, MARGEM + LARGURA / 2 + 14, yl - 1);
   doc.setLineDashPattern([], 0);
   doc.text('Dose (mg, direita)', MARGEM + LARGURA / 2 + 15, yl);
+  if (g.marcos?.some((d) => d >= dMin && d <= dMax)) {
+    doc.setFontSize(7);
+    doc.setTextColor(...CINZA);
+    doc.text(textoPdf('Linhas pontilhadas verticais: decisões registradas (tabela Decisões).'), MARGEM + LARGURA / 2, yl + 4, { align: 'center' });
+    return y + altura + 6;
+  }
   return y + altura + 2;
 }
 
@@ -170,9 +277,21 @@ export function gerarRelatorioPdf(m: ModeloRelatorio): Blob {
   doc.setFontSize(8.5);
   doc.setTextColor(...CINZA);
   doc.text(textoPdf(m.subtitulo), MARGEM, 23.5);
+  let y = 26;
+  if (m.cabecalho) {
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...ESCURO);
+    const cab = doc.splitTextToSize(textoPdf(m.cabecalho), LARGURA);
+    doc.text(cab, MARGEM, 28.5);
+    y = 28.5 + cab.length * 3.8;
+  }
+
+  // 1ª página: quadro de decisão e, em seguida, a tabela semana a semana
+  if (m.quadro) y = desenharQuadro(doc, y + 5, m.quadro);
+  if (m.semanal) y = tabela(doc, y, m.semanal, 6.8);
 
   // Resumo em 2 pares por linha
-  let y = titulo(doc, 32, 'Resumo do ciclo');
+  y = titulo(doc, y + 7, 'Resumo do ciclo');
   const pares: string[][] = [];
   for (let i = 0; i < m.resumo.length; i += 2) {
     const a = m.resumo[i];
@@ -194,29 +313,7 @@ export function gerarRelatorioPdf(m: ModeloRelatorio): Blob {
     y = desenharGrafico(doc, y, m.grafico);
   }
 
-  for (const t of m.tabelas) {
-    if (!t.linhas.length) {
-      // Sem linhas, mas com nota (ex.: metas do plano alimentar sem refeições): mostra a nota
-      if (t.nota) {
-        y = titulo(doc, y + 6, t.titulo);
-        y = nota(doc, y + 1, t.nota);
-      }
-      continue;
-    }
-    y = titulo(doc, y + 6, t.titulo);
-    autoTable(doc, {
-      startY: y + 1,
-      head: [t.cabecalho.map(textoPdf)],
-      body: t.linhas.map((l) => l.map(textoPdf)),
-      theme: 'grid',
-      margin: { left: MARGEM, right: MARGEM, top: 18 },
-      styles: { fontSize: 7.5, cellPadding: 1.4, textColor: ESCURO, lineColor: [225, 225, 228], lineWidth: 0.2 },
-      headStyles: { fillColor: [38, 38, 41], textColor: 255, fontStyle: 'bold' },
-      alternateRowStyles: { fillColor: [247, 247, 248] },
-    });
-    y = fimTabela(doc);
-    if (t.nota) y = nota(doc, y + 1, t.nota);
-  }
+  for (const t of m.tabelas) y = tabela(doc, y, t);
 
   y = nota(doc, y + 6, m.rodape);
 

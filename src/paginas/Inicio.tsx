@@ -1,35 +1,144 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { AvisoRapido, FimDeFase, ForaDoPlano } from '../componentes/dose';
 import { FormAplicacao, FormDiario, FormMedida } from '../componentes/formularios';
-import { CartaoDietaHoje, CartaoMedicaoSegunda } from '../componentes/inicio';
+import {
+  AlertasSeguranca,
+  CartaoDietaHoje,
+  CartaoFecharDia,
+  CartaoMedicaoSegunda,
+  CartaoRegistroDia,
+  FaixaOntem,
+} from '../componentes/inicio';
+import { CartaoFimProjeto } from '../componentes/projeto';
 import { ResumoSemana } from '../componentes/ResumoSemana';
 import { CartaoTreinoHoje } from '../componentes/treino';
 import { Bloco, Icone } from '../componentes/ui';
 import { useDados } from '../dados/contexto';
 import { useCalculos } from '../dados/useCalculos';
-import { guiaSeringa } from '../lib/ciclo';
-import { diaDaSemana, formatarData } from '../lib/datas';
+import { useProjeto } from '../dados/useProjeto';
+import { guiaSeringa, marcasVizinhas, seringaDo, textoSeringa } from '../lib/ciclo';
+import { diaDaSemana, diferencaDias, formatarData } from '../lib/datas';
 import { cm, corVariacao, kg, mg, num, pct, pp, sinal, ui } from '../lib/formato';
 import { estadoNotificacao, type EstadoNotificacao } from '../lib/notificacoes';
-import { NIVEIS_NAUSEA } from '../lib/tipos';
+import { DIAS_REGISTRO_DOSE, diaCurto, diaDesdeDose, doseEmDestaque, horaDeFecharODia } from '../lib/rotina';
+
+/** Cartão completo da próxima dose (na véspera, no dia, atrasada ou com decisão pendente). */
+function CartaoDose({ aoRegistrar, aoRecolher }: { aoRegistrar: () => void; aoRecolher?: () => void }) {
+  const { ciclo } = useDados();
+  const { resumo } = useCalculos();
+  if (!ciclo || !resumo?.proxima) return null;
+  const p = resumo.proxima;
+  const deg = resumo.degrau;
+  const seringa = seringaDo(ciclo);
+  const vizinhas = marcasVizinhas(p.ui_pratica, seringa.marca, ciclo.concentracao_mg_ml);
+  // "Fase 2 · dose 3 de 4" (a dose da fase conta pelas aplicações seguidas com a mesma dose)
+  const posicao =
+    deg.estado === 'em_curso' && deg.previstas
+      ? ` · dose ${deg.feitas + 1} de ${deg.previstas}`
+      : deg.estado === 'inicio' || deg.estado === 'subir'
+        ? ` · dose 1 de ${p.fase?.fase.semanas ?? '–'}`
+        : deg.estado === 'pendente'
+          ? ' · fim'
+          : '';
+  return (
+    <section className={`cartao proxima ${p.situacao}`}>
+      <div className="cartao-cab">
+        <span className="rotulo">Próxima aplicação · {p.numero}ª dose</span>
+        {p.extra && <span className="etiqueta aviso">Dose extra · sobra do frasco</span>}
+        {p.estado === 'pendente' && <span className="etiqueta aviso">Fase concluída · decidir</span>}
+        {p.estado === 'fora_do_plano' && <span className="etiqueta aviso">Fora do plano</span>}
+        {p.situacao === 'hoje' && <span className="etiqueta destaque">Hoje</span>}
+        {p.situacao === 'atrasada' && <span className="etiqueta ruim">Atrasada {p.dias} dia(s)</span>}
+        {p.situacao === 'futura' && <span className="etiqueta">{p.dias === 1 ? 'amanhã' : `em ${p.dias} dia(s)`}</span>}
+      </div>
+      <div className="linha entre" style={{ alignItems: 'flex-end' }}>
+        <div>
+          <div className="grande numero">{num(p.dose_mg)} mg</div>
+          <div className="mudo">
+            {diaDaSemana(p.data)}, {formatarData(p.data)}
+          </div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div className="medio numero">{ui(p.ui)}</div>
+          <div className="mudo">seringa U-100</div>
+        </div>
+      </div>
+      {resumo.pausa_dias !== null && (
+        <div className="alerta erro" style={{ marginTop: 12 }}>
+          Pausa de {Math.floor(resumo.pausa_dias / 7)} semanas desde a última dose ({formatarData(resumo.linhas[resumo.linhas.length - 1].aplicacao.data)}):
+          confirme a dose com o médico antes de aplicar.
+        </div>
+      )}
+      <div className="grade" style={{ marginTop: 14 }}>
+        <Bloco rotulo="Puxar até" valor={ui(p.ui_pratica)} />
+        <Bloco
+          rotulo="Isso entrega"
+          valor={
+            Math.abs(p.mg_pratica - p.dose_mg) < 0.0005 ? (
+              mg(p.mg_pratica)
+            ) : (
+              <>
+                {mg(p.mg_pratica)} <span className="mudo">({sinal(p.mg_pratica - p.dose_mg, 2)})</span>
+              </>
+            )
+          }
+        />
+        {p.fase ? <Bloco rotulo={`Fase ${p.fase.indice + 1}`} valor={`${p.fase.fase.nome}${posicao}`} /> : <Bloco rotulo="Fase" valor="Fora do plano" />}
+        <Bloco rotulo="Local sugerido" valor={resumo.sugestao_local} />
+      </div>
+      <p className="mudo" style={{ marginTop: 10 }}>
+        Na {textoSeringa(ciclo)}: {guiaSeringa(p.ui_pratica, seringa.marca)}.
+      </p>
+      {vizinhas && (
+        <p className="mudo vizinhas" style={{ marginTop: 4 }}>
+          Marcas vizinhas: {vizinhas.map((v) => `${ui(v.ui)} = ${mg(v.mg)}`).join(' · ')}.
+        </p>
+      )}
+      <FimDeFase />
+      <ForaDoPlano />
+      <button className="botao primario bloco-largo" style={{ marginTop: 14 }} onClick={aoRegistrar}>
+        <Icone nome="mais" /> Registrar aplicação
+      </button>
+      {aoRecolher && (
+        <button className="botao pequeno bloco-largo" style={{ marginTop: 8 }} onClick={aoRecolher} aria-expanded="true">
+          Recolher
+        </button>
+      )}
+    </section>
+  );
+}
 
 export function Inicio() {
   const { ciclo, diario, perfil } = useDados();
   const { resumo, geral, hoje } = useCalculos();
+  const proj = useProjeto();
   const [params, setParams] = useSearchParams();
   const [registrar, setRegistrar] = useState(params.get('registrar') === '1');
   const [diarioAberto, setDiarioAberto] = useState(false);
   const [medindo, setMedindo] = useState(false);
   const [resumoSemana, setResumo] = useState(false);
+  const [doseAberta, setDoseAberta] = useState(false);
   const [notif, setNotif] = useState<EstadoNotificacao | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
 
   useEffect(() => {
     estadoNotificacao().then(setNotif).catch(() => setNotif('sem-suporte'));
   }, []);
 
-  if (!ciclo || !resumo) return null;
+  if (!ciclo || !resumo || !proj) return null;
   const p = resumo.proxima;
   const regHoje = diario.find((r) => r.data === hoje);
+  const diasFrasco = ciclo.frasco_aberto_em ? diferencaDias(ciclo.frasco_aberto_em, hoje) : null;
+  const pos = proj.pos;
+  // Ordem do que fazer agora: a dose em destaque só perto do dia; à noite, "Fechar o dia"
+  const destaque = !!p && doseEmDestaque(p, resumo);
+  const fecharDia = horaDeFecharODia(new Date().getHours());
+  const dDose = pos ? null : diaDesdeDose(proj.ultimaDose, hoje);
+  const pertoDaDose = dDose !== null && dDose <= DIAS_REGISTRO_DOSE;
+  const etiquetaDose = pertoDaDose ? (dDose === 0 ? 'dia da dose' : `D${dDose} da dose`) : undefined;
+  // Registro do dia: sobe para baixo da dose de D0 a D3; à noite vira "Fechar o dia"
+  const registroNoTopo = fecharDia || pertoDaDose;
 
   function fecharRegistro() {
     setRegistrar(false);
@@ -64,66 +173,48 @@ export function Inicio() {
     );
   };
 
+  const registroDoDia = fecharDia ? (
+    <CartaoFecharDia etiqueta={etiquetaDose} />
+  ) : (
+    <CartaoRegistroDia aoEditar={() => setDiarioAberto(true)} etiqueta={etiquetaDose} />
+  );
+
   return (
     <div className="pilha">
-      {p ? (
-        <section className={`cartao proxima ${p.situacao}`}>
-          <div className="cartao-cab">
-            <span className="rotulo">Próxima aplicação · {p.numero}ª dose</span>
-            {p.extra && <span className="etiqueta aviso">Dose extra · sobra do frasco</span>}
-            {p.situacao === 'hoje' && <span className="etiqueta destaque">Hoje</span>}
-            {p.situacao === 'atrasada' && <span className="etiqueta ruim">Atrasada {p.dias} dia(s)</span>}
-            {p.situacao === 'futura' && <span className="etiqueta">em {p.dias} dia(s)</span>}
-          </div>
-          <div className="linha entre" style={{ alignItems: 'flex-end' }}>
-            <div>
-              <div className="grande numero">{num(p.dose_mg)} mg</div>
-              <div className="mudo">
-                {diaDaSemana(p.data)}, {formatarData(p.data)}
-              </div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div className="medio numero">{ui(p.ui)}</div>
-              <div className="mudo">seringa U-100</div>
-            </div>
-          </div>
-          <div className="grade" style={{ marginTop: 14 }}>
-            <Bloco rotulo="Puxar até" valor={ui(p.ui_pratica)} />
-            <Bloco
-              rotulo="Isso entrega"
-              valor={
-                Math.abs(p.mg_pratica - p.dose_mg) < 0.0005 ? (
-                  mg(p.mg_pratica)
-                ) : (
-                  <>
-                    {mg(p.mg_pratica)} <span className="mudo">({sinal(p.mg_pratica - p.dose_mg, 2)})</span>
-                  </>
-                )
-              }
-            />
-            <Bloco rotulo={`Fase ${p.fase.indice + 1}`} valor={p.fase.fase.nome} />
-            <Bloco rotulo="Local sugerido" valor={resumo.sugestao_local} />
-          </div>
-          <p className="mudo" style={{ marginTop: 10 }}>
-            Na seringa de insulina (U-100, marcas de 1 em 1 UI): {guiaSeringa(p.ui_pratica)}.
-          </p>
-          <button className="botao primario bloco-largo" style={{ marginTop: 14 }} onClick={() => setRegistrar(true)}>
-            <Icone nome="mais" /> Registrar aplicação
+      <FaixaOntem />
+
+      {pos ? (
+        <CartaoFimProjeto aoRegistrar={() => setRegistrar(true)} />
+      ) : p ? (
+        destaque || doseAberta ? (
+          <CartaoDose aoRegistrar={() => setRegistrar(true)} aoRecolher={destaque ? undefined : () => setDoseAberta(false)} />
+        ) : (
+          <button type="button" className="linha-dose" onClick={() => setDoseAberta(true)} aria-expanded="false">
+            <span className="cresce">
+              <b>Próxima dose:</b> {diaCurto(p.data)} · {mg(p.dose_mg)} · {ui(p.ui_pratica)}
+              <span className="mudo"> · em {p.dias} dias</span>
+            </span>
+            <span className="seta" aria-hidden="true">
+              ▾
+            </span>
           </button>
-        </section>
+        )
       ) : (
-        <section className="cartao pilha">
-          <h2>Ciclo concluído</h2>
-          <p className="mudo">Sua parte de {mg(ciclo.quantidade_total_mg)} foi totalmente utilizada em {resumo.aplicacoes_realizadas} aplicações.</p>
-          <button className="botao" onClick={() => setRegistrar(true)}>Registrar aplicação extra</button>
-        </section>
+        <CartaoFimProjeto aoRegistrar={() => setRegistrar(true)} />
       )}
+
+      {/* Plano concluído com sobra no frasco: o balanço aparece junto da dose extra */}
+      {!pos && p && resumo.degrau.estado === 'fim_plano' && <CartaoFimProjeto aoRegistrar={() => setRegistrar(true)} />}
+
+      {registroNoTopo && registroDoDia}
+
+      <AlertasSeguranca />
 
       <CartaoMedicaoSegunda aoMedir={() => setMedindo(true)} />
 
-      <CartaoTreinoHoje />
+      {!fecharDia && <CartaoTreinoHoje />}
 
-      <CartaoDietaHoje />
+      <CartaoDietaHoje semPergunta={fecharDia} />
 
       {resumo.alertas.map((a) => (
         <div className="alerta" key={a}>{a}</div>
@@ -167,7 +258,15 @@ export function Inicio() {
           <p className="mudo" style={{ marginTop: 10 }}>
             {resumo.doses_plano_restantes > resumo.projecao.length
               ? `O frasco acaba em ${formatarData(resumo.data_fim_prevista)}: faltarão ${resumo.doses_plano_restantes - resumo.projecao.length} dose(s) do plano.`
-              : `Mantendo o plano, a última dose fica para ${formatarData(resumo.data_fim_prevista)}.`}
+              : resumo.fim_hipotese
+                ? `Se subir em cada fim de fase, a última dose fica para ${formatarData(resumo.data_fim_prevista)}.`
+                : `Mantendo o plano, a última dose fica para ${formatarData(resumo.data_fim_prevista)}.`}
+            {resumo.fim_hipotese && ' Hipótese: cada subida depende da sua decisão no fim da fase.'}
+          </p>
+        )}
+        {diasFrasco !== null && diasFrasco >= 0 && (
+          <p className="mudo" style={{ marginTop: 6 }}>
+            Frasco aberto em {formatarData(ciclo.frasco_aberto_em!)} · há {diasFrasco} {diasFrasco === 1 ? 'dia' : 'dias'}.
           </p>
         )}
         {resumo.sobra_doses > 0 && (
@@ -178,32 +277,7 @@ export function Inicio() {
         )}
       </section>
 
-      <section className="cartao">
-        <div className="cartao-cab">
-          <h2>Hoje</h2>
-          <button className="botao pequeno" onClick={() => setDiarioAberto(true)}>{regHoje ? 'Editar' : 'Registrar'}</button>
-        </div>
-        {regHoje ? (
-          <div className="grade grade-3">
-            <Bloco rotulo="Peso" valor={kg(regHoje.peso_kg)} />
-            <Bloco rotulo="Náusea" valor={regHoje.nausea === null ? '–' : NIVEIS_NAUSEA[regHoje.nausea]} />
-            <Bloco
-              rotulo="Sintomas"
-              valor={
-                [regHoje.vomito && 'vômito', regHoje.diarreia && 'diarreia', regHoje.intestino_preso && 'intestino preso'].filter(Boolean).join(', ') || '–'
-              }
-            />
-          </div>
-        ) : null}
-        {regHoje?.observacoes && (
-          <p className="mudo obs-curta" style={{ marginTop: 8 }}>
-            Obs.: {regHoje.observacoes}
-          </p>
-        )}
-        {regHoje ? null : (
-          <p className="mudo">Anote peso, náusea e efeitos de hoje. Vale para qualquer dia, não só o da aplicação.</p>
-        )}
-      </section>
+      {!registroNoTopo && registroDoDia}
 
       <section className="cartao">
         <div className="cartao-cab">
@@ -242,7 +316,8 @@ export function Inicio() {
         )}
       </section>
 
-      {registrar && <FormAplicacao aoFechar={fecharRegistro} />}
+      {registrar && <FormAplicacao aoFechar={fecharRegistro} aoSalvar={setAviso} />}
+      {aviso && <AvisoRapido texto={aviso} aoSumir={() => setAviso(null)} />}
       {diarioAberto && <FormDiario registro={regHoje} aoFechar={() => setDiarioAberto(false)} />}
       {medindo && <FormMedida aoFechar={() => setMedindo(false)} aoSalvar={() => setResumo(true)} />}
       {resumoSemana && <ResumoSemana aoFechar={() => setResumo(false)} />}

@@ -9,6 +9,7 @@ import { useTreino } from '../dados/useTreino';
 import { formatarData, somarDias } from '../lib/datas';
 import { cm, corVariacao, kg, num, pct, pp, sinal } from '../lib/formato';
 import type { Composicao } from '../lib/gordura';
+import { SEMANAS_POS } from '../lib/projeto';
 import { formatarTempo, type Contagem } from '../lib/treino';
 import type { MetricaSemanal } from '../componentes/graficos';
 
@@ -51,7 +52,8 @@ export function Treino() {
   if (!t) return null;
   const { placar: p, hoje, inicial, atual, metas } = t;
   const progresso = p.totalDias ? Math.min(p.diasDecorridos / p.totalDias, 1) : 0;
-  const final = p.encerrado;
+  // Medidas do projeto: na fase pós-remédio o placar é outro, mas o "final" é o do período do remédio
+  const final = t.projeto.placar.encerrado;
   const temAtual = atual && inicial && atual.data !== inicial.data;
   const m = metas;
   const metaMagra = m?.peso_kg && m?.bf ? m.peso_kg * (1 - m.bf / 100) : null;
@@ -94,7 +96,7 @@ export function Treino() {
 
       <section className="cartao">
         <div className="cartao-cab">
-          <h2>Projeto</h2>
+          <h2>{t.placarPos ? 'Fase pós-remédio' : 'Projeto'}</h2>
           <span className="mudo">
             {formatarData(p.inicio, true)} → {formatarData(p.fim, true)}
           </span>
@@ -109,6 +111,13 @@ export function Treino() {
           <Bloco rotulo="Recorde" valor={`${p.recorde} ${p.recorde === 1 ? 'dia' : 'dias'}`} />
         </div>
         {!p.iniciado && <p className="mudo" style={{ marginTop: 10 }}>O projeto começa no dia da 1ª aplicação ({formatarData(p.inicio)}).</p>}
+        {t.placarPos && t.pos && (
+          <p className="mudo" style={{ marginTop: 10 }}>
+            {t.pos.semana !== null && `Semana ${t.pos.semana} de ${SEMANAS_POS} depois da última dose (${formatarData(t.pos.inicio)})`}
+            {t.pos.saida ? ' · saída do remédio' : ''}. Placar novo, separado do período do remédio ({formatarData(t.projeto.inicio, true)} →{' '}
+            {formatarData(t.projeto.fim, true)}: {t.projeto.placar.treino.feito} treinos e {t.projeto.placar.cardio.feito} cardios).
+          </p>
+        )}
       </section>
 
       <section className="cartao">
@@ -139,7 +148,7 @@ export function Treino() {
       </section>
 
       <section className="cartao">
-        <h2>Calendário do projeto</h2>
+        <h2>{t.placarPos ? 'Calendário' : 'Calendário do projeto'}</h2>
         <div className="grade-semanas" role="grid">
           {DIAS.map((d) => (
             <div key={d} className="grade-semanas-cab">{d}</div>

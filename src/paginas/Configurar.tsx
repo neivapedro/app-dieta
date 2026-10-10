@@ -1,9 +1,9 @@
 import { useState, type FormEvent } from 'react';
 import { Campo, CampoNumero, Escolhas } from '../componentes/ui';
 import { useDados } from '../dados/contexto';
-import { cicloPadrao } from '../lib/ciclo';
+import { cicloPadrao, marcacao } from '../lib/ciclo';
 import { diaDaSemana, hojeLocal } from '../lib/datas';
-import { paraNumero, paraTexto } from '../lib/formato';
+import { mg, paraNumero, paraTexto, ui } from '../lib/formato';
 import type { Sexo } from '../lib/tipos';
 
 /** Primeiro acesso: dados pessoais + parâmetros do ciclo (aba Painel da planilha). */
@@ -17,6 +17,10 @@ export function Configurar() {
   const [total, setTotal] = useState(paraTexto(padrao.quantidade_total_mg));
   const [conc, setConc] = useState(paraTexto(padrao.concentracao_mg_ml));
   const [erro, setErro] = useState<string | null>(null);
+  // Prévia ao vivo da 1ª dose: a concentração errada é o erro mais perigoso aqui
+  const concPrevia = paraNumero(conc);
+  const dose1 = padrao.fases[0].dose_mg;
+  const previa = concPrevia && concPrevia > 0 ? marcacao(dose1, { concentracao_mg_ml: concPrevia, passo_ui: padrao.passo_ui }) : null;
 
   async function salvar(e: FormEvent) {
     e.preventDefault();
@@ -71,9 +75,16 @@ export function Configurar() {
             <input type="date" value={inicio} onChange={(e) => setInicio(e.target.value)} required />
           </Campo>
           <div className="grade">
-            <CampoNumero rotulo="Quantidade total da sua parte" sufixo="mg" valor={total} aoMudar={setTotal} />
-            <CampoNumero rotulo="Concentração" sufixo="mg/ml" valor={conc} aoMudar={setConc} />
+            <CampoNumero rotulo="Quantidade total da sua parte" sufixo="mg" valor={total} aoMudar={setTotal} dica="Quanto do frasco é seu." />
+            <CampoNumero rotulo="Concentração" sufixo="mg/ml" valor={conc} aoMudar={setConc} dica="mg por ml depois de diluído." />
           </div>
+          {previa && (
+            <div className="alerta info">
+              <span>
+                1ª dose: <b>{mg(dose1)} = {ui(previa.ui_pratica)}</b> na seringa U-100 — confira com quem preparou o frasco.
+              </span>
+            </div>
+          )}
           <p className="mudo">
             O plano de escalonamento da sua planilha (6 fases, de 1,25 mg a 2,5 mg em 30 semanas) já vem pronto e pode ser ajustado depois em Ciclo → Plano.
           </p>

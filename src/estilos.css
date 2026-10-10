@@ -223,7 +223,7 @@ th:first-child, td:first-child { text-align: left; }
 .grafico .recharts-cartesian-axis-tick-value { fill: var(--texto-3); font-size: 11px; }
 .grafico .recharts-cartesian-grid line { stroke: var(--borda); }
 .grafico .recharts-legend-item-text { color: var(--texto-2) !important; font-size: 12px; }
-.dica-grafico { background: var(--superficie); border: 1px solid var(--borda); border-radius: 10px; padding: 8px 10px; font-size: 0.8rem; box-shadow: var(--sombra); }
+.dica-grafico { background: var(--superficie); border: 1px solid var(--borda); border-radius: 10px; padding: 8px 10px; font-size: 0.8rem; box-shadow: var(--sombra); max-width: min(240px, 62vw); }
 
 .folha-fundo { position: fixed; inset: 0; z-index: 50; background: rgb(0 0 0 / 0.5); display: flex; align-items: flex-end; justify-content: center; }
 .folha {
@@ -384,3 +384,19 @@ details.ajuda summary { min-height: 32px; display: flex; align-items: center; }
 
 .grafico-fixo { height: auto; overflow: hidden; }
 .obs-curta { display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* Cartão da dose: "Fim da fase" e "Dose fora do plano" */
+.fim-fase { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--borda); gap: 10px; }
+.regras-fase { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 0.82rem; color: var(--texto-2); }
+.botoes-fase .botao { flex: 1 1 auto; }
+.vizinhas { font-size: 0.8rem; }
+
+/* Início na ordem do que fazer agora */
+.faixa-ontem { border-color: color-mix(in srgb, var(--aviso) 45%, var(--borda)); }
+.linha-dose {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px; border-radius: var(--raio); text-align: left; cursor: pointer;
+  border: 1px solid var(--borda); background: var(--superficie); color: var(--texto); font-size: 0.9rem; font-variant-numeric: tabular-nums;
+}
+.linha-dose .seta { margin-left: auto; color: var(--texto-3); flex: none; }
+.resumo-plano { display: block; margin-bottom: 8px; color: inherit; text-decoration: none; font-size: 0.9rem; }
+.itens-plano { margin: 4px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 2px; }

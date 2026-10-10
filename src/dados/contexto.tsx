@@ -3,7 +3,8 @@ import { planoPadrao, type PlanoDieta } from '../lib/dieta';
 import { hojeLocal } from '../lib/datas';
 import { ehErroDeRede, ehSessaoExpirada, traduzirErro } from '../lib/erros';
 import { esquecerAparelho, sincronizarInscricao } from '../lib/notificacoes';
-import type { Aplicacao, Ciclo, Medida, Perfil, RegistroDiario, TreinoDia } from '../lib/tipos';
+import { alteracoesDasDecisoesFase, compararDieta, mesclarAlteracoes, type Alteracao } from '../lib/registroDecisoes';
+import type { Aplicacao, Ciclo, Medida, Perfil, RegistroDecisao, RegistroDiario, TreinoDia } from '../lib/tipos';
 import { SUPABASE_KEY, SUPABASE_URL } from '../config';
 import { apagarDadosLocais, aplicarFila, enfileirar, executarOperacao, gravarCache, gravarFila, lerCache, lerFila, type ItemFila, type Operacao } from './fila';
 import { RepositorioLocal } from './local';
@@ -23,9 +24,13 @@ export interface Dados {
   dieta: PlanoDieta | null;
   /** Mensagem quando a tabela da Dieta ainda não existe no banco */
   dietaIndisponivel: string | null;
+  /** Registro de decisões (mudanças de déficit, fator, fases, metas, dose) */
+  registroDecisoes: RegistroDecisao[];
+  /** A tabela do registro ainda não existe no banco (falta o SQL de evolução) */
+  registroIndisponivel?: boolean;
 }
 
-const VAZIO: Dados = { perfil: null, ciclo: null, aplicacoes: [], diario: [], medidas: [], treinos: [], dieta: null, dietaIndisponivel: null };
+const VAZIO: Dados = { perfil: null, ciclo: null, aplicacoes: [], diario: [], medidas: [], treinos: [], dieta: null, dietaIndisponivel: null, registroDecisoes: [] };
 
 /** salvo · salvando · pendente (sem internet, na fila) · erro */
 export type EstadoGravacao = 'salvo' | 'salvando' | 'pendente' | 'erro';
@@ -57,6 +62,8 @@ interface Contexto extends Dados {
   /** Atualiza o plano na hora e grava em seguida (agrupando digitações rápidas) */
   salvarDieta: (p: PlanoDieta) => void;
   estadoDieta: EstadoGravacao;
+  /** Guarda mudanças no registro de decisões (Plano e metas, que não passam pela fila) */
+  registrarAlteracoes: (alteracoes: Alteracao[]) => void;
   /** Data de hoje (vira à meia-noite mesmo com o app aberto ou em segundo plano) */
   hoje: string;
   /** Muda a cada minuto e ao voltar ao app: para o que depende da hora (próxima refeição) */
@@ -68,6 +75,13 @@ const Ctx = createContext<Contexto | null>(null);
 export function ProvedorDados({ children }: { children: ReactNode }) {
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [dados, setDados] = useState<Dados>(VAZIO);
+  // Cópia síncrona do estado: o registro de decisões compara com o valor de
+  // antes mesmo com várias gravações seguidas antes de a tela redesenhar
+  const dadosRef = useRef<Dados>(VAZIO);
+  const mudarDados = useCallback((fn: (d: Dados) => Dados) => {
+    dadosRef.current = fn(dadosRef.current);
+    setDados(dadosRef.current);
+  }, []);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErroBruto] = useState<string | null>(null);
   const [offlineDesde, setOfflineDesde] = useState<string | null>(null);
@@ -106,7 +120,7 @@ export function ProvedorDados({ children }: { children: ReactNode }) {
     setUsuario(u);
     if (!u) {
       uid.current = null;
-      setDados(VAZIO);
+      mudarDados(() => VAZIO);
       return;
     }
     if (uid.current !== u.id) {
@@ -137,7 +151,12 @@ export function ProvedorDados({ children }: { children: ReactNode }) {
         if (ehErroDeRede(e)) throw e;
         dietaIndisponivel = e instanceof Error ? e.message : String(e);
       }
-      base = { perfil, ciclo, aplicacoes, diario, medidas, treinos, dieta, dietaIndisponivel };
+      // O registro de decisões também é opcional (tabela da evolução)
+      const registro = await repositorio.listarRegistroDecisoes().catch((e) => {
+        if (ehErroDeRede(e)) throw e;
+        return null;
+      });
+      base = { perfil, ciclo, aplicacoes, diario, medidas, treinos, dieta, dietaIndisponivel, registroDecisoes: registro ?? [], registroIndisponivel: registro === null };
       setFalhouCarregar(false);
       if (repositorio.modo === 'nuvem') gravarCache(u.id, base);
       carregouNaSessao.current = true;
@@ -156,11 +175,12 @@ export function ProvedorDados({ children }: { children: ReactNode }) {
         setSemConexao(true);
         return;
       }
-      base = cache.dados;
+      // Cópia guardada antes do registro de decisões existir: começa vazio
+      base = { ...cache.dados, registroDecisoes: cache.dados.registroDecisoes ?? [] };
       setOfflineDesde(cache.em);
     }
-    setDados(aplicarFila(base, fila.current));
-  }, []);
+    mudarDados(() => aplicarFila(base, fila.current));
+  }, [mudarDados]);
 
   // Envia a fila, uma operação de cada vez
   const processarFila = useCallback(async () => {
@@ -213,15 +233,54 @@ export function ProvedorDados({ children }: { children: ReactNode }) {
     }
   }, [atualizarFila, carregar, setErro]);
 
-  const gravar = useCallback(
-    (op: Operacao, atraso = 0) => {
-      atualizarFila(enfileirar(fila.current, op, ++versao.current));
-      setDados((d) => aplicarFila(d, [{ ...op, chave: '', versao: 0 }]));
+  /** Operações do registro de decisões para as mudanças (mesmo dia e campo: uma linha só). */
+  const opsDoRegistro = useCallback((alteracoes: Alteracao[], refsRemovidas: string[] = []): Operacao[] => {
+    if (!alteracoes.length && !refsRemovidas.length) return [];
+    const m = mesclarAlteracoes(dadosRef.current.registroDecisoes ?? [], alteracoes, hojeLocal(), () => crypto.randomUUID(), refsRemovidas);
+    return [
+      ...m.excluir.map((r): Operacao => ({ tipo: 'excluir', dado: { alvo: 'registro_decisao', id: r.id, data: r.data } })),
+      ...m.salvar.map((r): Operacao => ({ tipo: 'registro_decisao', dado: r })),
+    ];
+  }, []);
+
+  /** Mudanças que a operação provoca no registro de decisões (Dieta e decisões do fim de fase). */
+  const registroDaOperacao = useCallback(
+    (op: Operacao): Operacao[] => {
+      const atual = dadosRef.current;
+      if (op.tipo === 'dieta' && atual.dieta) return opsDoRegistro(compararDieta(atual.dieta.config, op.dado.config));
+      if (op.tipo === 'decisoes' && atual.ciclo && atual.ciclo.id === op.dado.ciclo_id) {
+        const { novas, removidas } = alteracoesDasDecisoesFase(atual.ciclo.decisoes ?? [], op.dado.decisoes, op.dado.fases);
+        return opsDoRegistro(novas, removidas);
+      }
+      return [];
+    },
+    [opsDoRegistro],
+  );
+
+  const enfileirarVarias = useCallback(
+    (ops: Operacao[], atraso = 0) => {
+      let nova = fila.current;
+      for (const op of ops) nova = enfileirar(nova, op, ++versao.current);
+      atualizarFila(nova);
+      mudarDados((d) => aplicarFila(d, ops.map((op) => ({ ...op, chave: '', versao: 0 }))));
       clearTimeout(timer.current);
       if (atraso) timer.current = setTimeout(() => void processarFila(), atraso);
       else void processarFila();
     },
-    [atualizarFila, processarFila],
+    [atualizarFila, mudarDados, processarFila],
+  );
+
+  const gravar = useCallback(
+    (op: Operacao, atraso = 0) => enfileirarVarias([op, ...registroDaOperacao(op)], atraso),
+    [enfileirarVarias, registroDaOperacao],
+  );
+
+  const registrarAlteracoes = useCallback(
+    (alteracoes: Alteracao[]) => {
+      const ops = opsDoRegistro(alteracoes);
+      if (ops.length) enfileirarVarias(ops);
+    },
+    [enfileirarVarias, opsDoRegistro],
   );
 
   const salvarDieta = useCallback((p: PlanoDieta) => gravar({ tipo: 'dieta', dado: p }, 700), [gravar]);
@@ -338,8 +397,8 @@ export function ProvedorDados({ children }: { children: ReactNode }) {
     uid.current = null;
     carregouNaSessao.current = false;
     setUsuario(null);
-    setDados(VAZIO);
-  }, [setErro]);
+    mudarDados(() => VAZIO);
+  }, [setErro, mudarDados]);
 
   const temDieta = fila.current.some((i) => i.tipo === 'dieta');
   const estadoDieta: EstadoGravacao = temDieta ? (falhaRede ? 'pendente' : 'salvando') : erroDieta ? 'erro' : 'salvo';
@@ -364,10 +423,11 @@ export function ProvedorDados({ children }: { children: ReactNode }) {
       gravar: (op: Operacao) => gravar(op),
       salvarDieta,
       estadoDieta,
+      registrarAlteracoes,
       hoje,
       tique,
     }),
-    [dados, usuario, carregando, erro, setErro, offlineDesde, semConexao, falhouCarregar, pendentes, recuperandoSenha, recarregar, sair, executar, gravar, salvarDieta, estadoDieta, hoje, tique],
+    [dados, usuario, carregando, erro, setErro, offlineDesde, semConexao, falhouCarregar, pendentes, recuperandoSenha, recarregar, sair, executar, gravar, salvarDieta, estadoDieta, registrarAlteracoes, hoje, tique],
   );
 
   return <Ctx.Provider value={valor}>{children}</Ctx.Provider>;

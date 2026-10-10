@@ -18,9 +18,9 @@ describe('Backup', () => {
     '2026-10-09T12:00:00Z',
   );
 
-  it('versão 2 leva os treinos', () => {
+  it('versão 3 leva os treinos', () => {
     const lido = lerBackup(JSON.stringify(b));
-    expect(lido.versao).toBe(2);
+    expect(lido.versao).toBe(3);
     expect(lido.treinos).toHaveLength(1);
   });
 
@@ -37,9 +37,46 @@ describe('Backup', () => {
     expect(p.treinos).toHaveLength(1);
   });
 
-  it('aceita a versão 1 e recusa arquivo estranho', () => {
+  it('aceita as versões 1 e 2 e recusa arquivo estranho', () => {
     expect(lerBackup(JSON.stringify({ ...b, versao: 1, treinos: undefined })).versao).toBe(1);
+    expect(lerBackup(JSON.stringify({ ...b, versao: 2 })).versao).toBe(2);
+    expect(() => lerBackup(JSON.stringify({ ...b, registro_decisoes: 'x' }))).toThrow('não reconhecido');
     expect(() => lerBackup('{"a":1}')).toThrow('não reconhecido');
     expect(() => lerBackup('xx')).toThrow('não reconhecido');
+  });
+
+  it('leva as decisões de fase, a seringa e a concentração de cada aplicação', () => {
+    const ciclo = {
+      id: 'c',
+      nome: 'x',
+      data_inicio: '2026-10-08',
+      quantidade_total_mg: 60,
+      concentracao_mg_ml: 20,
+      intervalo_dias: 7,
+      passo_ui: 0.125,
+      fases: [],
+      seringa_capacidade_ui: 30,
+      seringa_marca_ui: 0.5,
+      frasco_aberto_em: '2026-10-01',
+      decisoes: [{ id: 'd', data: '2026-11-01', apos_aplicacao: 4, dose_mg: 1.25, fase_indice: 0, escolha: 'anotacao' as const, texto: 'náusea no D1' }],
+    };
+    const comCiclo = montarBackup({ ...b, ciclo, aplicacoes: [{ ...apl('2026-10-08'), concentracao_mg_ml: 20 }] }, '2026-11-02T12:00:00Z');
+    const lido = lerBackup(JSON.stringify(comCiclo));
+    expect(lido.ciclo).toMatchObject({ seringa_capacidade_ui: 30, seringa_marca_ui: 0.5, frasco_aberto_em: '2026-10-01' });
+    expect(lido.ciclo!.decisoes![0].texto).toBe('náusea no D1');
+    expect(lido.aplicacoes[0].concentracao_mg_ml).toBe(20);
+  });
+
+  it('leva o registro de decisões e não duplica ao importar de novo', () => {
+    const r = { id: 'r1', data: '2026-10-12', tipo: 'dieta' as const, campo: 'Déficit/superávit', de: '−300 kcal', para: '−450 kcal', motivo: 'ritmo baixo', ref: null };
+    const comRegistro = montarBackup({ ...b, registro_decisoes: [r] }, '2026-10-13T12:00:00Z');
+    const lido = lerBackup(JSON.stringify(comRegistro));
+    expect(lido.registro_decisoes![0].motivo).toBe('ritmo baixo');
+    const vazio = { aplicacoes: [], medidas: [], diario: [], treinos: [] };
+    expect(planejarImportacao(lido, vazio).registro_decisoes).toHaveLength(1);
+    // Mesma linha já existe na conta (mesmo com outro id): não importa de novo
+    expect(planejarImportacao(lido, { ...vazio, registro_decisoes: [{ ...r, id: 'outro' }] }).registro_decisoes).toHaveLength(0);
+    // Backup antigo, sem o registro
+    expect(planejarImportacao(b, vazio).registro_decisoes).toEqual([]);
   });
 });

@@ -1,9 +1,29 @@
 import type { PlanoDieta } from '../lib/dieta';
-import type { Aplicacao, Ciclo, Medida, MetasProjeto, Perfil, RegistroDiario, TreinoDia } from '../lib/tipos';
+import type { Aplicacao, Ciclo, DecisaoFase, Fase, Medida, MetasProjeto, Perfil, RegistroDecisao, RegistroDiario, TreinoDia } from '../lib/tipos';
 
 export interface Usuario {
   id: string;
   email: string;
+}
+
+/**
+ * O ciclo foi gravado, mas sem algum campo novo (falta o SQL de evolução no
+ * banco). Leva o ciclo salvo para quem chamou poder seguir (ex.: importação).
+ */
+export class CicloSalvoEmParte extends Error {
+  constructor(
+    mensagem: string,
+    readonly ciclo: Ciclo,
+  ) {
+    super(mensagem);
+    this.name = 'CicloSalvoEmParte';
+  }
+}
+
+export interface DecisoesCiclo {
+  ciclo_id: string;
+  decisoes: DecisaoFase[];
+  fases: Fase[];
 }
 
 export interface InscricaoPush {
@@ -31,6 +51,8 @@ export interface Repositorio {
 
   obterCiclo(): Promise<Ciclo | null>;
   salvarCiclo(c: Omit<Ciclo, 'id'> & { id?: string }): Promise<Ciclo>;
+  /** Decisões do fim de fase e o plano (o "Repetir fase" estende uma fase) */
+  salvarDecisoes(d: DecisoesCiclo): Promise<void>;
 
   listarAplicacoes(): Promise<Aplicacao[]>;
   salvarAplicacao(a: Omit<Aplicacao, 'id'> & { id?: string }): Promise<void>;
@@ -60,4 +82,10 @@ export interface Repositorio {
   // Aba Dieta: um plano por conta
   obterDieta(): Promise<PlanoDieta | null>;
   salvarDieta(p: PlanoDieta): Promise<void>;
+
+  // Registro de decisões (mudanças de déficit, fator, fases, metas, dose)
+  /** null = a tabela ainda não existe no banco (falta o SQL de evolução) */
+  listarRegistroDecisoes(): Promise<RegistroDecisao[] | null>;
+  salvarRegistroDecisao(r: RegistroDecisao): Promise<void>;
+  excluirRegistroDecisao(id: string): Promise<void>;
 }

@@ -8,13 +8,14 @@ import { useCalculos } from '../dados/useCalculos';
 import { formatarData } from '../lib/datas';
 import { cm, corVariacao, kg, pp, sinal } from '../lib/formato';
 import { ganhos } from '../lib/gordura';
+import { marcosDasDecisoes } from '../lib/registroDecisoes';
 import type { Medida } from '../lib/tipos';
 
 const GraficoComposicao = lazy(() => import('../componentes/graficos').then((m) => ({ default: m.GraficoComposicao })).catch(() => ({ default: SemGrafico })));
 
 /** Equivale à aba "% de Gordura" da Planilha Gorgonoidiana. */
 export function Medidas() {
-  const { medidas, perfil } = useDados();
+  const { medidas, perfil, registroDecisoes } = useDados();
   const { composicoes } = useCalculos();
   const [editando, setEditando] = useState<Medida | null>(null);
   const [nova, setNova] = useState(false);
@@ -79,7 +80,7 @@ export function Medidas() {
         <section className="cartao">
           <h2>Evolução</h2>
           <Suspense fallback={<div className="grafico" />}>
-            <GraficoComposicao dados={composicoes} />
+            <GraficoComposicao dados={composicoes} marcos={marcosDasDecisoes(registroDecisoes)} />
           </Suspense>
         </section>
       )}

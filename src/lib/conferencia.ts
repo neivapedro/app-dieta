@@ -46,6 +46,8 @@ export interface Tendencia {
   deficit_dia: number;
   /** Meia-largura da faixa de 95% do déficit (t de Student, n−2 graus de liberdade) */
   ic95_dia: number;
+  /** Meia-largura da faixa de 95% de cada ritmo semanal (mesma conta do déficit) */
+  ic95_semana: { gorda: number; magra: number; peso: number; cintura: number };
 }
 
 /**
@@ -68,7 +70,8 @@ export function tendenciaMedidas(composicoes: Composicao[], janelaDias = 42): Te
   // balança, então os erros delas andam juntos (não dá para somar como independentes).
   const e = reta(xs, janela.map((c) => c.massa_gorda_kg! * KCAL_KG_GORDA + c.massa_magra_kg! * KCAL_KG_MAGRA));
   const deficit_dia = -e.inclinacao;
-  const ic95_dia = tStudent95(janela.length - 2) * e.erro;
+  const t = tStudent95(janela.length - 2);
+  const ic95_dia = t * e.erro;
   return {
     de: janela[0].data,
     ate: ultima,
@@ -80,7 +83,22 @@ export function tendenciaMedidas(composicoes: Composicao[], janelaDias = 42): Te
     bf_semana: bf.inclinacao * 7,
     deficit_dia,
     ic95_dia,
+    ic95_semana: { gorda: t * g.erro * 7, magra: t * m.erro * 7, peso: t * p.erro * 7, cintura: t * ci.erro * 7 },
   };
+}
+
+/**
+ * Ritmo semanal de uma série (ex.: pesagens de um bloco de dose), por
+ * regressão, com a faixa de 95%. Precisa de 3 pontos cobrindo 1 semana.
+ */
+export function ritmoComFaixa(pontos: { data: string; valor: number }[]): { semana: number; ic95: number; n: number } | null {
+  const pts = [...pontos].sort((a, b) => a.data.localeCompare(b.data));
+  if (pts.length < 3 || diferencaDias(pts[0].data, pts[pts.length - 1].data) < 7) return null;
+  const r = reta(
+    pts.map((p) => diferencaDias(pts[0].data, p.data)),
+    pts.map((p) => p.valor),
+  );
+  return { semana: r.inclinacao * 7, ic95: tStudent95(pts.length - 2) * r.erro * 7, n: pts.length };
 }
 
 /** Déficit por dia necessário para chegar à massa gorda da meta até a data final (massa magra mantida). */

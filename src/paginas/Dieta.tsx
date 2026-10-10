@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { FormConfigDieta, FormRefeicao, gr, kcal, LinhaItem, LinhaMacros, novoItem, SeletorAlimento } from '../componentes/dieta';
+import { SugestaoPosDieta } from '../componentes/projeto';
 import { Bloco } from '../componentes/ui';
 import { useDados } from '../dados/contexto';
 import { useAlimentos } from '../dados/useAlimentos';
@@ -104,7 +105,8 @@ export function Dieta() {
   const deficitPlano = metas && total.kcal > 0 ? metas.gasto_total - total.kcal : metas ? -plano.config.ajuste_kcal : null;
   const metaProjeto = perfil?.metas_projeto;
   const gordaMeta = metaProjeto?.peso_kg && metaProjeto?.bf ? (metaProjeto.peso_kg * metaProjeto.bf) / 100 : null;
-  const necessario = gordaMeta !== null && ultima?.massa_gorda_kg != null && treino ? deficitNecessario(ultima.massa_gorda_kg, gordaMeta, hoje, treino.fim) : null;
+  // Na fase pós-remédio não há mais prazo de meta do projeto: "Para a meta" some
+  const necessario = gordaMeta !== null && ultima?.massa_gorda_kg != null && treino && !treino.pos ? deficitNecessario(ultima.massa_gorda_kg, gordaMeta, hoje, treino.fim) : null;
 
   const atualizar = (p: Partial<PlanoDieta>) => salvarDieta({ ...plano, ...p });
   const mudarRefeicao = (id: string, fn: (r: Refeicao) => Refeicao) => atualizar({ refeicoes: plano.refeicoes.map((r) => (r.id === id ? fn(r) : r)) });
@@ -198,6 +200,8 @@ export function Dieta() {
 
   return (
     <div className="pilha">
+      <SugestaoPosDieta />
+
       {/* Meta do dia (compacta: o detalhe fica em "Como é calculado") */}
       <section className="cartao">
         <div className="cartao-cab" style={{ marginBottom: 6 }}>
