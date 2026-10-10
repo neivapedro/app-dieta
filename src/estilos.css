@@ -378,6 +378,8 @@ details.ajuda[open] summary { margin-bottom: 8px; }
 .falta-inline { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 8px; width: 100%; font-size: 0.78rem; font-variant-numeric: tabular-nums; }
 .item-dieta .falta-inline { padding: 6px 8px; border-radius: 8px; background: var(--superficie-2); }
 .estado-gravacao { width: 100%; font-size: 0.72rem; font-weight: 600; color: var(--texto-2); }
+.rodape-fixo { position: sticky; bottom: calc(var(--nav-altura) + env(safe-area-inset-bottom) + 8px); z-index: 6; display: flex; flex-direction: column; gap: 6px; }
+.rodape-fixo > .saldo-fixo, .rodape-fixo > .alerta.desfazer { position: static; }
 .alerta.desfazer { position: sticky; bottom: calc(var(--nav-altura) + env(safe-area-inset-bottom) + 64px); z-index: 6; align-items: center; background: linear-gradient(color-mix(in srgb, var(--info) 12%, transparent), color-mix(in srgb, var(--info) 12%, transparent)), var(--superficie); }
 .refeicao-titulo { min-height: 36px; }
 details.ajuda summary { min-height: 32px; display: flex; align-items: center; }

@@ -144,7 +144,7 @@ export class RepositorioLocal implements Repositorio {
   }
   async salvarDecisoes(d: DecisoesCiclo) {
     this.alterar((b) => {
-      if (b.ciclo && b.ciclo.id === d.ciclo_id) b.ciclo = { ...b.ciclo, decisoes: d.decisoes, fases: d.fases };
+      if (b.ciclo && b.ciclo.id === d.ciclo_id) b.ciclo = { ...b.ciclo, decisoes: d.decisoes, fases: d.fases ?? b.ciclo.fases };
     });
   }
 

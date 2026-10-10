@@ -25,7 +25,7 @@ function kcal(n: number): string {
 }
 
 /** Até 2 casas, sem zeros sobrando (1,2 · 1,45) */
-function curto(n: number): string {
+export function curto(n: number): string {
   return n.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
 
@@ -47,8 +47,9 @@ export function compararDieta(antes: ConfigDieta, depois: ConfigDieta): Alteraca
   const r: Alteracao[] = [];
   empurrar(r, 'dieta', 'Déficit/superávit', kcal(antes.ajuste_kcal), kcal(depois.ajuste_kcal));
   empurrar(r, 'dieta', 'Fator de atividade', curto(antes.fator_atividade), curto(depois.fator_atividade));
-  empurrar(r, 'dieta', 'Proteína animal', `${num(antes.ptn_gkg, 1)} g/kg`, `${num(depois.ptn_gkg, 1)} g/kg`);
-  empurrar(r, 'dieta', 'Gordura', `${num(antes.gord_gkg, 1)} g/kg`, `${num(depois.gord_gkg, 1)} g/kg`);
+  // Até 2 casas: 2,2 → 2,24 muda a meta e entra no registro
+  empurrar(r, 'dieta', 'Proteína animal', `${curto(antes.ptn_gkg)} g/kg`, `${curto(depois.ptn_gkg)} g/kg`);
+  empurrar(r, 'dieta', 'Gordura', `${curto(antes.gord_gkg)} g/kg`, `${curto(depois.gord_gkg)} g/kg`);
   empurrar(r, 'dieta', 'Exercício da meta', exercicioSemana(antes), exercicioSemana(depois));
   // "Como planejado" × "Pelo que fiz" também muda a meta de kcal
   const modo = (c: ConfigDieta) => (c.usar_aderencia ? 'pelo que fiz' : 'como planejado');
@@ -96,7 +97,13 @@ export function compararMetas(antes: MetasProjeto | null | undefined, depois: Me
  * mudança (vão para o PDF por outro caminho). Removidas: ids para apagar os
  * registros que elas geraram.
  */
-export function alteracoesDasDecisoesFase(antes: DecisaoFase[], depois: DecisaoFase[], fases: Fase[]): { novas: Alteracao[]; removidas: string[] } {
+export function alteracoesDasDecisoesFase(
+  antes: DecisaoFase[],
+  depois: DecisaoFase[],
+  fases: Fase[],
+  /** Fases antes da operação: o "de" do Repetir são as semanas planejadas antes (não as doses feitas) */
+  fasesAntes?: Fase[],
+): { novas: Alteracao[]; removidas: string[] } {
   const idsAntes = new Set(antes.map((d) => d.id));
   const idsDepois = new Set(depois.map((d) => d.id));
   const novas: Alteracao[] = [];
@@ -107,10 +114,11 @@ export function alteracoesDasDecisoesFase(antes: DecisaoFase[], depois: DecisaoF
     else if (d.escolha === 'repetir' && fase !== null) {
       const total = fases[fase - 1]?.semanas ?? null;
       const mais = d.semanas ?? 0;
+      const anterior = fasesAntes?.[fase - 1]?.semanas ?? (total === null ? null : total - mais);
       novas.push({
         tipo: 'plano',
         campo: `Repetir fase ${fase}`,
-        de: total === null ? null : semanas(total - mais),
+        de: total === null || anterior === null ? null : semanas(anterior),
         para: total === null ? `+${mais} sem.` : semanas(total),
         ref: d.id,
       });

@@ -39,7 +39,8 @@ export function sinal(n: number | null | undefined, casas = 1, sufixo = ''): str
  * `limiar` (mínima mudança detectável, ver MDC em gordura.ts) fica neutra.
  */
 export function corVariacao(n: number | null | undefined, menorMelhor: boolean, limiar = 0): string {
-  if (n === null || n === undefined || Math.abs(n) < Math.max(limiar, 0.00001)) return '';
+  // Tolerância de ponto flutuante: 79,4 − 81,6 = −2,1999999… conta como −2,2 (o limite exato colore)
+  if (n === null || n === undefined || Math.abs(n) < Math.max(limiar - 1e-6, 0.00001)) return '';
   return (n < 0) === menorMelhor ? 'bom' : 'ruim';
 }
 

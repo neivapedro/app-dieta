@@ -18,9 +18,10 @@ import {
   marcacao,
   mgParaMl,
   passoDaMarca,
+  semanasFeitasNaFase,
   verificarPlano,
 } from '../lib/ciclo';
-import { diaDaSemana, formatarData } from '../lib/datas';
+import { diaDaSemana, formatarData, hojeLocal } from '../lib/datas';
 import { compararFases } from '../lib/registroDecisoes';
 import { mg, num, paraNumero, paraTexto, sinal, ui } from '../lib/formato';
 import type { Aplicacao, Ciclo as TCiclo, Fase } from '../lib/tipos';
@@ -177,7 +178,7 @@ function Agenda() {
         )}
         <p className="mudo" style={{ marginTop: 8 }}>
           Prevista: a dose que o app indicava pelas aplicações anteriores (a mesma até completar a fase; a seguinte só depois de decidir subir). UI pela
-          concentração gravada em cada aplicação. Peso médio e náusea máxima consideram os registros do Diário entre uma aplicação e a seguinte. Toque numa
+          concentração gravada em cada aplicação. Peso médio (Diário e medições) e náusea máxima (Diário) consideram os registros entre uma aplicação e a seguinte. Toque numa
           linha para editar.
         </p>
       </section>
@@ -226,7 +227,10 @@ function Plano() {
   }
 
   function repetir(i: number, semanas: number) {
-    alterar(i, 'semanas', String(fasesValidas[i].semanas + semanas));
+    // Fase do degrau atual: conta a partir das doses já feitas (como o "Repetir fase" do Início)
+    const d = resumo?.degrau.degrau;
+    const base = d && d.ultima_fase === i ? Math.max(fasesValidas[i].semanas, semanasFeitasNaFase(fasesValidas, d, i)) : fasesValidas[i].semanas;
+    alterar(i, 'semanas', String(base + semanas));
   }
 
   async function salvar() {
@@ -386,7 +390,12 @@ function Ajustes() {
     const intervaloN = Math.round(paraNumero(intervalo) ?? 0);
     if (totalN <= 0 || concN <= 0 || intervaloN <= 0) return setMsg({ tipo: 'erro', texto: 'Todos os valores precisam ser maiores que zero.' });
     if (!inicio) return setMsg({ tipo: 'erro', texto: 'Informe a data da 1ª aplicação.' });
+    // O total não pode ser menor que o que já foi aplicado neste ciclo
+    const aplicado = doCiclo.reduce((s, a) => s + a.dose_mg, 0);
+    if (totalN + 1e-9 < aplicado)
+      return setMsg({ tipo: 'erro', texto: `Já foram aplicados ${mg(aplicado)} neste ciclo: a quantidade total não pode ser menor (você digitou ${mg(totalN)}).` });
     if (concMudou && !mudancaConc) return setMsg({ tipo: 'erro', texto: 'Diga se a concentração nova é de um frasco novo ou a correção de um erro de digitação.' });
+    const mudouIntervalo = intervaloN !== c.intervalo_dias && doCiclo.length > 0;
     // Gravado sem algum campo novo (banco sem o SQL de evolução): o resto vale
     let emParte: string | null = null;
     try {
@@ -404,6 +413,22 @@ function Ajustes() {
             // Marcas de 1 UI sem nunca ter escolhido: continua "não informada"
             seringa_marca_ui: c.seringa_marca_ui == null && marca === 1 ? null : marca,
             frasco_aberto_em: aberto || null,
+            // Troca do intervalo com doses já feitas: vale daqui em diante (as antigas seguem o de antes)
+            decisoes: mudouIntervalo
+              ? [
+                  ...(c.decisoes ?? []),
+                  {
+                    id: crypto.randomUUID(),
+                    data: hojeLocal(),
+                    apos_aplicacao: doCiclo.length,
+                    dose_mg: resumo?.proxima?.dose_mg ?? 0,
+                    fase_indice: null,
+                    escolha: 'intervalo',
+                    intervalo_anterior: c.intervalo_dias,
+                    intervalo_dias: intervaloN,
+                  },
+                ]
+              : c.decisoes,
           });
         } catch (e) {
           if (!(e instanceof CicloSalvoEmParte)) throw e;

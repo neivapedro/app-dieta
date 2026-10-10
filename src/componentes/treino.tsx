@@ -127,7 +127,9 @@ export function FormDiaTreino({ data, marcarCardio, aoFechar }: { data: string; 
 
   const kmN = paraNumero(km);
   const seg = tempo.trim() ? lerTempo(tempo) : null;
-  const pace = seg && kmN ? seg / kmN : null;
+  // Distância vazia: as contas usam a padrão (5 km), então o pace é conferido com ela também
+  const kmConta = km.trim() ? kmN : KM_CORRIDA_PADRAO;
+  const pace = seg && kmConta ? seg / kmConta : null;
 
   function salvar(e: FormEvent) {
     e.preventDefault();
@@ -181,7 +183,8 @@ export function FormDiaTreino({ data, marcarCardio, aoFechar }: { data: string; 
             </div>
             {pace && (
               <div className={`alerta ${paceValido(pace) ? 'info' : 'erro'}`}>
-                Pace: {formatarTempo(pace)} /km{paceValido(pace) ? '' : ' — confira o tempo'}
+                Pace: {formatarTempo(pace)} /km{!km.trim() ? ` (com ${KM_CORRIDA_PADRAO} km, a distância padrão)` : ''}
+                {paceValido(pace) ? '' : ' — confira o tempo'}
               </div>
             )}
           </>
@@ -208,8 +211,19 @@ export function FormDiaTreino({ data, marcarCardio, aoFechar }: { data: string; 
 }
 
 /** Metas para o fim do projeto, definidas depois de conhecer as medidas reais. */
-export function FormMetas({ base, aoFechar, primeiraVez }: { base: Composicao | null; aoFechar: () => void; primeiraVez?: boolean }) {
-  const { perfil, executar, medidas, registrarAlteracoes } = useDados();
+export function FormMetas({
+  base,
+  aoFechar,
+  primeiraVez,
+  encerrado,
+}: {
+  base: Composicao | null;
+  aoFechar: () => void;
+  primeiraVez?: boolean;
+  /** Projeto encerrado: a base é a medição final do projeto, não a de hoje */
+  encerrado?: boolean;
+}) {
+  const { perfil, executar, medidas, registrarAlteracoes, limparErro } = useDados();
   const m = perfil?.metas_projeto;
   // Altura do perfil (fonte única); sem ela, a da última medição
   const altura = perfil?.altura_cm ?? [...medidas].sort((a, b) => b.data.localeCompare(a.data))[0]?.altura_cm ?? null;
@@ -258,12 +272,15 @@ export function FormMetas({ base, aoFechar, primeiraVez }: { base: Composicao | 
       registrarAlteracoes(compararMetas(m, metas));
       aoFechar();
     } catch (e) {
+      // Uma mensagem só, no formulário (executar já tinha posto a mesma no aviso do topo)
+      limparErro();
       setErro((e as Error).message);
       setSalvando(false);
     }
   }
 
-  const atual = (v: number | null | undefined, f: (n: number | null | undefined) => string) => (base ? `Hoje: ${f(v)}` : undefined);
+  const quando = base && encerrado ? `Final do projeto (${formatarData(base.data).slice(0, 5)})` : 'Hoje';
+  const atual = (v: number | null | undefined, f: (n: number | null | undefined) => string) => (base ? `${quando}: ${f(v)}` : undefined);
 
   return (
     <Folha titulo="Metas do fim do projeto" aoFechar={aoFechar}>
@@ -351,7 +368,7 @@ export function FormMetas({ base, aoFechar, primeiraVez }: { base: Composicao | 
         ) : null}
         {base && (
           <p className="mudo">
-            Referência: massa magra hoje {kg(base.massa_magra_kg)} · massa gorda {kg(base.massa_gorda_kg)} ({num(base.bf, 1)}%).
+            Referência: massa magra {encerrado ? `no final do projeto (${formatarData(base.data).slice(0, 5)})` : 'hoje'} {kg(base.massa_magra_kg)} · massa gorda {kg(base.massa_gorda_kg)} ({num(base.bf, 1)}%).
           </p>
         )}
         {erro && <div className="alerta erro">{erro}</div>}

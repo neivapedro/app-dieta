@@ -8,7 +8,8 @@ import { useDados } from '../dados/contexto';
 import { useAlimentos } from '../dados/useAlimentos';
 import { useCalculos } from '../dados/useCalculos';
 import { useMetaAgua, useTreino } from '../dados/useTreino';
-import { composicaoPorFase, rotuloBloco, sintomasPorFase } from '../lib/analise';
+import { analisarGeral, composicaoPorFase, rotuloBloco, sintomasPorFase } from '../lib/analise';
+import { fasePos } from '../lib/projeto';
 import { aguaSemana, mediaSono7, SONO_MINIMO_H, sonoPorFase, TEXTO_SONO_BAIXO } from '../lib/bemestar';
 import { descreverFaseAtual } from '../lib/ciclo';
 import { ritmoPercentual, tendenciaMedidas, tendenciaPeso, textoQualidade } from '../lib/conferencia';
@@ -27,7 +28,7 @@ import {
   toleranciaIntervalo,
 } from '../lib/consulta';
 import { dataPorExtenso, diferencaDias, formatarData, somarDias } from '../lib/datas';
-import { decisoesPorDia, marcosDasDecisoes } from '../lib/registroDecisoes';
+import { curto, decisoesPorDia, marcosDasDecisoes } from '../lib/registroDecisoes';
 import { historicoAlertas } from '../lib/seguranca';
 import { chaveSlot, montarSecoesFotos } from '../lib/fotos';
 import type { ImagemPdf, ModeloRelatorio } from '../lib/relatorioPdf';
@@ -81,8 +82,18 @@ function Comparacao({ ini, atu }: { ini: Composicao; atu: Composicao | null }) {
 const COR_FAIXA = { ideal: 'bom', rapido: 'ruim', lento: '', ganho: 'ruim' } as const;
 
 export function Analise() {
-  const { perfil, ciclo, diario, medidas, treinos, dieta, registroDecisoes } = useDados();
-  const { resumo, geral, fases, serie, hoje, composicoes, fimRemedio, fimFases } = useCalculos();
+  const { perfil, ciclo, diario, medidas, treinos, dieta, registroDecisoes, aplicacoes: todasAplicacoes } = useDados();
+  const { resumo, geral: geralHoje, fases, serie, hoje, composicoes, fimRemedio, fimFases, posRemedio } = useCalculos();
+  // Remédio concluído: Resumo e "Medidas: início × agora" mostram o resultado do período do remédio (como o Balanço do projeto)
+  const geral =
+    fimRemedio && fimRemedio < hoje
+      ? analisarGeral(
+          geralHoje.inicio_ciclo,
+          serie.filter((p) => p.data <= fimRemedio),
+          composicoes.filter((c) => c.data <= fimRemedio),
+          fimRemedio,
+        )
+      : geralHoje;
   const treino = useTreino();
   const { banco } = useAlimentos();
   // O gerador de PDF é baixado ao abrir a aba: no toque, o PDF sai na hora
@@ -93,6 +104,10 @@ export function Analise() {
     gerador.current.catch(() => (gerador.current = null));
   }, []);
   const [pdf, setPdf] = useState<File | null>(null);
+  // Dados mudaram depois de gerar: o PDF guardado ficou velho (Compartilhar sumiria com ele)
+  useEffect(() => {
+    setPdf(null);
+  }, [registroDecisoes, ciclo, diario, medidas, todasAplicacoes, dieta, treinos, perfil]);
   const [msgPdf, setMsgPdf] = useState<{ tipo: string; texto: string } | null>(null);
   const [gerando, setGerando] = useState(false);
   // Fotos no PDF: desmarcado por padrão e sem lembrar a escolha (o PDF pode ser compartilhado)
@@ -111,7 +126,7 @@ export function Analise() {
 
   const datasAplic = resumo.linhas.map((l) => l.aplicacao.data);
   // Com o remédio concluído, as fases vão até o fim do período do remédio (fimFases), não até hoje
-  const compFases = composicaoPorFase(fases, composicoes, treino ? treinos : null, fimFases);
+  const compFases = composicaoPorFase(fases, composicoes, treino ? treinos : null, fimFases, hoje);
   const sintomas = sintomasPorFase(fases, datasAplic, diario, fimFases);
   // Sono por fase ao lado da massa magra e da cintura (associação, não causa)
   const sonoFases = sonoPorFase(fases, diario, fimFases);
@@ -120,9 +135,11 @@ export function Analise() {
   const agua = aguaSemana(diario, hoje, (d) => metaAguaDe(d).meta);
   const temUrina = agua.urina.clara + agua.urina.amarela + agua.urina.escura > 0;
   const temSintomas = sintomas.some((s) => s.vomito !== null || s.diarreia !== null || s.intestino_preso !== null);
-  const faseAtual = descreverFaseAtual(resumo);
+  // Fase pós-remédio iniciada: a "fase atual" é ela (o plano e a sobra do frasco já não valem)
+  const faseDepois = posRemedio?.bloco_inicio ? fasePos(posRemedio.bloco_inicio, hoje) : null;
+  const faseAtual = faseDepois ? `Fase pós-remédio · semana ${(faseDepois.semana ?? 0) + 1}` : descreverFaseAtual(resumo);
   // Decisões do fim de fase e anotações para o médico (vão para o PDF)
-  const ESCOLHAS = { subir: 'Subir', repetir: 'Repetir fase', confirmar_fase: 'Confirmou fase', anotacao: 'Anotação', pos_remedio: 'Fase pós-remédio' } as const;
+  const ESCOLHAS = { subir: 'Subir', repetir: 'Repetir fase', confirmar_fase: 'Confirmou fase', anotacao: 'Anotação', pos_remedio: 'Fase pós-remédio', intervalo: 'Intervalo' } as const;
   const decisoes = [...(ciclo?.decisoes ?? [])].sort((a, b) => a.data.localeCompare(b.data) || a.apos_aplicacao - b.apos_aplicacao);
   const detalheDecisao = (d: (typeof decisoes)[number]) =>
     d.escolha === 'subir'
@@ -133,7 +150,9 @@ export function Analise() {
           ? `${num(d.dose_mg)} mg seguindo a fase ${(d.fase_indice ?? 0) + 1}`
           : d.escolha === 'pos_remedio'
             ? `início em ${formatarData(d.bloco_inicio ?? d.data, true)} (última dose, ${num(d.dose_mg)} mg)`
-            : (d.texto ?? '');
+            : d.escolha === 'intervalo'
+              ? `${d.intervalo_anterior ?? '?'} -> ${d.intervalo_dias ?? '?'} dias entre doses`
+              : (d.texto ?? '');
   // Ritmo pelas medições (em jejum, às segundas) quando houver 3 ou mais; senão, por todas as pesagens
   const serieMedidas = serie.filter((p) => p.origem === 'medida');
   const pelaMedida = serieMedidas.length >= 3;
@@ -211,7 +230,9 @@ export function Analise() {
     // Quadro de decisão: fase atual (ou que termina) × anterior, e a próxima dose
     const p = resumo!.proxima;
     const s = resumo!.degrau;
-    const proxima = p
+    const proxima = faseDepois
+      ? `Próxima dose prevista: nenhuma (remédio concluído; fase pós-remédio desde ${formatarData(faseDepois.inicio)}).`
+      : p
       ? `Próxima dose prevista: ${formatarData(p.data)} · ${mg(p.dose_mg)}${
           p.estado === 'pendente' && s.fase_seguinte
             ? ` (a dose continua até a decisão; a fase seguinte do Plano é ${mg(s.fase_seguinte.fase.dose_mg)})`
@@ -225,7 +246,20 @@ export function Analise() {
     const colunas = colunasQuadro(fases, compFases, diario, datasAplic, fimFases);
     const quadro = colunas.atual ? montarQuadro({ atual: colunas.atual, anterior: colunas.anterior }, !!treino, proxima, !!fimRemedio) : null;
     const semanal = aplicacoes.length
-      ? tabelaSemanal(semanasDoCiclo({ inicio: inicioCiclo, hoje, aplicacoes, serie, composicoes, diario, treinos: treino ? treinos : null }), !!treino)
+      ? tabelaSemanal(
+          semanasDoCiclo({
+            inicio: inicioCiclo,
+            hoje,
+            aplicacoes,
+            serie,
+            composicoes,
+            diario,
+            treinos: treino ? treinos : null,
+            // Só os dias do placar: projeto e, se houver, a fase pós-remédio
+            periodosTreino: treino ? [treino.projeto, ...(treino.placarPos ? [{ inicio: treino.inicio, fim: treino.fim }] : [])] : undefined,
+          }),
+          !!treino,
+        )
       : null;
 
     if (ini) {
@@ -309,7 +343,7 @@ export function Analise() {
         mg(l.aplicacao.dose_mg),
         l.fase ? String(l.fase.indice + 1) : 'fora',
         l.atraso_dias === 0 ? '–' : `${l.atraso_dias > 0 ? '+' : ''}${l.atraso_dias} d`,
-        textoTolerancia(toleranciaIntervalo(diario, l.aplicacao.data, resumo!.linhas[i + 1]?.aplicacao.data ?? null, hoje)),
+        textoTolerancia(toleranciaIntervalo(diario, l.aplicacao.data, resumo!.linhas[i + 1]?.aplicacao.data ?? null, fimFases)),
       ]),
       nota: resumo!.linhas.length ? 'Náusea máxima (0 a 3) e dias com sintoma no Diário entre esta dose e a seguinte.' : undefined,
     });
@@ -341,10 +375,7 @@ export function Analise() {
         nota: `Meta ${num(metasDieta.meta_kcal, 0)} kcal/dia (gasto estimado ${num(metasDieta.gasto_total, 0)} kcal; basal Katch-McArdle ${num(
           metasDieta.tmb,
           0,
-        )} kcal) · proteína animal ${num(dieta.config.ptn_gkg, 1)} g/kg de massa magra (${num(metasDieta.ptn_animal_g, 0)} g) · gordura ${num(
-          dieta.config.gord_gkg,
-          1,
-        )} g/kg (${num(metasDieta.gord_g, 0)} g) · carboidrato fecha a conta.${baseMetas}`,
+        )} kcal) · proteína animal ${curto(dieta.config.ptn_gkg)} g/kg de massa magra (${num(metasDieta.ptn_animal_g, 0)} g) · gordura ${curto(dieta.config.gord_gkg)} g/kg (${num(metasDieta.gord_g, 0)} g) · carboidrato fecha a conta.${baseMetas}`,
       });
     }
     if (blocosTreino.length) {
@@ -379,6 +410,8 @@ export function Analise() {
         pesos: serie.map((p) => ({ dia: dia(p.data), kg: p.peso_kg })),
         doses: resumo!.linhas.map((l) => ({ dia: dia(l.aplicacao.data), mg: l.aplicacao.dose_mg })),
         diaFinal: dia(hoje),
+        // Remédio concluído: o degrau da última dose termina no fim do período do remédio
+        ...(fimRemedio && fimRemedio < hoje ? { fimDoses: dia(fimRemedio) } : {}),
         rotulo,
         marcos: decisoesPorDia(registroDecisoes).map((d) => dia(d.data)),
       },
@@ -529,7 +562,7 @@ export function Analise() {
         <h2>Peso × dose</h2>
         {serie.length > 0 || resumo.linhas.length > 0 ? (
           <Suspense fallback={<div className="grafico" />}>
-            <GraficoPesoDose serie={serie} linhas={resumo.linhas} hoje={hoje} marcos={marcosDasDecisoes(registroDecisoes)} />
+            <GraficoPesoDose serie={serie} linhas={resumo.linhas} hoje={hoje} fimDose={fimRemedio && fimRemedio < hoje ? fimRemedio : undefined} marcos={marcosDasDecisoes(registroDecisoes)} />
           </Suspense>
         ) : (
           <Vazio>Registre pesos no Diário ou nas Medidas para ver o gráfico.</Vazio>
@@ -815,8 +848,8 @@ export function Analise() {
           <h2>Plano alimentar</h2>
           <p className="texto-2">
             Meta {num(metasDieta.meta_kcal, 0)} kcal/dia (gasto estimado {num(metasDieta.gasto_total, 0)} kcal; basal Katch-McArdle {num(metasDieta.tmb, 0)}{' '}
-            kcal) · proteína animal {num(dieta.config.ptn_gkg, 1)} g/kg de massa magra ({num(metasDieta.ptn_animal_g, 0)} g) · gordura{' '}
-            {num(dieta.config.gord_gkg, 1)} g/kg ({num(metasDieta.gord_g, 0)} g) · carboidrato fecha a conta.{baseMetas}
+            kcal) · proteína animal {curto(dieta.config.ptn_gkg)} g/kg de massa magra ({num(metasDieta.ptn_animal_g, 0)} g) · gordura{' '}
+            {curto(dieta.config.gord_gkg)} g/kg ({num(metasDieta.gord_g, 0)} g) · carboidrato fecha a conta.{baseMetas}
           </p>
           {seguido && tendMedidas && (
             <div className="pilha" style={{ gap: 4, marginTop: 8 }}>

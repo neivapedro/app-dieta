@@ -59,6 +59,11 @@ function fmt(n: number, casas = 2): string {
   return n.toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas });
 }
 
+/** UI como no app: até 2 casas, sem zeros sobrando (35 UI · 12,5 UI) */
+function fmtUi(n: number): string {
+  return n.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
+
 Deno.serve(async (req) => {
   if (!cronSecret || req.headers.get('Authorization') !== `Bearer ${cronSecret}`) {
     return new Response('Não autorizado', { status: 401 });
@@ -112,6 +117,12 @@ Deno.serve(async (req) => {
     const passo = Number(ciclo.passo_ui) > 0 ? Number(ciclo.passo_ui) : 0.5;
     const ui = Math.floor(((dose / Number(ciclo.concentracao_mg_ml)) * 100) / passo + 0.5 + 1e-9) * passo;
     const semAplicar = ultima ? diferencaDias(ultima, dia) : 0;
+    // Mesmos avisos do app: seringa menor que a dose e saldo do frasco que não cobre a dose
+    const capacidade = Number(ciclo.seringa_capacidade_ui) > 0 ? Number(ciclo.seringa_capacidade_ui) : 100;
+    const saldo = Number(ciclo.quantidade_total_mg) - usado;
+    const avisoSeringa = ui > capacidade + 1e-9 ? ` ${fmtUi(ui)} UI passa da capacidade da sua seringa de ${fmtUi(capacidade)} UI: confira a seringa ou a dose no app.` : '';
+    const avisoSaldo =
+      estado !== 'fim_plano' && saldo + 1e-9 < dose ? ` O saldo (${fmt(saldo)} mg) não cobre a dose de ${fmt(dose)} mg: confira o frasco no app.` : '';
     const titulo = atraso === 0 ? '💉 Hoje é dia de aplicação' : `⚠️ Aplicação atrasada há ${atraso} dia(s)`;
     const fase =
       estado === 'fim_plano' ? 'dose extra (sobra do frasco)' : proxima.fase_indice !== null ? `fase ${fases[proxima.fase_indice].nome}` : 'dose fora do plano';
@@ -123,7 +134,7 @@ Deno.serve(async (req) => {
           : estado === 'fora_do_plano'
             ? ' Confirme no app qual fase seguir.'
             : '';
-    const corpo = `${numero}ª dose · ${fmt(dose)} mg (${fmt(ui)} UI) · ${fase}.${nota} Toque para registrar.`;
+    const corpo = `${numero}ª dose · ${fmt(dose)} mg (${fmtUi(ui)} UI) · ${fase}.${avisoSaldo}${avisoSeringa}${nota} Toque para registrar.`;
 
     const { data: inscricoes } = await db.from('inscricoes_push').select('id, endpoint, p256dh, auth').eq('user_id', perfil.user_id);
     let entregue = false;

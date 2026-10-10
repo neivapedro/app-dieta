@@ -125,7 +125,7 @@ export function CartaoFimProjeto({ aoRegistrar }: { aoRegistrar: () => void }) {
   if (!ciclo || !resumo || !proj) return null;
   const decisoes = ciclo.decisoes ?? [];
   const ultima = resumo.linhas.at(-1)?.aplicacao ?? null;
-  const salvar = (lista: DecisaoFase[]) => gravar({ tipo: 'decisoes', dado: { ciclo_id: ciclo.id, decisoes: lista, fases: ciclo.fases } });
+  const salvar = (lista: DecisaoFase[]) => gravar({ tipo: 'decisoes', dado: { ciclo_id: ciclo.id, decisoes: lista } });
 
   function iniciarPos() {
     if (!ultima) return;

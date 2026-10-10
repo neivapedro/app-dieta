@@ -6,7 +6,7 @@ import { useDados } from '../dados/contexto';
 import { useAlimentos } from '../dados/useAlimentos';
 import { useCalculos } from '../dados/useCalculos';
 import { useTreino } from '../dados/useTreino';
-import { deficitNecessario, faixaImprecisa, fracaoMagraDaPerda, kcalPorKgPerdido, ritmoEstimado, ritmoPercentual, tendenciaMedidas } from '../lib/conferencia';
+import { DEFICIT_MAXIMO_DIA, faixaImprecisa, fracaoMagraDaPerda, kcalPorKgPerdido, ritmoEstimado, paraAMeta, ritmoPercentual, tendenciaMedidas } from '../lib/conferencia';
 import { diferencaDias, formatarData } from '../lib/datas';
 import { ultimaNormal } from '../lib/gordura';
 import {
@@ -126,7 +126,7 @@ export function Dieta() {
   const metaProjeto = perfil?.metas_projeto;
   const gordaMeta = metaProjeto?.peso_kg && metaProjeto?.bf ? (metaProjeto.peso_kg * metaProjeto.bf) / 100 : null;
   // Na fase pós-remédio não há mais prazo de meta do projeto: "Para a meta" some
-  const necessario = gordaMeta !== null && ultima?.massa_gorda_kg != null && treino && !treino.pos ? deficitNecessario(ultima.massa_gorda_kg, gordaMeta, hoje, treino.fim) : null;
+  const necessario = gordaMeta !== null && ultima?.massa_gorda_kg != null && treino && !treino.pos ? paraAMeta(ultima.massa_gorda_kg, gordaMeta, hoje, treino.fim) : null;
   // "Segui o plano?" na janela da tendência: muda o conselho (só texto)
   const seguido = tendencia ? dietaNaTendencia(diario, tendencia) : null;
   const conselho = tendencia && seguido && ultima ? conselhoConferencia(tendencia, ultima.peso_kg, seguido, deficitPlano, plano.config.ajuste_kcal) : null;
@@ -297,6 +297,12 @@ export function Dieta() {
                     definindo o déficit em Ajustar.
                   </p>
                 )}
+                {!aderencia && plano.config.usar_aderencia && treino && (
+                  <p className="texto-2 aviso-txt">
+                    Exercício na meta está em "Pelo que fiz", mas o período atual do Treino ainda não tem 7 dias marcados: a meta usa o exercício planejado
+                    até lá. Dá para trocar em Ajustar.
+                  </p>
+                )}
                 {aderencia && (
                   <p className="texto-2">
                     Pelo que você marcou no Treino ({num(aderencia.treino * 100, 0)}% dos treinos, {num(aderencia.cardio * 100, 0)}% dos cardios), o
@@ -323,7 +329,10 @@ export function Dieta() {
                   <div className="grade grade-3">
                     <Bloco rotulo="O plano prevê" valor={deficitPlano !== null ? `${num(deficitPlano, 0)}/dia` : '–'} />
                     <Bloco rotulo="As medidas mostram" valor={`≈ ${num(tendencia.deficit_dia, 0)}/dia`} />
-                    <Bloco rotulo="Para a meta" valor={necessario !== null ? `${num(necessario, 0)}/dia` : '–'} />
+                    <Bloco
+                      rotulo="Para a meta"
+                      valor={necessario?.estado === 'ok' ? `${num(necessario.valor, 0)}/dia` : necessario?.estado === 'alcancada' ? 'alcançada' : '–'}
+                    />
                   </div>
                   <p className={impreciso ? 'alerta' : 'texto-2'} style={impreciso ? { display: 'block' } : undefined}>
                     {impreciso ? 'Ainda impreciso: ' : 'Faixa provável (95%): '}entre {num(tendencia.deficit_dia - tendencia.ic95_dia, 0)} e{' '}
@@ -334,7 +343,10 @@ export function Dieta() {
                     Déficit em kcal por dia. "As medidas mostram" vem da tendência de {tendencia.medicoes} medições ({formatarData(tendencia.de)} a{' '}
                     {formatarData(tendencia.ate)}): massa gorda {num(tendencia.gorda_semana, 2)} kg/sem e massa magra {num(tendencia.magra_semana, 2)}{' '}
                     kg/sem, a ~9.400 kcal por kg de gordura e ~1.800 por kg de massa magra.
-                    {necessario !== null && ' "Para a meta" é o déficit que leva a massa gorda da meta até o fim do projeto.'}
+                    {necessario?.estado === 'ok' && ' "Para a meta" é o déficit que leva a massa gorda da meta até o fim do projeto.'}
+                    {necessario?.estado === 'alcancada' && ' A massa gorda já está abaixo da meta do projeto.'}
+                    {necessario?.estado === 'inviavel' &&
+                      ` "Para a meta": ${necessario.dias === 1 ? 'falta 1 dia' : `faltam ${necessario.dias} dias`} para o fim do projeto, e chegar à massa gorda da meta pediria mais de ${num(DEFICIT_MAXIMO_DIA, 0)} kcal/dia de déficit, o que não é plausível.`}
                   </p>
                   {seguido && conselho && (
                     <div className="pilha" style={{ gap: 4 }}>
@@ -547,23 +559,28 @@ export function Dieta() {
         </section>
       )}
 
-      {removidos.length > 0 && (
-        <div className="alerta info desfazer" role="status">
-          <span className="cresce">{removidos.length === 1 ? `${removidos[0].nome} removido.` : `${removidos.length} alimentos removidos.`}</span>
-          <button className="botao pequeno primario" onClick={desfazer}>
-            Desfazer
-          </button>
-        </div>
-      )}
+      {/* Rodapé fixo: o aviso de desfazer fica logo acima do saldo, no mesmo bloco (nunca por cima dele) */}
+      {(removidos.length > 0 || saldo) && (
+        <div className="rodape-fixo">
+          {removidos.length > 0 && (
+            <div className="alerta info desfazer" role="status">
+              <span className="cresce">{removidos.length === 1 ? `${removidos[0].nome} removido.` : `${removidos.length} alimentos removidos.`}</span>
+              <button className="botao pequeno primario" onClick={desfazer}>
+                Desfazer
+              </button>
+            </div>
+          )}
 
-      {/* Saldo fixo no rodapé enquanto monta o plano */}
-      {saldo && (
-        <div className="saldo-fixo" aria-label="Quanto falta para a meta">
-          {chipsFalta()}
-          {estadoDieta !== 'salvo' && (
-            <span className={`estado-gravacao ${estadoDieta === 'erro' ? 'ruim' : estadoDieta === 'pendente' ? 'aviso-txt' : ''}`}>
-              {TEXTO_ESTADO[estadoDieta]}
-            </span>
+          {/* Saldo fixo no rodapé enquanto monta o plano */}
+          {saldo && (
+            <div className="saldo-fixo" aria-label="Quanto falta para a meta">
+              {chipsFalta()}
+              {estadoDieta !== 'salvo' && (
+                <span className={`estado-gravacao ${estadoDieta === 'erro' ? 'ruim' : estadoDieta === 'pendente' ? 'aviso-txt' : ''}`}>
+                  {TEXTO_ESTADO[estadoDieta]}
+                </span>
+              )}
+            </div>
           )}
         </div>
       )}

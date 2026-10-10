@@ -192,7 +192,7 @@ export function Inicio() {
   };
 
   const registroDoDia = fecharDia ? (
-    <CartaoFecharDia etiqueta={etiquetaDose} />
+    <CartaoFecharDia etiqueta={etiquetaDose} aoEditar={() => setDiarioAberto(true)} />
   ) : (
     <CartaoRegistroDia aoEditar={() => setDiarioAberto(true)} etiqueta={etiquetaDose} />
   );

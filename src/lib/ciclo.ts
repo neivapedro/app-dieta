@@ -1,5 +1,6 @@
 import { diferencaDias, formatarData, maiorData, somarDias } from './datas';
-import type { Aplicacao, Ciclo, DecisaoFase, Fase, RegistroDiario } from './tipos';
+import { serieDePeso, type PontoPeso } from './analise';
+import type { Aplicacao, Ciclo, DecisaoFase, Fase, Medida, RegistroDiario } from './tipos';
 import { LOCAIS_APLICACAO } from './tipos';
 
 const EPS = 1e-9;
@@ -465,13 +466,48 @@ export function limiarPausaLonga(intervaloDias: number | null | undefined): numb
   return Math.max(DIAS_PAUSA_LONGA, 2 * intervalo);
 }
 
+/**
+ * Intervalo que valia depois de uma aplicação feita em `data`: o da primeira
+ * troca de intervalo registrada depois dessa data (o "de" dela) ou, sem troca
+ * depois, o atual. Assim, mudar o intervalo nos Ajustes não reavalia as doses antigas.
+ */
+export function intervaloNaData(ciclo: Pick<Ciclo, 'intervalo_dias' | 'decisoes'>, data: string): number {
+  const atual = ciclo.intervalo_dias > 0 ? ciclo.intervalo_dias : 7;
+  const trocas = (ciclo.decisoes ?? [])
+    .filter((d) => d.escolha === 'intervalo' && d.data > data && (d.intervalo_anterior ?? 0) > 0)
+    .sort((a, b) => a.data.localeCompare(b.data));
+  return trocas.length ? trocas[0].intervalo_anterior! : atual;
+}
+
+/**
+ * Fase sugerida para uma dose fora do plano: subiu além da última fase
+ * conhecida → a seguinte; senão (dose reduzida ou igual) → a fase de dose mais
+ * perto da aplicada (empate: a de dose menor), nunca uma acima da dose atual.
+ */
+export function faseSugeridaForaDoPlano(fases: Pick<Fase, 'dose_mg'>[], ultimaConhecida: number | null, doseAplicada: number | null): number {
+  if (!fases.length) return 0;
+  const ultima = ultimaConhecida ?? -1;
+  const seguinte = Math.max(Math.min(ultima + 1, fases.length - 1), 0);
+  if (doseAplicada === null) return seguinte;
+  if (ultima >= 0 && ultima < fases.length && doseAplicada > fases[ultima].dose_mg + 1e-9) return seguinte;
+  let melhor = 0;
+  for (let i = 1; i < fases.length; i++) {
+    const di = Math.abs(fases[i].dose_mg - doseAplicada);
+    const dm = Math.abs(fases[melhor].dose_mg - doseAplicada);
+    if (di < dm - 1e-9 || (Math.abs(di - dm) <= 1e-9 && fases[i].dose_mg < fases[melhor].dose_mg)) melhor = i;
+  }
+  return melhor;
+}
+
 export function ordenarAplicacoes(aplicacoes: Aplicacao[]): Aplicacao[] {
   return [...aplicacoes].sort((a, b) => a.data.localeCompare(b.data) || a.id.localeCompare(b.id));
 }
 
-function janela(diario: RegistroDiario[], de: string, ate: string | null) {
-  const regs = diario.filter((r) => r.data >= de && (ate === null || r.data < ate));
-  const pesos = regs.map((r) => r.peso_kg).filter((p): p is number => p !== null);
+function janela(diario: RegistroDiario[], pesosDia: PontoPeso[], de: string, ate: string | null) {
+  const dentro = (d: string) => d >= de && (ate === null || d < ate);
+  const regs = diario.filter((r) => dentro(r.data));
+  // Pesos do Diário e das medições (no mesmo dia vale a medição; atípicas ficam fora)
+  const pesos = pesosDia.filter((p) => !p.atipica && dentro(p.data)).map((p) => p.peso_kg);
   const nauseas = regs.map((r) => r.nausea).filter((n): n is number => n !== null);
   return {
     peso_medio: pesos.length ? pesos.reduce((s, p) => s + p, 0) / pesos.length : null,
@@ -501,7 +537,9 @@ export function calcularCiclo(
   aplicacoes: Aplicacao[],
   diario: RegistroDiario[],
   hoje: string,
+  medidas: Medida[] = [],
 ): ResumoCiclo {
+  const pesosDia = serieDePeso(diario, medidas);
   const conc = ciclo.concentracao_mg_ml;
   const intervalo = ciclo.intervalo_dias > 0 ? ciclo.intervalo_dias : 7;
   const ordenadas = ordenarAplicacoes(aplicacoes.filter((a) => a.ciclo_id === ciclo.id));
@@ -521,15 +559,17 @@ export function calcularCiclo(
     const fase = faseNoDegrau(ciclo.fases, numeradas, degrau, posicao);
     // O que o app indicava com as aplicações anteriores (mesma regra da próxima dose)
     const prevista = ciclo.fases.length ? situacaoDoDegrau(ciclo.fases, ordenadas.slice(0, i), decisoes).dose_mg : ap.dose_mg;
-    const data_prevista = i === 0 ? ciclo.data_inicio : somarDias(ordenadas[i - 1].data, intervalo);
+    // Intervalo que valia depois da aplicação anterior (uma troca nos Ajustes vale daí em diante)
+    const intervaloPar = i === 0 ? intervalo : intervaloNaData(ciclo, ordenadas[i - 1].data);
+    const data_prevista = i === 0 ? ciclo.data_inicio : somarDias(ordenadas[i - 1].data, intervaloPar);
     const seguinte = ordenadas[i + 1]?.data ?? null;
     const concAp = concentracaoDe(ap, ciclo);
     acumulado += ap.dose_mg;
     const saldo = ciclo.quantidade_total_mg - acumulado;
     if (i > 0) {
       const dias = diferencaDias(ordenadas[i - 1].data, ap.data);
-      // Mesmo dia é sempre suspeito, qualquer que seja o intervalo
-      if (dias === 0 || dias < intervalo - 2) {
+      // Mesmo dia é sempre suspeito; fora isso, bem menos que o intervalo da época (até 7 dias)
+      if (dias === 0 || dias < Math.min(intervaloPar, 7) - 2) {
         alertas.push(`Aplicações nº ${numero - 1} e nº ${numero} com apenas ${dias} dia(s) de intervalo. Confira se não houve registro duplicado.`);
       }
     }
@@ -548,7 +588,7 @@ export function calcularCiclo(
       saldo_mg: saldo,
       saldo_ml: mgParaMl(saldo, concAp),
       intervalo_seguinte: diferencaDias(ap.data, seguinte ?? hoje),
-      ...janela(diario, ap.data, seguinte),
+      ...janela(diario, pesosDia, ap.data, seguinte),
     };
   });
 

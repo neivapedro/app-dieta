@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useDados } from '../dados/contexto';
 import { useCalculos } from '../dados/useCalculos';
 import { composicaoPorFase, numerosDaFase } from '../lib/analise';
-import { REGRAS_FASE, decisaoDoBloco, marcacao, repetirFase } from '../lib/ciclo';
+import { REGRAS_FASE, decisaoDoBloco, faseSugeridaForaDoPlano, marcacao, repetirFase } from '../lib/ciclo';
 import { formatarData } from '../lib/datas';
 import { corVariacao, num, sinal, ui } from '../lib/formato';
 import type { DecisaoFase, Fase } from '../lib/tipos';
@@ -12,7 +12,8 @@ import { Bloco, Campo } from './ui';
 function useDecisoes() {
   const { ciclo, gravar, hoje } = useDados();
   const decisoes = ciclo?.decisoes ?? [];
-  const salvar = (lista: DecisaoFase[], fases: Fase[] = ciclo!.fases) => gravar({ tipo: 'decisoes', dado: { ciclo_id: ciclo!.id, decisoes: lista, fases } });
+  // Fases só no Repetir (muda o Plano); as outras decisões não levam uma cópia das fases
+  const salvar = (lista: DecisaoFase[], fases?: Fase[]) => gravar({ tipo: 'decisoes', dado: { ciclo_id: ciclo!.id, decisoes: lista, ...(fases ? { fases } : {}) } });
   const nova = (d: Omit<DecisaoFase, 'id' | 'data'>): DecisaoFase => ({ id: crypto.randomUUID(), data: hoje, ...d });
   return { decisoes, salvar, nova };
 }
@@ -51,6 +52,8 @@ export function FimDeFase({ aoDecidir }: { aoDecidir?: () => void } = {}) {
 
   function subir() {
     salvar([...decisoes, nova({ escolha: 'subir', apos_aplicacao: n, dose_mg: doseAtual, fase_indice: d!.ultima_fase! + 1, dose_nova_mg: doseNova })]);
+    // Subir e Repetir não valem juntos: fecha o painel do Repetir
+    setModo(null);
     // Mantém o cartão aberto para mostrar a decisão e o "Desfazer"
     aoDecidir?.();
   }
@@ -63,7 +66,9 @@ export function FimDeFase({ aoDecidir }: { aoDecidir?: () => void } = {}) {
     const i = d!.ultima_fase!;
     // Conta a partir das doses já feitas: +1 semana = mais 1 dose a partir de agora
     const fasesNovas = repetirFase(ciclo!.fases, d!, i, semanas);
-    salvar([...decisoes, nova({ escolha: 'repetir', apos_aplicacao: n, dose_mg: doseAtual, fase_indice: i, semanas })], fasesNovas);
+    // Uma decisão substitui a outra: um "Subir" deste bloco sai do registro
+    const semSubir = s.decisao ? decisoes.filter((x) => x.id !== s.decisao!.id) : decisoes;
+    salvar([...semSubir, nova({ escolha: 'repetir', apos_aplicacao: n, dose_mg: doseAtual, fase_indice: i, semanas })], fasesNovas);
     setModo(null);
   }
 
@@ -147,7 +152,7 @@ export function FimDeFase({ aoDecidir }: { aoDecidir?: () => void } = {}) {
         </button>
       )}
 
-      {modo === 'repetir' && (
+      {modo === 'repetir' && s.estado === 'pendente' && (
         <div className="pilha">
           <p className="texto-2">
             Estende a fase {d.ultima_fase + 1} no Plano, mantendo {num(doseAtual)} mg: +1 semana = mais 1 dose, +4 semanas = mais 4 doses a partir da próxima.
@@ -200,7 +205,7 @@ export function ForaDoPlano() {
   const { resumo } = useCalculos();
   const { decisoes, salvar, nova } = useDecisoes();
   const s = resumo?.degrau;
-  const sugerida = Math.min((s?.ultima_fase_conhecida ?? -1) + 1, (ciclo?.fases.length ?? 1) - 1);
+  const sugerida = faseSugeridaForaDoPlano(ciclo?.fases ?? [], s?.ultima_fase_conhecida ?? null, s?.degrau?.bloco.dose_mg ?? null);
   const [fase, setFase] = useState(Math.max(sugerida, 0));
   if (!ciclo || !resumo?.proxima || s?.estado !== 'fora_do_plano' || !s.degrau) return null;
   const bloco = s.degrau.bloco;

@@ -108,12 +108,29 @@ export function CampoNumero({
 }) {
   return (
     <Campo rotulo={sufixo ? `${rotulo} (${sufixo})` : rotulo} dica={dica}>
-      <input
-        inputMode="decimal"
-        value={valor}
-        required={obrigatorio}
-        onChange={(e) => aoMudar(e.target.value.replace(permitirNegativo ? /[^\d.,-]/g : /[^\d.,]/g, ''))}
-      />
+      {permitirNegativo ? (
+        // O teclado decimal do iPhone não tem o sinal de menos: botão ± ao lado; "−" tipográfico vira "-"
+        <div className="linha" style={{ flexWrap: 'nowrap', gap: 6 }}>
+          <input
+            inputMode="decimal"
+            value={valor}
+            required={obrigatorio}
+            style={{ minWidth: 0, flex: 1 }}
+            onChange={(e) => aoMudar(e.target.value.replace(/[\u2212\u2013\u2014]/g, '-').replace(/[^\d.,-]/g, ''))}
+          />
+          <button
+            type="button"
+            className="botao pequeno"
+            style={{ flex: 'none' }}
+            aria-label="Trocar o sinal (positivo ou negativo)"
+            onClick={() => aoMudar(valor.trim().startsWith('-') ? valor.trim().slice(1) : `-${valor.trim()}`)}
+          >
+            ±
+          </button>
+        </div>
+      ) : (
+        <input inputMode="decimal" value={valor} required={obrigatorio} onChange={(e) => aoMudar(e.target.value.replace(/[^\d.,]/g, ''))} />
+      )}
     </Campo>
   );
 }

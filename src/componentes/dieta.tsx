@@ -194,7 +194,8 @@ export function LinhaItem({
           onChange={(e) => {
             const v = e.target.value.replace(/[^\d.,]/g, '');
             setTexto(v);
-            const n = v.trim() === '' ? 0 : paraNumero(v);
+            // Em gramas, "1.000" é mil (ponto seguido de 3 dígitos = milhar, como no déficit)
+            const n = v.trim() === '' ? 0 : item.unidade === 'g' ? paraKcal(v) : paraNumero(v);
             if (n !== null) aoMudar({ ...item, quantidade: n });
           }}
         />
@@ -404,6 +405,9 @@ export function FormConfigDieta({
       return setErro(`Informe o ${sentido === 'deficit' ? 'déficit' : 'superávit'} por dia (1 a 1500 kcal) ou escolha Manter.`);
     const ativRuim = atividades.find((a) => a.kcal.trim() && ((paraKcal(a.kcal) ?? -1) < 0 || (paraKcal(a.kcal) ?? 0) > 3000));
     if (ativRuim) return setErro(`kcal por sessão${ativRuim.nome.trim() ? ` de ${ativRuim.nome.trim()}` : ''}: informe de 0 a 3000 kcal.`);
+    // "1.000" é lido como mil (não 1): fica fora da faixa e o erro aparece
+    const vezesRuim = atividades.find((a) => a.vezes.trim() && ((paraKcal(a.vezes) ?? -1) < 0 || (paraKcal(a.vezes) ?? 0) > 14));
+    if (vezesRuim) return setErro(`Vezes por semana${vezesRuim.nome.trim() ? ` de ${vezesRuim.nome.trim()}` : ''}: informe de 0 a 14.`);
     const p = paraNumero(ptn);
     const g = paraNumero(gord);
     if (p === null || p < 0 || p > 5) return setErro('Proteína animal: informe de 0 a 5 g/kg.');
@@ -461,14 +465,18 @@ export function FormConfigDieta({
           <button type="button" className="botao pequeno" onClick={() => setAtividades([...atividades, { nome: '', kcal: '', vezes: '' }])}>
             + Atividade
           </button>
-          {aderencia && (
+          {(aderencia || config.usar_aderencia) && (
             <Campo
               rotulo="Exercício na meta"
               grupo
-              dica={`${Math.round(aderencia.dias / 7) <= 1 ? 'Na última semana' : `Nas últimas ${Math.round(aderencia.dias / 7)} semanas`} você fez ${num(aderencia.treino * 100, 0)}% dos treinos e ${num(
-                aderencia.cardio * 100,
-                0,
-              )}% dos cardios: ≈ ${num(exercicioReal(montar().atividades, aderencia), 0)} kcal/dia de exercício real.`}
+              dica={
+                aderencia
+                  ? `${Math.round(aderencia.dias / 7) <= 1 ? 'Na última semana' : `Nas últimas ${Math.round(aderencia.dias / 7)} semanas`} você fez ${num(aderencia.treino * 100, 0)}% dos treinos e ${num(
+                      aderencia.cardio * 100,
+                      0,
+                    )}% dos cardios: ≈ ${num(exercicioReal(montar().atividades, aderencia), 0)} kcal/dia de exercício real.`
+                  : '"Pelo que fiz" precisa de 7 dias marcados no período atual do Treino. Até lá, a meta usa o exercício planejado.'
+              }
             >
               <Escolhas
                 opcoes={[

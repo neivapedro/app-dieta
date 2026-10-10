@@ -35,7 +35,8 @@ export class CicloSalvoEmParte extends SalvoEmParte {
 export interface DecisoesCiclo {
   ciclo_id: string;
   decisoes: DecisaoFase[];
-  fases: Fase[];
+  /** Só quando a decisão muda o Plano (Repetir fase): sem elas, as fases do servidor ficam como estão */
+  fases?: Fase[];
 }
 
 export interface InscricaoPush {

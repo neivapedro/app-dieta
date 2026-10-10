@@ -150,14 +150,19 @@ describe('Semanas e medidas', () => {
 });
 
 describe('Aderência recente', () => {
-  it('depois do fim do projeto não vira falta: volta ao planejado', () => {
+  it('depois do fim do projeto não vira falta: fica congelada nas 4 últimas semanas do projeto', () => {
     const dias: TreinoDia[] = [];
     for (let i = 0; i < 40; i++) {
       const d = new Date(Date.UTC(2026, 8, 20 + i)).toISOString().slice(0, 10);
       if (d <= '2026-10-27') dias.push({ id: d, data: d, treino: true, cardio: true, corrida_km: null, corrida_seg: null });
     }
     expect(aderenciaRecente(dias, '2026-09-20', '2026-10-20', 28, '2026-10-27')?.treino).toBe(1);
-    expect(aderenciaRecente(dias, '2026-09-20', '2026-11-10', 28, '2026-10-27')).toBeNull();
+    // Dias depois do fim não contam; a meta "Pelo que fiz" não muda sozinha no dia seguinte ao fim
+    expect(aderenciaRecente(dias, '2026-09-20', '2026-11-10', 28, '2026-10-27')).toEqual({ treino: 1, cardio: 1, dias: 28 });
+    expect(aderenciaRecente(dias, '2026-09-20', '2026-10-28', 28, '2026-10-27')).toEqual(aderenciaRecente(dias, '2026-09-20', '2026-11-10', 28, '2026-10-27'));
+    // O último dia do projeto entra (no dia seguinte ele já venceu)
+    const semUltimo = dias.filter((d) => d.data !== '2026-10-27');
+    expect(aderenciaRecente(semUltimo, '2026-09-20', '2026-11-10', 28, '2026-10-27')!.treino).toBeCloseTo(27 / 28);
   });
 });
 

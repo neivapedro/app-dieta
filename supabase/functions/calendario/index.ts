@@ -107,6 +107,8 @@ Deno.serve(async (req) => {
     const lista = aps ?? [];
     const decisoes = (Array.isArray(ciclo.decisoes) ? ciclo.decisoes : []) as Decisao[];
     const marca = Number(ciclo.seringa_marca_ui) > 0 ? Number(ciclo.seringa_marca_ui) : 1;
+    // Seringa sem capacidade informada: 100 UI (como o app)
+    const capacidade = Number(ciclo.seringa_capacidade_ui) > 0 ? Number(ciclo.seringa_capacidade_ui) : 100;
     // Fase de cada aplicação pelo bloco de doses iguais em que ela está
     const fasesAplicadas: (number | null)[] = [];
     for (const d of degraus(fases, lista, decisoes)) for (let p = 1; p <= d.aplicacoes; p++) fasesAplicadas.push(faseNoDegrau(fases, d, p));
@@ -143,7 +145,11 @@ Deno.serve(async (req) => {
     for (let k = 0; k < futuras.length && k < 200; k++) {
       const n = lista.length + 1 + k;
       const f = futuras[k];
-      if (saldo <= EPS || saldo + EPS < f.dose_mg) break;
+      if (saldo <= EPS) break;
+      // Saldo que não cobre a dose: a próxima data aparece com a nota (como o alerta do app), e o calendário para nela
+      const semSaldo = saldo + EPS < f.dose_mg;
+      if (semSaldo && k > 0) break;
+      const saldoAntes = saldo;
       saldo -= f.dose_mg;
       const fase = { dose_mg: f.dose_mg, nome: f.fase_indice === null ? 'fora do plano' : fases[f.fase_indice].nome };
       const indice = f.fase_indice ?? -1;
@@ -154,17 +160,23 @@ Deno.serve(async (req) => {
       const atrasada = k === 0 && prevista < hoje;
       const aDecidir = k === 0 && (estado === 'pendente' || estado === 'fora_do_plano');
       const nota = `${f.hipotese ? ' (se subir)' : ''}${aDecidir ? ' · decida no app' : ''}`;
-      const aviso = aDecidir ? `\n${estado === 'pendente' ? 'Fim da fase' : 'Dose fora do plano'}: até decidir no app, a dose continua ${fmtMg(proxima.dose_mg)} mg.` : '';
+      const aviso =
+        (aDecidir ? `\n${estado === 'pendente' ? 'Fim da fase' : 'Dose fora do plano'}: até decidir no app, a dose continua ${fmtMg(proxima.dose_mg)} mg.` : '') +
+        (semSaldo ? `\nO saldo (${fmtMg(saldoAntes)} mg) não cobre a dose de ${fmtMg(fase.dose_mg)} mg: confira o frasco no app.` : '');
+      const acimaDaSeringa = ui > capacidade + EPS;
+      const linhaSeringa = acimaDaSeringa
+        ? `Seringa U-100: ${fmt(ui)} UI passa da capacidade da sua seringa de ${fmt(capacidade)} UI: confira a seringa ou a dose no app`
+        : `Seringa U-100: ${fmt(ui)} UI (${guiaSeringa(ui, marca)})`;
       eventos.push(
         'BEGIN:VEVENT',
         `UID:dose-${n}-${ciclo.id}@app-dieta`,
         `DTSTAMP:${carimbo(agora)}`,
         `DTSTART:${carimbo(inicio)}`,
         `DTEND:${carimbo(new Date(inicio.getTime() + 15 * 60_000))}`,
-        `SUMMARY:${escapar(`💉 Retatrutida ${fmtMg(fase.dose_mg)} mg · ${fmt(ui)} UI${atrasada ? ' (atrasada)' : ''}${nota}`)}`,
+        `SUMMARY:${escapar(`💉 Retatrutida ${fmtMg(fase.dose_mg)} mg · ${fmt(ui)} UI${atrasada ? ' (atrasada)' : ''}${nota}${semSaldo ? ' · saldo não cobre' : ''}${acimaDaSeringa ? ' · confira a seringa' : ''}`)}`,
         `DESCRIPTION:${escapar(
           `${n}ª dose · ${indice >= 0 ? `Fase ${indice + 1} · ${fase.nome}` : 'dose fora do plano'}${nota}${aviso}\n` +
-            `Seringa U-100: ${fmt(ui)} UI (${guiaSeringa(ui, marca)})\n` +
+            `${linhaSeringa}\n` +
             `Saldo após esta dose: ${fmtMg(Math.max(saldo, 0))} mg\n` +
             `Registre no app: ${SITE}`,
         )}`,
@@ -177,6 +189,7 @@ Deno.serve(async (req) => {
         'END:VEVENT',
       );
       data = somarDias(data, intervalo);
+      if (semSaldo) break;
     }
   }
 

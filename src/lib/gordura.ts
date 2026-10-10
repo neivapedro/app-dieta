@@ -189,7 +189,9 @@ export type FaixaRca = 'saudavel' | 'aumentada' | 'alta';
 
 /** NICE (cintura abaixo de metade da altura): <0,50 saudável · 0,50–0,59 aumentada · ≥0,60 alta. */
 export function faixaRca(r: number): FaixaRca {
-  return r < 0.5 ? 'saudavel' : r < 0.6 ? 'aumentada' : 'alta';
+  // Sobre o valor exibido (2 casas): 0,4994 aparece "0,50" e fica na faixa de 0,50
+  const x = Math.round(r * 100) / 100;
+  return x < 0.5 ? 'saudavel' : x < 0.6 ? 'aumentada' : 'alta';
 }
 
 export const TEXTO_RCA: Record<FaixaRca, string> = {
@@ -257,4 +259,39 @@ export function cenariosPesoMeta(magra_kg: number, peso_kg: number, bfMeta: numb
       return { fracao_magra: f, peso_kg: peso, massa_magra_kg: peso * (1 - b) };
     })
     .filter((c) => Number.isFinite(c.peso_kg) && c.peso_kg > 0);
+}
+
+// ---------- Calibração por exame ----------
+
+export type CalibracaoExame =
+  | { ok: true; ajuste: number; bruta: number; medida: Medida }
+  | { ok: false; erro: string };
+
+/**
+ * Ajuste pelo exame: % do exame − US Navy bruta da medição do mesmo dia (ou a
+ * mais próxima até 3 dias). Medições atípicas não servem para calibrar.
+ */
+export function calibrarPorExame(
+  medidas: Medida[],
+  perfil: Pick<Perfil, 'sexo' | 'altura_cm'>,
+  exameData: string,
+  exameBf: number | null,
+  hoje: string,
+): CalibracaoExame {
+  if (!exameData || exameData > hoje) return { ok: false, erro: 'Informe a data do exame (até hoje).' };
+  if (exameBf === null || exameBf < 2 || exameBf > 75) return { ok: false, erro: 'Informe o % de gordura do exame (entre 2 e 75).' };
+  const perto = medidas
+    .map((m) => ({ m, d: Math.abs(Math.round((Date.parse(`${m.data}T12:00:00Z`) - Date.parse(`${exameData}T12:00:00Z`)) / 86400000)) }))
+    .filter((x) => x.d <= 3)
+    .sort((a, b) => a.d - b.d || a.m.data.localeCompare(b.m.data));
+  const normal = perto.find((x) => !x.m.atipica);
+  if (!normal) {
+    if (perto.length)
+      return { ok: false, erro: `A medição de ${perto[0].m.data.split('-').reverse().join('/')} está marcada como atípica: registre uma medição normal perto do exame para calibrar.` };
+    return { ok: false, erro: 'Registre uma medição de fita no dia do exame (ou até 3 dias de distância) para calibrar.' };
+  }
+  const m = normal.m;
+  const bruta = percentualGorduraBruto(perfil.sexo ?? 'Masculino', perfil.altura_cm ?? m.altura_cm, m.pescoco_cm, m.cintura_cm, m.quadril_cm);
+  if (bruta === null) return { ok: false, erro: 'A medição desse dia não permite calcular a US Navy.' };
+  return { ok: true, ajuste: Math.round((exameBf - bruta) * 10) / 10, bruta, medida: m };
 }

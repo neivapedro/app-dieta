@@ -184,8 +184,10 @@ export function analisarGeral(inicio_ciclo: string, serie: PontoPeso[], todas: C
   const mAtual = composicoes.length ? composicoes[composicoes.length - 1] : null;
   const pelaMedida = composicoes.length >= 2;
   const ponto = (c: Composicao): PontoPeso => ({ data: c.data, peso_kg: c.peso_kg, origem: 'medida' });
-  const peso_inicial = pelaMedida ? ponto(mIni!) : pesoReferencia(serie, inicio_ciclo);
-  const peso_atual = pelaMedida ? ponto(mAtual!) : serie.length ? serie[serie.length - 1] : null;
+  // Pesagens atípicas também ficam fora de início e agora
+  const serieOk = serie.filter((p) => !p.atipica);
+  const peso_inicial = pelaMedida ? ponto(mIni!) : pesoReferencia(serieOk, inicio_ciclo);
+  const peso_atual = pelaMedida ? ponto(mAtual!) : serieOk.length ? serieOk[serieOk.length - 1] : null;
   const temVariacao = peso_inicial && peso_atual && peso_atual.data > peso_inicial.data;
   const variacao = temVariacao ? peso_atual.peso_kg - peso_inicial.peso_kg : null;
   const diasCiclo = Math.max(diferencaDias(inicio_ciclo, hoje), 0);
@@ -231,7 +233,14 @@ export interface ComposicaoFase {
  * Para cada fase: última medição até o início × última medição antes da fase seguinte
  * (o dia da troca de fase fica com a fase nova).
  */
-export function composicaoPorFase(fases: AnaliseFase[], todas: Composicao[], treinos: TreinoDia[] | null, hoje: string): ComposicaoFase[] {
+export function composicaoPorFase(
+  fases: AnaliseFase[],
+  todas: Composicao[],
+  treinos: TreinoDia[] | null,
+  hoje: string,
+  /** O dia de hoje de verdade: quando `hoje` é um limite já passado (fim do remédio), ele entra inteiro na aderência */
+  diaReal: string = hoje,
+): ComposicaoFase[] {
   // Medições atípicas (doente, inchado, viagem) ficam fora da comparação entre fases
   const composicoes = todas.filter((c) => !c.atipica);
   return fases.map((f, i) => {
@@ -255,7 +264,8 @@ export function composicaoPorFase(fases: AnaliseFase[], todas: Composicao[], tre
     let treino: number | null = null;
     let cardio: number | null = null;
     if (treinos) {
-      const fimAderencia = prox ? somarDias(prox, -1) : somarDias(hoje, -1);
+      // Hoje ainda pode ser marcado (fica fora); um limite já passado entra inteiro
+      const fimAderencia = prox ? somarDias(prox, -1) : hoje < diaReal ? hoje : somarDias(hoje, -1);
       const n = Math.max(diferencaDias(f.inicio, fimAderencia) + 1, 0);
       if (n > 0) {
         const doPeriodo = treinos.filter((t) => t.data >= f.inicio && t.data <= fimAderencia);

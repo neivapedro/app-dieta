@@ -4,7 +4,7 @@ import { useDados } from '../dados/contexto';
 import { useAlimentos } from '../dados/useAlimentos';
 import { useCalculos } from '../dados/useCalculos';
 import { useMetaAgua, useTreino } from '../dados/useTreino';
-import { diaDeSintoma, mediaSono7, TEXTO_SINTOMA_AGUA, TEXTO_SONO_BAIXO } from '../lib/bemestar';
+import { diaDeSintoma, diaVazio, mediaSono7, resumoSintomas, TEXTO_SINTOMA_AGUA, TEXTO_SONO_BAIXO } from '../lib/bemestar';
 import { diferencaDias, formatarData, hojeLocal, somarDias } from '../lib/datas';
 import { calcularMetas, calcularSaldo, corpoParaMetas, macrosDaRefeicao, proximaRefeicao, resumoPlano, somar, textoBaseMetas, textoItemPlano } from '../lib/dieta';
 import { kg, lerPeso, num, paraTexto } from '../lib/formato';
@@ -13,7 +13,7 @@ import { diaCurto, horaDaFaixaOntem, pendenciasDeOntem, textoPendencias } from '
 import { alertasSeguranca, AVISO_SEGURANCA } from '../lib/seguranca';
 import { NIVEIS_NAUSEA, type RegistroDiario } from '../lib/tipos';
 import { aderenciaRecente, formatarTempo, rotuloCardio, segundaDaSemana, tipoCardioEfetivo } from '../lib/treino';
-import { gr, kcal } from './dieta';
+import { kcal } from './dieta';
 import { FormDiaTreino, Marcador } from './treino';
 import { Bloco, Campo, Escolhas } from './ui';
 
@@ -68,17 +68,7 @@ export function useGravarDia() {
       cor_urina: atual?.cor_urina ?? null,
       ...campos,
     };
-    const vazio =
-      novo.peso_kg === null &&
-      novo.nausea === null &&
-      !novo.observacoes &&
-      novo.vomito == null &&
-      novo.diarreia == null &&
-      novo.intestino_preso == null &&
-      !novo.dieta_seguida &&
-      novo.sono_h == null &&
-      novo.agua_l == null &&
-      novo.cor_urina == null;
+    const vazio = diaVazio(novo);
     if (vazio) {
       if (atual) gravar({ tipo: 'excluir', dado: { alvo: 'diario', id: atual.id, data } });
       return;
@@ -165,9 +155,12 @@ export function FaixaOntem() {
  * Depois das 18h: treino, cardio, náusea, sintomas, "segui o plano?" e peso
  * num cartão só, cada toque gravando na hora pela fila (sem abrir folha).
  */
-export function CartaoFecharDia({ etiqueta }: { etiqueta?: string }) {
-  const { diario, dieta } = useDados();
+export function CartaoFecharDia({ etiqueta, aoEditar }: { etiqueta?: string; aoEditar?: () => void }) {
+  const { diario, dieta, medidas } = useDados();
   const { hoje } = useCalculos();
+  const metaAguaDe = useMetaAgua();
+  // Dia com medição: o peso do dia é o da medição (não oferece um segundo peso)
+  const medicaoHoje = medidas.find((m) => m.data === hoje && m.peso_kg > 0) ?? null;
   const t = useTreino();
   const gravarDia = useGravarDia();
   const gravarTreino = useGravarTreino();
@@ -238,6 +231,11 @@ export function CartaoFecharDia({ etiqueta }: { etiqueta?: string }) {
           <Escolhas opcoes={OPCOES_PLANO} valor={reg?.dieta_seguida ?? null} aoMudar={(v) => gravarDia(hoje, { dieta_seguida: v })} permitirVazio />
         </Campo>
       )}
+      {medicaoHoje ? (
+        <p className="texto-2">
+          Peso do dia: <b>{kg(medicaoHoje.peso_kg)}</b>, da medição de hoje.
+        </p>
+      ) : (
       <form className="linha" style={{ alignItems: 'flex-end', flexWrap: 'nowrap' }} onSubmit={salvarPeso}>
         <label className="campo cresce">
           <span>Peso (kg, opcional)</span>
@@ -255,7 +253,26 @@ export function CartaoFecharDia({ etiqueta }: { etiqueta?: string }) {
           {reg?.peso_kg != null && !pesoMudou ? 'Salvo' : 'Salvar peso'}
         </button>
       </form>
+      )}
       {erroPeso && <div className="alerta erro">{erroPeso}</div>}
+      {/* Água, sono, urina e observações: resumo do que já foi anotado e o registro completo */}
+      <div className="linha entre" style={{ alignItems: 'center' }}>
+        <span className="texto-2 cresce">
+          {[
+            `Água ${reg?.agua_l != null ? num(reg.agua_l, 1) : '–'} de ${num(metaAguaDe(hoje).meta, 1)} L`,
+            reg?.sono_h != null && `sono ${num(reg.sono_h, 1)} h`,
+            reg?.cor_urina && `urina ${reg.cor_urina}`,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+        </span>
+        {aoEditar && (
+          <button type="button" className="botao pequeno" onClick={aoEditar}>
+            Registro completo
+          </button>
+        )}
+      </div>
+      {reg?.observacoes && <p className="mudo obs-curta">Obs.: {reg.observacoes}</p>}
       {corridaAberta && <FormDiaTreino data={hoje} marcarCardio aoFechar={() => setCorridaAberta(false)} />}
     </section>
   );
@@ -263,10 +280,11 @@ export function CartaoFecharDia({ etiqueta }: { etiqueta?: string }) {
 
 /** Registro do dia (peso, náusea, sintomas): logo abaixo da dose de D0 a D3, mais abaixo nos outros dias. */
 export function CartaoRegistroDia({ aoEditar, etiqueta }: { aoEditar: () => void; etiqueta?: string }) {
-  const { diario } = useDados();
+  const { diario, medidas } = useDados();
   const { hoje } = useCalculos();
   const metaAguaDe = useMetaAgua();
   const reg = diario.find((r) => r.data === hoje);
+  const medicaoHoje = medidas.find((m) => m.data === hoje && m.peso_kg > 0) ?? null;
   const sono = mediaSono7(diario, hoje);
   const metaAguaHoje = metaAguaDe(hoje).meta;
   return (
@@ -281,12 +299,9 @@ export function CartaoRegistroDia({ aoEditar, etiqueta }: { aoEditar: () => void
       </div>
       {reg ? (
         <div className="grade grade-3">
-          <Bloco rotulo="Peso" valor={kg(reg.peso_kg)} />
+          <Bloco rotulo="Peso" valor={kg(medicaoHoje?.peso_kg ?? reg.peso_kg)} />
           <Bloco rotulo="Náusea" valor={reg.nausea === null ? '–' : NIVEIS_NAUSEA[reg.nausea]} />
-          <Bloco
-            rotulo="Sintomas"
-            valor={[reg.vomito && 'vômito', reg.diarreia && 'diarreia', reg.intestino_preso && 'intestino preso'].filter(Boolean).join(', ') || '–'}
-          />
+          <Bloco rotulo="Sintomas" valor={resumoSintomas(reg)} />
         </div>
       ) : (
         <p className="mudo">Anote peso, náusea, efeitos, sono e água de hoje. Vale para qualquer dia, não só o da aplicação.</p>
@@ -378,11 +393,11 @@ export function CartaoDietaHoje({ semPergunta }: { semPergunta?: boolean }) {
           ) : (
             <span>
               Plano <b>{num(plano.kcal_plano, 0)}</b> de {kcal(plano.kcal_meta)}
-              {plano.faltam.length > 0 && <> · falta {plano.faltam.map((f) => `${f.nome} ${gr(f.g)} g`).join(', ')}</>}
+              {plano.faltam.length > 0 && <> · falta {plano.faltam.map((f) => `${f.nome} ${num(f.g, 0)} g`).join(', ')}</>}
               {plano.passam.length > 0 && (
                 <>
                   {' '}
-                  · <span className="ruim">passou {plano.passam.map((f) => `${f.nome} ${gr(f.g)} g`).join(', ')}</span>
+                  · <span className="ruim">passou {plano.passam.map((f) => `${f.nome} ${num(f.g, 0)} g`).join(', ')}</span>
                 </>
               )}
             </span>

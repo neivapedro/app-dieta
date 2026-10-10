@@ -6,11 +6,11 @@ import { useCalculos } from '../dados/useCalculos';
 import { diaDaSemana, formatarData, hojeLocal } from '../lib/datas';
 import { diaAposDose } from '../lib/analise';
 import { kg, mg, num } from '../lib/formato';
-import { mediaSono7, TEXTO_SONO_BAIXO } from '../lib/bemestar';
+import { mediaSono7, textosSintomas, TEXTO_SONO_BAIXO } from '../lib/bemestar';
 import { NIVEIS_NAUSEA, type RegistroDiario } from '../lib/tipos';
 
 export function Diario() {
-  const { diario } = useDados();
+  const { diario, medidas } = useDados();
   const { resumo, hoje } = useCalculos();
   const sono = mediaSono7(diario, hoje);
   const [editando, setEditando] = useState<RegistroDiario | null>(null);
@@ -23,6 +23,7 @@ export function Diario() {
   for (const l of resumo?.linhas ?? []) aplicacaoPorData.set(l.aplicacao.data, [...(aplicacaoPorData.get(l.aplicacao.data) ?? []), l]);
   const datas = [...new Set([...diario.map((r) => r.data), ...aplicacaoPorData.keys()])].sort().reverse();
   const regPorData = new Map(diario.map((r) => [r.data, r]));
+  const pesoMedicao = new Map(medidas.filter((m) => m.peso_kg > 0).map((m) => [m.data, m.peso_kg]));
   const datasAplic = [...aplicacaoPorData.keys()].sort();
 
   return (
@@ -72,11 +73,10 @@ export function Diario() {
                     </div>
                     <div className="detalhe">
                       {[
-                        r?.peso_kg != null && kg(r.peso_kg),
+                        // Dia com medição: vale o peso da medição (o mesmo das outras telas)
+                        pesoMedicao.has(d) ? `${kg(pesoMedicao.get(d)!)} (medição)` : r?.peso_kg != null && kg(r.peso_kg),
                         r?.nausea != null && `náusea ${r.nausea} (${NIVEIS_NAUSEA[r.nausea].toLowerCase()})`,
-                        r?.vomito && 'vômito',
-                        r?.diarreia && 'diarreia',
-                        r?.intestino_preso && 'intestino preso',
+                        ...textosSintomas(r),
                         r?.sono_h != null && `sono ${num(r.sono_h, 1)} h`,
                         r?.agua_l != null && `água ${num(r.agua_l, 1)} L`,
                         r?.cor_urina && `urina ${r.cor_urina}`,

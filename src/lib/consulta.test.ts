@@ -63,8 +63,8 @@ describe('Semana a semana', () => {
     expect(linhas[0]).toMatchObject({ peso_kg: 95, nausea_max: 2, dias_sintoma: 1, dieta: { sim: 1, parcial: 1, nao: 0 }, treino: 0, cardio: 0, dias: 4 });
     expect(linhas[0].composicao?.cintura_cm).toBe(97);
     expect(linhas[1]).toMatchObject({ peso_kg: 94.4, composicao: null, dieta: { sim: 0, parcial: 0, nao: 1 } });
-    // Semana atual conta só até hoje (segunda 19 a quarta 21)
-    expect(linhas[2].dias).toBe(3);
+    // Semana atual conta só até ontem: hoje (quarta 21) ainda sem marcar não vira falta (segunda 19 e terça 20)
+    expect(linhas[2].dias).toBe(2);
   });
 
   it('tabela sem a coluna de treino para conta sem a aba Treino', () => {

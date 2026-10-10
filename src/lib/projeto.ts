@@ -88,12 +88,15 @@ export function avisoReganho(todas: Composicao[], inicioPos: string): AvisoRegan
   const cintura = subidasSeguidas(serie.map((c) => c.cintura_cm));
   const peso = subidasSeguidas(serie.map((c) => c.peso_kg));
   if (cintura < SUBIDAS_AVISO && peso < SUBIDAS_AVISO) return null;
-  const partes = [cintura >= SUBIDAS_AVISO && `a cintura subiu ${cintura}`, peso >= SUBIDAS_AVISO && `o peso subiu ${peso}`].filter(Boolean);
+  const partes = [
+    cintura >= SUBIDAS_AVISO && `a cintura subiu em ${cintura} medições seguidas`,
+    peso >= SUBIDAS_AVISO && `o peso subiu em ${peso} medições seguidas`,
+  ].filter(Boolean);
   return {
     cintura,
     peso,
     data: serie[serie.length - 1].data,
-    texto: `Depois da última dose, ${partes.join(' e ')} medições seguidas. Só um aviso: nada muda sozinho.`,
+    texto: `Depois da última dose, ${partes.join(' e ')}. Só um aviso: nada muda sozinho.`,
   };
 }
 

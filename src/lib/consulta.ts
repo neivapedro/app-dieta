@@ -1,4 +1,4 @@
-import { diaAposDose, rotuloBloco, type AnaliseFase, type ComposicaoFase, type PontoPeso } from './analise';
+import { diaAposDose, MINIMO_RITMO, rotuloBloco, type AnaliseFase, type ComposicaoFase, type PontoPeso } from './analise';
 import { REGRAS_FASE } from './ciclo';
 import { ritmoComFaixa, tendenciaMedidas } from './conferencia';
 import { diferencaDias, formatarData, segundaDaSemana, somarDias } from './datas';
@@ -70,6 +70,8 @@ export function semanasDoCiclo(e: {
   composicoes: Composicao[];
   diario: RegistroDiario[];
   treinos: TreinoDia[] | null;
+  /** Períodos do placar (projeto e, se houver, a fase pós-remédio): só esses dias contam no treino · cardio */
+  periodosTreino?: { inicio: string; fim: string }[];
 }): LinhaSemana[] {
   const linhas: LinhaSemana[] = [];
   if (e.inicio > e.hoje) return linhas;
@@ -81,9 +83,17 @@ export function semanasDoCiclo(e: {
     const pesos = na(e.serie);
     const regs = na(e.diario);
     const nauseas = regs.map((r) => r.nausea).filter((n): n is number => n !== null);
-    // Treino · cardio só a partir do início (os dias antes da 1ª dose não contam como falta)
+    // Treino · cardio só a partir do início (os dias antes da 1ª dose não contam como falta),
+    // só nos dias do placar (nada depois do fim do projeto) e hoje só depois de marcado
     const de = seg < e.inicio ? e.inicio : seg;
-    const treinos = e.treinos ? e.treinos.filter((x) => x.data >= de && x.data <= ate) : null;
+    const marcados = new Map((e.treinos ?? []).map((t) => [t.data, t]));
+    const diasTreino: string[] = [];
+    for (let d = de; d <= ate; d = somarDias(d, 1)) {
+      if (e.periodosTreino && !e.periodosTreino.some((p) => d >= p.inicio && d <= p.fim)) continue;
+      if (d === e.hoje && !marcados.has(d)) continue;
+      diasTreino.push(d);
+    }
+    const treinos = e.treinos && diasTreino.length ? diasTreino.map((d) => marcados.get(d)).filter((t): t is TreinoDia => !!t) : null;
     const peso = pesos.find((p) => p.data === seg) ?? pesos[0];
     const composicao = na(e.composicoes)[0] ?? null;
     linhas.push({
@@ -97,7 +107,7 @@ export function semanasDoCiclo(e: {
       dieta: contarDieta(regs),
       treino: treinos ? treinos.filter((t) => t.treino).length : null,
       cardio: treinos ? treinos.filter((t) => t.cardio).length : null,
-      dias: diferencaDias(de, ate) + 1,
+      dias: diasTreino.length,
     });
   }
   return linhas;
@@ -215,7 +225,14 @@ export function montarQuadro(
           linha('Massa gorda', (c) => sinal(c.gorda_semana, 2, ' kg/sem')),
           linha('Cintura', (c) => sinal(c.cintura_semana, 2, ' cm/sem')),
           linha('Massa magra', (c) => sinal(c.magra_semana, 2, ' kg/sem')),
-          linha('Medições usadas', (c) => (c.medicoes ? `${curta(c.medicoes.de)} a ${curta(c.medicoes.ate)}` : 'poucas medições')),
+          // Sem regressão (números em "–"), as datas não deram resultado: "poucas medições"
+          linha('Medições usadas', (c) =>
+            c.medicoes && c.gorda_semana !== null
+              ? `${curta(c.medicoes.de)} a ${curta(c.medicoes.ate)}`
+              : c.medicoes
+                ? `poucas medições (${curta(c.medicoes.de)} a ${curta(c.medicoes.ate)})`
+                : 'poucas medições',
+          ),
         ],
       },
       {
@@ -356,13 +373,19 @@ export function tabelaTendencias(composicoes: Composicao[]): TabelaRelatorio {
 /** kg/semana de um bloco de dose pela regressão das pesagens do bloco, com a faixa: "− 0,45 ± 0,20 (8 pesagens)". */
 export function ritmoDoBloco(
   serie: PontoPeso[],
-  f: Pick<AnaliseFase, 'inicio' | 'fim' | 'kg_por_semana'> & { pontos_peso?: { data: string; peso_kg: number }[] },
+  f: Pick<AnaliseFase, 'inicio' | 'fim' | 'kg_por_semana'> & { pontos_peso?: { data: string; peso_kg: number }[]; variacao_kg?: number | null },
   ultimoDoBloco: boolean,
 ): string {
   const fim = ultimoDoBloco ? f.fim : somarDias(f.fim, -1);
+  // A mesma regra da tela: sem ritmo lá (pontos_peso vazio = poucos dados), sem ritmo aqui
+  if (f.pontos_peso && !f.pontos_peso.length) {
+    return f.variacao_kg != null ? `${sinal(f.variacao_kg, 2)} kg no bloco (poucas pesagens)` : 'poucas pesagens';
+  }
   // Os mesmos pontos da tela (com a pesagem de referência de até 7 dias antes do bloco)
   const pontos = f.pontos_peso?.length ? f.pontos_peso : serie.filter((p) => !p.atipica && p.data >= f.inicio && p.data <= fim);
-  const r = ritmoComFaixa(pontos.map((p) => ({ data: p.data, valor: p.peso_kg })));
+  const ordenados = [...pontos].sort((a, b) => a.data.localeCompare(b.data));
+  const cobre = ordenados.length >= MINIMO_RITMO.pontos && diferencaDias(ordenados[0].data, ordenados[ordenados.length - 1].data) >= MINIMO_RITMO.dias;
+  const r = cobre ? ritmoComFaixa(pontos.map((p) => ({ data: p.data, valor: p.peso_kg }))) : null;
   if (r) return `${sinal(r.semana, 2)} ± ${num(r.ic95, 2)} (${r.n} pesagens)`;
   // Bloco curto com pesagem só às segundas: fica a conta entre a primeira e a última pesagem, sem faixa
   return f.kg_por_semana !== null ? `${sinal(f.kg_por_semana, 2)} (sem faixa: poucas pesagens)` : 'poucas pesagens';

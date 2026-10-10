@@ -19,6 +19,8 @@ export interface GraficoRelatorio {
   /** Doses aplicadas, em degraus */
   doses: { dia: number; mg: number }[];
   diaFinal: number;
+  /** Fim do degrau da última dose (remédio concluído); sem ele, vai até diaFinal */
+  fimDoses?: number;
   rotulo: (dia: number) => string;
   /** Dias com decisão registrada: linhas verticais pontilhadas */
   marcos?: number[];
@@ -75,7 +77,12 @@ export function textoPdf(s: string): string {
     .replace(/≈/g, '~')
     .replace(/✓/g, 'ok')
     .replace(/ | /g, ' ')
-    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '')
+    .replace(/≥/g, '>=')
+    .replace(/≤/g, '<=')
+    .replace(/[μµ]/g, 'u')
+    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{FE0E}\u{200D}]/gu, '')
+    // O que sobrar fora do WinAnsi (a codificação da fonte padrão) sairia embaralhado: sai do texto
+    .replace(/[^\n\t\x20-\x7E\xA0-\xFF€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ]/gu, '')
     .trim();
 }
 
@@ -245,7 +252,7 @@ function desenharGrafico(doc: jsPDF, y: number, g: GraficoRelatorio): number {
     const degraus = [...g.doses].sort((a, b) => a.dia - b.dia);
     for (let i = 0; i < degraus.length; i++) {
       const atual = degraus[i];
-      const prox = degraus[i + 1]?.dia ?? g.diaFinal;
+      const prox = degraus[i + 1]?.dia ?? Math.min(g.fimDoses ?? g.diaFinal, g.diaFinal);
       doc.line(px(atual.dia), pyMg(atual.mg), px(prox), pyMg(atual.mg));
       if (degraus[i + 1]) doc.line(px(prox), pyMg(atual.mg), px(prox), pyMg(degraus[i + 1].mg));
     }

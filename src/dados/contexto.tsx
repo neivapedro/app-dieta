@@ -56,6 +56,8 @@ interface Contexto extends Dados {
   limparErro: () => void;
   /** Sem conexão: mostrando a última cópia guardada no aparelho (data/hora ISO) */
   offlineDesde: string | null;
+  /** O último envio da fila falhou por falta de conexão (a fila espera a internet voltar) */
+  falhaRede: boolean;
   /** Abriu sem internet e sem cópia guardada */
   semConexao: boolean;
   /** A última carga falhou (não confundir com conta nova sem perfil) */
@@ -276,7 +278,7 @@ export function ProvedorDados({ children }: { children: ReactNode }) {
       const atual = dadosRef.current;
       if (op.tipo === 'dieta' && atual.dieta) return opsDoRegistro(compararDieta(atual.dieta.config, op.dado.config));
       if (op.tipo === 'decisoes' && atual.ciclo && atual.ciclo.id === op.dado.ciclo_id) {
-        const { novas, removidas } = alteracoesDasDecisoesFase(atual.ciclo.decisoes ?? [], op.dado.decisoes, op.dado.fases);
+        const { novas, removidas } = alteracoesDasDecisoesFase(atual.ciclo.decisoes ?? [], op.dado.decisoes, op.dado.fases ?? atual.ciclo.fases, atual.ciclo.fases);
         return opsDoRegistro(novas, removidas);
       }
       return [];
@@ -439,6 +441,7 @@ export function ProvedorDados({ children }: { children: ReactNode }) {
       erro,
       limparErro: () => setErro(null),
       offlineDesde,
+      falhaRede,
       semConexao,
       falhouCarregar,
       pendentes,
@@ -454,7 +457,7 @@ export function ProvedorDados({ children }: { children: ReactNode }) {
       hoje,
       tique,
     }),
-    [dados, usuario, carregando, erro, setErro, offlineDesde, semConexao, falhouCarregar, pendentes, recuperandoSenha, recarregar, sair, executar, gravar, salvarDieta, estadoDieta, registrarAlteracoes, hoje, tique],
+    [dados, usuario, carregando, erro, setErro, offlineDesde, falhaRede, semConexao, falhouCarregar, pendentes, recuperandoSenha, recarregar, sair, executar, gravar, salvarDieta, estadoDieta, registrarAlteracoes, hoje, tique],
   );
 
   return <Ctx.Provider value={valor}>{children}</Ctx.Provider>;

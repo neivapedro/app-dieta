@@ -68,6 +68,45 @@ export function aguaSemana(diario: RegistroDiario[], hoje: string, metaDoDia: (d
 }
 
 /** Vômito ou diarreia marcados no dia: perde líquido. */
+/** Registro do Diário sem nenhum campo preenchido (um dia assim é excluído, não gravado vazio). */
+export function diaVazio(r: Partial<Omit<RegistroDiario, 'id' | 'data'>>): boolean {
+  return (
+    (r.peso_kg ?? null) === null &&
+    (r.nausea ?? null) === null &&
+    !r.observacoes &&
+    r.vomito == null &&
+    r.diarreia == null &&
+    r.intestino_preso == null &&
+    !r.dieta_seguida &&
+    r.sono_h == null &&
+    r.agua_l == null &&
+    r.cor_urina == null
+  );
+}
+
+type Sintomas = Pick<RegistroDiario, 'vomito' | 'diarreia' | 'intestino_preso'>;
+
+/** Sintomas respondidos, com os "não" também (ex.: ["vômito", "sem diarreia"]). */
+export function textosSintomas(r: Sintomas | null | undefined): string[] {
+  if (!r) return [];
+  const t: string[] = [];
+  if (r.vomito === true) t.push('vômito');
+  else if (r.vomito === false) t.push('sem vômito');
+  if (r.diarreia === true) t.push('diarreia');
+  else if (r.diarreia === false) t.push('sem diarreia');
+  if (r.intestino_preso === true) t.push('intestino preso');
+  else if (r.intestino_preso === false) t.push('intestino ok');
+  return t;
+}
+
+/** Resumo curto para um cartão: os sintomas "sim"; só respostas "não" → "nenhum"; nada respondido → "–". */
+export function resumoSintomas(r: Sintomas | null | undefined): string {
+  if (!r) return '–';
+  const sim = [r.vomito === true && 'vômito', r.diarreia === true && 'diarreia', r.intestino_preso === true && 'intestino preso'].filter(Boolean);
+  if (sim.length) return sim.join(', ');
+  return r.vomito === false || r.diarreia === false || r.intestino_preso === false ? 'nenhum' : '–';
+}
+
 export function diaDeSintoma(r: Pick<RegistroDiario, 'vomito' | 'diarreia'> | null | undefined): boolean {
   return r?.vomito === true || r?.diarreia === true;
 }

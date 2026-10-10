@@ -11,7 +11,7 @@ export function useCalculos() {
   const hoje = d.hoje;
   return useMemo(() => {
     const sexo = d.perfil?.sexo ?? 'Masculino';
-    const resumo = d.ciclo ? calcularCiclo(d.ciclo, d.aplicacoes, d.diario, hoje) : null;
+    const resumo = d.ciclo ? calcularCiclo(d.ciclo, d.aplicacoes, d.diario, hoje, d.medidas) : null;
     const serie = serieDePeso(d.diario, d.medidas);
     // Altura do perfil (fonte única) e ajuste de calibração do % de gordura
     const composicoes = historicoComposicao(d.medidas, sexo, { altura_cm: d.perfil?.altura_cm, ajuste: ajusteDoPerfil(d.perfil) });
@@ -24,6 +24,6 @@ export function useCalculos() {
     const fimFases = fimRemedio && fimRemedio < hoje ? fimRemedio : hoje;
     const geral = analisarGeral(inicio, serie, composicoes, fimFases);
     const fases = resumo ? analisarFases(resumo, serie, d.diario, hoje, fimRemedio) : [];
-    return { hoje, sexo, resumo, serie, composicoes, geral, fases, fimRemedio, fimFases };
+    return { hoje, sexo, resumo, serie, composicoes, geral, fases, fimRemedio, fimFases, posRemedio: pos };
   }, [d.ciclo, d.aplicacoes, d.diario, d.medidas, d.perfil, hoje]);
 }

@@ -102,7 +102,7 @@ export interface DecisaoFase {
   /** Fase do plano a que a decisão se refere (subir: a fase nova) */
   fase_indice: number | null;
   /** pos_remedio: início da fase pós-remédio (bloco_inicio = data da última dose) */
-  escolha: 'subir' | 'repetir' | 'confirmar_fase' | 'anotacao' | 'pos_remedio';
+  escolha: 'subir' | 'repetir' | 'confirmar_fase' | 'anotacao' | 'pos_remedio' | 'intervalo';
   dose_nova_mg?: number | null;
   /** Repetir: semanas acrescentadas à fase */
   semanas?: number | null;
@@ -110,6 +110,9 @@ export interface DecisaoFase {
   bloco_inicio?: string | null;
   /** Anotação para o médico (vai para o PDF) */
   texto?: string | null;
+  /** intervalo: troca do intervalo entre doses (vale das doses depois de `data` em diante) */
+  intervalo_anterior?: number | null;
+  intervalo_dias?: number | null;
 }
 
 export interface Aplicacao {

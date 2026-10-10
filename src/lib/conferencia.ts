@@ -152,6 +152,23 @@ export function deficitNecessario(gordaAtual: number, gordaMeta: number, hoje: s
   return ((gordaAtual - gordaMeta) * KCAL_KG_GORDA) / dias;
 }
 
+/** Teto plausível de déficit por dia (o mesmo limite do Ajustar) */
+export const DEFICIT_MAXIMO_DIA = 1500;
+
+export type ParaAMeta = { estado: 'alcancada' } | { estado: 'inviavel'; valor: number; dias: number } | { estado: 'ok'; valor: number };
+
+/**
+ * "Para a meta" com sentido: massa gorda já na meta → alcançada; déficit acima
+ * do teto plausível (prazo curto demais) → inviável; senão o déficit por dia.
+ */
+export function paraAMeta(gordaAtual: number, gordaMeta: number, hoje: string, fim: string): ParaAMeta | null {
+  if (gordaAtual <= gordaMeta) return { estado: 'alcancada' };
+  const valor = deficitNecessario(gordaAtual, gordaMeta, hoje, fim);
+  if (valor === null) return null;
+  if (valor > DEFICIT_MAXIMO_DIA) return { estado: 'inviavel', valor, dias: diferencaDias(hoje, fim) };
+  return { estado: 'ok', valor };
+}
+
 /** Ritmo de perda em % do peso por semana e a faixa (0,5 a 1,0% preserva melhor a massa magra). */
 export function ritmoPercentual(pesoSemana: number, peso: number): { pct: number; faixa: 'lento' | 'ideal' | 'rapido' | 'ganho' } {
   const pct = (-pesoSemana / peso) * 100;
@@ -246,7 +263,7 @@ export function textoQualidade(q: QualidadePerda): string {
 
 // ---------- Projeção "No ritmo" ----------
 
-export type ChaveProjecao = 'cintura_cm' | 'peso_kg' | 'bf' | 'massa_magra_kg' | 'massa_gorda_kg';
+export type ChaveProjecao = 'cintura_cm' | 'peso_kg' | 'bf' | 'massa_magra_kg' | 'massa_gorda_kg' | 'quadril_cm';
 
 export interface ValorProjetado {
   /** Valor da reta no horizonte */
@@ -261,7 +278,8 @@ export interface Projecao {
   /** true quando o horizonte é o fim do projeto; false = hoje + 8 semanas */
   ate_o_fim: boolean;
   medicoes: number;
-  valores: Record<ChaveProjecao, ValorProjetado>;
+  /** quadril_cm só quando todas as medições da janela têm quadril (fórmula feminina) */
+  valores: Record<Exclude<ChaveProjecao, 'quadril_cm'>, ValorProjetado> & { quadril_cm?: ValorProjetado };
 }
 
 /** Janela, mínimo de medições e de dias, semana a partir da qual aparece e horizonte máximo. */
@@ -304,6 +322,7 @@ export function projecaoNoRitmo(composicoes: Composicao[], hoje: string, fim: st
       bf: projetar(janela.map((c) => c.bf!)),
       massa_magra_kg: projetar(janela.map((c) => c.massa_magra_kg!)),
       massa_gorda_kg: projetar(janela.map((c) => c.massa_gorda_kg!)),
+      ...(janela.every((c) => c.quadril_cm != null) ? { quadril_cm: projetar(janela.map((c) => c.quadril_cm!)) } : {}),
     },
   };
 }

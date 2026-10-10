@@ -243,7 +243,7 @@ export function FormForca({ exercicios, aoFechar }: { exercicios: string[]; aoFe
 
 /** Lista de exercícios-âncora (3 a 4 é o ideal; trocar o nome começa uma referência nova). */
 export function FormExerciciosForca({ atuais, aoFechar }: { atuais: string[]; aoFechar: () => void }) {
-  const { executar } = useDados();
+  const { executar, limparErro } = useDados();
   const [nomes, setNomes] = useState<string[]>(() => [...atuais, ...Array(Math.max(0, 6 - atuais.length)).fill('')].slice(0, 6));
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
@@ -261,6 +261,8 @@ export function FormExerciciosForca({ atuais, aoFechar }: { atuais: string[]; ao
       await executar((r) => r.salvarExerciciosForca(lista));
       aoFechar();
     } catch (e) {
+      // Uma mensagem só, no formulário (executar já tinha posto a mesma no aviso do topo)
+      limparErro();
       setErro((e as Error).message);
       setSalvando(false);
     }

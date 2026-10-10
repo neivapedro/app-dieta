@@ -7,10 +7,10 @@ import { fotoParaBackup, importarFotos } from '../dados/fotos';
 import { useDados } from '../dados/contexto';
 import { CicloSalvoEmParte, SalvoEmParte } from '../dados/repositorio';
 import { lerBackup, montarBackup, planejarImportacao, type Backup, type PlanoImportacao } from '../lib/backup';
-import { diferencaDias, formatarData, hojeLocal } from '../lib/datas';
-import { num, paraNumero, paraTexto, pp } from '../lib/formato';
+import { formatarData, hojeLocal } from '../lib/datas';
+import { num, paraNumero, paraTexto, pp, sinal } from '../lib/formato';
 import { textoTamanho } from '../lib/fotos';
-import { AJUSTE_PADRAO, percentualGorduraBruto } from '../lib/gordura';
+import { AJUSTE_PADRAO, calibrarPorExame, percentualGorduraBruto } from '../lib/gordura';
 import {
   ativarNotificacoes,
   desativarNotificacoes,
@@ -57,29 +57,20 @@ function CartaoCalibracao({ perfil }: { perfil: TipoPerfil }) {
   }, [perfil.ajuste_gordura, perfil.exame_gordura_data, perfil.exame_gordura_bf]);
 
   const ordenadas = [...medidas].sort((a, b) => a.data.localeCompare(b.data));
-  const ultima = ordenadas[ordenadas.length - 1];
+  // "Agora" = última medição normal (o mesmo critério de Medidas: a atípica fica fora)
+  const ultima = ordenadas.filter((m) => !m.atipica).at(-1);
   const ajusteN = ajuste.trim() ? paraNumero(ajuste) : null;
   const vigente = ajusteN ?? AJUSTE_PADRAO[sexo];
   const bruta = ultima ? brutaDaMedida(ultima, perfil) : null;
 
   function calibrar() {
     setMsg(null);
-    const bf = paraNumero(exameBf);
-    if (!exameData) return setMsg({ tipo: 'erro', texto: 'Informe a data do exame.' });
-    if (bf === null || bf < 2 || bf > 75) return setMsg({ tipo: 'erro', texto: 'Informe o % de gordura do exame (entre 2 e 75).' });
-    // Medição do mesmo dia; sem ela, a mais próxima até 3 dias de distância
-    const perto = ordenadas
-      .map((m) => ({ m, d: Math.abs(diferencaDias(m.data, exameData)) }))
-      .filter((x) => x.d <= 3)
-      .sort((a, b) => a.d - b.d)[0];
-    if (!perto) return setMsg({ tipo: 'erro', texto: 'Registre uma medição de fita no dia do exame (ou até 3 dias de distância) para calibrar.' });
-    const b = brutaDaMedida(perto.m, perfil);
-    if (b === null) return setMsg({ tipo: 'erro', texto: 'A medição desse dia não permite calcular a US Navy.' });
-    const novo = Math.round((bf - b) * 10) / 10;
-    setAjuste(paraTexto(novo));
+    const c = calibrarPorExame(medidas, perfil, exameData, paraNumero(exameBf), hojeLocal());
+    if (!c.ok) return setMsg({ tipo: 'erro', texto: c.erro });
+    setAjuste(paraTexto(c.ajuste));
     setMsg({
       tipo: 'info',
-      texto: `Medição de ${formatarData(perto.m.data)}: US Navy bruta ${pp(b)}. Ajuste = ${pp(bf)} − ${pp(b)} = ${num(novo, 1)} p.p. Toque em Salvar para usar.`,
+      texto: `Medição de ${formatarData(c.medida.data)}: US Navy bruta ${pp(c.bruta)}. Ajuste = ${pp(paraNumero(exameBf)!)} − ${pp(c.bruta)} = ${num(c.ajuste, 1)} p.p. Toque em Salvar para usar.`,
     });
   }
 
@@ -89,12 +80,24 @@ function CartaoCalibracao({ perfil }: { perfil: TipoPerfil }) {
     const bf = exameBf.trim() ? paraNumero(exameBf) : null;
     if (exameBf.trim() && (bf === null || bf < 2 || bf > 75)) return setMsg({ tipo: 'erro', texto: 'O % de gordura do exame fica entre 2 e 75.' });
     if (!!exameData !== (bf !== null)) return setMsg({ tipo: 'erro', texto: 'Para guardar o exame, informe a data e o % de gordura.' });
+    // Com exame: o ajuste salvo é sempre o calculado por ele (nunca um "calibrado por exame" que não saiu do exame)
+    let ajusteFinal = ajusteN === null ? null : Math.round(ajusteN * 10) / 10;
+    if (exameData) {
+      const c = calibrarPorExame(medidas, perfil, exameData, bf, hojeLocal());
+      if (!c.ok) return setMsg({ tipo: 'erro', texto: c.erro });
+      ajusteFinal = c.ajuste;
+    }
     setSalvando(true);
     try {
-      await executar((r) =>
-        r.salvarPerfil({ ...perfil, ajuste_gordura: ajusteN === null ? null : Math.round(ajusteN * 10) / 10, exame_gordura_data: exameData || null, exame_gordura_bf: bf }),
-      );
-      setMsg({ tipo: 'info', texto: 'Calibração salva. Todo o histórico foi recalculado.' });
+      await executar((r) => r.salvarPerfil({ ...perfil, ajuste_gordura: ajusteFinal, exame_gordura_data: exameData || null, exame_gordura_bf: bf }));
+      if (ajusteFinal !== null) setAjuste(paraTexto(ajusteFinal));
+      setMsg({
+        tipo: 'info',
+        texto:
+          exameData && ajusteFinal !== ajusteN
+            ? `Calibração salva com o ajuste do exame (${sinal(ajusteFinal ?? 0, 1, ' p.p.')}). Todo o histórico foi recalculado.`
+            : 'Calibração salva. Todo o histórico foi recalculado.',
+      });
     } catch (e) {
       limparErro();
       setMsg({ tipo: 'erro', texto: (e as Error).message });
@@ -204,6 +207,8 @@ export function Perfil() {
   const [msgCal, setMsgCal] = useState<string | null>(null);
   const arquivo = useRef<HTMLInputElement>(null);
   const [importacao, setImportacao] = useState<{ backup: Backup; plano: PlanoImportacao } | null>(null);
+  // Trava contra dois toques em "Importar agora"
+  const [importando, setImportando] = useState(false);
   const [msgBackup, setMsgBackup] = useState<{ tipo: string; texto: string } | null>(null);
   // Fotos de antes e depois: só existem neste aparelho, então vão no backup (opção marcada por padrão)
   const { fotos } = useFotos();
@@ -310,8 +315,9 @@ export function Perfil() {
   }
 
   async function importar() {
-    if (!importacao) return;
-    const { backup: b, plano } = importacao;
+    if (!importacao || importando) return;
+    const { backup: b } = importacao;
+    let plano = importacao.plano;
     let emParte: string | null = null;
     // Banco sem o SQL de evolução: o dado foi gravado sem o campo novo. Junta o
     // aviso (uma vez cada) numa ressalva e segue a importação com o resto
@@ -324,11 +330,21 @@ export function Perfil() {
         avisos.add(e.message);
       }
     };
+    setImportando(true);
     try {
       await executar(async (r) => {
+        // Refaz o plano com o que já está no servidor: repetir a importação (depois de uma falha no meio) não duplica nada
+        const [apl, med, frc, reg] = await Promise.all([
+          r.listarAplicacoes(),
+          r.listarMedidas(),
+          comTreino ? r.listarForca() : Promise.resolve([]),
+          registroIndisponivel ? Promise.resolve(null) : r.listarRegistroDecisoes(),
+        ]);
+        const refeito = planejarImportacao(b, { aplicacoes: apl, medidas: med, diario: [], treinos: [], forca: frc, registro_decisoes: reg ?? registroDecisoes, fotos });
+        plano = comTreino ? refeito : { ...refeito, treinos: [], forca: [] };
         if (b.perfil) {
           await tolerar(r.salvarPerfil(b.perfil));
-          if (b.perfil.metas_projeto) await r.salvarMetas(b.perfil.metas_projeto);
+          if (b.perfil.metas_projeto && comTreino) await r.salvarMetas(b.perfil.metas_projeto);
           if (b.perfil.exercicios_forca?.length && comTreino) await tolerar(r.salvarExerciciosForca(b.perfil.exercicios_forca));
         }
         let cicloId = ciclo?.id;
@@ -384,7 +400,14 @@ export function Perfil() {
       setImportacao(null);
       setMsgBackup(emParte ? { tipo: 'erro', texto: `Backup importado, com uma ressalva: ${emParte}` } : { tipo: 'info', texto: 'Backup importado.' });
     } catch (e) {
-      setMsgBackup({ tipo: 'erro', texto: (e as Error).message });
+      // Uma mensagem só, no cartão (executar já tinha posto a mesma no aviso do topo)
+      limparErro();
+      setMsgBackup({
+        tipo: 'erro',
+        texto: `${(e as Error).message} A importação pode ter parado no meio: tocar em Importar agora de novo continua sem duplicar o que já foi gravado.`,
+      });
+    } finally {
+      setImportando(false);
     }
   }
 
@@ -485,8 +508,9 @@ export function Perfil() {
       <section className="cartao pilha">
         <h2>Backup</h2>
         <p className="mudo">
-          Exporta todos os seus dados (perfil e metas, ciclo, aplicações, diário, medidas, treinos, força, dieta e registro de decisões) em um arquivo. Ao importar, nada é
-          duplicado: aplicações e medidas de datas que já existem são puladas, e diário e treino substituem o mesmo dia.
+          {comTreino
+            ? 'Exporta todos os seus dados (perfil e metas, ciclo, aplicações, diário, medidas, treinos, força, dieta e registro de decisões) em um arquivo. Ao importar, nada é duplicado: aplicações e medidas de datas que já existem são puladas, e diário e treino substituem o mesmo dia.'
+            : 'Exporta todos os seus dados (perfil, ciclo, aplicações, diário, medidas, dieta e registro de decisões) em um arquivo. Ao importar, nada é duplicado: aplicações e medidas de datas que já existem são puladas, e o diário substitui o mesmo dia.'}
         </p>
         {fotos.length > 0 && (
           <label className="marcar">
@@ -525,7 +549,7 @@ export function Perfil() {
                   {' '}
                   <b>
                     Também substitui
-                    {importacao.backup.perfil ? ' seus dados pessoais e metas' : ''}
+                    {importacao.backup.perfil ? ` seus dados pessoais${comTreino && importacao.backup.perfil.metas_projeto ? ' e metas' : ''}` : ''}
                     {importacao.backup.perfil && importacao.backup.ciclo ? ' e' : ''}
                     {importacao.backup.ciclo ? ` o ciclo e o plano de doses (início em ${formatarData(importacao.backup.ciclo.data_inicio)})` : ''}.
                   </b>
@@ -536,8 +560,12 @@ export function Perfil() {
               {importacao.plano.ignoradas.fotos > 0 && ` ${importacao.plano.ignoradas.fotos} foto(s) já existem neste aparelho e ficam como estão.`}
             </div>
             <div className="linha">
-              <button className="botao primario pequeno" onClick={() => void importar()}>Importar agora</button>
-              <button className="botao pequeno" onClick={() => setImportacao(null)}>Cancelar</button>
+              <button className="botao primario pequeno" disabled={importando} onClick={() => void importar()}>
+                {importando ? 'Importando…' : 'Importar agora'}
+              </button>
+              <button className="botao pequeno" disabled={importando} onClick={() => setImportacao(null)}>
+                Cancelar
+              </button>
             </div>
           </div>
         )}

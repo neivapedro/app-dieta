@@ -57,7 +57,7 @@ function hora(iso: string): string {
 
 /** Sem internet, gravações na fila, erros: avisos curtos no topo */
 function Avisos() {
-  const { erro, limparErro, offlineDesde, pendentes, recarregar } = useDados();
+  const { erro, limparErro, offlineDesde, falhaRede, pendentes, recarregar } = useDados();
   return (
     <>
       <AvisoNovaVersao />
@@ -72,7 +72,15 @@ function Avisos() {
           </button>
         </div>
       )}
-      {!offlineDesde && pendentes > 0 && (
+      {!offlineDesde && pendentes > 0 && falhaRede && (
+        <div className="alerta" style={{ marginBottom: 14, alignItems: 'center' }}>
+          <span className="cresce">Sem conexão · {pendentes} alteração(ões) guardada(s) para enviar quando a internet voltar</span>
+          <button className="botao pequeno" onClick={() => void recarregar()}>
+            Tentar
+          </button>
+        </div>
+      )}
+      {!offlineDesde && pendentes > 0 && !falhaRede && (
         <div className="alerta info" style={{ marginBottom: 14 }}>
           {pendentes} alteração(ões) guardada(s) no aparelho, enviando…
         </div>

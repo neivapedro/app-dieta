@@ -262,10 +262,11 @@ export class RepositorioSupabase implements Repositorio {
   }
 
   async salvarDecisoes({ ciclo_id, decisoes, fases }: DecisoesCiclo) {
-    const r = await this.sb.from('ciclos').update({ decisoes, fases }).eq('id', ciclo_id);
+    // Fases só quando a decisão mudou o Plano: senão, uma decisão antiga da fila desfaria um Plano salvo depois
+    const r = await this.sb.from('ciclos').update(fases ? { decisoes, fases } : { decisoes }).eq('id', ciclo_id);
     if (r.error && faltaNoBanco(r.error)) {
       // O plano (Repetir fase) é gravado; a decisão em si precisa da coluna nova
-      erro(await this.sb.from('ciclos').update({ fases }).eq('id', ciclo_id));
+      if (fases) erro(await this.sb.from('ciclos').update({ fases }).eq('id', ciclo_id));
       throw new SalvoEmParte(`A decisão da fase não foi salva: ${AVISO_EVOLUCAO}`);
     }
     erro(r);

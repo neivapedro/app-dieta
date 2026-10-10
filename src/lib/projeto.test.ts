@@ -73,7 +73,7 @@ describe('Fase pós-remédio', () => {
     const a = avisoReganho(lista, inicio)!;
     expect(a.cintura).toBe(3);
     expect(a.peso).toBe(0);
-    expect(a.texto).toContain('a cintura subiu 3');
+    expect(a.texto).toContain('a cintura subiu em 3 medições seguidas');
     expect(a.texto).not.toContain('o peso');
     // Só duas subidas: sem aviso
     expect(avisoReganho(lista.slice(0, 3), inicio)).toBeNull();
@@ -88,7 +88,7 @@ describe('Fase pós-remédio', () => {
   it('o aviso é só informativo: sem sugestão de mudar a meta', () => {
     const lista = [comp('2027-02-15', 88, 88), comp('2027-02-22', 88.5, 88.2), comp('2027-03-01', 89, 88.4), comp('2027-03-08', 89.4, 88.6)];
     const a = avisoReganho(lista, '2027-02-20')!;
-    expect(a.texto).toContain('a cintura subiu 3 e o peso subiu 3');
+    expect(a.texto).toContain('a cintura subiu em 3 medições seguidas e o peso subiu em 3 medições seguidas');
     expect(a.texto).not.toMatch(/déficit|revise|reduz/i);
   });
 });

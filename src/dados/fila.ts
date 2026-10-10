@@ -55,6 +55,11 @@ export function gravarFila(usuario: string, fila: ItemFila[]) {
 /** Uma operação nova substitui a anterior com a mesma chave (o último estado vale). */
 export function enfileirar(fila: ItemFila[], op: Operacao, versao: number): ItemFila[] {
   const chave = chaveDe(op);
+  // Decisões: uma decisão nova sem fases não apaga as fases de um "Repetir" ainda não enviado
+  if (op.tipo === 'decisoes' && !op.dado.fases) {
+    const anterior = fila.find((i) => i.chave === chave);
+    if (anterior?.tipo === 'decisoes' && anterior.dado.fases) op = { ...op, dado: { ...op.dado, fases: anterior.dado.fases } };
+  }
   return [...fila.filter((i) => i.chave !== chave), { ...op, chave, versao }];
 }
 
@@ -94,7 +99,7 @@ export function aplicarFila<T extends Aplicavel>(dados: T, fila: ItemFila[]): T 
   let { treinos, diario, dieta, aplicacoes, medidas, ciclo, registroDecisoes, forca } = dados;
   for (const op of fila) {
     if (op.tipo === 'decisoes') {
-      if (ciclo && ciclo.id === op.dado.ciclo_id) ciclo = { ...ciclo, decisoes: op.dado.decisoes, fases: op.dado.fases };
+      if (ciclo && ciclo.id === op.dado.ciclo_id) ciclo = { ...ciclo, decisoes: op.dado.decisoes, fases: op.dado.fases ?? ciclo.fases };
       continue;
     }
     if (op.tipo === 'excluir') {

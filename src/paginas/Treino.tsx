@@ -147,7 +147,7 @@ export function Treino() {
         </div>
         <p className="mudo" style={{ marginTop: 8 }}>
           Meta até hoje: 1 treino e 1 cardio por dia, sem folga (o dia de hoje só conta depois de marcado). Projeção: quantos você terá feito
-          no fim do projeto, mantendo a % atual, de um total possível. Corrida e bike: a meta segue a regra (quarta e domingo = corrida) e o feito conta o
+          no fim {t.placarPos ? 'da fase' : 'do projeto'}, mantendo a % atual, de um total possível. Corrida e bike: a meta segue a regra (quarta e domingo = corrida) e o feito conta o
           cardio real de cada dia, com a % limitada a 100%.
         </p>
       </section>
@@ -373,7 +373,7 @@ export function Treino() {
       </section>
 
       {diaAberto && <FormDiaTreino data={diaAberto} aoFechar={() => setDiaAberto(null)} />}
-      {metasAbertas && <FormMetas base={atual ?? inicial} aoFechar={() => setMetasAbertas(false)} />}
+      {metasAbertas && <FormMetas base={atual ?? inicial} encerrado={t.projeto.placar.encerrado && !!atual} aoFechar={() => setMetasAbertas(false)} />}
     </div>
   );
 }

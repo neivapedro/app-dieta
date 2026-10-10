@@ -8,6 +8,7 @@ import { formatarData } from '../lib/datas';
 import { corVariacao } from '../lib/formato';
 import {
   chaveSlot,
+  conflitoDataSessao,
   dataDaSessao,
   DIAS_MEDICAO_FOTO,
   medicaoProxima,
@@ -182,7 +183,12 @@ export function CartaoFotos() {
                       className={`foto-slot ${f ? 'cheio' : ''} ${s === 'depois' && horaDoDepois && !f ? 'destaque' : ''}`}
                       aria-label={`${ROTULO_SESSAO[s]}: ${ROTULO_POSE[p]}${f ? ` (${formatarData(f.data, true)})` : ' (adicionar)'}`}
                       disabled={!!preparando}
-                      onClick={() => (f ? setVendo({ sessao: s, pose: p }) : escolher(s, p))}
+                      onClick={() => {
+                        // Abrir outra foto não carrega o erro de antes
+                        setMsg(null);
+                        if (f) setVendo({ sessao: s, pose: p });
+                        else escolher(s, p);
+                      }}
                     >
                       {f ? <img src={f.url} alt="" /> : <span className="foto-mais">{ocupado ? '…' : '+'}</span>}
                       <span className="foto-pose">{ocupado ? 'Preparando…' : ROTULO_POSE[p]}</span>
@@ -195,7 +201,8 @@ export function CartaoFotos() {
           ))}
         </div>
       )}
-      {msg && <div className="alerta erro">{msg}</div>}
+      {/* Com a folha de uma foto aberta, o erro aparece só nela */}
+      {msg && !vendo && <div className="alerta erro">{msg}</div>}
       <p className="mudo">
         Para comparar: mesma luz, mesmo lugar, mesma distância, de manhã em jejum, roupa parecida. O Depois pode ser preenchido a qualquer momento.
       </p>
@@ -207,6 +214,7 @@ export function CartaoFotos() {
         <FolhaNova
           nova={nova}
           hoje={hoje}
+          conferir={(data) => conflitoDataSessao(fotos, nova.sessao, data)}
           aoFechar={fechaNova}
           aoSalvar={async (data) => {
             await salvarFoto(usuario.id, { sessao: nova.sessao, pose: nova.pose, data, blob: nova.imagem.blob, largura: nova.imagem.largura, altura: nova.imagem.altura });
@@ -215,7 +223,13 @@ export function CartaoFotos() {
         />
       )}
       {vendo && vista && (
-        <Folha titulo={`${ROTULO_SESSAO[vista.sessao]} · ${ROTULO_POSE[vista.pose]}`} aoFechar={() => setVendo(null)}>
+        <Folha
+          titulo={`${ROTULO_SESSAO[vista.sessao]} · ${ROTULO_POSE[vista.pose]}`}
+          aoFechar={() => {
+            setVendo(null);
+            setMsg(null);
+          }}
+        >
           <div className="pilha" style={{ gap: 10 }}>
             <img className="foto-grande" src={vista.url} alt={`${ROTULO_SESSAO[vista.sessao]}, ${ROTULO_POSE[vista.pose]}`} />
             <Campo rotulo="Data da foto">
@@ -223,7 +237,14 @@ export function CartaoFotos() {
                 type="date"
                 value={vista.data}
                 max={hoje}
-                onChange={(e) => e.target.value && e.target.value <= hoje && void mudarDataFoto(usuario.id, vista.sessao, vista.pose, e.target.value).catch((x: Error) => setMsg(x.message))}
+                onChange={(e) => {
+                  const d = e.target.value;
+                  if (!d || d > hoje) return;
+                  const conflito = conflitoDataSessao(fotos, vista.sessao, d);
+                  if (conflito) return setMsg(conflito);
+                  setMsg(null);
+                  void mudarDataFoto(usuario.id, vista.sessao, vista.pose, d).catch((x: Error) => setMsg(x.message));
+                }}
               />
             </Campo>
             <NumerosSessao
@@ -257,11 +278,14 @@ export function CartaoFotos() {
 function FolhaNova({
   nova,
   hoje,
+  conferir,
   aoFechar,
   aoSalvar,
 }: {
   nova: { sessao: Sessao; pose: Pose; url: string; dataInicial?: string };
   hoje: string;
+  /** Erro de data (ex.: Depois antes do Antes) ou null */
+  conferir?: (data: string) => string | null;
   aoFechar: () => void;
   aoSalvar: (data: string) => Promise<void>;
 }) {
@@ -270,6 +294,8 @@ function FolhaNova({
   const [erro, setErro] = useState<string | null>(null);
   async function salvar() {
     if (!data || data > hoje) return setErro('Informe a data da foto (até hoje).');
+    const conflito = conferir?.(data);
+    if (conflito) return setErro(conflito);
     setSalvando(true);
     try {
       await aoSalvar(data);

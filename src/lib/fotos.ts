@@ -60,6 +60,19 @@ export function dataDaSessao(fotos: FotoInfo[], sessao: Sessao): string | null {
   return null;
 }
 
+/** Depois antes do Antes (ou Antes depois do Depois) inverteria a variação: devolve o motivo do erro. */
+export function conflitoDataSessao(fotos: FotoInfo[], sessao: Sessao, data: string): string | null {
+  const br = (d: string) => d.split('-').reverse().join('/');
+  if (sessao === 'depois') {
+    const antes = dataDaSessao(fotos, 'antes');
+    if (antes && data < antes) return `A data do Depois não pode ser anterior à do Antes (${br(antes)}).`;
+  } else {
+    const depois = dataDaSessao(fotos, 'depois');
+    if (depois && data > depois) return `A data do Antes não pode ser posterior à do Depois (${br(depois)}).`;
+  }
+  return null;
+}
+
 export interface NumeroFoto {
   rotulo: string;
   valor: string;
