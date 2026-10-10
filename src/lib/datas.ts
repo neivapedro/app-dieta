@@ -44,3 +44,18 @@ export function formatarData(data: string, anoCurto = false): string {
 export function maiorData(a: string, b: string): string {
   return a >= b ? a : b;
 }
+
+/** Segunda-feira da semana da data (a semana vai de segunda a domingo). */
+export function segundaDaSemana(data: string): string {
+  const dia = new Date(paraUTC(data)).getUTCDay();
+  return somarDias(data, -((dia + 6) % 7));
+}
+
+const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+
+/** "10 de outubro de 2026" */
+export function dataPorExtenso(data: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}/.test(data)) return '';
+  const [a, m, d] = data.split('-').map(Number);
+  return `${d} de ${MESES[m - 1]} de ${a}`;
+}

@@ -1,5 +1,5 @@
 import type { PlanoDieta } from '../lib/dieta';
-import type { Aplicacao, Ciclo, DecisaoFase, Fase, Medida, MetasProjeto, Perfil, RegistroDiario, TreinoDia } from '../lib/tipos';
+import type { Aplicacao, Ciclo, DecisaoFase, Fase, Medida, MetasProjeto, Perfil, RegistroDecisao, RegistroDiario, TreinoDia } from '../lib/tipos';
 
 export interface Usuario {
   id: string;
@@ -82,4 +82,10 @@ export interface Repositorio {
   // Aba Dieta: um plano por conta
   obterDieta(): Promise<PlanoDieta | null>;
   salvarDieta(p: PlanoDieta): Promise<void>;
+
+  // Registro de decisões (mudanças de déficit, fator, fases, metas, dose)
+  /** null = a tabela ainda não existe no banco (falta o SQL de evolução) */
+  listarRegistroDecisoes(): Promise<RegistroDecisao[] | null>;
+  salvarRegistroDecisao(r: RegistroDecisao): Promise<void>;
+  excluirRegistroDecisao(id: string): Promise<void>;
 }

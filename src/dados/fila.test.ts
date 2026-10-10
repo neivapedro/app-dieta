@@ -71,3 +71,23 @@ describe('Fila: decisões do fim de fase', () => {
     expect(aplicarFila({ ...base, ciclo: { ...ciclo, id: 'outro' } }, f).ciclo!.fases[0].semanas).toBe(4);
   });
 });
+
+describe('Fila: registro de decisões', () => {
+  it('a linha aparece na hora, o motivo editado substitui e a exclusão some com ela', () => {
+    const base = { treinos: [], diario: [], dieta: null, registroDecisoes: [] };
+    const r = { id: 'r1', data: '2026-10-12', tipo: 'dieta' as const, campo: 'Fator de atividade', de: '1,2', para: '1,3', motivo: null, ref: null };
+    let f = enfileirar([], { tipo: 'registro_decisao', dado: r }, 1);
+    f = enfileirar(f, { tipo: 'registro_decisao', dado: { ...r, motivo: 'mudei de emprego' } }, 2);
+    expect(f).toHaveLength(1);
+    expect(aplicarFila(base, f).registroDecisoes).toEqual([{ ...r, motivo: 'mudei de emprego' }]);
+    f = enfileirar(f, { tipo: 'excluir', dado: { alvo: 'registro_decisao', id: 'r1', data: r.data } }, 3);
+    expect(f).toHaveLength(1);
+    expect(aplicarFila({ ...base, registroDecisoes: [r] }, f).registroDecisoes).toEqual([]);
+  });
+
+  it('dados sem o registro (cópia antiga) não ganham o campo', () => {
+    const r = { id: 'r1', data: '2026-10-12', tipo: 'nota' as const, campo: 'meta mantida', de: null, para: null };
+    const d = aplicarFila({ treinos: [], diario: [], dieta: null }, enfileirar([], { tipo: 'registro_decisao', dado: r }, 1));
+    expect('registroDecisoes' in d).toBe(false);
+  });
+});

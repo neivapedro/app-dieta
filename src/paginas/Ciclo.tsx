@@ -20,6 +20,7 @@ import {
   verificarPlano,
 } from '../lib/ciclo';
 import { diaDaSemana, formatarData } from '../lib/datas';
+import { compararFases } from '../lib/registroDecisoes';
 import { mg, num, paraNumero, paraTexto, sinal, ui } from '../lib/formato';
 import type { Aplicacao, Ciclo as TCiclo, Fase } from '../lib/tipos';
 
@@ -196,7 +197,7 @@ function deEdicao(f: FaseEdicao): Fase {
 }
 
 function Plano() {
-  const { ciclo, executar } = useDados();
+  const { ciclo, executar, registrarAlteracoes } = useDados();
   const { resumo } = useCalculos();
   const [fases, setFases] = useState<FaseEdicao[]>(ciclo!.fases.map(paraEdicao));
   const [salvo, setSalvo] = useState(true);
@@ -226,7 +227,10 @@ function Plano() {
     });
     if (semanasInvalidas) return setErro('Toda fase precisa de um número inteiro de semanas (1 ou mais).');
     setErro(null);
+    const antes = ciclo!.fases;
     await executar((r) => r.salvarCiclo({ ...ciclo!, fases: fasesValidas }));
+    // Dose e semanas de cada fase entram no registro de decisões
+    registrarAlteracoes(compararFases(antes, fasesValidas));
     setSalvo(true);
   }
 

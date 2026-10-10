@@ -20,3 +20,27 @@ alter table public.ciclos add column if not exists decisoes jsonb default '[]'::
 -- Concentração do frasco gravada em cada aplicação no momento do registro
 -- (aplicações antigas ficam vazias e usam a do ciclo)
 alter table public.aplicacoes add column if not exists concentracao_mg_ml numeric(8,3) check (concentracao_mg_ml > 0);
+
+-- Registro de decisões: cada mudança relevante (déficit, fator, g/kg, fases,
+-- metas, dose) vira uma linha { data, tipo, campo, de, para, motivo }. O app
+-- grava sozinho ao salvar; no mesmo dia, o mesmo campo fica numa linha só.
+-- Sem esta tabela o app continua funcionando (só não guarda o registro).
+create table if not exists public.registro_decisoes (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users on delete cascade,
+  data date not null,
+  tipo text not null check (tipo in ('dieta', 'plano', 'metas', 'dose', 'nota')),
+  campo text not null,
+  de text,
+  para text,
+  motivo text,
+  -- Decisão de fim de fase (ciclos.decisoes[].id) que gerou a linha
+  ref text,
+  criado_em timestamptz not null default now()
+);
+create index if not exists registro_decisoes_user_data on public.registro_decisoes (user_id, data);
+
+alter table public.registro_decisoes enable row level security;
+drop policy if exists "dono" on public.registro_decisoes;
+create policy "dono" on public.registro_decisoes for all to authenticated
+  using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));

@@ -135,3 +135,26 @@ export const LOCAIS_APLICACAO = [
 ] as const;
 
 export const NIVEIS_NAUSEA = ['Nenhuma', 'Leve', 'Moderada', 'Forte'] as const;
+
+/** Área da mudança registrada no registro de decisões */
+export type TipoDecisao = 'dieta' | 'plano' | 'metas' | 'dose' | 'nota';
+
+/**
+ * Registro de decisões: gravado sozinho quando um valor relevante muda
+ * (déficit, fator, g/kg, fases, metas, dose). No mesmo dia, mudanças do mesmo
+ * campo viram uma linha só (vale o primeiro "de" e o último "para").
+ */
+export interface RegistroDecisao {
+  id: string;
+  data: string;
+  tipo: TipoDecisao;
+  /** Nome do campo, já pronto para mostrar (ex.: "Déficit/superávit") */
+  campo: string;
+  /** Valores já formatados; null = não havia (ou nota livre) */
+  de: string | null;
+  para: string | null;
+  /** Motivo opcional, uma linha, escrito pelo usuário */
+  motivo?: string | null;
+  /** Decisão de fim de fase que gerou o registro (desfazer a decisão apaga o registro) */
+  ref?: string | null;
+}

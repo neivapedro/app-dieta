@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { configPadrao, type PlanoDieta } from '../lib/dieta';
-import type { Aplicacao, Ciclo, Medida, MetasProjeto, Perfil, RegistroDiario, TreinoDia } from '../lib/tipos';
+import type { Aplicacao, Ciclo, Medida, MetasProjeto, Perfil, RegistroDecisao, RegistroDiario, TreinoDia } from '../lib/tipos';
 import { ehErroDeRede } from '../lib/erros';
 import { CicloSalvoEmParte, type DecisoesCiclo, type Repositorio, type Usuario } from './repositorio';
 
@@ -357,5 +357,39 @@ export class RepositorioSupabase implements Repositorio {
         .from('dieta_planos')
         .upsert({ user_id: await this.uid(), config: p.config, refeicoes: p.refeicoes, atualizado_em: new Date().toISOString() }),
     );
+  }
+
+  async listarRegistroDecisoes(): Promise<RegistroDecisao[] | null> {
+    const r = await this.sb.from('registro_decisoes').select('*').order('data');
+    // Tabela da evolução ainda não criada: o app segue sem o registro
+    if (r.error && faltaNoBanco(r.error)) return null;
+    return lista(r).map((d) => ({
+      id: d.id,
+      data: d.data,
+      tipo: d.tipo,
+      campo: d.campo,
+      de: d.de ?? null,
+      para: d.para ?? null,
+      motivo: d.motivo ?? null,
+      ref: d.ref ?? null,
+    }));
+  }
+
+  async salvarRegistroDecisao(d: RegistroDecisao) {
+    const r = await this.sb.from('registro_decisoes').upsert({ ...d, user_id: await this.uid() });
+    if (r.error && faltaNoBanco(r.error)) {
+      // Registro automático sem a tabela: não interrompe quem só mudou a Dieta ou o Plano
+      // (a Análise avisa que falta o SQL). O que o usuário escreveu, sim, precisa do aviso.
+      if (d.tipo === 'nota') throw new Error(`A decisão anotada não foi salva: ${AVISO_EVOLUCAO}`);
+      if (d.motivo) throw new Error(`O motivo da decisão não foi salvo: ${AVISO_EVOLUCAO}`);
+      return;
+    }
+    erro(r);
+  }
+
+  async excluirRegistroDecisao(id: string) {
+    const r = await this.sb.from('registro_decisoes').delete().eq('id', id);
+    if (r.error && faltaNoBanco(r.error)) return;
+    erro(r);
   }
 }

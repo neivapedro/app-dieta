@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { somarDias } from './datas';
 import type { Composicao } from './gordura';
-import { alertasSeguranca } from './seguranca';
+import { alertasSeguranca, historicoAlertas, resumoAlerta } from './seguranca';
 import type { Aplicacao, RegistroDiario } from './tipos';
 
 const reg = (data: string, extra: Partial<RegistroDiario> = {}): RegistroDiario => ({
@@ -95,5 +95,23 @@ describe('Alertas de segurança', () => {
   it('sem aplicações a janela é a dos últimos 7 dias', () => {
     const diario = [reg('2026-10-12', { vomito: true }), reg('2026-10-14', { vomito: true })];
     expect(regras(alertasSeguranca({ composicoes: [], aplicacoes: [], diario, hoje: '2026-10-15' }))).toEqual(['hidratacao']);
+  });
+});
+
+describe('Histórico dos alertas (Eventos do PDF)', () => {
+  it('cada episódio aparece uma vez, com o último estado', () => {
+    const diario = [
+      reg('2026-10-08', { nausea: 3 }),
+      reg('2026-10-09', { nausea: 3 }),
+      reg('2026-10-10', { nausea: 3 }),
+      reg('2026-10-20', { vomito: true }),
+    ];
+    const ev = historicoAlertas({ diario, composicoes: [], aplicacoes: [ap('2026-10-08'), ap('2026-10-15'), ap('2026-10-19')] }, '2026-10-08', '2026-10-31');
+    expect(ev.map((e) => [e.regra, e.data, e.desde])).toEqual([
+      ['nausea_forte', '2026-10-10', '2026-10-09'],
+      ['vomito_dose', '2026-10-20', '2026-10-20'],
+    ]);
+    expect(ev[0].texto).toContain('3 dias seguidos');
+    expect(resumoAlerta(ev[1].texto)).toBe('Vômito no dia seguinte à dose (20/10)');
   });
 });

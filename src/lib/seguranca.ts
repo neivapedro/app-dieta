@@ -138,3 +138,39 @@ export function alertasSeguranca({ diario, composicoes, aplicacoes, hoje }: Entr
 
   return alertas;
 }
+
+/** Alerta que já aconteceu (seção "Eventos" do PDF): o último estado de cada episódio. */
+export interface EventoSeguranca extends AlertaSeguranca {
+  /** Primeiro dia em que a regra disparou neste episódio */
+  desde: string;
+}
+
+/**
+ * Histórico dos alertas no período: avalia as regras dia a dia, como se cada
+ * dia fosse "hoje". Uma regra que dispara em dias seguidos é um episódio só;
+ * o texto só é trocado por um fato mais novo (quando a janela de 7 dias anda,
+ * a contagem cai, mas o que aconteceu continua valendo).
+ */
+export function historicoAlertas(entrada: Omit<EntradaSeguranca, 'hoje'>, de: string, ate: string): EventoSeguranca[] {
+  const eventos: EventoSeguranca[] = [];
+  const abertos = new Map<RegraSeguranca, number>();
+  for (let dia = de; dia <= ate; dia = somarDias(dia, 1)) {
+    const ativos = alertasSeguranca({ ...entrada, hoje: dia });
+    const regrasHoje = new Set(ativos.map((a) => a.regra));
+    for (const regra of [...abertos.keys()]) if (!regrasHoje.has(regra)) abertos.delete(regra);
+    for (const a of ativos) {
+      const i = abertos.get(a.regra);
+      if (i === undefined) {
+        abertos.set(a.regra, eventos.length);
+        eventos.push({ ...a, desde: dia });
+      } else if (a.data > eventos[i].data) eventos[i] = { ...a, desde: eventos[i].desde };
+    }
+  }
+  return eventos.sort((a, b) => a.data.localeCompare(b.data));
+}
+
+/** Só a constatação do alerta, sem a orientação (para tabela de relatório). */
+export function resumoAlerta(texto: string): string {
+  const i = texto.search(/\.\s/);
+  return i > 0 ? texto.slice(0, i) : texto.replace(/\.$/, '');
+}

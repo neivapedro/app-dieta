@@ -1,5 +1,5 @@
 import type { PlanoDieta } from '../lib/dieta';
-import type { Aplicacao, Ciclo, Medida, MetasProjeto, Perfil, RegistroDiario, TreinoDia } from '../lib/tipos';
+import type { Aplicacao, Ciclo, Medida, MetasProjeto, Perfil, RegistroDecisao, RegistroDiario, TreinoDia } from '../lib/tipos';
 import type { DecisoesCiclo, Repositorio, Usuario } from './repositorio';
 
 // Modo de demonstração: usado quando o Supabase ainda não foi configurado.
@@ -14,6 +14,7 @@ interface Banco {
   medidas: Medida[];
   treinos?: TreinoDia[];
   dieta?: PlanoDieta | null;
+  registro_decisoes?: RegistroDecisao[];
 }
 
 const CHAVE_SESSAO = 'app-dieta:sessao';
@@ -186,6 +187,21 @@ export class RepositorioLocal implements Repositorio {
 
   async salvarDieta(p: PlanoDieta) {
     this.alterar((b) => (b.dieta = p));
+  }
+
+  async listarRegistroDecisoes() {
+    return [...(this.banco().registro_decisoes ?? [])].sort((a, b) => a.data.localeCompare(b.data));
+  }
+
+  async salvarRegistroDecisao(r: RegistroDecisao) {
+    this.alterar((b) => {
+      b.registro_decisoes ??= [];
+      upsert(b.registro_decisoes, r);
+    });
+  }
+
+  async excluirRegistroDecisao(id: string) {
+    this.alterar((b) => (b.registro_decisoes = (b.registro_decisoes ?? []).filter((x) => x.id !== id)));
   }
 
   async novoTokenCalendario(): Promise<string> {

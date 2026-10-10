@@ -5,6 +5,7 @@ import { diaDaSemana, formatarData, hojeLocal } from '../lib/datas';
 import { cm, kg, num, paraNumero, paraTexto, pp } from '../lib/formato';
 import { percentualGordura, type Composicao } from '../lib/gordura';
 import { digitosParaTempo, formatarTempo, KM_CORRIDA_PADRAO, lerTempo, paceValido, rotuloCardio, tipoCardio } from '../lib/treino';
+import { compararMetas } from '../lib/registroDecisoes';
 import type { MetasProjeto } from '../lib/tipos';
 import { Campo, CampoNumero, Folha } from './ui';
 
@@ -145,7 +146,7 @@ export function FormDiaTreino({ data, marcarCardio, aoFechar }: { data: string; 
 
 /** Metas para o fim do projeto, definidas depois de conhecer as medidas reais. */
 export function FormMetas({ base, aoFechar, primeiraVez }: { base: Composicao | null; aoFechar: () => void; primeiraVez?: boolean }) {
-  const { perfil, executar, medidas } = useDados();
+  const { perfil, executar, medidas, registrarAlteracoes } = useDados();
   const m = perfil?.metas_projeto;
   const altura = [...medidas].sort((a, b) => b.data.localeCompare(a.data))[0]?.altura_cm ?? perfil?.altura_cm ?? null;
   const feminino = perfil?.sexo === 'Feminino';
@@ -176,6 +177,7 @@ export function FormMetas({ base, aoFechar, primeiraVez }: { base: Composicao | 
     setSalvando(true);
     try {
       await executar((r) => r.salvarMetas(metas));
+      registrarAlteracoes(compararMetas(m, metas));
       aoFechar();
     } catch (e) {
       setErro((e as Error).message);

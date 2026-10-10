@@ -33,7 +33,7 @@ function dataDoBackup(iso: string): string {
 }
 
 export function Perfil() {
-  const { perfil, ciclo, aplicacoes, diario, medidas, treinos, dieta, usuario, repo, executar, sair, limparErro } = useDados();
+  const { perfil, ciclo, aplicacoes, diario, medidas, treinos, dieta, registroDecisoes, usuario, repo, executar, sair, limparErro } = useDados();
   const [nome, setNome] = useState(perfil?.nome ?? '');
   const [sexo, setSexo] = useState<Sexo>(perfil?.sexo ?? 'Masculino');
   const [altura, setAltura] = useState(paraTexto(perfil?.altura_cm));
@@ -102,7 +102,7 @@ export function Perfil() {
   }
 
   async function exportar() {
-    const backup = montarBackup({ perfil, ciclo, aplicacoes, diario, medidas, dieta, treinos }, new Date().toISOString());
+    const backup = montarBackup({ perfil, ciclo, aplicacoes, diario, medidas, dieta, treinos, registro_decisoes: registroDecisoes }, new Date().toISOString());
     const nomeArquivo = `ciclo-backup-${hojeLocal()}.json`;
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
     // No iPhone, o menu Compartilhar permite "Salvar em Arquivos"
@@ -127,7 +127,7 @@ export function Perfil() {
   async function prepararImportacao(f: File) {
     try {
       const b = lerBackup(await f.text());
-      setImportacao({ backup: b, plano: planejarImportacao(b, { aplicacoes, medidas, diario, treinos }) });
+      setImportacao({ backup: b, plano: planejarImportacao(b, { aplicacoes, medidas, diario, treinos, registro_decisoes: registroDecisoes }) });
       setMsgBackup(null);
     } catch (e) {
       setMsgBackup({ tipo: 'erro', texto: (e as Error).message });
@@ -177,6 +177,8 @@ export function Perfil() {
           }
         }
         if (b.dieta) await r.salvarDieta(b.dieta);
+        // Id novo: o banco é compartilhado entre contas e o id do backup pode já existir em outra
+        for (const d of plano.registro_decisoes) await r.salvarRegistroDecisao({ ...d, id: crypto.randomUUID() });
       });
       setImportacao(null);
       setMsgBackup(emParte ? { tipo: 'erro', texto: `Backup importado, com uma ressalva: ${emParte}` } : { tipo: 'info', texto: 'Backup importado.' });
@@ -300,6 +302,7 @@ export function Perfil() {
               <b>Backup de {dataDoBackup(importacao.backup.exportado_em)}.</b> Vai importar:{' '}
               {importacao.plano.aplicacoes.length} aplicação(ões), {importacao.plano.medidas.length} medição(ões),{' '}
               {importacao.plano.diario.length} dia(s) do diário, {importacao.plano.treinos.length} dia(s) de treino
+              {importacao.plano.registro_decisoes.length > 0 ? `, ${importacao.plano.registro_decisoes.length} decisão(ões) registrada(s)` : ''}
               {importacao.backup.dieta ? ' e o plano da dieta (substitui o atual)' : ''}.
               {(importacao.backup.perfil || importacao.backup.ciclo) && (
                 <>

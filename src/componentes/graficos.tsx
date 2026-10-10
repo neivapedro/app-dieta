@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Bar, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Bar, CartesianGrid, ComposedChart, Legend, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { diferencaDias, formatarData, somarDias } from '../lib/datas';
 import { num } from '../lib/formato';
 import type { Composicao } from '../lib/gordura';
@@ -58,12 +58,34 @@ interface ItemDica {
   dataKey?: string | number;
 }
 
-function Dica({ active, payload, label }: { active?: boolean; payload?: ItemDica[]; label?: number }) {
-  if (!active || !payload?.length || label === undefined) return null;
+/** Dia com decisão registrada (registro de decisões): vira uma linha vertical discreta */
+export interface MarcoGrafico {
+  data: string;
+  texto: string;
+}
+
+/** Só os marcos dentro do período do gráfico (um marco fora dele esticaria o eixo). */
+function marcosNoPeriodo(marcos: MarcoGrafico[] | undefined, dias: number[]): { dia: number; texto: string }[] {
+  if (!marcos?.length || !dias.length) return [];
+  const min = Math.min(...dias);
+  const max = Math.max(...dias);
+  return marcos.map((m) => ({ dia: paraDia(m.data), texto: m.texto })).filter((m) => m.dia >= min && m.dia <= max);
+}
+
+function linhasDeMarco(marcos: { dia: number }[], yAxisId: string, cor: string) {
+  return marcos.map((m) => (
+    <ReferenceLine key={`marco-${m.dia}`} x={m.dia} yAxisId={yAxisId} stroke={cor} strokeDasharray="2 3" strokeOpacity={0.8} ifOverflow="discard" />
+  ));
+}
+
+function Dica({ active, payload, label, marcos }: { active?: boolean; payload?: ItemDica[]; label?: number; marcos?: { dia: number; texto: string }[] }) {
+  const marco = label === undefined ? undefined : marcos?.find((m) => m.dia === label);
+  if (!active || (!payload?.length && !marco) || label === undefined) return null;
   return (
     <div className="dica-grafico">
       <b>{formatarData(deDia(label))}</b>
-      {payload
+      {marco && <div className="mudo">Decisão: {marco.texto}</div>}
+      {(payload ?? [])
         .filter((p) => p.value !== null && p.value !== undefined)
         .map((p) => (
           <div key={String(p.dataKey)} style={{ color: p.color }}>
@@ -76,9 +98,12 @@ function Dica({ active, payload, label }: { active?: boolean; payload?: ItemDica
 }
 
 /** Mesmo gráfico "Evolução" da planilha, com a % de gordura no eixo da direita. */
-export function GraficoComposicao({ dados }: { dados: Composicao[] }) {
+export function GraficoComposicao({ dados, marcos }: { dados: Composicao[]; marcos?: MarcoGrafico[] }) {
   const CORES = useCores();
-  const pontos = dados.map((c) => ({ dia: paraDia(c.data), peso: c.peso_kg, magra: c.massa_magra_kg, bf: c.bf }));
+  const base: { dia: number; peso?: number; magra?: number | null; bf?: number | null }[] = dados.map((c) => ({ dia: paraDia(c.data), peso: c.peso_kg, magra: c.massa_magra_kg, bf: c.bf }));
+  const noPeriodo = marcosNoPeriodo(marcos, base.map((p) => p.dia));
+  // Dia de decisão sem medição entra como ponto vazio (a dica mostra a decisão)
+  const pontos = [...base, ...noPeriodo.filter((m) => !base.some((p) => p.dia === m.dia)).map((m) => ({ dia: m.dia }))].sort((a, b) => a.dia - b.dia);
   return (
     <div className="grafico">
       <ResponsiveContainer>
@@ -87,8 +112,9 @@ export function GraficoComposicao({ dados }: { dados: Composicao[] }) {
           {eixoX()}
           <YAxis yAxisId="kg" domain={['auto', 'auto']} tickFormatter={(v: number) => num(v, 0)} tickLine={false} axisLine={false} width={36} />
           <YAxis yAxisId="bf" orientation="right" domain={['dataMin - 2', 'dataMax + 2']} tickFormatter={(v: number) => `${num(v, 0)}%`} tickLine={false} axisLine={false} width={40} />
-          <Tooltip content={<Dica />} />
+          <Tooltip content={<Dica marcos={noPeriodo} />} />
           <Legend iconType="plainline" />
+          {linhasDeMarco(noPeriodo, 'kg', CORES.dose)}
           <Line yAxisId="kg" dataKey="peso" name="Peso" unit=" kg" stroke={CORES.peso} strokeWidth={2} dot={{ r: 3 }} connectNulls isAnimationActive={false} />
           <Line yAxisId="kg" dataKey="magra" name="Massa magra" unit=" kg" stroke={CORES.magra} strokeWidth={2} dot={{ r: 3 }} connectNulls isAnimationActive={false} />
           <Line yAxisId="bf" dataKey="bf" name="% de gordura" unit="%" stroke={CORES.bf} strokeWidth={2} dot={{ r: 3 }} connectNulls isAnimationActive={false} />
@@ -99,7 +125,19 @@ export function GraficoComposicao({ dados }: { dados: Composicao[] }) {
 }
 
 /** Peso ao longo do ciclo × degraus de dose aplicada. */
-export function GraficoPesoDose({ serie, linhas, hoje, larguraFixa }: { serie: PontoPeso[]; linhas: LinhaAplicacao[]; hoje: string; larguraFixa?: number }) {
+export function GraficoPesoDose({
+  serie,
+  linhas,
+  hoje,
+  larguraFixa,
+  marcos,
+}: {
+  serie: PontoPeso[];
+  linhas: LinhaAplicacao[];
+  hoje: string;
+  larguraFixa?: number;
+  marcos?: MarcoGrafico[];
+}) {
   const CORES = useCores();
   const mapa = new Map<number, { dia: number; peso?: number; dose?: number }>();
   for (const p of serie) mapa.set(paraDia(p.data), { dia: paraDia(p.data), peso: p.peso_kg });
@@ -111,6 +149,8 @@ export function GraficoPesoDose({ serie, linhas, hoje, larguraFixa }: { serie: P
     const ultimoDia = paraDia(hoje);
     mapa.set(ultimoDia, { ...(mapa.get(ultimoDia) ?? { dia: ultimoDia }), dose: linhas[linhas.length - 1].aplicacao.dose_mg });
   }
+  const noPeriodo = marcosNoPeriodo(marcos, [...mapa.keys()]);
+  for (const m of noPeriodo) if (!mapa.has(m.dia)) mapa.set(m.dia, { dia: m.dia });
   const pontos = [...mapa.values()].sort((a, b) => a.dia - b.dia);
   // Na impressão, largura fixa: o gráfico responsivo não se redimensiona para a página
   const grafico = (
@@ -119,8 +159,9 @@ export function GraficoPesoDose({ serie, linhas, hoje, larguraFixa }: { serie: P
           {eixoX()}
           <YAxis yAxisId="kg" domain={['auto', 'auto']} tickFormatter={(v: number) => num(v, 0)} tickLine={false} axisLine={false} width={36} />
           <YAxis yAxisId="mg" orientation="right" domain={[0, (max: number) => Math.ceil(max + 0.5)]} tickFormatter={(v: number) => String(Math.round(v * 100) / 100).replace('.', ',')} tickLine={false} axisLine={false} width={36} />
-          <Tooltip content={<Dica />} />
+          <Tooltip content={<Dica marcos={noPeriodo} />} />
           <Legend iconType="plainline" />
+          {linhasDeMarco(noPeriodo, 'kg', CORES.dose)}
           <Line yAxisId="kg" dataKey="peso" name="Peso" unit=" kg" stroke={CORES.peso} strokeWidth={2} dot={{ r: 2 }} connectNulls isAnimationActive={false} />
           <Line yAxisId="mg" dataKey="dose" name="Dose" unit=" mg" type="stepAfter" stroke={CORES.dose} strokeWidth={2} strokeDasharray="6 4" dot={false} connectNulls isAnimationActive={false} />
         </ComposedChart>

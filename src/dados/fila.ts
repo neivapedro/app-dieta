@@ -1,5 +1,5 @@
 import type { PlanoDieta } from '../lib/dieta';
-import type { Aplicacao, Ciclo, Medida, RegistroDiario, TreinoDia } from '../lib/tipos';
+import type { Aplicacao, Ciclo, Medida, RegistroDecisao, RegistroDiario, TreinoDia } from '../lib/tipos';
 import type { DecisoesCiclo, Repositorio } from './repositorio';
 
 // Fila de gravações guardada no aparelho. A tela muda na hora (otimista) e a
@@ -15,9 +15,11 @@ export type Operacao =
   | { tipo: 'medida'; dado: Medida }
   // Decisão do fim de fase: leva a lista inteira de decisões e as fases (o último estado vale)
   | { tipo: 'decisoes'; dado: DecisoesCiclo }
+  // Linha do registro de decisões (id criado no aparelho: reenviar nunca duplica)
+  | { tipo: 'registro_decisao'; dado: RegistroDecisao }
   // Exclusão também passa pela fila: substitui uma edição pendente do mesmo registro
   // e funciona sem internet. No Diário, o id pode ser 'pendente:<data>'.
-  | { tipo: 'excluir'; dado: { alvo: 'aplicacao' | 'medida' | 'diario'; id: string; data: string } };
+  | { tipo: 'excluir'; dado: { alvo: 'aplicacao' | 'medida' | 'diario' | 'registro_decisao'; id: string; data: string } };
 
 export type ItemFila = Operacao & { chave: string; versao: number };
 
@@ -25,7 +27,7 @@ export function chaveDe(op: Operacao): string {
   if (op.tipo === 'dieta') return 'dieta';
   if (op.tipo === 'decisoes') return `decisoes:${op.dado.ciclo_id}`;
   if (op.tipo === 'excluir') return op.dado.alvo === 'diario' ? `diario:${op.dado.data}` : `${op.dado.alvo}:${op.dado.id}`;
-  if (op.tipo === 'aplicacao' || op.tipo === 'medida') return `${op.tipo}:${op.dado.id}`;
+  if (op.tipo === 'aplicacao' || op.tipo === 'medida' || op.tipo === 'registro_decisao') return `${op.tipo}:${op.dado.id}`;
   return `${op.tipo}:${op.dado.data}`;
 }
 
@@ -60,8 +62,10 @@ export async function executarOperacao(repo: Repositorio, op: Operacao) {
   if (op.tipo === 'aplicacao') return repo.salvarAplicacao(op.dado);
   if (op.tipo === 'medida') return repo.salvarMedida(op.dado);
   if (op.tipo === 'decisoes') return repo.salvarDecisoes(op.dado);
+  if (op.tipo === 'registro_decisao') return repo.salvarRegistroDecisao(op.dado);
   if (op.tipo === 'excluir') {
     if (op.dado.alvo === 'aplicacao') return repo.excluirAplicacao(op.dado.id);
+    if (op.dado.alvo === 'registro_decisao') return repo.excluirRegistroDecisao(op.dado.id);
     if (op.dado.alvo === 'medida') return repo.excluirMedida(op.dado.id);
     return repo.excluirDiario(op.dado.id);
   }
@@ -75,13 +79,14 @@ interface Aplicavel {
   aplicacoes?: Aplicacao[];
   medidas?: Medida[];
   ciclo?: Ciclo | null;
+  registroDecisoes?: RegistroDecisao[];
 }
 
 const porData = <T extends { data: string }>(a: T, b: T) => a.data.localeCompare(b.data);
 
 /** Aplica as operações ainda não enviadas sobre os dados (do servidor ou do cache). */
 export function aplicarFila<T extends Aplicavel>(dados: T, fila: ItemFila[]): T {
-  let { treinos, diario, dieta, aplicacoes, medidas, ciclo } = dados;
+  let { treinos, diario, dieta, aplicacoes, medidas, ciclo, registroDecisoes } = dados;
   for (const op of fila) {
     if (op.tipo === 'decisoes') {
       if (ciclo && ciclo.id === op.dado.ciclo_id) ciclo = { ...ciclo, decisoes: op.dado.decisoes, fases: op.dado.fases };
@@ -92,6 +97,11 @@ export function aplicarFila<T extends Aplicavel>(dados: T, fila: ItemFila[]): T 
       if (alvo === 'aplicacao' && aplicacoes) aplicacoes = aplicacoes.filter((a) => a.id !== id);
       if (alvo === 'medida' && medidas) medidas = medidas.filter((m) => m.id !== id);
       if (alvo === 'diario') diario = diario.filter((r) => r.data !== data);
+      if (alvo === 'registro_decisao' && registroDecisoes) registroDecisoes = registroDecisoes.filter((r) => r.id !== id);
+      continue;
+    }
+    if (op.tipo === 'registro_decisao') {
+      if (registroDecisoes) registroDecisoes = [...registroDecisoes.filter((r) => r.id !== op.dado.id), op.dado].sort(porData);
       continue;
     }
     if (op.tipo === 'aplicacao' && aplicacoes) {
@@ -125,6 +135,7 @@ export function aplicarFila<T extends Aplicavel>(dados: T, fila: ItemFila[]): T 
     ...(aplicacoes ? { aplicacoes } : {}),
     ...(medidas ? { medidas } : {}),
     ...(ciclo !== undefined ? { ciclo } : {}),
+    ...(registroDecisoes ? { registroDecisoes } : {}),
   };
 }
 

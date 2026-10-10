@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { ListaDecisoes } from '../componentes/decisoes';
 import { Bloco, SemGrafico, Vazio } from '../componentes/ui';
 import { useDados } from '../dados/contexto';
 import { useAlimentos } from '../dados/useAlimentos';
@@ -8,9 +9,25 @@ import { useTreino } from '../dados/useTreino';
 import { composicaoPorFase, rotuloBloco, sintomasPorFase } from '../lib/analise';
 import { descreverFaseAtual } from '../lib/ciclo';
 import { ritmoPercentual, tendenciaPeso } from '../lib/conferencia';
-import { diferencaDias, formatarData } from '../lib/datas';
+import {
+  colunasQuadro,
+  montarQuadro,
+  ocorrencias,
+  ritmoDoBloco,
+  semanasDoCiclo,
+  tabelaDecisoes,
+  tabelaEventos,
+  tabelaOcorrencias,
+  tabelaSemanal,
+  tabelaTendencias,
+  textoTolerancia,
+  toleranciaIntervalo,
+} from '../lib/consulta';
+import { dataPorExtenso, diferencaDias, formatarData } from '../lib/datas';
+import { decisoesPorDia, marcosDasDecisoes } from '../lib/registroDecisoes';
+import { historicoAlertas } from '../lib/seguranca';
 import type { ModeloRelatorio } from '../lib/relatorioPdf';
-import { calcularMetas, macrosDaRefeicao } from '../lib/dieta';
+import { calcularMetas, idade, macrosDaRefeicao } from '../lib/dieta';
 import { cm, corVariacao, kg, mg, num, pct, pp, sinal } from '../lib/formato';
 import type { Composicao } from '../lib/gordura';
 import { aderenciaRecente, formatarTempo } from '../lib/treino';
@@ -59,7 +76,7 @@ function Comparacao({ ini, atu }: { ini: Composicao; atu: Composicao | null }) {
 const COR_FAIXA = { ideal: 'bom', rapido: 'ruim', lento: '', ganho: 'ruim' } as const;
 
 export function Analise() {
-  const { perfil, ciclo, diario, treinos, dieta } = useDados();
+  const { perfil, ciclo, diario, medidas, treinos, dieta, registroDecisoes } = useDados();
   const { resumo, geral, fases, serie, hoje, composicoes } = useCalculos();
   const treino = useTreino();
   const { banco } = useAlimentos();
@@ -112,6 +129,43 @@ export function Analise() {
       return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
     };
     const tabelas: ModeloRelatorio['tabelas'] = [];
+    const aplicacoes = resumo!.linhas.map((l) => l.aplicacao);
+    const inicioCiclo = datasAplic[0] ?? ciclo?.data_inicio ?? hoje;
+
+    // Cabeçalho de 1 linha: remédio, concentração, idade, altura, peso e % de gordura no início
+    const anos = idade(perfil?.data_nascimento, hoje);
+    const altura = perfil?.altura_cm ?? [...medidas].sort((a, b) => a.data.localeCompare(b.data))[0]?.altura_cm ?? null;
+    const remedio = ciclo ? (ciclo.nome.includes(`${num(ciclo.concentracao_mg_ml, 0)} mg/ml`) ? ciclo.nome : `${ciclo.nome} · ${num(ciclo.concentracao_mg_ml, 0)} mg/ml`) : null;
+    const cabecalho = [
+      remedio,
+      anos !== null ? `${anos} anos` : null,
+      altura ? `${num(altura, 0)} cm` : null,
+      geral.peso_inicial ? `peso no início ${kg(geral.peso_inicial.peso_kg)}` : null,
+      ini?.bf != null ? `${pp(ini.bf)} de gordura no início` : null,
+    ]
+      .filter(Boolean)
+      .join(' · ');
+
+    // Quadro de decisão: fase atual (ou que termina) × anterior, e a próxima dose
+    const p = resumo!.proxima;
+    const s = resumo!.degrau;
+    const proxima = p
+      ? `Próxima dose prevista: ${formatarData(p.data)} · ${mg(p.dose_mg)}${
+          p.estado === 'pendente' && s.fase_seguinte
+            ? ` (a dose continua até a decisão; a fase seguinte do Plano é ${mg(s.fase_seguinte.fase.dose_mg)})`
+            : p.estado === 'subir'
+              ? ' (decidido subir)'
+              : p.extra
+                ? ' (dose extra com a sobra do frasco)'
+                : ''
+        }`
+      : 'Próxima dose prevista: nenhuma (plano ou frasco concluído).';
+    const colunas = colunasQuadro(fases, compFases, diario, datasAplic, hoje);
+    const quadro = colunas.atual ? montarQuadro({ atual: colunas.atual, anterior: colunas.anterior }, !!treino, proxima) : null;
+    const semanal = aplicacoes.length
+      ? tabelaSemanal(semanasDoCiclo({ inicio: inicioCiclo, hoje, aplicacoes, serie, composicoes, diario, treinos: treino ? treinos : null }), !!treino)
+      : null;
+
     if (ini) {
       const v = (c: Composicao | null, k: keyof Composicao) => (c ? (c[k] as number | null) : null);
       const linha = (r: string, k: keyof Composicao, fmt: (n: number | null) => string, suf: string) => {
@@ -135,6 +189,7 @@ export function Analise() {
         nota: 'Método da Marinha dos EUA (fita métrica), medido em jejum às segundas.',
       });
     }
+    tabelas.push(tabelaTendencias(composicoes));
     tabelas.push({
       titulo: 'Composição por fase',
       cabecalho: ['Fase', 'Cintura', 'Massa gorda', 'Massa magra', 'Gordura/sem.', ...(treino ? ['Treino', 'Cardio'] : [])],
@@ -153,15 +208,16 @@ export function Analise() {
     });
     tabelas.push({
       titulo: 'Peso e náusea por fase',
-      cabecalho: ['Fase', 'Doses', 'Período', 'Peso início -> fim', 'kg/sem.', 'Náusea méd./máx.'],
-      linhas: fases.map((f) => [
+      cabecalho: ['Fase', 'Doses', 'Período', 'Peso início -> fim', 'kg/sem. (faixa 95%)', 'Náusea méd./máx.'],
+      linhas: fases.map((f, i) => [
         `${rotuloBloco(f)}${f.em_andamento ? ' (atual)' : ''}`,
         `${f.doses} x ${num(f.dose_mg)} mg`,
-        `${formatarData(f.inicio, true)} – ${f.fim === hoje ? 'hoje' : formatarData(f.fim, true)}`,
+        `${formatarData(f.inicio, true)} – ${formatarData(f.fim, true)}`,
         `${num(f.peso_inicio, 1)} -> ${num(f.peso_fim, 1)}`,
-        f.poucos_dados ? 'poucos dados' : sinal(f.kg_por_semana, 2),
+        ritmoDoBloco(serie, f, i === fases.length - 1),
         `${num(f.nausea_media, 1)} / ${f.nausea_max ?? '–'}`,
       ]),
+      nota: 'kg/sem. pela regressão das pesagens do bloco (dose realmente aplicada), com a faixa provável de 95%. Blocos seguidos também mudam tempo de uso, dieta e treino: a diferença entre eles não se atribui só à dose.',
     });
     if (!sintomas.every((x) => x.nausea_por_dia.every((n) => n === null)) || temSintomas) {
       tabelas.push({
@@ -177,23 +233,32 @@ export function Analise() {
         nota: 'D0 = dia da dose. Náusea média (0 a 3). Sintomas: % dos dias registrados no Diário na fase.',
       });
     }
+    const listaOcorrencias = ocorrencias(diario, aplicacoes);
+    if (listaOcorrencias.length) tabelas.push(tabelaOcorrencias(listaOcorrencias));
     tabelas.push({
       titulo: 'Aplicações',
-      cabecalho: ['Nº', 'Data', 'Dose', 'Fase', 'Atraso', 'Local'],
-      linhas: resumo!.linhas.map((l) => [
+      cabecalho: ['Nº', 'Data', 'Dose', 'Fase', 'Atraso', 'Náusea máx. · sintomas'],
+      linhas: resumo!.linhas.map((l, i) => [
         String(l.numero),
         formatarData(l.aplicacao.data, true),
         mg(l.aplicacao.dose_mg),
         l.fase ? String(l.fase.indice + 1) : 'fora',
         l.atraso_dias === 0 ? '–' : `${l.atraso_dias > 0 ? '+' : ''}${l.atraso_dias} d`,
-        l.aplicacao.local ?? '–',
+        textoTolerancia(toleranciaIntervalo(diario, l.aplicacao.data, resumo!.linhas[i + 1]?.aplicacao.data ?? null, hoje)),
       ]),
+      nota: 'Náusea máxima (0 a 3) e dias com sintoma no Diário entre esta dose e a seguinte.',
     });
-    if (decisoes.length) {
+    // Eventos: alertas de segurança que dispararam no período e as anotações para o médico
+    const alertas = aplicacoes.length ? historicoAlertas({ diario, composicoes, aplicacoes }, inicioCiclo, hoje) : [];
+    const anotacoes = decisoes.filter((d) => d.escolha === 'anotacao');
+    if (alertas.length || anotacoes.length) tabelas.push(tabelaEventos(alertas, anotacoes));
+    if (registroDecisoes.length) tabelas.push(tabelaDecisoes(registroDecisoes));
+    const deFase = decisoes.filter((d) => d.escolha !== 'anotacao');
+    if (deFase.length) {
       tabelas.push({
-        titulo: 'Fim de fase: decisões e anotações para o médico',
+        titulo: 'Fim de fase: decisões',
         cabecalho: ['Data', 'Após a dose', 'Escolha', 'Detalhe'],
-        linhas: decisoes.map((d) => [formatarData(d.data, true), `${d.apos_aplicacao}ª`, ESCOLHAS[d.escolha], detalheDecisao(d)]),
+        linhas: deFase.map((d) => [formatarData(d.data, true), `${d.apos_aplicacao}ª`, ESCOLHAS[d.escolha], detalheDecisao(d)]),
         nota: 'Registradas pelo paciente no app. A dose só sobe quando ele escolhe Subir.',
       });
     }
@@ -233,7 +298,10 @@ export function Analise() {
     }
     return {
       titulo: `Relatório do ciclo · ${perfil?.nome ?? ''}`,
-      subtitulo: `Gerado em ${formatarData(hoje)}. Dados registrados pelo próprio paciente no app Ciclo.`,
+      subtitulo: `Gerado em ${dataPorExtenso(hoje)}. Dados registrados pelo próprio paciente no app Ciclo.`,
+      cabecalho,
+      quadro,
+      semanal,
       resumo: [
         ['Início', formatarData(geral.inicio_ciclo)],
         ['Tempo de ciclo', `${num(geral.semanas_ciclo, 1)} semanas`],
@@ -252,6 +320,7 @@ export function Analise() {
         doses: resumo!.linhas.map((l) => ({ dia: dia(l.aplicacao.data), mg: l.aplicacao.dose_mg })),
         diaFinal: dia(hoje),
         rotulo,
+        marcos: decisoesPorDia(registroDecisoes).map((d) => dia(d.data)),
       },
       tabelas,
       rodape: 'Este relatório registra e calcula; as decisões de dose são tomadas com acompanhamento médico.',
@@ -360,7 +429,7 @@ export function Analise() {
         <h2>Peso × dose</h2>
         {serie.length > 0 || resumo.linhas.length > 0 ? (
           <Suspense fallback={<div className="grafico" />}>
-            <GraficoPesoDose serie={serie} linhas={resumo.linhas} hoje={hoje} />
+            <GraficoPesoDose serie={serie} linhas={resumo.linhas} hoje={hoje} marcos={marcosDasDecisoes(registroDecisoes)} />
           </Suspense>
         ) : (
           <Vazio>Registre pesos no Diário ou nas Medidas para ver o gráfico.</Vazio>
@@ -563,6 +632,8 @@ export function Analise() {
           <p className="mudo" style={{ marginTop: 8 }}>Também vão para o PDF.</p>
         </section>
       )}
+
+      <ListaDecisoes />
 
       {metasDieta && dieta && (
         <section className="cartao">
