@@ -1,12 +1,15 @@
 import type { ResumoCiclo } from './ciclo';
+import { reta } from './conferencia';
 import { diferencaDias, somarDias } from './datas';
-import { composicao, type Composicao } from './gordura';
-import type { Medida, RegistroDiario, Sexo, TreinoDia } from './tipos';
+import type { Composicao } from './gordura';
+import type { Medida, RegistroDiario, TreinoDia } from './tipos';
 
 export interface PontoPeso {
   data: string;
   peso_kg: number;
   origem: 'diario' | 'medida';
+  /** Medição atípica: aparece no gráfico, fica fora de tendências */
+  atipica?: boolean;
 }
 
 /** Une os pesos do diário e das medições. No mesmo dia, vale a medição. */
@@ -15,7 +18,7 @@ export function serieDePeso(diario: RegistroDiario[], medidas: Medida[]): PontoP
   for (const r of diario) {
     if (r.peso_kg !== null) porData.set(r.data, { data: r.data, peso_kg: r.peso_kg, origem: 'diario' });
   }
-  for (const m of medidas) porData.set(m.data, { data: m.data, peso_kg: m.peso_kg, origem: 'medida' });
+  for (const m of medidas) porData.set(m.data, { data: m.data, peso_kg: m.peso_kg, origem: 'medida', ...(m.atipica ? { atipica: true } : {}) });
   return [...porData.values()].sort((a, b) => a.data.localeCompare(b.data));
 }
 
@@ -47,13 +50,41 @@ export interface AnaliseFase {
   dias: number;
   peso_inicio: number | null;
   peso_fim: number | null;
+  /** Variação total entre a referência e a última pesagem da fase */
   variacao_kg: number | null;
+  /** Inclinação da regressão (kg/semana); null com poucos dados */
   kg_por_semana: number | null;
-  /** Menos de 2 pesagens na fase: sem ritmo confiável */
+  /** Erro padrão do kg/semana (resíduos com piso de 0,5 kg) */
+  erro_semana: number | null;
+  /** Menos de 3 pesagens ou menos de 14 dias: sem ritmo confiável (sem "/sem" e sem cor) */
   poucos_dados: boolean;
+  /** Comparação com a fase anterior, pela diferença mínima detectável */
+  vs_anterior: ComparacaoFase | null;
   nausea_media: number | null;
   nausea_max: number | null;
   em_andamento: boolean;
+}
+
+export interface ComparacaoFase {
+  /** kg/sem desta fase − kg/sem da anterior (negativo = perdendo mais rápido) */
+  diferenca: number;
+  /** Diferença mínima detectável: 1,96·√(EP² + EP_anterior²) */
+  dmd: number;
+  estado: 'parecida' | 'mais_rapida' | 'mais_lenta';
+}
+
+/** Piso do desvio dos resíduos do peso: com poucas pesagens a reta parece mais certa do que é. */
+const PISO_RESIDUO_PESO = 0.5;
+
+/** Ritmo da fase precisa de 3 pontos cobrindo 14 dias. */
+export const MINIMO_RITMO = { pontos: 3, dias: 14 } as const;
+
+/** Compara o kg/sem de cada fase com o da anterior: abaixo da DMD, "parecida". */
+export function compararFases(a: { kg_por_semana: number | null; erro_semana: number | null }, b: { kg_por_semana: number | null; erro_semana: number | null }): ComparacaoFase | null {
+  if (a.kg_por_semana === null || b.kg_por_semana === null || a.erro_semana === null || b.erro_semana === null) return null;
+  const diferenca = b.kg_por_semana - a.kg_por_semana;
+  const dmd = 1.96 * Math.sqrt(a.erro_semana ** 2 + b.erro_semana ** 2);
+  return { diferenca, dmd, estado: Math.abs(diferenca) < dmd ? 'parecida' : diferenca < 0 ? 'mais_rapida' : 'mais_lenta' };
 }
 
 export function analisarFases(
@@ -79,16 +110,20 @@ export function analisarFases(
     const fase = linhas[linhas.length - 1].fase;
     const fim = proximoInicio ?? hoje;
     const dias = Math.max(diferencaDias(inicio, fim), 0);
-    // Pesagens da fase: até 3 dias antes do início e, no fim, só até a véspera da fase seguinte
+    // Pesagens da fase: a de referência (até 7 dias antes do início) e todas até a
+    // véspera da fase seguinte; medições atípicas ficam de fora
     const ultimoDia = proximoInicio ? somarDias(proximoInicio, -1) : hoje;
-    const naFase = serie.filter((p) => p.data >= somarDias(inicio, -3) && p.data <= ultimoDia);
+    const naFase = serie.filter((p) => !p.atipica && p.data >= somarDias(inicio, -7) && p.data <= ultimoDia);
     const antesDoInicio = naFase.filter((p) => p.data <= inicio);
     const pIni = antesDoInicio.length ? antesDoInicio[antesDoInicio.length - 1] : (naFase[0] ?? null);
-    const pFim = naFase.length ? naFase[naFase.length - 1] : null;
-    const temRitmo = !!(pIni && pFim && pFim.data > pIni.data);
-    const variacao = temRitmo ? pFim!.peso_kg - pIni!.peso_kg : null;
-    // kg/semana pelo intervalo entre as pesagens usadas (não pela duração da fase)
-    const diasPesagens = temRitmo ? diferencaDias(pIni!.data, pFim!.data) : 0;
+    const pontos = pIni ? naFase.filter((p) => p.data >= pIni.data) : [];
+    const pFim = pontos.length ? pontos[pontos.length - 1] : null;
+    const temVariacao = !!(pIni && pFim && pFim.data > pIni.data);
+    const variacao = temVariacao ? pFim!.peso_kg - pIni!.peso_kg : null;
+    // kg/semana pela regressão de todas as pesagens (3+ pontos cobrindo 14+ dias)
+    const diasPesagens = temVariacao ? diferencaDias(pIni!.data, pFim!.data) : 0;
+    const temRitmo = pontos.length >= MINIMO_RITMO.pontos && diasPesagens >= MINIMO_RITMO.dias;
+    const r = temRitmo ? reta(pontos.map((p) => diferencaDias(pIni!.data, p.data)), pontos.map((p) => p.peso_kg)) : null;
     const nauseas = diario
       .filter((r) => r.data >= inicio && (proximoInicio === null ? r.data <= hoje : r.data < fim) && r.nausea !== null)
       .map((r) => r.nausea as number);
@@ -104,13 +139,15 @@ export function analisarFases(
       peso_inicio: pIni?.peso_kg ?? null,
       peso_fim: pFim?.peso_kg ?? null,
       variacao_kg: variacao,
-      kg_por_semana: variacao !== null && diasPesagens > 0 ? (variacao / diasPesagens) * 7 : null,
+      kg_por_semana: r ? r.inclinacao * 7 : null,
+      erro_semana: r ? (Math.max(r.s, PISO_RESIDUO_PESO) / Math.sqrt(r.sxx)) * 7 : null,
       poucos_dados: !temRitmo,
+      vs_anterior: null as ComparacaoFase | null,
       nausea_media: nauseas.length ? nauseas.reduce((s, n) => s + n, 0) / nauseas.length : null,
       nausea_max: nauseas.length ? Math.max(...nauseas) : null,
       em_andamento,
     };
-  });
+  }).map((f, i, todas) => (i > 0 ? { ...f, vs_anterior: compararFases(todas[i - 1], f) } : f));
 }
 
 export interface AnaliseGeral {
@@ -127,26 +164,26 @@ export interface AnaliseGeral {
 
 /**
  * Compara o "antes" (referência no início do ciclo) com o "agora".
- * Medida inicial = última medição até a 1ª aplicação; se não houver, a primeira registrada.
+ * Medida inicial = última medição até a 1ª aplicação; se não houver, a primeira registrada
+ * (medições atípicas ficam de fora).
+ * Peso: com 2+ medições, vem só das medições (em jejum, às segundas), a mesma
+ * fonte de Medidas e da Análise; sem isso, das pesagens do Diário.
  */
-export function analisarGeral(
-  inicio_ciclo: string,
-  serie: PontoPeso[],
-  medidas: Medida[],
-  sexo: Sexo,
-  hoje: string,
-): AnaliseGeral {
-  const peso_inicial = pesoReferencia(serie, inicio_ciclo);
-  const peso_atual = serie.length ? serie[serie.length - 1] : null;
+export function analisarGeral(inicio_ciclo: string, serie: PontoPeso[], todas: Composicao[], hoje: string): AnaliseGeral {
+  // Medição atípica (doente, inchado, viagem) não vira "início" nem "agora"
+  const normais = todas.filter((c) => !c.atipica);
+  const composicoes = normais.length ? normais : todas;
+  const antes = composicoes.filter((c) => c.data <= inicio_ciclo);
+  const mIni = antes.length ? antes[antes.length - 1] : (composicoes[0] ?? null);
+  const mAtual = composicoes.length ? composicoes[composicoes.length - 1] : null;
+  const pelaMedida = composicoes.length >= 2;
+  const ponto = (c: Composicao): PontoPeso => ({ data: c.data, peso_kg: c.peso_kg, origem: 'medida' });
+  const peso_inicial = pelaMedida ? ponto(mIni!) : pesoReferencia(serie, inicio_ciclo);
+  const peso_atual = pelaMedida ? ponto(mAtual!) : serie.length ? serie[serie.length - 1] : null;
   const temVariacao = peso_inicial && peso_atual && peso_atual.data > peso_inicial.data;
   const variacao = temVariacao ? peso_atual.peso_kg - peso_inicial.peso_kg : null;
   const diasCiclo = Math.max(diferencaDias(inicio_ciclo, hoje), 0);
   const diasPeso = temVariacao ? diferencaDias(peso_inicial.data, peso_atual.data) : 0;
-
-  const ordenadas = [...medidas].sort((a, b) => a.data.localeCompare(b.data));
-  const antes = ordenadas.filter((m) => m.data <= inicio_ciclo);
-  const mIni = antes.length ? antes[antes.length - 1] : ordenadas[0];
-  const mAtual = ordenadas[ordenadas.length - 1];
 
   return {
     inicio_ciclo,
@@ -156,8 +193,8 @@ export function analisarGeral(
     variacao_kg: variacao,
     variacao_percentual: variacao !== null && peso_inicial ? variacao / peso_inicial.peso_kg : null,
     kg_por_semana: variacao !== null && diasPeso > 0 ? (variacao / diasPeso) * 7 : null,
-    medida_inicial: mIni ? composicao(mIni, sexo) : null,
-    medida_atual: mAtual && mAtual !== mIni ? composicao(mAtual, sexo) : null,
+    medida_inicial: mIni,
+    medida_atual: mAtual && mAtual !== mIni ? mAtual : null,
   };
 }
 
@@ -170,7 +207,12 @@ export interface ComposicaoFase {
   cintura: number | null;
   gorda: number | null;
   magra: number | null;
+  /** Massa gorda por semana, pela regressão das medições da fase (3+ cobrindo 14+ dias) */
   gorda_semana: number | null;
+  /** Fração da perda de peso da fase que saiu de massa magra (pela regressão); null sem perda ou com poucos dados */
+  magra_pct: number | null;
+  /** Menos de 3 medições ou de 14 dias na fase */
+  poucos_dados: boolean;
   /** Aderência (0 a 1) de treino e cardio na fase, só para quem tem a aba Treino */
   treino: number | null;
   cardio: number | null;
@@ -180,7 +222,9 @@ export interface ComposicaoFase {
  * Para cada fase: última medição até o início × última medição antes da fase seguinte
  * (o dia da troca de fase fica com a fase nova).
  */
-export function composicaoPorFase(fases: AnaliseFase[], composicoes: Composicao[], treinos: TreinoDia[] | null, hoje: string): ComposicaoFase[] {
+export function composicaoPorFase(fases: AnaliseFase[], todas: Composicao[], treinos: TreinoDia[] | null, hoje: string): ComposicaoFase[] {
+  // Medições atípicas (doente, inchado, viagem) ficam fora da comparação entre fases
+  const composicoes = todas.filter((c) => !c.atipica);
   return fases.map((f, i) => {
     const prox = fases[i + 1]?.inicio ?? null;
     const ultimoDia = prox ? somarDias(prox, -1) : hoje;
@@ -191,6 +235,13 @@ export function composicaoPorFase(fases: AnaliseFase[], composicoes: Composicao[
     const dif = (k: 'cintura_cm' | 'massa_gorda_kg' | 'massa_magra_kg') =>
       ok && de![k] !== null && ate![k] !== null ? (ate![k] as number) - (de![k] as number) : null;
     const gorda = dif('massa_gorda_kg');
+    // Ritmo por regressão com todas as medições da fase mais a de referência
+    const pontos = ok ? composicoes.filter((c) => c.data >= de!.data && c.data <= ate!.data && c.massa_gorda_kg !== null && c.massa_magra_kg !== null) : [];
+    const temRitmo = pontos.length >= MINIMO_RITMO.pontos && ok && diferencaDias(de!.data, ate!.data) >= MINIMO_RITMO.dias;
+    const xs = pontos.map((c) => diferencaDias(pontos[0].data, c.data));
+    const gSem = temRitmo ? reta(xs, pontos.map((c) => c.massa_gorda_kg!)).inclinacao * 7 : null;
+    const mSem = temRitmo ? reta(xs, pontos.map((c) => c.massa_magra_kg!)).inclinacao * 7 : null;
+    const pesoSem = gSem !== null && mSem !== null ? gSem + mSem : null;
     let treino: number | null = null;
     let cardio: number | null = null;
     if (treinos) {
@@ -209,7 +260,10 @@ export function composicaoPorFase(fases: AnaliseFase[], composicoes: Composicao[
       cintura: dif('cintura_cm'),
       gorda,
       magra: dif('massa_magra_kg'),
-      gorda_semana: gorda !== null ? (gorda / diferencaDias(de!.data, ate!.data)) * 7 : null,
+      gorda_semana: gSem,
+      // Menos de 0,1 kg/sem de perda: não há perda para dividir
+      magra_pct: pesoSem !== null && pesoSem < -0.1 ? mSem! / pesoSem : null,
+      poucos_dados: !temRitmo,
       treino,
       cardio,
     };

@@ -400,3 +400,7 @@ details.ajuda summary { min-height: 32px; display: flex; align-items: center; }
 .linha-dose .seta { margin-left: auto; color: var(--texto-3); flex: none; }
 .resumo-plano { display: block; margin-bottom: 8px; color: inherit; text-decoration: none; font-size: 0.9rem; }
 .itens-plano { margin: 4px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 2px; }
+
+/* Escala de 1 a 10 numa linha só, mesmo em 320 px */
+.escolhas-compactas .escolhas { gap: 4px; flex-wrap: nowrap; }
+.escolhas-compactas .escolhas button { padding: 0; min-width: 0; }

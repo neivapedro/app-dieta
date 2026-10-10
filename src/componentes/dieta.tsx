@@ -2,20 +2,26 @@ import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } 
 import {
   buscarAlimentos,
   calcularMetas,
+  ehColageno,
   exercicioReal,
   FATORES_ATIVIDADE,
   gramasDoItem,
   itemPadrao,
   macrosDoItem,
+  MESMO_MACRO,
+  ROTULO_MACRO,
   type Aderencia,
   type Alimento,
   type Atividade,
   type ConfigDieta,
   type Corpo,
+  type Fechamento,
   type ItemRefeicao,
   type Macros,
+  type OpcoesTroca,
   type Refeicao,
 } from '../lib/dieta';
+import { fracaoMagraDaPerda, ritmoEstimado } from '../lib/conferencia';
 import { num, paraNumero, paraTexto } from '../lib/formato';
 import { BotaoExcluir, Campo, CampoNumero, Escolhas, Folha } from './ui';
 
@@ -54,6 +60,57 @@ export function novoItem(a: Alimento): ItemRefeicao {
   return itemPadrao(a);
 }
 
+/** Porções de meia em meia, sem ",0" sobrando: 7 · 6,5 */
+const meia = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+
+/** "430 g" ou "2,5 unidade (125 g)" */
+function textoQuantidade(item: ItemRefeicao, a: Alimento | undefined): string {
+  if (item.unidade === 'g') return `${num(item.quantidade, 0)} g`;
+  return `${meia(item.quantidade)} ${item.unidade} (${num(gramasDoItem(item, a), 0)} g)`;
+}
+
+/** "430 g (+130)" ou, em porções, "6,5 unidade (+3,5)" */
+function textoFechar(f: Fechamento, atual: ItemRefeicao): string {
+  const g = f.item.unidade === 'g';
+  const delta = g ? f.delta : f.item.quantidade - atual.quantidade;
+  return `${g ? num(f.item.quantidade, 0) : meia(f.item.quantidade)} ${f.item.unidade} (${delta > 0 ? '+' : '−'}${g ? num(Math.abs(delta), 0) : meia(Math.abs(delta))})`;
+}
+
+export interface Troca {
+  refeicao: string;
+  indice: number;
+  antigo: Alimento | undefined;
+  novo: Alimento;
+  opcoes: OpcoesTroca;
+}
+
+/** Troca de alimento: mesmo peso ou a mesma quantidade do macro principal do antigo. */
+export function FolhaTroca({ troca, aoEscolher, aoFechar }: { troca: Troca; aoEscolher: (i: ItemRefeicao) => void; aoFechar: () => void }) {
+  const { antigo, novo, opcoes } = troca;
+  const mesmoPeso = opcoes.mesmo_peso;
+  const opcoesLista: [ItemRefeicao, string][] = [
+    [mesmoPeso, `${textoQuantidade(mesmoPeso, novo)} (${mesmoPeso.unidade === 'g' ? 'mesmo peso' : 'mesma porção'})`],
+    ...(opcoes.mesmo_macro ? [[opcoes.mesmo_macro.item, `${textoQuantidade(opcoes.mesmo_macro.item, novo)} (${MESMO_MACRO[opcoes.mesmo_macro.macro]})`] as [ItemRefeicao, string]] : []),
+  ];
+  return (
+    <Folha titulo="Trocar alimento" aoFechar={aoFechar}>
+      <div className="pilha">
+        <p className="texto-2">
+          {antigo?.nome ?? 'Alimento'} → <b>{novo.nome}</b>
+        </p>
+        {opcoesLista.map(([item, rotulo]) => (
+          <button key={rotulo} type="button" className="botao" onClick={() => aoEscolher(item)}>
+            <span className="pilha" style={{ gap: 2, alignItems: 'center' }}>
+              <span>{rotulo}</span>
+              <LinhaMacros m={macrosDoItem(item, novo)} />
+            </span>
+          </button>
+        ))}
+      </div>
+    </Folha>
+  );
+}
+
 function rotuloPorcao(a: Alimento, unidade: string): string {
   if (unidade === 'g') return 'g';
   const p = a.porcoes.find((x) => x.nome === unidade);
@@ -68,6 +125,7 @@ export function LinhaItem({
   aoRemover,
   aoTrocar,
   faltaNoFoco,
+  fechar,
 }: {
   item: ItemRefeicao;
   alimento: Alimento | undefined;
@@ -76,6 +134,8 @@ export function LinhaItem({
   aoTrocar: () => void;
   /** Quanto falta para a meta, mostrado logo abaixo enquanto o teclado está aberto */
   faltaNoFoco?: ReactNode;
+  /** Quantidade que fecha a falta do macro principal do alimento no dia */
+  fechar?: Fechamento | null;
 }) {
   const [texto, setTexto] = useState(paraTexto(item.quantidade));
   const [foco, setFoco] = useState(false);
@@ -145,6 +205,17 @@ export function LinhaItem({
       </div>
       <LinhaMacros m={m} />
       {foco && faltaNoFoco}
+      {foco && fechar && (
+        <button
+          type="button"
+          className="botao pequeno"
+          // Mantém o campo em foco: o toque não fecha o teclado nem esconde o botão
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => aoMudar(fechar.item)}
+        >
+          Fechar {ROTULO_MACRO[fechar.macro]}: {textoFechar(fechar, item)}
+        </button>
+      )}
     </div>
   );
 }
@@ -193,7 +264,7 @@ export function SeletorAlimento({
                   <div className="detalhe">
                     {p ? `1 ${p.nome} (${num(p.g, 0)} g)` : '100 g'}: {kcal(m.kcal)} · P {gr(m.ptn_animal + m.ptn_vegetal)} · C {gr(m.carb)} · G{' '}
                     {gr(m.gord)}
-                    {a.animal ? ' · proteína animal' : ''}
+                    {a.animal ? ' · proteína animal' : ehColageno(a) ? ' · colágeno: não conta na meta' : ''}
                   </div>
                 </div>
               </button>
@@ -277,6 +348,9 @@ export function FormConfigDieta({
   config,
   corpo,
   aderencia,
+  fracaoMagra,
+  ritmoMedido,
+  ptnVegetalPlano,
   aoSalvar,
   aoFechar,
 }: {
@@ -284,6 +358,12 @@ export function FormConfigDieta({
   corpo: Corpo | null;
   /** Aderência das últimas semanas (aba Treino), quando houver */
   aderencia?: Aderencia | null;
+  /** Fração de massa magra da perda (tendência ou Forbes) para o ritmo estimado */
+  fracaoMagra?: number | null;
+  /** Ritmo medido pela tendência das medidas (% do peso por semana) */
+  ritmoMedido?: number | null;
+  /** Proteína vegetal do plano atual (g): mostra o total em g/kg junto da meta animal */
+  ptnVegetalPlano?: number;
   aoSalvar: (c: ConfigDieta) => void;
   aoFechar: () => void;
 }) {
@@ -412,11 +492,31 @@ export function FormConfigDieta({
             sufixo="kcal"
             valor={ajuste}
             aoMudar={setAjuste}
-            dica={previa ? `${num((Math.abs(paraNumero(ajuste) ?? 0) / previa.gasto_total) * 100, 0)}% do gasto total` : undefined}
+            dica={
+              previa
+                ? `${num((Math.abs(paraNumero(ajuste) ?? 0) / previa.gasto_total) * 100, 0)}% do gasto total${
+                    sentido === 'deficit' && corpo
+                      ? ` · ≈ ${num(ritmoEstimado(Math.abs(paraNumero(ajuste) ?? 0), corpo.peso_kg, fracaoMagra ?? fracaoMagraDaPerda(null, corpo.peso_kg - corpo.massa_magra_kg).p), 1)}% do peso por semana${
+                          ritmoMedido != null ? ` (medido: ${num(ritmoMedido, 1)}%/sem)` : ''
+                        }`
+                      : ''
+                  }`
+                : undefined
+            }
           />
         )}
         <div className="grade">
-          <CampoNumero rotulo="Proteína animal" sufixo="g/kg massa magra" valor={ptn} aoMudar={setPtn} />
+          <CampoNumero
+            rotulo="Proteína animal"
+            sufixo="g/kg massa magra"
+            valor={ptn}
+            aoMudar={setPtn}
+            dica={
+              corpo && ptnVegetalPlano && ptnVegetalPlano >= 1 && paraNumero(ptn) !== null
+                ? `Com a vegetal do plano (${num(ptnVegetalPlano, 0)} g): ~${num(((paraNumero(ptn) ?? 0) * corpo.massa_magra_kg + ptnVegetalPlano) / corpo.massa_magra_kg, 1)} g/kg de massa magra no total`
+                : undefined
+            }
+          />
           <CampoNumero rotulo="Gordura" sufixo="g/kg peso" valor={gord} aoMudar={setGord} />
         </div>
         <p className="mudo">O carboidrato não tem g/kg fixo: ele fecha a conta com o que sobra da meta de kcal.</p>

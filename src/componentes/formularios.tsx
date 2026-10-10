@@ -1,11 +1,13 @@
 import { useState, type FormEvent } from 'react';
 import { useDados } from '../dados/contexto';
 import { useCalculos } from '../dados/useCalculos';
+import { useMetaAgua } from '../dados/useTreino';
+import { CORES_URINA, diaDeSintoma, TEXTO_SINTOMA_AGUA } from '../lib/bemestar';
 import { calcularCiclo, capacidadeSeringa, concentracaoDe, guiaSeringa, marcacao, marcasVizinhas, seringaDo, situacaoDoDegrau } from '../lib/ciclo';
 import { diaDaSemana, diferencaDias, formatarData, hojeLocal, somarDias } from '../lib/datas';
-import { cm, kg, num, lerPeso, paraNumero, paraTexto, pp, ui } from '../lib/formato';
-import { composicao } from '../lib/gordura';
-import { LOCAIS_APLICACAO, NIVEIS_NAUSEA, type Aplicacao, type Medida, type RegistroDiario } from '../lib/tipos';
+import { cm, kg, lerFaixa, lerPeso, num, paraNumero, paraTexto, pp, ui } from '../lib/formato';
+import { ajusteDoPerfil, composicao } from '../lib/gordura';
+import { LOCAIS_APLICACAO, NIVEIS_NAUSEA, type Aplicacao, type CorUrina, type Medida, type RegistroDiario } from '../lib/tipos';
 import { AlertasSeguranca } from './inicio';
 import { BotaoExcluir, Campo, CampoNumero, Escolhas, Folha } from './ui';
 
@@ -247,14 +249,19 @@ function sintomasDe(r?: RegistroDiario): Record<ChaveSintoma, boolean | null> {
 
 export function FormDiario({ registro, dataInicial, aoFechar }: { registro?: RegistroDiario; dataInicial?: string; aoFechar: () => void }) {
   const { diario, gravar } = useDados();
+  const metaAguaDe = useMetaAgua();
   const [data, setData] = useState(registro?.data ?? dataInicial ?? hojeLocal());
   const existente = registro ?? diario.find((r) => r.data === data);
   const [peso, setPeso] = useState(paraTexto(existente?.peso_kg));
   const [nausea, setNausea] = useState<number | null>(existente?.nausea ?? null);
   const [obs, setObs] = useState(existente?.observacoes ?? '');
   const [sintomas, setSintomas] = useState(sintomasDe(existente));
+  const [sono, setSono] = useState(paraTexto(existente?.sono_h));
+  const [agua, setAgua] = useState(paraTexto(existente?.agua_l));
+  const [urina, setUrina] = useState<CorUrina | null>(existente?.cor_urina ?? null);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
+  const { meta: metaAgua, horas } = metaAguaDe(data || hojeLocal());
 
   function trocarData(nova: string) {
     setData(nova);
@@ -263,6 +270,9 @@ export function FormDiario({ registro, dataInicial, aoFechar }: { registro?: Reg
     setNausea(r?.nausea ?? null);
     setObs(r?.observacoes ?? '');
     setSintomas(sintomasDe(r));
+    setSono(paraTexto(r?.sono_h));
+    setAgua(paraTexto(r?.agua_l));
+    setUrina(r?.cor_urina ?? null);
   }
 
   async function salvar(e: FormEvent) {
@@ -270,16 +280,31 @@ export function FormDiario({ registro, dataInicial, aoFechar }: { registro?: Reg
     if (!data) return setErro('Informe a data.');
     const p = lerPeso(peso);
     if (p.erro) return setErro(p.erro);
+    const s = lerFaixa(sono, 0, 24, 'Sono', 'h');
+    if (s.erro) return setErro(s.erro);
+    const a = lerFaixa(agua, 0, 15, 'Água', 'L');
+    if (a.erro) return setErro(a.erro);
     const pesoNum = p.valor;
     const algumSintoma = Object.values(sintomas).some((v) => v !== null);
-    if (pesoNum === null && nausea === null && !obs.trim() && !algumSintoma) return setErro('Preencha ao menos um campo.');
+    if (pesoNum === null && nausea === null && !obs.trim() && !algumSintoma && s.valor === null && a.valor === null && urina === null)
+      return setErro('Preencha ao menos um campo.');
     if (salvando) return;
     setSalvando(true);
     const atual = diario.find((x) => x.data === data);
     // Pela fila: grava na hora e, sem internet, envia quando a conexão voltar
     gravar({
       tipo: 'diario',
-      dado: { data, peso_kg: pesoNum, nausea, observacoes: obs.trim() || null, ...sintomas, dieta_seguida: atual?.dieta_seguida ?? null },
+      dado: {
+        data,
+        peso_kg: pesoNum,
+        nausea,
+        observacoes: obs.trim() || null,
+        ...sintomas,
+        dieta_seguida: atual?.dieta_seguida ?? null,
+        sono_h: s.valor,
+        agua_l: a.valor,
+        cor_urina: urina,
+      },
     });
     aoFechar();
   }
@@ -315,13 +340,27 @@ export function FormDiario({ registro, dataInicial, aoFechar }: { registro?: Reg
             ))}
           </div>
         </Campo>
+        {diaDeSintoma(sintomas) && <div className="alerta info">{TEXTO_SINTOMA_AGUA}</div>}
+        <div className="grade">
+          <CampoNumero rotulo="Sono" sufixo="h" valor={sono} aoMudar={setSono} dica="Sono total da noite, do relógio (ex.: 6,5)." />
+          <CampoNumero
+            rotulo="Água"
+            sufixo="L"
+            valor={agua}
+            aoMudar={setAgua}
+            dica={`Meta ≈ ${num(metaAgua, 1)} L${horas > 0 ? ` (2 L + 0,7 L por hora de treino e cardio: ${num(horas, 1)} h)` : ''}.`}
+          />
+        </div>
+        <Campo rotulo="Cor da urina (opcional)" grupo dica={urina === 'escura' ? 'Urina escura costuma indicar pouca água: beba mais.' : undefined}>
+          <Escolhas opcoes={CORES_URINA} valor={urina} aoMudar={setUrina} permitirVazio />
+        </Campo>
         <Campo rotulo="Observações / efeitos">
           <textarea value={obs} onChange={(e) => setObs(e.target.value)} />
         </Campo>
         <Erro msg={erro} />
         <button className="botao primario" disabled={salvando}>{salvando ? 'Salvando…' : 'Salvar'}</button>
         {diario.some((x) => x.data === data) && (
-          <BotaoExcluir rotulo="Excluir registro do dia" aviso="Excluir peso, náusea, sintomas, observações e o 'segui o plano?' deste dia?" aoConfirmar={excluir} />
+          <BotaoExcluir rotulo="Excluir registro do dia" aviso="Excluir peso, náusea, sintomas, sono, água, observações e o 'segui o plano?' deste dia?" aoConfirmar={excluir} />
         )}
       </form>
     </Folha>
@@ -392,7 +431,10 @@ export function FormMedida({ medida, aoFechar, aoSalvar }: { medida?: Medida; ao
   const ultima = [...medidas].sort((a, b) => b.data.localeCompare(a.data))[0];
   const sexo = perfil?.sexo ?? 'Masculino';
   const [data, setData] = useState(medida?.data ?? hojeLocal());
-  const [altura, setAltura] = useState(paraTexto(medida?.altura_cm ?? ultima?.altura_cm ?? perfil?.altura_cm));
+  // Altura: campo único do Perfil (não é pedida a cada medição); sem altura no perfil, o formulário pede
+  const alturaPerfil = perfil?.altura_cm && perfil.altura_cm > 0 ? perfil.altura_cm : null;
+  const [altura, setAltura] = useState(paraTexto(alturaPerfil ?? medida?.altura_cm ?? ultima?.altura_cm));
+  const [atipica, setAtipica] = useState(medida?.atipica === true);
   // Até 3 leituras de pescoço e cintura: vale a média
   const [pescocos, setPescocos] = useState<string[]>([paraTexto(medida?.pescoco_cm)]);
   const [cinturas, setCinturas] = useState<string[]>([paraTexto(medida?.cintura_cm)]);
@@ -406,7 +448,7 @@ export function FormMedida({ medida, aoFechar, aoSalvar }: { medida?: Medida; ao
   const [salvando, setSalvando] = useState(false);
 
   const valores = {
-    altura_cm: paraNumero(altura),
+    altura_cm: alturaPerfil ?? paraNumero(altura),
     pescoco_cm: media(pescocos),
     cintura_cm: media(cinturas),
     quadril_cm: paraNumero(quadril),
@@ -417,7 +459,7 @@ export function FormMedida({ medida, aoFechar, aoSalvar }: { medida?: Medida; ao
     positivo(valores.altura_cm) && positivo(valores.pescoco_cm) && positivo(valores.cintura_cm) && positivo(valores.peso_kg) && (sexo === 'Masculino' || positivo(valores.quadril_cm));
   // Medição anterior a esta data, para comparar e pegar erro de digitação
   const anterior = [...medidas].filter((m) => m.data < data && m.id !== medida?.id).sort((a, b) => b.data.localeCompare(a.data))[0];
-  const previa = completo ? composicao({ id: '', data, ...(valores as Omit<Medida, 'id' | 'data'>) }, sexo) : null;
+  const previa = completo ? composicao({ id: '', data, ...(valores as Omit<Medida, 'id' | 'data'>) }, sexo, { ajuste: ajusteDoPerfil(perfil) }) : null;
 
   async function salvar(e: FormEvent) {
     e.preventDefault();
@@ -442,6 +484,7 @@ export function FormMedida({ medida, aoFechar, aoSalvar }: { medida?: Medida; ao
         cintura_cm: valores.cintura_cm!,
         quadril_cm: sexo === 'Feminino' ? valores.quadril_cm : null,
         peso_kg: valores.peso_kg!,
+        atipica,
       },
     });
     aoFechar();
@@ -461,7 +504,16 @@ export function FormMedida({ medida, aoFechar, aoSalvar }: { medida?: Medida; ao
           <input type="date" value={data} max={hojeLocal()} onChange={(e) => setData(e.target.value)} required />
         </Campo>
         <div className="grade">
-          <CampoNumero rotulo="Altura" sufixo="cm" valor={altura} aoMudar={setAltura} dica="Em centímetros, ex.: 182" />
+          {alturaPerfil ? (
+            <div className="campo">
+              <span>Altura</span>
+              <div className="texto-2" style={{ minHeight: 44, display: 'flex', alignItems: 'center' }}>
+                {cm(alturaPerfil)} · do Perfil
+              </div>
+            </div>
+          ) : (
+            <CampoNumero rotulo="Altura" sufixo="cm" valor={altura} aoMudar={setAltura} dica="Em centímetros, ex.: 175. Salve no Perfil para não precisar digitar." />
+          )}
           <CampoNumero
             rotulo="Peso"
             sufixo="kg"
@@ -472,6 +524,10 @@ export function FormMedida({ medida, aoFechar, aoSalvar }: { medida?: Medida; ao
         </div>
         <Leituras rotulo="Pescoço" valores={pescocos} aoMudar={setPescocos} anterior={anterior?.pescoco_cm} dataAnterior={anterior?.data} limite={2} />
         <Leituras rotulo="Cintura" valores={cinturas} aoMudar={setCinturas} anterior={anterior?.cintura_cm} dataAnterior={anterior?.data} limite={3} />
+        <p className="texto-2" style={{ marginTop: -6 }}>
+          Na altura do umbigo, fita paralela ao chão, justa sem afundar a pele. Meça ao fim de uma expiração normal, relaxado: não force o ar para
+          fora, não murche nem estufe a barriga.
+        </p>
         <div className="grade">
           {sexo === 'Feminino' && <CampoNumero rotulo="Quadril" sufixo="cm" valor={quadril} aoMudar={setQuadril} />}
         </div>
@@ -480,11 +536,19 @@ export function FormMedida({ medida, aoFechar, aoSalvar }: { medida?: Medida; ao
           <div className="pilha mudo">
             <p><b>Quando:</b> toda segunda, em jejum, depois de ir ao banheiro e antes de beber água. Mesma fita e mesmo horário.</p>
             <p><b>Pescoço:</b> logo abaixo do pomo de Adão, com a fita levemente inclinada para a frente, sem medir o trapézio.</p>
-            <p><b>Cintura:</b> na altura do umbigo, fita paralela ao chão. Solte todo o ar antes de medir, sem murchar a barriga.</p>
+            <p><b>Cintura:</b> na altura do umbigo, fita paralela ao chão, justa sem afundar a pele. Meça ao fim de uma expiração normal, relaxado: não force o ar para fora, não murche nem estufe a barriga.</p>
             <p><b>Leituras:</b> meça 2 ou 3 vezes; o app usa a média. Diferença maior que 1 cm entre leituras: meça de novo.</p>
             {sexo === 'Feminino' && <p><b>Quadril:</b> na maior circunferência dos glúteos.</p>}
+            <p><b>Altura:</b> vem do Perfil; corrigir lá corrige todo o histórico.</p>
           </div>
         </details>
+        <label className="linha" style={{ flexWrap: 'nowrap', alignItems: 'flex-start', cursor: 'pointer' }}>
+          <input type="checkbox" checked={atipica} onChange={(e) => setAtipica(e.target.checked)} style={{ width: 20, height: 20, flex: 'none', marginTop: 2 }} />
+          <span>
+            Medição atípica (doente, inchado, viagem)
+            <small className="texto-2" style={{ display: 'block' }}>Fica no histórico, mas fora de tendências e projeções.</small>
+          </span>
+        </label>
         {previa && (
           <div className="grade grade-3">
             <div className="bloco"><div className="rotulo">% gordura</div><div className="valor">{pp(previa.bf)}</div></div>

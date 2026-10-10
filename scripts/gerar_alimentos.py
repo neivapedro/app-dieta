@@ -19,8 +19,9 @@ GRUPO = {
     '15': 'Castanhas e sementes',
 }
 ANIMAL_CATS = {'5', '6', '7', '9'}
-# Itens de outras categorias cuja proteína vem principalmente de origem animal
-ANIMAL_IDS = {'20', '55', '56', '57', '58', '140', '141', '495', '496', '497', '501', '515',
+# Itens de outras categorias cuja proteína vem principalmente de origem animal.
+# Gelatina (515) fica fora: colágeno não conta na meta de proteína animal.
+ANIMAL_IDS = {'20', '55', '56', '57', '58', '140', '141', '495', '496', '497', '501',
               '526', '528', '544', '529', '531', '532', '536', '537', '538', '539', '540', '541', '542', '543',
               '547', '548', '553', '554', '555', '556'}
 # Linhas sem dados na TACO: descartadas ou substituídas por valores de rótulo
@@ -176,7 +177,7 @@ extras = [
     ('x11', 'BCAA em pó (PowerFoods)', SUP, 100.0, 0, 0, 0, 0, [('dose', 5)], 'Gorgonoidiana (rótulo)'),
     ('x12', 'Creatina', SUP, 0, 0, 0, 0, 0, [('dose', 3)], 'Rótulo'),
     ('x13', 'Barra de proteína (média, 20 g de proteína)', SUP, 33.0, 30.0, 13.0, 8, 1, [('unidade', 60)], 'Rótulo médio'),
-    ('x14', 'Colágeno hidrolisado', SUP, 90.0, 0, 0, 0, 1, [('dose', 10)], 'Rótulo médio'),
+    ('x14', 'Colágeno hidrolisado', SUP, 90.0, 0, 0, 0, 0, [('dose', 10)], 'Rótulo médio'),
     ('x15', 'Pão de forma tradicional (Pullman)', PAO, 8.8, 48.0, 2.6, 2.5, 0, [('fatia', 25)], 'Rótulo (Pullman/FatSecret)'),
     ('x16', 'Pão de hambúrguer', PAO, 9.0, 50.0, 4.0, 2.3, 0, [('unidade', 50)], 'USDA'),
     ('x17', 'Tortilha de trigo (wrap, Rap10)', PAO, 8.3, 51.6, 8.0, 3.5, 0, [('unidade', 40)], 'USDA'),
@@ -206,8 +207,8 @@ extras = [
     ('x41', 'Avocado (Hass)', 'Frutas', 2.0, 8.5, 14.7, 6.7, 0, [('unidade', 140)], 'USDA'),
     ('x42', 'Chia, semente', 'Castanhas e sementes', 16.5, 42.1, 30.7, 34.4, 0, [('colher de sopa', 10)], 'USDA'),
     ('x43', 'Margarina light', GORD, 0, 0, 39.0, 0, 0, [('colher de chá', 5)], 'Gorgonoidiana (rótulo)'),
-    ('x44', 'Gelatina zero açúcar (preparada)', OUT, 1.5, 0.5, 0, 0, 1, [('porção', 120)], 'Rótulo (Royal/FatSecret)'),
-    ('x45', 'Gelatina tradicional (preparada)', OUT, 1.3, 14.0, 0, 0, 1, [('porção', 120)], 'Rótulo médio'),
+    ('x44', 'Gelatina zero açúcar (preparada)', OUT, 1.5, 0.5, 0, 0, 0, [('porção', 120)], 'Rótulo (Royal/FatSecret)'),
+    ('x45', 'Gelatina tradicional (preparada)', OUT, 1.3, 14.0, 0, 0, 0, [('porção', 120)], 'Rótulo médio'),
     ('x46', 'Refrigerante zero / água com gás', 'Bebidas', 0, 0, 0, 0, 0, [('lata', 350)], 'Rótulo'),
     ('x47', 'Chocolate amargo 70%', 'Doces', 7.8, 45.9, 42.6, 10.9, 0, [('quadradinho', 5)], 'USDA'),
     ('x48', 'Café preto sem açúcar', 'Bebidas', 0.1, 0, 0, 0, 0, [('cafezinho', 50), ('xícara', 150)], 'USDA'),

@@ -35,6 +35,14 @@ export function diaDaSemana(data: string): string {
   return DIAS_SEMANA[new Date(paraUTC(data)).getUTCDay()];
 }
 
+const DIAS_CURTOS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+/** "Seg", "Ter"… */
+export function diaSemanaCurto(data: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}/.test(data)) return '';
+  return DIAS_CURTOS[new Date(paraUTC(data)).getUTCDay()];
+}
+
 export function formatarData(data: string, anoCurto = false): string {
   if (!/^\d{4}-\d{2}-\d{2}/.test(data)) return '';
   const [a, m, d] = data.split('-');

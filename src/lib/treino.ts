@@ -18,13 +18,29 @@ function diaSemana(data: string): number {
   return new Date(Date.UTC(a, m - 1, d)).getUTCDay(); // 0 = domingo
 }
 
+/** Cardio previsto pela regra do projeto: quarta e domingo = corrida; demais = bike. */
 export function tipoCardio(data: string): TipoCardio {
   const d = diaSemana(data);
   return d === 3 || d === 0 ? 'corrida' : 'bike';
 }
 
-export function rotuloCardio(data: string): string {
-  return tipoCardio(data) === 'corrida' ? `Corrida ${KM_CORRIDA_PADRAO} km` : `Bike ${MIN_BIKE} min`;
+/**
+ * Cardio de fato do dia (a corrida pode mudar de dia): o tipo salvo no registro;
+ * sem ele (registro antigo ou banco sem a coluna), distância preenchida = corrida;
+ * senão, a regra do dia.
+ */
+export function tipoCardioEfetivo(data: string, reg?: Pick<TreinoDia, 'cardio_tipo' | 'corrida_km'> | null): TipoCardio {
+  if (reg?.cardio_tipo === 'corrida' || reg?.cardio_tipo === 'bike') return reg.cardio_tipo;
+  if (reg?.corrida_km != null && reg.corrida_km > 0) return 'corrida';
+  return tipoCardio(data);
+}
+
+export function rotuloTipoCardio(tipo: TipoCardio): string {
+  return tipo === 'corrida' ? `Corrida ${KM_CORRIDA_PADRAO} km` : `Bike ${MIN_BIKE} min`;
+}
+
+export function rotuloCardio(data: string, reg?: Pick<TreinoDia, 'cardio_tipo' | 'corrida_km'> | null): string {
+  return rotuloTipoCardio(tipoCardioEfetivo(data, reg));
 }
 
 /**
@@ -81,6 +97,32 @@ function contar(datas: string[], hoje: string, feito: (d: string) => boolean, to
   return { meta, feito: feitos, aderencia, projecao: Math.round(feitos + (aderencia ?? 1) * aFazer), total: totalPeriodo };
 }
 
+/**
+ * Corrida e bike: a meta segue a regra (2 corridas e 5 bikes por semana) e o "feito"
+ * conta o cardio real de cada dia, com a aderência limitada a 100%. Hoje entra na meta
+ * do tipo previsto só depois que o cardio é marcado (de qualquer tipo).
+ */
+function contarTipo(
+  todas: string[],
+  hoje: string,
+  tipo: TipoCardio,
+  porData: Map<string, TreinoDia>,
+): Contagem {
+  const doTipo = (d: string) => tipoCardio(d) === tipo;
+  const fez = (d: string) => porData.get(d)?.cardio === true;
+  const fezTipo = (d: string) => fez(d) && tipoCardioEfetivo(d, porData.get(d)) === tipo;
+  const passados = todas.filter((d) => d < hoje);
+  const temHoje = todas.includes(hoje);
+  const meta = passados.filter(doTipo).length + (temHoje && doTipo(hoje) && fez(hoje) ? 1 : 0);
+  const feito = passados.filter(fezTipo).length + (temHoje && fezTipo(hoje) ? 1 : 0);
+  const aderencia = meta > 0 ? Math.min(feito / meta, 1) : null;
+  const aFazer = todas.filter((d) => d > hoje && doTipo(d)).length + (temHoje && doTipo(hoje) && !fez(hoje) ? 1 : 0);
+  const total = todas.filter(doTipo).length;
+  // Com tipos trocados de dia, o feito pode passar do total da regra: a projeção não passa dos dois
+  const projecao = Math.min(Math.round(feito + (aderencia ?? 1) * aFazer), Math.max(total, feito));
+  return { meta, feito, aderencia, projecao, total };
+}
+
 export function calcularPlacar(dias: TreinoDia[], inicio: string, fim: string, hoje: string): Placar {
   const porData = new Map(dias.map((d) => [d.data, d]));
   const todas = datasEntre(inicio, fim);
@@ -88,15 +130,12 @@ export function calcularPlacar(dias: TreinoDia[], inicio: string, fim: string, h
   const futuras = todas.filter((d) => d > hoje);
   const ok = (d: string, campo: 'treino' | 'cardio') => porData.get(d)?.[campo] === true;
 
-  const corridas = (lista: string[]) => lista.filter((d) => tipoCardio(d) === 'corrida');
-  const bikes = (lista: string[]) => lista.filter((d) => tipoCardio(d) === 'bike');
-
   const treino = contar(ateHoje, hoje, (d) => ok(d, 'treino'), todas.length, futuras.length);
   const cardio = contar(ateHoje, hoje, (d) => ok(d, 'cardio'), todas.length, futuras.length);
-  const corrida = contar(corridas(ateHoje), hoje, (d) => ok(d, 'cardio'), corridas(todas).length, corridas(futuras).length);
-  const bike = contar(bikes(ateHoje), hoje, (d) => ok(d, 'cardio'), bikes(todas).length, bikes(futuras).length);
-  const km = corridas(ateHoje)
-    .filter((d) => ok(d, 'cardio'))
+  const corrida = contarTipo(todas, hoje, 'corrida', porData);
+  const bike = contarTipo(todas, hoje, 'bike', porData);
+  const km = ateHoje
+    .filter((d) => ok(d, 'cardio') && tipoCardioEfetivo(d, porData.get(d)) === 'corrida')
     .reduce((s, d) => {
       const k = porData.get(d)?.corrida_km;
       return s + (k && k > 0 ? k : KM_CORRIDA_PADRAO);
@@ -144,7 +183,7 @@ export interface Corrida {
 
 export function listarCorridas(dias: TreinoDia[]): Corrida[] {
   const lista = dias
-    .filter((d) => d.cardio && d.corrida_seg && tipoCardio(d.data) === 'corrida')
+    .filter((d) => d.cardio && d.corrida_seg && tipoCardioEfetivo(d.data, d) === 'corrida')
     .sort((a, b) => a.data.localeCompare(b.data))
     .map((d) => {
       const km = d.corrida_km && d.corrida_km > 0 ? d.corrida_km : KM_CORRIDA_PADRAO;
@@ -274,4 +313,76 @@ export function aderenciaRecente(dias: TreinoDia[], inicio: string, hoje: string
     cardio: datas.filter((d) => porData.get(d)?.cardio).length / n,
     dias: n,
   };
+}
+
+// ---------- Esforço percebido (escala CR-10) ----------
+
+/** Âncoras da escala CR-10 (Foster): o número que resume a sessão inteira. */
+export const ESCALA_ESFORCO: Record<number, string> = {
+  0: 'repouso',
+  1: 'muito leve',
+  2: 'leve',
+  3: 'moderado',
+  4: 'um pouco pesado',
+  5: 'pesado',
+  7: 'muito pesado',
+  10: 'máximo',
+};
+
+/** Critério do app (não é limite clínico): média de 7 dias 1,5 ponto acima das 4 semanas anteriores. */
+export const SUBIDA_ESFORCO = 1.5;
+const MINIMO_ESFORCO = { semana: 3, referencia: 6 };
+
+export interface ComparacaoEsforco {
+  /** Média dos últimos 7 dias (hoje incluído); null sem registros */
+  media7: number | null;
+  n7: number;
+  /** Média das 4 semanas anteriores (do 8º ao 35º dia para trás) */
+  referencia: number | null;
+  nReferencia: number;
+  /** media7 − referencia; null com poucos registros (3 na semana, 6 na referência) */
+  subida: number | null;
+  alerta: boolean;
+}
+
+function compararEsforco(dias: TreinoDia[], hoje: string, campo: 'esforco_treino' | 'esforco_cardio'): ComparacaoEsforco {
+  // Só vale o esforço de sessão marcada (desmarcar o treino ou o cardio tira o número da conta)
+  const marcado = campo === 'esforco_treino' ? 'treino' : 'cardio';
+  const valores = (de: string, ate: string) =>
+    dias.filter((d) => d.data >= de && d.data <= ate && d[marcado] && typeof d[campo] === 'number').map((d) => d[campo] as number);
+  const media = (l: number[]) => (l.length ? l.reduce((a, b) => a + b, 0) / l.length : null);
+  const semana = valores(somarDias(hoje, -6), hoje);
+  const ref = valores(somarDias(hoje, -34), somarDias(hoje, -7));
+  const media7 = media(semana);
+  const referencia = media(ref);
+  const subida = semana.length >= MINIMO_ESFORCO.semana && ref.length >= MINIMO_ESFORCO.referencia ? media7! - referencia! : null;
+  return { media7, n7: semana.length, referencia, nReferencia: ref.length, subida, alerta: subida !== null && subida >= SUBIDA_ESFORCO - 1e-9 };
+}
+
+/** Esforço da musculação e do cardio: últimos 7 dias × 4 semanas anteriores. */
+export function resumoEsforco(dias: TreinoDia[], hoje: string): { treino: ComparacaoEsforco; cardio: ComparacaoEsforco } {
+  return { treino: compararEsforco(dias, hoje, 'esforco_treino'), cardio: compararEsforco(dias, hoje, 'esforco_cardio') };
+}
+
+// ---------- Horas de exercício do dia (para a meta de água) ----------
+
+/** Duração estimada da musculação (o app só tem o check) */
+export const MIN_MUSCULACAO = 60;
+/** Corrida sem tempo anotado: 5 km a ~6 min/km */
+const MIN_CORRIDA_ESTIMADA = 30;
+
+/**
+ * Horas de treino e cardio do dia: o que foi marcado; no dia de hoje, o que ainda
+ * não foi marcado conta como previsto (o dia está em aberto). Corrida com tempo
+ * anotado usa o tempo real. hoje = null: nada em aberto (fora do período do projeto).
+ */
+export function horasExercicioDia(data: string, reg: TreinoDia | undefined | null, hoje: string | null): number {
+  const aberto = data === hoje;
+  const treino = reg?.treino || aberto ? MIN_MUSCULACAO : 0;
+  let cardio = 0;
+  if (reg?.cardio || aberto) {
+    const tipo = tipoCardioEfetivo(data, reg);
+    cardio = tipo === 'bike' ? MIN_BIKE : reg?.cardio && reg.corrida_seg ? reg.corrida_seg / 60 : MIN_CORRIDA_ESTIMADA;
+  }
+  return (treino + cardio) / 60;
 }

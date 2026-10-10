@@ -1,8 +1,9 @@
 import type { PlanoDieta } from './dieta';
-import type { Aplicacao, Ciclo, Medida, Perfil, RegistroDecisao, RegistroDiario, TreinoDia } from './tipos';
+import { chaveExercicio } from './forca';
+import type { Aplicacao, Ciclo, Medida, Perfil, RegistroDecisao, RegistroDiario, RegistroForca, TreinoDia } from './tipos';
 
 /**
- * Arquivo de backup. Versão 2 inclui treinos e metas; a 3, o registro de
+ * Arquivo de backup. Versão 2 inclui treinos, metas e força; a 3, o registro de
  * decisões. As versões 1 e 2 continuam aceitas.
  */
 export interface Backup {
@@ -16,6 +17,7 @@ export interface Backup {
   dieta?: PlanoDieta | null;
   treinos?: TreinoDia[];
   registro_decisoes?: RegistroDecisao[];
+  forca?: RegistroForca[];
 }
 
 export interface DadosAtuais {
@@ -24,6 +26,7 @@ export interface DadosAtuais {
   diario: RegistroDiario[];
   treinos: TreinoDia[];
   registro_decisoes?: RegistroDecisao[];
+  forca?: RegistroForca[];
 }
 
 export function montarBackup(d: Omit<Backup, 'versao' | 'exportado_em'>, agora: string): Backup {
@@ -45,7 +48,8 @@ export function lerBackup(texto: string): Backup {
     !listaOk(b.medidas) ||
     !listaOk(b.diario) ||
     !listaOk((b as { treinos?: unknown }).treinos) ||
-    !listaOk((b as { registro_decisoes?: unknown }).registro_decisoes)
+    !listaOk((b as { registro_decisoes?: unknown }).registro_decisoes) ||
+    !listaOk((b as { forca?: unknown }).forca)
   )
     throw new Error('Arquivo de backup não reconhecido.');
   return b;
@@ -60,6 +64,8 @@ export interface PlanoImportacao {
   treinos: TreinoDia[];
   /** Registro de decisões: só as linhas (id) que ainda não existem */
   registro_decisoes: RegistroDecisao[];
+  /** Força: só os pares data + exercício que ainda não existem */
+  forca: RegistroForca[];
   ignoradas: { aplicacoes: number; medidas: number };
 }
 
@@ -80,12 +86,16 @@ export function planejarImportacao(b: Backup, atuais: DadosAtuais): PlanoImporta
   };
   const aplicacoes = unicas(b.aplicacoes, datasAplic);
   const medidas = unicas(b.medidas ?? [], datasMed);
+  const chaveForca = (f: RegistroForca) => `${f.data}|${chaveExercicio(f.exercicio)}`;
+  const vistasForca = new Set((atuais.forca ?? []).map(chaveForca));
+  const forca = (b.forca ?? []).filter((f) => (vistasForca.has(chaveForca(f)) ? false : (vistasForca.add(chaveForca(f)), true)));
   return {
     aplicacoes,
     medidas,
     diario: b.diario ?? [],
     treinos: b.treinos ?? [],
     registro_decisoes: registrosNovos(b.registro_decisoes ?? [], atuais.registro_decisoes ?? []),
+    forca,
     ignoradas: { aplicacoes: b.aplicacoes.length - aplicacoes.length, medidas: (b.medidas ?? []).length - medidas.length },
   };
 }

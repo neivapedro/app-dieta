@@ -33,10 +33,11 @@ export function sinal(n: number | null | undefined, casas = 1, sufixo = ''): str
 
 /**
  * Classe de cor para uma variação. "menorMelhor" = queda é boa (peso, % gordura,
- * massa gorda, cintura); caso contrário, subida é boa (massa magra).
+ * massa gorda, cintura); caso contrário, subida é boa (massa magra). Abaixo do
+ * `limiar` (mínima mudança detectável, ver MDC em gordura.ts) fica neutra.
  */
-export function corVariacao(n: number | null | undefined, menorMelhor: boolean): string {
-  if (n === null || n === undefined || Math.abs(n) < 0.00001) return '';
+export function corVariacao(n: number | null | undefined, menorMelhor: boolean, limiar = 0): string {
+  if (n === null || n === undefined || Math.abs(n) < Math.max(limiar, 0.00001)) return '';
   return (n < 0) === menorMelhor ? 'bom' : 'ruim';
 }
 
@@ -66,5 +67,16 @@ export function lerPeso(texto: string): { valor: number | null; erro?: string } 
   const v = paraNumero(texto);
   if (v === null) return { valor: null, erro: 'Peso inválido. Use só um separador decimal, ex.: 93,2.' };
   if (v < 30 || v > 300) return { valor: null, erro: 'Peso fora da faixa (30 a 300 kg). Confira o número.' };
+  return { valor: v };
+}
+
+/**
+ * Número opcional com faixa: vazio vale null; texto inválido ou fora da faixa vira
+ * erro com o nome do campo (ex.: sono de 0 a 24 h).
+ */
+export function lerFaixa(texto: string, min: number, max: number, nome: string, unidade: string): { valor: number | null; erro?: string } {
+  if (!texto.trim()) return { valor: null };
+  const v = paraNumero(texto);
+  if (v === null || v < min || v > max) return { valor: null, erro: `${nome} fora da faixa (${num(min, 0)} a ${num(max, 0)} ${unidade}). Confira o número.` };
   return { valor: v };
 }

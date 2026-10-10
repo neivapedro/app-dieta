@@ -96,15 +96,17 @@ describe('Quadro de decisão', () => {
     peso_fim: null,
     variacao_kg: null,
     kg_por_semana: null,
+    erro_semana: null,
     poucos_dados: true,
+    vs_anterior: null,
     nausea_media: null,
     nausea_max: null,
     em_andamento,
   });
   const fases = [bloco(0, '2026-10-05', '2026-10-19', 1.25, false), bloco(1, '2026-10-19', '2026-11-01', 1.5, true)];
   const compFases: ComposicaoFase[] = [
-    { indice: 0, de: comp('2026-10-05', 95, 97), ate: comp('2026-10-12', 94, 96), cintura: -1, gorda: -0.25, magra: -0.75, gorda_semana: -0.25, treino: 0.5, cardio: 0.25 },
-    { indice: 1, de: null, ate: null, cintura: null, gorda: null, magra: null, gorda_semana: null, treino: 1, cardio: 0 },
+    { indice: 0, de: comp('2026-10-05', 95, 97), ate: comp('2026-10-12', 94, 96), cintura: -1, gorda: -0.25, magra: -0.75, gorda_semana: -0.25, magra_pct: null, poucos_dados: false, treino: 0.5, cardio: 0.25 },
+    { indice: 1, de: null, ate: null, cintura: null, gorda: null, magra: null, gorda_semana: null, magra_pct: null, poucos_dados: true, treino: 1, cardio: 0 },
   ];
   const diario = [
     reg('2026-10-06', { nausea: 3 }),

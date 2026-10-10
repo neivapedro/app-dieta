@@ -4,7 +4,7 @@ import { hojeLocal } from '../lib/datas';
 import { ehErroDeRede, ehSessaoExpirada, traduzirErro } from '../lib/erros';
 import { esquecerAparelho, sincronizarInscricao } from '../lib/notificacoes';
 import { alteracoesDasDecisoesFase, compararDieta, mesclarAlteracoes, type Alteracao } from '../lib/registroDecisoes';
-import type { Aplicacao, Ciclo, Medida, Perfil, RegistroDecisao, RegistroDiario, TreinoDia } from '../lib/tipos';
+import type { Aplicacao, Ciclo, Medida, Perfil, RegistroDecisao, RegistroDiario, RegistroForca, TreinoDia } from '../lib/tipos';
 import { SUPABASE_KEY, SUPABASE_URL } from '../config';
 import { apagarDadosLocais, aplicarFila, enfileirar, executarOperacao, gravarCache, gravarFila, lerCache, lerFila, type ItemFila, type Operacao } from './fila';
 import { RepositorioLocal } from './local';
@@ -21,6 +21,8 @@ export interface Dados {
   diario: RegistroDiario[];
   medidas: Medida[];
   treinos: TreinoDia[];
+  /** Força nos exercícios-âncora (só para quem tem a aba Treino) */
+  forca: RegistroForca[];
   dieta: PlanoDieta | null;
   /** Mensagem quando a tabela da Dieta ainda não existe no banco */
   dietaIndisponivel: string | null;
@@ -30,7 +32,18 @@ export interface Dados {
   registroIndisponivel?: boolean;
 }
 
-const VAZIO: Dados = { perfil: null, ciclo: null, aplicacoes: [], diario: [], medidas: [], treinos: [], dieta: null, dietaIndisponivel: null, registroDecisoes: [] };
+const VAZIO: Dados = {
+  perfil: null,
+  ciclo: null,
+  aplicacoes: [],
+  diario: [],
+  medidas: [],
+  treinos: [],
+  forca: [],
+  dieta: null,
+  dietaIndisponivel: null,
+  registroDecisoes: [],
+};
 
 /** salvo · salvando · pendente (sem internet, na fila) · erro */
 export type EstadoGravacao = 'salvo' | 'salvando' | 'pendente' | 'erro';
@@ -142,6 +155,8 @@ export function ProvedorDados({ children }: { children: ReactNode }) {
       ]);
       // A aba Treino é opcional: só busca (e só exige a tabela) para quem a tem liberada
       const treinos = perfil?.modulo_treino ? await repositorio.listarTreinos() : [];
+      // Força: tabela do SQL de evolução (sem ela, lista vazia)
+      const forca = perfil?.modulo_treino ? await repositorio.listarForca() : [];
       // A Dieta não derruba o app se a migração ainda não rodou
       let dieta: PlanoDieta | null = null;
       let dietaIndisponivel: string | null = null;
@@ -156,7 +171,19 @@ export function ProvedorDados({ children }: { children: ReactNode }) {
         if (ehErroDeRede(e)) throw e;
         return null;
       });
-      base = { perfil, ciclo, aplicacoes, diario, medidas, treinos, dieta, dietaIndisponivel, registroDecisoes: registro ?? [], registroIndisponivel: registro === null };
+      base = {
+        perfil,
+        ciclo,
+        aplicacoes,
+        diario,
+        medidas,
+        treinos,
+        forca,
+        dieta,
+        dietaIndisponivel,
+        registroDecisoes: registro ?? [],
+        registroIndisponivel: registro === null,
+      };
       setFalhouCarregar(false);
       if (repositorio.modo === 'nuvem') gravarCache(u.id, base);
       carregouNaSessao.current = true;
@@ -175,8 +202,8 @@ export function ProvedorDados({ children }: { children: ReactNode }) {
         setSemConexao(true);
         return;
       }
-      // Cópia guardada antes do registro de decisões existir: começa vazio
-      base = { ...cache.dados, registroDecisoes: cache.dados.registroDecisoes ?? [] };
+      // Cópia guardada por uma versão anterior pode não ter a força nem o registro de decisões: começam vazios
+      base = { ...cache.dados, forca: cache.dados.forca ?? [], registroDecisoes: cache.dados.registroDecisoes ?? [] };
       setOfflineDesde(cache.em);
     }
     mudarDados(() => aplicarFila(base, fila.current));

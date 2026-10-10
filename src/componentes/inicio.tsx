@@ -3,14 +3,15 @@ import { Link } from 'react-router-dom';
 import { useDados } from '../dados/contexto';
 import { useAlimentos } from '../dados/useAlimentos';
 import { useCalculos } from '../dados/useCalculos';
-import { useTreino } from '../dados/useTreino';
+import { useMetaAgua, useTreino } from '../dados/useTreino';
+import { diaDeSintoma, mediaSono7, TEXTO_SINTOMA_AGUA, TEXTO_SONO_BAIXO } from '../lib/bemestar';
 import { diferencaDias, formatarData, hojeLocal, somarDias } from '../lib/datas';
 import { calcularMetas, calcularSaldo, macrosDaRefeicao, proximaRefeicao, resumoPlano, somar, textoItemPlano } from '../lib/dieta';
 import { kg, lerPeso, num, paraTexto } from '../lib/formato';
 import { diaCurto, horaDaFaixaOntem, pendenciasDeOntem, textoPendencias } from '../lib/rotina';
 import { alertasSeguranca, AVISO_SEGURANCA } from '../lib/seguranca';
 import { NIVEIS_NAUSEA, type RegistroDiario } from '../lib/tipos';
-import { aderenciaRecente, formatarTempo, rotuloCardio, segundaDaSemana, tipoCardio } from '../lib/treino';
+import { aderenciaRecente, formatarTempo, rotuloCardio, segundaDaSemana, tipoCardioEfetivo } from '../lib/treino';
 import { gr, kcal } from './dieta';
 import { FormDiaTreino, Marcador } from './treino';
 import { Bloco, Campo, Escolhas } from './ui';
@@ -61,10 +62,22 @@ export function useGravarDia() {
       diarreia: atual?.diarreia ?? null,
       intestino_preso: atual?.intestino_preso ?? null,
       dieta_seguida: atual?.dieta_seguida ?? null,
+      sono_h: atual?.sono_h ?? null,
+      agua_l: atual?.agua_l ?? null,
+      cor_urina: atual?.cor_urina ?? null,
       ...campos,
     };
     const vazio =
-      novo.peso_kg === null && novo.nausea === null && !novo.observacoes && novo.vomito == null && novo.diarreia == null && novo.intestino_preso == null && !novo.dieta_seguida;
+      novo.peso_kg === null &&
+      novo.nausea === null &&
+      !novo.observacoes &&
+      novo.vomito == null &&
+      novo.diarreia == null &&
+      novo.intestino_preso == null &&
+      !novo.dieta_seguida &&
+      novo.sono_h == null &&
+      novo.agua_l == null &&
+      novo.cor_urina == null;
     if (vazio) {
       if (atual) gravar({ tipo: 'excluir', dado: { alvo: 'diario', id: atual.id, data } });
       return;
@@ -73,7 +86,7 @@ export function useGravarDia() {
   };
 }
 
-/** Marca treino e/ou cardio de um dia pela fila, sem apagar o outro check nem o tempo da corrida. */
+/** Marca treino e/ou cardio de um dia pela fila, sem apagar o outro check, o tempo da corrida, o tipo do cardio nem o esforço. */
 export function useGravarTreino() {
   const { treinos, gravar, hoje } = useDados();
   return (data: string, campos: { treino?: boolean; cardio?: boolean }) => {
@@ -87,6 +100,10 @@ export function useGravarTreino() {
         cardio: campos.cardio ?? !!atual?.cardio,
         corrida_km: atual?.corrida_km ?? null,
         corrida_seg: atual?.corrida_seg ?? null,
+        // Desmarcar uma sessão apaga o esforço dela; o resto continua como estava
+        cardio_tipo: atual?.cardio_tipo ?? null,
+        esforco_treino: campos.treino === false ? null : (atual?.esforco_treino ?? null),
+        esforco_cardio: campos.cardio === false ? null : (atual?.esforco_cardio ?? null),
       },
     });
   };
@@ -159,7 +176,7 @@ export function CartaoFecharDia({ etiqueta }: { etiqueta?: string }) {
   const [corridaAberta, setCorridaAberta] = useState(false);
   const comTreino = !!t && t.placar.iniciado && !t.placar.encerrado;
   const tr = t?.doDia(hoje);
-  const corrida = tipoCardio(hoje) === 'corrida';
+  const corrida = tipoCardioEfetivo(hoje, tr) === 'corrida';
 
   function salvarPeso(e: FormEvent) {
     e.preventDefault();
@@ -180,7 +197,7 @@ export function CartaoFecharDia({ etiqueta }: { etiqueta?: string }) {
       {comTreino && (
         <div className="linha" style={{ flexWrap: 'nowrap' }}>
           <Marcador rotulo="Treino" detalhe="musculação" feito={!!tr?.treino} aoTocar={() => gravarTreino(hoje, { treino: !tr?.treino })} />
-          <Marcador rotulo="Cardio" detalhe={rotuloCardio(hoje)} feito={!!tr?.cardio} aoTocar={() => gravarTreino(hoje, { cardio: !tr?.cardio })} />
+          <Marcador rotulo="Cardio" detalhe={rotuloCardio(hoje, tr)} feito={!!tr?.cardio} aoTocar={() => gravarTreino(hoje, { cardio: !tr?.cardio })} />
         </div>
       )}
       {comTreino && corrida && tr?.cardio && (
@@ -238,7 +255,10 @@ export function CartaoFecharDia({ etiqueta }: { etiqueta?: string }) {
 export function CartaoRegistroDia({ aoEditar, etiqueta }: { aoEditar: () => void; etiqueta?: string }) {
   const { diario } = useDados();
   const { hoje } = useCalculos();
+  const metaAguaDe = useMetaAgua();
   const reg = diario.find((r) => r.data === hoje);
+  const sono = mediaSono7(diario, hoje);
+  const metaAguaHoje = metaAguaDe(hoje).meta;
   return (
     <section className="cartao">
       <div className="cartao-cab">
@@ -259,7 +279,28 @@ export function CartaoRegistroDia({ aoEditar, etiqueta }: { aoEditar: () => void
           />
         </div>
       ) : (
-        <p className="mudo">Anote peso, náusea e efeitos de hoje. Vale para qualquer dia, não só o da aplicação.</p>
+        <p className="mudo">Anote peso, náusea, efeitos, sono e água de hoje. Vale para qualquer dia, não só o da aplicação.</p>
+      )}
+      {reg && (reg.sono_h != null || reg.agua_l != null || reg.cor_urina) ? (
+        <p className="texto-2" style={{ marginTop: 8 }}>
+          {[
+            reg.sono_h != null && `Sono ${num(reg.sono_h, 1)} h`,
+            reg.agua_l != null && `Água ${num(reg.agua_l, 1)} de ${num(metaAguaHoje, 1)} L`,
+            reg.cor_urina && `urina ${reg.cor_urina}`,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+        </p>
+      ) : null}
+      {diaDeSintoma(reg) && (
+        <div className="alerta info" style={{ marginTop: 8 }}>
+          {TEXTO_SINTOMA_AGUA}
+        </div>
+      )}
+      {sono.baixo && (
+        <div className="alerta" style={{ marginTop: 8 }}>
+          {TEXTO_SONO_BAIXO} (média de 7 dias: {num(sono.media, 1)} h)
+        </div>
       )}
       {reg?.observacoes && (
         <p className="mudo obs-curta" style={{ marginTop: 8 }}>

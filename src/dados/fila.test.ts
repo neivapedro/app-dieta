@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Ciclo } from '../lib/tipos';
+import type { Ciclo, Medida } from '../lib/tipos';
 import { aplicarFila, enfileirar, type ItemFila } from './fila';
 
 const t = (data: string, treino: boolean, cardio: boolean) => ({ data, treino, cardio, corrida_km: null, corrida_seg: null });
@@ -51,6 +51,34 @@ describe('Fila: exclusão', () => {
     f = enfileirar(f, { tipo: 'excluir', dado: { alvo: 'aplicacao', id: 'x1', data: ap.data } }, 2);
     expect(f).toHaveLength(1);
     expect(aplicarFila({ treinos: [], diario: [], dieta: null, aplicacoes: [ap], medidas: [] }, f).aplicacoes).toEqual([]);
+  });
+
+  it('medição atípica passa pela fila com a marca', () => {
+    const m = { id: 'm1', data: '2026-10-12', altura_cm: 181, pescoco_cm: 41, cintura_cm: 97, quadril_cm: null, peso_kg: 95, atipica: true };
+    const d = aplicarFila({ treinos: [], diario: [], dieta: null, medidas: [] as Medida[] }, enfileirar([], { tipo: 'medida', dado: m }, 1));
+    expect(d.medidas![0].atipica).toBe(true);
+  });
+});
+
+
+describe('Fila: força', () => {
+  it('registro de força aparece na hora, edição substitui e exclusão remove', () => {
+    const base = { treinos: [], diario: [], dieta: null, forca: [] };
+    const f1 = { id: 'f1', data: '2026-10-19', exercicio: 'Supino', carga_kg: 80, reps: 8, rir: 1 };
+    let f = enfileirar([], { tipo: 'forca', dado: f1 }, 1);
+    f = enfileirar(f, { tipo: 'forca', dado: { ...f1, carga_kg: 82.5 } }, 2);
+    expect(f).toHaveLength(1);
+    const d = aplicarFila(base, f);
+    expect(d.forca).toEqual([{ ...f1, carga_kg: 82.5 }]);
+    const ex = enfileirar(f, { tipo: 'excluir', dado: { alvo: 'forca', id: 'f1', data: f1.data } }, 3);
+    expect(ex).toHaveLength(1);
+    expect(aplicarFila({ ...base, forca: [f1] }, ex).forca).toEqual([]);
+  });
+
+  it('dado sem a lista de força (cópia antiga) não quebra', () => {
+    const f = enfileirar([], { tipo: 'forca', dado: { id: 'f1', data: '2026-10-19', exercicio: 'Supino', carga_kg: 80, reps: 8, rir: null } }, 1);
+    const d = aplicarFila({ treinos: [], diario: [], dieta: null }, f);
+    expect('forca' in d).toBe(false);
   });
 });
 

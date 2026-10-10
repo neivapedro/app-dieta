@@ -5,12 +5,14 @@ import { useDados } from '../dados/contexto';
 import { useCalculos } from '../dados/useCalculos';
 import { diaDaSemana, formatarData, hojeLocal } from '../lib/datas';
 import { diaAposDose } from '../lib/analise';
-import { kg, mg } from '../lib/formato';
+import { kg, mg, num } from '../lib/formato';
+import { mediaSono7, TEXTO_SONO_BAIXO } from '../lib/bemestar';
 import { NIVEIS_NAUSEA, type RegistroDiario } from '../lib/tipos';
 
 export function Diario() {
   const { diario } = useDados();
-  const { resumo } = useCalculos();
+  const { resumo, hoje } = useCalculos();
+  const sono = mediaSono7(diario, hoje);
   const [editando, setEditando] = useState<RegistroDiario | null>(null);
   // Data da linha tocada: o formulário abre nela, não em hoje
   const [novo, setNovo] = useState<string | null>(null);
@@ -30,7 +32,19 @@ export function Diario() {
           <h2>Diário</h2>
           <button className="botao pequeno primario" onClick={() => setNovo(hojeLocal())}>Registrar dia</button>
         </div>
-        <p className="mudo" style={{ marginBottom: 8 }}>Peso, náusea (0 a 3) e efeitos em qualquer dia. As aplicações aparecem aqui automaticamente.</p>
+        <p className="mudo" style={{ marginBottom: 8 }}>
+          Peso, náusea (0 a 3), efeitos, sono e água em qualquer dia. As aplicações aparecem aqui automaticamente.
+        </p>
+        {sono.media !== null && (
+          <p className="texto-2" style={{ marginBottom: 8 }}>
+            Sono (média de 7 dias): <b className={sono.baixo ? 'aviso-txt' : undefined}>{num(sono.media, 1)} h</b> em {sono.noites} noites.
+          </p>
+        )}
+        {sono.baixo && (
+          <div className="alerta" style={{ marginBottom: 8 }}>
+            {TEXTO_SONO_BAIXO}
+          </div>
+        )}
         {datas.length === 0 ? (
           <Vazio>Nenhum registro ainda.</Vazio>
         ) : (
@@ -63,6 +77,9 @@ export function Diario() {
                         r?.vomito && 'vômito',
                         r?.diarreia && 'diarreia',
                         r?.intestino_preso && 'intestino preso',
+                        r?.sono_h != null && `sono ${num(r.sono_h, 1)} h`,
+                        r?.agua_l != null && `água ${num(r.agua_l, 1)} L`,
+                        r?.cor_urina && `urina ${r.cor_urina}`,
                         r?.dieta_seguida && `dieta: ${r.dieta_seguida === 'sim' ? 'seguida' : r.dieta_seguida === 'parcial' ? 'em parte' : 'não seguida'}`,
                         ...aps.map((x) => x.aplicacao.local),
                         r?.observacoes,
