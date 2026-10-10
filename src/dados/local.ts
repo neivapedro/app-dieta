@@ -1,6 +1,6 @@
 import type { PlanoDieta } from '../lib/dieta';
 import type { Aplicacao, Ciclo, Medida, MetasProjeto, Perfil, RegistroDiario, TreinoDia } from '../lib/tipos';
-import type { Repositorio, Usuario } from './repositorio';
+import type { DecisoesCiclo, Repositorio, Usuario } from './repositorio';
 
 // Modo de demonstração: usado quando o Supabase ainda não foi configurado.
 // Guarda tudo no navegador, separado por e-mail. NÃO é seguro nem sincroniza
@@ -119,6 +119,11 @@ export class RepositorioLocal implements Repositorio {
     const ciclo = { ...c, id: c.id ?? novoId() } as Ciclo;
     this.alterar((b) => (b.ciclo = ciclo));
     return ciclo;
+  }
+  async salvarDecisoes(d: DecisoesCiclo) {
+    this.alterar((b) => {
+      if (b.ciclo && b.ciclo.id === d.ciclo_id) b.ciclo = { ...b.ciclo, decisoes: d.decisoes, fases: d.fases };
+    });
   }
 
   async listarAplicacoes() {

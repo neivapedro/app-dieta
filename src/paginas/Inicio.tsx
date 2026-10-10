@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { AvisoRapido, FimDeFase, ForaDoPlano } from '../componentes/dose';
 import { FormAplicacao, FormDiario, FormMedida } from '../componentes/formularios';
 import { CartaoDietaHoje, CartaoMedicaoSegunda } from '../componentes/inicio';
 import { ResumoSemana } from '../componentes/ResumoSemana';
@@ -7,8 +8,8 @@ import { CartaoTreinoHoje } from '../componentes/treino';
 import { Bloco, Icone } from '../componentes/ui';
 import { useDados } from '../dados/contexto';
 import { useCalculos } from '../dados/useCalculos';
-import { guiaSeringa } from '../lib/ciclo';
-import { diaDaSemana, formatarData } from '../lib/datas';
+import { guiaSeringa, marcasVizinhas, seringaDo, textoSeringa } from '../lib/ciclo';
+import { diaDaSemana, diferencaDias, formatarData } from '../lib/datas';
 import { cm, corVariacao, kg, mg, num, pct, pp, sinal, ui } from '../lib/formato';
 import { estadoNotificacao, type EstadoNotificacao } from '../lib/notificacoes';
 import { NIVEIS_NAUSEA } from '../lib/tipos';
@@ -22,6 +23,7 @@ export function Inicio() {
   const [medindo, setMedindo] = useState(false);
   const [resumoSemana, setResumo] = useState(false);
   const [notif, setNotif] = useState<EstadoNotificacao | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
 
   useEffect(() => {
     estadoNotificacao().then(setNotif).catch(() => setNotif('sem-suporte'));
@@ -30,6 +32,19 @@ export function Inicio() {
   if (!ciclo || !resumo) return null;
   const p = resumo.proxima;
   const regHoje = diario.find((r) => r.data === hoje);
+  const deg = resumo.degrau;
+  const seringa = seringaDo(ciclo);
+  const vizinhas = p ? marcasVizinhas(p.ui_pratica, seringa.marca, ciclo.concentracao_mg_ml) : null;
+  // "Fase 2 · dose 3 de 4" (a dose da fase conta pelas aplicações seguidas com a mesma dose)
+  const posicao =
+    deg.estado === 'em_curso' && deg.previstas
+      ? ` · dose ${deg.feitas + 1} de ${deg.previstas}`
+      : deg.estado === 'inicio' || deg.estado === 'subir'
+        ? ` · dose 1 de ${p?.fase?.fase.semanas ?? '–'}`
+        : deg.estado === 'pendente'
+          ? ' · fim'
+          : '';
+  const diasFrasco = ciclo.frasco_aberto_em ? diferencaDias(ciclo.frasco_aberto_em, hoje) : null;
 
   function fecharRegistro() {
     setRegistrar(false);
@@ -71,6 +86,8 @@ export function Inicio() {
           <div className="cartao-cab">
             <span className="rotulo">Próxima aplicação · {p.numero}ª dose</span>
             {p.extra && <span className="etiqueta aviso">Dose extra · sobra do frasco</span>}
+            {p.estado === 'pendente' && <span className="etiqueta aviso">Fim da fase</span>}
+            {p.estado === 'fora_do_plano' && <span className="etiqueta aviso">Fora do plano</span>}
             {p.situacao === 'hoje' && <span className="etiqueta destaque">Hoje</span>}
             {p.situacao === 'atrasada' && <span className="etiqueta ruim">Atrasada {p.dias} dia(s)</span>}
             {p.situacao === 'futura' && <span className="etiqueta">em {p.dias} dia(s)</span>}
@@ -87,6 +104,12 @@ export function Inicio() {
               <div className="mudo">seringa U-100</div>
             </div>
           </div>
+          {resumo.pausa_dias !== null && (
+            <div className="alerta erro" style={{ marginTop: 12 }}>
+              Pausa de {Math.floor(resumo.pausa_dias / 7)} semanas desde a última dose ({formatarData(resumo.linhas[resumo.linhas.length - 1].aplicacao.data)}):
+              confirme a dose com o médico antes de aplicar.
+            </div>
+          )}
           <div className="grade" style={{ marginTop: 14 }}>
             <Bloco rotulo="Puxar até" valor={ui(p.ui_pratica)} />
             <Bloco
@@ -101,12 +124,19 @@ export function Inicio() {
                 )
               }
             />
-            <Bloco rotulo={`Fase ${p.fase.indice + 1}`} valor={p.fase.fase.nome} />
+            {p.fase ? <Bloco rotulo={`Fase ${p.fase.indice + 1}`} valor={`${p.fase.fase.nome}${posicao}`} /> : <Bloco rotulo="Fase" valor="Fora do plano" />}
             <Bloco rotulo="Local sugerido" valor={resumo.sugestao_local} />
           </div>
           <p className="mudo" style={{ marginTop: 10 }}>
-            Na seringa de insulina (U-100, marcas de 1 em 1 UI): {guiaSeringa(p.ui_pratica)}.
+            Na {textoSeringa(ciclo)}: {guiaSeringa(p.ui_pratica, seringa.marca)}.
           </p>
+          {vizinhas && (
+            <p className="mudo vizinhas" style={{ marginTop: 4 }}>
+              Marcas vizinhas: {vizinhas.map((v) => `${ui(v.ui)} = ${mg(v.mg)}`).join(' · ')}.
+            </p>
+          )}
+          <FimDeFase />
+          <ForaDoPlano />
           <button className="botao primario bloco-largo" style={{ marginTop: 14 }} onClick={() => setRegistrar(true)}>
             <Icone nome="mais" /> Registrar aplicação
           </button>
@@ -167,7 +197,15 @@ export function Inicio() {
           <p className="mudo" style={{ marginTop: 10 }}>
             {resumo.doses_plano_restantes > resumo.projecao.length
               ? `O frasco acaba em ${formatarData(resumo.data_fim_prevista)}: faltarão ${resumo.doses_plano_restantes - resumo.projecao.length} dose(s) do plano.`
-              : `Mantendo o plano, a última dose fica para ${formatarData(resumo.data_fim_prevista)}.`}
+              : resumo.fim_hipotese
+                ? `Se subir em cada fim de fase, a última dose fica para ${formatarData(resumo.data_fim_prevista)}.`
+                : `Mantendo o plano, a última dose fica para ${formatarData(resumo.data_fim_prevista)}.`}
+            {resumo.fim_hipotese && ' Hipótese: cada subida depende da sua decisão no fim da fase.'}
+          </p>
+        )}
+        {diasFrasco !== null && diasFrasco >= 0 && (
+          <p className="mudo" style={{ marginTop: 6 }}>
+            Frasco aberto em {formatarData(ciclo.frasco_aberto_em!)} · há {diasFrasco} {diasFrasco === 1 ? 'dia' : 'dias'}.
           </p>
         )}
         {resumo.sobra_doses > 0 && (
@@ -242,7 +280,8 @@ export function Inicio() {
         )}
       </section>
 
-      {registrar && <FormAplicacao aoFechar={fecharRegistro} />}
+      {registrar && <FormAplicacao aoFechar={fecharRegistro} aoSalvar={setAviso} />}
+      {aviso && <AvisoRapido texto={aviso} aoSumir={() => setAviso(null)} />}
       {diarioAberto && <FormDiario registro={regHoje} aoFechar={() => setDiarioAberto(false)} />}
       {medindo && <FormMedida aoFechar={() => setMedindo(false)} aoSalvar={() => setResumo(true)} />}
       {resumoSemana && <ResumoSemana aoFechar={() => setResumo(false)} />}

@@ -2,7 +2,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { configPadrao, type PlanoDieta } from '../lib/dieta';
 import type { Aplicacao, Ciclo, Medida, MetasProjeto, Perfil, RegistroDiario, TreinoDia } from '../lib/tipos';
 import { ehErroDeRede } from '../lib/erros';
-import type { Repositorio, Usuario } from './repositorio';
+import type { DecisoesCiclo, Repositorio, Usuario } from './repositorio';
 
 // O isolamento entre contas é garantido no banco (Row Level Security, ver
 // supabase/migrations): mesmo que o app pedisse dados de outra pessoa, o
@@ -34,6 +34,17 @@ function erro<T>(r: { data: T; error: { message: string; code?: string } | null;
 function lista<T>(r: { data: T[] | null; error: { message: string; code?: string } | null; status?: number }): T[] {
   return erro(r) ?? [];
 }
+
+/** Coluna ou tabela que ainda não existe no banco (SQL de evolução não rodou). */
+export function faltaNoBanco(e: { message?: string; code?: string } | null | undefined): boolean {
+  if (!e) return false;
+  return ['PGRST204', 'PGRST205', '42703', '42P01'].includes(e.code ?? '') || /does not exist|Could not find/i.test(e.message ?? '');
+}
+
+const AVISO_EVOLUCAO = 'falta rodar o SQL de evolução no Supabase.';
+
+// Colunas novas do ciclo (frente de dose e frasco): o app funciona sem elas
+const COLUNAS_NOVAS_CICLO = ['seringa_capacidade_ui', 'seringa_marca_ui', 'frasco_aberto_em', 'decisoes'] as const;
 
 /** Mensagens do login em português. */
 function traduzirAuth(msg: string): string {
@@ -185,21 +196,66 @@ export class RepositorioSupabase implements Repositorio {
       intervalo_dias: d.intervalo_dias,
       passo_ui: num(d.passo_ui),
       fases: d.fases,
+      // Colunas da evolução: ausentes se o SQL ainda não rodou
+      seringa_capacidade_ui: numOuNulo(d.seringa_capacidade_ui),
+      seringa_marca_ui: numOuNulo(d.seringa_marca_ui),
+      frasco_aberto_em: d.frasco_aberto_em ?? null,
+      decisoes: Array.isArray(d.decisoes) ? d.decisoes : [],
     };
   }
 
   async salvarCiclo(c: Omit<Ciclo, 'id'> & { id?: string }): Promise<Ciclo> {
-    const d = erro(await this.sb.from('ciclos').upsert({ ...c, user_id: await this.uid(), ativo: true }).select('id').single());
+    const linha = { ...c, user_id: await this.uid(), ativo: true };
+    const r = await this.sb.from('ciclos').upsert(linha).select('id').single();
+    if (r.error && faltaNoBanco(r.error)) {
+      // Banco sem as colunas novas: grava o resto e avisa o que ficou de fora
+      const basica: Record<string, unknown> = { ...linha };
+      for (const k of COLUNAS_NOVAS_CICLO) delete basica[k];
+      // Sem a migração, passo_ui só guarda 2 casas: 0,125 (marcas de 0,5) volta ao padrão 0,25
+      if (Math.abs(c.passo_ui * 100 - Math.round(c.passo_ui * 100)) > 1e-9) basica.passo_ui = 0.25;
+      const d = erro(await this.sb.from('ciclos').upsert(basica).select('id').single());
+      const faltou = [
+        (c.seringa_capacidade_ui ?? null) !== null || (c.seringa_marca_ui ?? null) !== null ? 'A seringa (capacidade e marcas)' : null,
+        c.frasco_aberto_em ? '"Frasco aberto em"' : null,
+      ].filter(Boolean);
+      if (faltou.length) throw new Error(`${faltou.join(' e ')} não foi salvo: ${AVISO_EVOLUCAO}`);
+      return { ...c, id: d!.id } as Ciclo;
+    }
+    const d = erro(r);
     return { ...c, id: d!.id } as Ciclo;
+  }
+
+  async salvarDecisoes({ ciclo_id, decisoes, fases }: DecisoesCiclo) {
+    const r = await this.sb.from('ciclos').update({ decisoes, fases }).eq('id', ciclo_id);
+    if (r.error && faltaNoBanco(r.error)) {
+      // O plano (Repetir fase) é gravado; a decisão em si precisa da coluna nova
+      erro(await this.sb.from('ciclos').update({ fases }).eq('id', ciclo_id));
+      throw new Error(`A decisão da fase não foi salva: ${AVISO_EVOLUCAO}`);
+    }
+    erro(r);
   }
 
   async listarAplicacoes(): Promise<Aplicacao[]> {
     const d = lista(await this.sb.from('aplicacoes').select('*').order('data'));
-    return d.map((a) => ({ id: a.id, ciclo_id: a.ciclo_id, data: a.data, dose_mg: num(a.dose_mg), local: a.local, observacoes: a.observacoes }));
+    return d.map((a) => ({
+      id: a.id,
+      ciclo_id: a.ciclo_id,
+      data: a.data,
+      dose_mg: num(a.dose_mg),
+      local: a.local,
+      observacoes: a.observacoes,
+      concentracao_mg_ml: numOuNulo(a.concentracao_mg_ml),
+    }));
   }
 
   async salvarAplicacao(a: Omit<Aplicacao, 'id'> & { id?: string }) {
-    erro(await this.sb.from('aplicacoes').upsert({ ...a, user_id: await this.uid() }));
+    const linha = { ...a, user_id: await this.uid() };
+    const r = await this.sb.from('aplicacoes').upsert(linha);
+    // Banco sem a coluna da concentração: grava sem ela (as contas usam a do ciclo)
+    if (r.error && faltaNoBanco(r.error)) {
+      const { concentracao_mg_ml: _c, ...basica } = linha;
+      erro(await this.sb.from('aplicacoes').upsert(basica));
+    } else erro(r);
   }
 
   async excluirAplicacao(id: string) {

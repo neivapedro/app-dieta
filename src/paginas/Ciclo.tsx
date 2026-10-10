@@ -1,11 +1,23 @@
 import { useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Diario } from './Diario';
+import { AvisoRapido } from '../componentes/dose';
 import { FormAplicacao } from '../componentes/formularios';
-import { Campo, CampoNumero, Vazio } from '../componentes/ui';
+import { Campo, CampoNumero, Escolhas, Vazio } from '../componentes/ui';
 import { useDados } from '../dados/contexto';
 import { useCalculos } from '../dados/useCalculos';
-import { consumoPlano, fasesNumeradas, marcacao, mgParaMl, verificarPlano } from '../lib/ciclo';
+import {
+  CAPACIDADES_SERINGA,
+  MARCAS_SERINGA,
+  REGRAS_FASE,
+  consumoPlano,
+  fasesNumeradas,
+  guiaSeringa,
+  marcacao,
+  mgParaMl,
+  passoDaMarca,
+  verificarPlano,
+} from '../lib/ciclo';
 import { diaDaSemana, formatarData } from '../lib/datas';
 import { mg, num, paraNumero, paraTexto, sinal, ui } from '../lib/formato';
 import type { Aplicacao, Ciclo as TCiclo, Fase } from '../lib/tipos';
@@ -47,6 +59,7 @@ function Agenda() {
   const [editando, setEditando] = useState<Aplicacao | null>(null);
   const [novo, setNovo] = useState(false);
   const [todas, setTodas] = useState(false);
+  const [aviso, setAviso] = useState<string | null>(null);
   if (!resumo) return null;
   const proximas = todas ? resumo.projecao : resumo.projecao.slice(0, 6);
   const realizadas = [...resumo.linhas].reverse();
@@ -60,7 +73,13 @@ function Agenda() {
         </div>
         <p className="mudo" style={{ marginBottom: 8 }}>
           Datas recalculadas a partir da última aplicação real{resumo.proxima?.situacao === 'atrasada' ? ', considerando que a dose atrasada será tomada hoje' : ''}.
+          {resumo.fim_hipotese && ' Doses marcadas "se subir" são hipótese: a dose só sobe quando você decide no fim da fase (Início).'}
         </p>
+        {resumo.degrau.estado === 'fora_do_plano' && (
+          <div className="alerta" style={{ marginBottom: 8 }}>
+            A última dose ({num(resumo.degrau.degrau?.bloco.dose_mg)} mg) não bate com nenhuma fase do Plano. Confirme no Início qual fase seguir.
+          </div>
+        )}
         {proximas.length === 0 ? (
           <Vazio>Nenhuma aplicação restante no plano.</Vazio>
         ) : (
@@ -73,7 +92,10 @@ function Agenda() {
                     {diaDaSemana(d.data)}, {formatarData(d.data)}
                     {i === 0 && resumo.proxima?.situacao === 'atrasada' && <span className="etiqueta ruim" style={{ marginLeft: 6 }}>atrasada</span>}
                   </div>
-                  <div className="detalhe">Fase {d.fase.indice + 1} · {d.fase.fase.nome}</div>
+                  <div className="detalhe">
+                    Fase {d.fase.indice + 1} · {d.fase.fase.nome}
+                    {d.hipotese && <span className="aviso-txt"> · se subir</span>}
+                  </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div className="titulo numero">{num(d.dose_mg)} mg</div>
@@ -118,7 +140,7 @@ function Agenda() {
                     <td>
                       <b>{l.numero}</b> · {formatarData(l.aplicacao.data, true)} <span className="mudo">{diaDaSemana(l.aplicacao.data).slice(0, 3)}</span>
                     </td>
-                    <td>{l.fase.indice + 1}</td>
+                    <td>{l.fase ? l.fase.indice + 1 : <span className="aviso-txt">fora</span>}</td>
                     <td>{num(l.dose_prevista)}</td>
                     <td>{num(l.aplicacao.dose_mg)}</td>
                     <td className={Math.abs(l.diferenca_mg) > 1e-9 ? 'aviso-txt' : 'mudo'}>{Math.abs(l.diferenca_mg) > 1e-9 ? sinal(l.diferenca_mg, 2) : '–'}</td>
@@ -134,11 +156,16 @@ function Agenda() {
             </table>
           </div>
         )}
-        <p className="mudo" style={{ marginTop: 8 }}>Peso médio e náusea máxima consideram os registros do Diário entre uma aplicação e a seguinte. Toque numa linha para editar.</p>
+        <p className="mudo" style={{ marginTop: 8 }}>
+          Prevista: a dose que o app indicava pelas aplicações anteriores (a mesma até completar a fase; a seguinte só depois de decidir subir). UI pela
+          concentração gravada em cada aplicação. Peso médio e náusea máxima consideram os registros do Diário entre uma aplicação e a seguinte. Toque numa
+          linha para editar.
+        </p>
       </section>
 
-      {editando && <FormAplicacao aplicacao={editando} aoFechar={() => setEditando(null)} />}
-      {novo && <FormAplicacao aoFechar={() => setNovo(false)} />}
+      {editando && <FormAplicacao aplicacao={editando} aoFechar={() => setEditando(null)} aoSalvar={setAviso} />}
+      {novo && <FormAplicacao aoFechar={() => setNovo(false)} aoSalvar={setAviso} />}
+      {aviso && <AvisoRapido texto={aviso} aoSumir={() => setAviso(null)} />}
     </>
   );
 }
@@ -171,15 +198,16 @@ function Plano() {
   const rascunho: TCiclo = { ...ciclo!, fases: fasesValidas };
   const verif = verificarPlano(rascunho);
   const numeradas = fasesNumeradas(fasesValidas);
-  const faseAtual = resumo?.proxima?.fase.indice ?? null;
+  // Fase em que está a dose atual (ou a seguinte, se já decidiu subir)
+  const faseAtual = resumo?.proxima?.fase?.indice ?? null;
 
   function alterar(i: number, campo: keyof FaseEdicao, valor: string) {
     setFases(fases.map((f, j) => (j === i ? { ...f, [campo]: valor } : f)));
     setSalvo(false);
   }
 
-  function repetir(i: number) {
-    alterar(i, 'semanas', String(fasesValidas[i].semanas + 4));
+  function repetir(i: number, semanas: number) {
+    alterar(i, 'semanas', String(fasesValidas[i].semanas + semanas));
   }
 
   async function salvar() {
@@ -196,9 +224,15 @@ function Plano() {
 
   return (
     <>
-      <div className={`alerta ${verif.situacao === 'excesso' ? 'erro' : verif.situacao === 'exato' ? 'info' : ''}`}>
+      <div className={`alerta ${verif.situacao === 'excesso' ? 'erro' : verif.situacao === 'sobra' ? 'info' : ''}`}>
         <span>
           {verif.mensagem} Consumo previsto: <b>{mg(consumoPlano(fasesValidas))}</b> em {numeradas.at(-1)?.fim ?? 0} aplicações.
+          {verif.situacao !== 'sobra' && (
+            <>
+              {' '}
+              Reserva sugerida: ~{num(verif.reserva_ml, 1)} ml = {mg(verif.reserva_mg)} (fica no fundo do frasco e na agulha; não entra no cálculo).
+            </>
+          )}
         </span>
       </div>
 
@@ -232,7 +266,8 @@ function Plano() {
               <textarea value={f.objetivo} onChange={(e) => alterar(i, 'objetivo', e.target.value)} />
             </Campo>
             <div className="linha">
-              <button className="botao pequeno" onClick={() => repetir(i)}>Repetir fase (+4 semanas)</button>
+              <button className="botao pequeno" onClick={() => repetir(i, 1)}>Repetir +1 semana</button>
+              <button className="botao pequeno" onClick={() => repetir(i, 4)}>+4 semanas</button>
               {fases.length > 1 && (
                 <button className="botao pequeno perigo" onClick={() => { setFases(fases.filter((_, j) => j !== i)); setSalvo(false); }}>
                   Remover
@@ -268,12 +303,7 @@ function Plano() {
               <tr><th>Situação ao fim da fase</th><th style={{ textAlign: 'left' }}>O que fazer</th></tr>
             </thead>
             <tbody>
-              {[
-                ['Tolerou bem (sem náusea relevante, comendo e se hidratando normalmente)', 'Sobe para a próxima fase.'],
-                ['Efeitos leves, mas incômodos', 'Repete a fase por mais 4 semanas (botão "Repetir fase").'],
-                ['Vômitos frequentes, não consegue se hidratar, dor abdominal forte, palpitação persistente', 'Suspende e procura atendimento médico.'],
-                ['Já satisfeito com o resultado numa dose menor', 'Pode permanecer nela; não é obrigatório chegar à dose final.'],
-              ].map(([s, o]) => (
+              {REGRAS_FASE.map(([s, o]) => (
                 <tr key={s}>
                   <td style={{ whiteSpace: 'normal' }}>{s}</td>
                   <td style={{ whiteSpace: 'normal', textAlign: 'left' }}>{o}</td>
@@ -282,7 +312,10 @@ function Plano() {
             </tbody>
           </table>
         </div>
-        <p className="mudo" style={{ marginTop: 8 }}>Ajustes de dose devem ser combinados com seu médico.</p>
+        <p className="mudo" style={{ marginTop: 8 }}>
+          No fim de cada fase o Início mostra estas regras com os seus números. A dose só sobe quando você toca em Subir. Ajustes de dose devem ser
+          combinados com seu médico.
+        </p>
       </section>
     </>
   );
@@ -290,28 +323,64 @@ function Plano() {
 
 // ---------- Parâmetros do ciclo (aba Painel) ----------
 
+const OPCOES_CAPACIDADE = CAPACIDADES_SERINGA.map((c) => ({ valor: c as number, rotulo: `${c} UI` }));
+const OPCOES_MARCA = MARCAS_SERINGA.map((m) => ({ valor: m as number, rotulo: `de ${paraTexto(m)} em ${paraTexto(m)} UI` }));
+
 function Ajustes() {
-  const { ciclo, executar } = useDados();
+  const { ciclo, aplicacoes, executar, gravar } = useDados();
+  const { resumo } = useCalculos();
   const c = ciclo!;
   const [nome, setNome] = useState(c.nome);
   const [inicio, setInicio] = useState(c.data_inicio);
   const [total, setTotal] = useState(paraTexto(c.quantidade_total_mg));
   const [conc, setConc] = useState(paraTexto(c.concentracao_mg_ml));
   const [intervalo, setIntervalo] = useState(String(c.intervalo_dias));
-  const [passo, setPasso] = useState(paraTexto(c.passo_ui));
+  const [capacidade, setCapacidade] = useState<number | null>(c.seringa_capacidade_ui ?? null);
+  const [marca, setMarca] = useState<number>(c.seringa_marca_ui ?? 1);
+  const [aberto, setAberto] = useState(c.frasco_aberto_em ?? '');
+  // Concentração mudou com aplicações já registradas: novo frasco ou correção de digitação?
+  const [mudancaConc, setMudancaConc] = useState<'novo' | 'correcao' | null>(null);
   const [msg, setMsg] = useState<{ tipo: string; texto: string } | null>(null);
 
   const totalN = paraNumero(total) ?? 0;
   const concN = paraNumero(conc) ?? 0;
+  const passo = passoDaMarca(marca);
+  const doCiclo = aplicacoes.filter((a) => a.ciclo_id === c.id);
+  const concMudou = concN > 0 && Math.abs(concN - c.concentracao_mg_ml) > 1e-9 && doCiclo.length > 0;
+  // Prévia ao vivo: a próxima dose com a concentração digitada
+  const dosePrevia = resumo?.proxima?.dose_mg ?? c.fases[0]?.dose_mg ?? 0;
+  const previa = concN > 0 && dosePrevia > 0 ? marcacao(dosePrevia, { concentracao_mg_ml: concN, passo_ui: passo }) : null;
 
   async function salvar(e: FormEvent) {
     e.preventDefault();
     const intervaloN = Math.round(paraNumero(intervalo) ?? 0);
-    const passoN = paraNumero(passo) ?? 0;
-    if (totalN <= 0 || concN <= 0 || intervaloN <= 0 || passoN <= 0) return setMsg({ tipo: 'erro', texto: 'Todos os valores precisam ser maiores que zero.' });
+    if (totalN <= 0 || concN <= 0 || intervaloN <= 0) return setMsg({ tipo: 'erro', texto: 'Todos os valores precisam ser maiores que zero.' });
     if (!inicio) return setMsg({ tipo: 'erro', texto: 'Informe a data da 1ª aplicação.' });
+    if (concMudou && !mudancaConc) return setMsg({ tipo: 'erro', texto: 'Diga se a concentração nova é de um frasco novo ou a correção de um erro de digitação.' });
     try {
-      await executar((r) => r.salvarCiclo({ ...c, nome: nome.trim() || c.nome, data_inicio: inicio, quantidade_total_mg: totalN, concentracao_mg_ml: concN, intervalo_dias: intervaloN, passo_ui: passoN }));
+      await executar((r) =>
+        r.salvarCiclo({
+          ...c,
+          nome: nome.trim() || c.nome,
+          data_inicio: inicio,
+          quantidade_total_mg: totalN,
+          concentracao_mg_ml: concN,
+          intervalo_dias: intervaloN,
+          passo_ui: passo,
+          seringa_capacidade_ui: capacidade,
+          seringa_marca_ui: marca,
+          frasco_aberto_em: aberto || null,
+        }),
+      );
+      if (concMudou) {
+        // Novo frasco: as aplicações antigas guardam a concentração de antes.
+        // Correção: todas passam a usar a concentração certa.
+        for (const a of doCiclo) {
+          const nova = mudancaConc === 'correcao' ? concN : (a.concentracao_mg_ml ?? c.concentracao_mg_ml);
+          if (a.concentracao_mg_ml !== nova) gravar({ tipo: 'aplicacao', dado: { ...a, concentracao_mg_ml: nova } });
+        }
+      }
+      setMudancaConc(null);
       setMsg({ tipo: 'info', texto: 'Parâmetros salvos. Tudo foi recalculado.' });
     } catch (e) {
       setMsg({ tipo: 'erro', texto: (e as Error).message });
@@ -328,11 +397,46 @@ function Ajustes() {
         <input type="date" value={inicio} onChange={(e) => setInicio(e.target.value)} required />
       </Campo>
       <div className="grade">
-        <CampoNumero rotulo="Quantidade total" sufixo="mg" valor={total} aoMudar={setTotal} />
-        <CampoNumero rotulo="Concentração" sufixo="mg/ml" valor={conc} aoMudar={setConc} />
+        <CampoNumero rotulo="Quantidade total" sufixo="mg" valor={total} aoMudar={setTotal} dica="A sua parte do frasco." />
+        <CampoNumero rotulo="Concentração" sufixo="mg/ml" valor={conc} aoMudar={(v) => {
+            setConc(v);
+            setMudancaConc(null);
+          }} dica="mg por ml depois de diluído." />
         <CampoNumero rotulo="Intervalo entre doses" sufixo="dias" valor={intervalo} aoMudar={setIntervalo} />
-        <CampoNumero rotulo="Menor marcação da seringa" sufixo="UI" valor={passo} aoMudar={setPasso} dica="Use 0,5 para seringa com marcas de meia unidade; 0,25 se você mede no meio entre duas marcas." />
       </div>
+      {previa && (
+        <div className="alerta info">
+          <span>
+            {resumo?.aplicacoes_realizadas ? 'Próxima dose' : '1ª dose'}: <b>{mg(dosePrevia)} = {ui(previa.ui_pratica)}</b> na seringa U-100 — confira com quem
+            preparou o frasco.
+          </span>
+        </div>
+      )}
+      {concMudou && (
+        <Campo rotulo="A concentração mudou. O que aconteceu?" grupo dica="Frasco novo: as aplicações já feitas continuam com a concentração antiga. Correção: todas são recalculadas.">
+          <Escolhas
+            opcoes={[
+              { valor: 'novo' as const, rotulo: 'Frasco novo' },
+              { valor: 'correcao' as const, rotulo: 'Corrigi um erro' },
+            ]}
+            valor={mudancaConc}
+            aoMudar={setMudancaConc}
+          />
+        </Campo>
+      )}
+      <Campo rotulo="Capacidade da seringa U-100" grupo dica="O aviso de dose acima da seringa usa este limite (sem informar, 100 UI).">
+        <Escolhas opcoes={OPCOES_CAPACIDADE} valor={capacidade} aoMudar={setCapacidade} permitirVazio />
+      </Campo>
+      <Campo
+        rotulo="Intervalo entre as marcas"
+        grupo
+        dica={`Leitura de ${paraTexto(passo)} em ${paraTexto(passo)} UI (um quarto da marca). Ex.: ${guiaSeringa(previa?.ui_pratica ?? 6.25, marca)}.`}
+      >
+        <Escolhas opcoes={OPCOES_MARCA} valor={marca} aoMudar={(v) => v !== null && setMarca(v)} />
+      </Campo>
+      <Campo rotulo="Frasco aberto em (opcional)" dica={aberto ? 'O Início mostra há quantos dias o frasco está aberto.' : 'Data em que o frasco foi aberto ou diluído.'}>
+        <input type="date" value={aberto} onChange={(e) => setAberto(e.target.value)} />
+      </Campo>
       <div className="bloco">
         <div className="rotulo">Volume total da sua parte</div>
         <div className="valor">{num(mgParaMl(totalN, concN))} ml · {num(mgParaMl(totalN, concN) * 100, 0)} UI</div>

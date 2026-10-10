@@ -51,9 +51,41 @@ export interface Ciclo {
   quantidade_total_mg: number;
   concentracao_mg_ml: number;
   intervalo_dias: number;
-  /** Menor marcação usada na seringa U-100 (UI) */
+  /** Passo de leitura na seringa U-100 (UI): 1/4 do intervalo entre marcas */
   passo_ui: number;
   fases: Fase[];
+  /** Capacidade da seringa (30, 50 ou 100 UI); vazio = não informada */
+  seringa_capacidade_ui?: number | null;
+  /** Intervalo entre as marcas impressas (1 ou 0,5 UI); vazio = 1 UI */
+  seringa_marca_ui?: number | null;
+  /** Dia em que o frasco foi aberto/reconstituído (opcional) */
+  frasco_aberto_em?: string | null;
+  /** Decisões tomadas no fim de cada fase (subir, repetir, anotações) */
+  decisoes?: DecisaoFase[] | null;
+}
+
+/**
+ * Decisão registrada pelo usuário no fim de um degrau de dose. O app nunca
+ * sobe a dose sozinho: só segue o que foi decidido aqui.
+ */
+export interface DecisaoFase {
+  id: string;
+  /** Dia em que foi registrada */
+  data: string;
+  /** Nº de aplicações registradas no momento da decisão (vale para a seguinte) */
+  apos_aplicacao: number;
+  /** Dose aplicada no degrau que terminou */
+  dose_mg: number;
+  /** Fase do plano a que a decisão se refere (subir: a fase nova) */
+  fase_indice: number | null;
+  escolha: 'subir' | 'repetir' | 'confirmar_fase' | 'anotacao';
+  dose_nova_mg?: number | null;
+  /** Repetir: semanas acrescentadas à fase */
+  semanas?: number | null;
+  /** Confirmar fase (dose fora do plano): 1ª data do bloco de doses */
+  bloco_inicio?: string | null;
+  /** Anotação para o médico (vai para o PDF) */
+  texto?: string | null;
 }
 
 export interface Aplicacao {
@@ -63,6 +95,8 @@ export interface Aplicacao {
   dose_mg: number;
   local: string | null;
   observacoes: string | null;
+  /** Concentração do frasco no dia do registro; vazio (registros antigos) = a do ciclo */
+  concentracao_mg_ml?: number | null;
 }
 
 export interface RegistroDiario {

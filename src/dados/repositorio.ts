@@ -1,9 +1,15 @@
 import type { PlanoDieta } from '../lib/dieta';
-import type { Aplicacao, Ciclo, Medida, MetasProjeto, Perfil, RegistroDiario, TreinoDia } from '../lib/tipos';
+import type { Aplicacao, Ciclo, DecisaoFase, Fase, Medida, MetasProjeto, Perfil, RegistroDiario, TreinoDia } from '../lib/tipos';
 
 export interface Usuario {
   id: string;
   email: string;
+}
+
+export interface DecisoesCiclo {
+  ciclo_id: string;
+  decisoes: DecisaoFase[];
+  fases: Fase[];
 }
 
 export interface InscricaoPush {
@@ -31,6 +37,8 @@ export interface Repositorio {
 
   obterCiclo(): Promise<Ciclo | null>;
   salvarCiclo(c: Omit<Ciclo, 'id'> & { id?: string }): Promise<Ciclo>;
+  /** Decisões do fim de fase e o plano (o "Repetir fase" estende uma fase) */
+  salvarDecisoes(d: DecisoesCiclo): Promise<void>;
 
   listarAplicacoes(): Promise<Aplicacao[]>;
   salvarAplicacao(a: Omit<Aplicacao, 'id'> & { id?: string }): Promise<void>;

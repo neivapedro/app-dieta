@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { Ciclo } from '../lib/tipos';
 import { aplicarFila, enfileirar, type ItemFila } from './fila';
 
 const t = (data: string, treino: boolean, cardio: boolean) => ({ data, treino, cardio, corrida_km: null, corrida_seg: null });
@@ -50,5 +51,23 @@ describe('Fila: exclusão', () => {
     f = enfileirar(f, { tipo: 'excluir', dado: { alvo: 'aplicacao', id: 'x1', data: ap.data } }, 2);
     expect(f).toHaveLength(1);
     expect(aplicarFila({ treinos: [], diario: [], dieta: null, aplicacoes: [ap], medidas: [] }, f).aplicacoes).toEqual([]);
+  });
+});
+
+describe('Fila: decisões do fim de fase', () => {
+  it('a decisão aparece no ciclo na hora; a mais nova substitui a anterior', () => {
+    const fases = [{ nome: 'A', semanas: 4, dose_mg: 1.25, objetivo: '' }];
+    const ciclo: Ciclo = { id: 'c', nome: 'x', data_inicio: '2026-10-08', quantidade_total_mg: 60, concentracao_mg_ml: 20, intervalo_dias: 7, passo_ui: 0.25, fases };
+    const base = { treinos: [], diario: [], dieta: null, ciclo };
+    const d1 = { id: 'd1', data: '2026-11-01', apos_aplicacao: 4, dose_mg: 1.25, fase_indice: 1, escolha: 'subir' as const };
+    let f = enfileirar([], { tipo: 'decisoes', dado: { ciclo_id: 'c', decisoes: [d1], fases } }, 1);
+    const fases2 = [{ ...fases[0], semanas: 5 }];
+    f = enfileirar(f, { tipo: 'decisoes', dado: { ciclo_id: 'c', decisoes: [], fases: fases2 } }, 2);
+    expect(f).toHaveLength(1);
+    const d = aplicarFila(base, f);
+    expect(d.ciclo!.decisoes).toEqual([]);
+    expect(d.ciclo!.fases[0].semanas).toBe(5);
+    // Outro ciclo não é tocado
+    expect(aplicarFila({ ...base, ciclo: { ...ciclo, id: 'outro' } }, f).ciclo!.fases[0].semanas).toBe(4);
   });
 });

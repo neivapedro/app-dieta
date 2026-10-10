@@ -6,16 +6,12 @@
 //     (lembra uma vez por dia, por até 14 dias), e
 //   - já passou do horário escolhido, e
 //   - ainda não foi enviado lembrete hoje para esse ciclo.
-// Mantenha a regra de fases em sincronia com src/lib/ciclo.ts.
+// A dose segue a regra do app (../_shared/dose.ts, cópia de src/lib/ciclo.ts):
+// pela dose realmente aplicada, e só sobe com a decisão registrada no app.
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import webpush from 'npm:web-push@3.6.7';
-
-interface Fase {
-  nome: string;
-  semanas: number;
-  dose_mg: number;
-}
+import { planoDeDoses, type Decisao, type Fase } from '../_shared/dose.ts';
 
 const MAX_DIAS_ATRASO = 14;
 
@@ -59,15 +55,6 @@ function diferencaDias(a: string, b: string): number {
   return Math.round((ms(b) - ms(a)) / 86_400_000);
 }
 
-function faseDaDose(fases: Fase[], numero: number): Fase {
-  let fim = 0;
-  for (const f of fases) {
-    fim += f.semanas;
-    if (numero <= fim) return f;
-  }
-  return fases[fases.length - 1];
-}
-
 function fmt(n: number, casas = 2): string {
   return n.toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas });
 }
@@ -88,7 +75,8 @@ Deno.serve(async (req) => {
     resultado.avaliados++;
     const { data: ciclo } = await db
       .from('ciclos')
-      .select('id, data_inicio, quantidade_total_mg, concentracao_mg_ml, intervalo_dias, fases, passo_ui')
+      // '*': as colunas novas (decisoes) podem ainda não existir no banco
+      .select('*')
       .eq('user_id', perfil.user_id)
       .eq('ativo', true)
       .order('criado_em', { ascending: false })
@@ -114,12 +102,25 @@ Deno.serve(async (req) => {
     if (jaEnviado) continue;
 
     const numero = lista.length + 1;
-    const fase = faseDaDose(ciclo.fases as Fase[], numero);
+    const fases = ciclo.fases as Fase[];
+    const decisoes = (Array.isArray(ciclo.decisoes) ? ciclo.decisoes : []) as Decisao[];
+    const { estado, proxima } = planoDeDoses(fases, lista as { data: string; dose_mg: number }[], decisoes);
+    const dose = estado === 'fim_plano' ? Math.min(proxima.dose_mg, Math.round((Number(ciclo.quantidade_total_mg) - usado) * 100) / 100) : proxima.dose_mg;
     // Arredonda à marcação da seringa, como o app (marcacao() em src/lib/ciclo.ts)
     const passo = Number(ciclo.passo_ui) > 0 ? Number(ciclo.passo_ui) : 0.5;
-    const ui = Math.floor(((fase.dose_mg / Number(ciclo.concentracao_mg_ml)) * 100) / passo + 0.5 + 1e-9) * passo;
+    const ui = Math.floor(((dose / Number(ciclo.concentracao_mg_ml)) * 100) / passo + 0.5 + 1e-9) * passo;
+    const semAplicar = ultima ? diferencaDias(ultima, dia) : 0;
     const titulo = atraso === 0 ? '💉 Hoje é dia de aplicação' : `⚠️ Aplicação atrasada há ${atraso} dia(s)`;
-    const corpo = `${numero}ª dose · ${fmt(fase.dose_mg)} mg (${fmt(ui)} UI) · fase ${fase.nome}. Toque para registrar.`;
+    const fase = proxima.fase_indice !== null ? `fase ${fases[proxima.fase_indice].nome}` : 'dose fora do plano';
+    const nota =
+      semAplicar >= 14
+        ? ` Pausa de ${Math.floor(semAplicar / 7)} semanas: confirme a dose com o médico antes de aplicar.`
+        : estado === 'pendente'
+          ? ' Fim da fase: decida no app se sobe de dose.'
+          : estado === 'fora_do_plano'
+            ? ' Confirme no app qual fase seguir.'
+            : '';
+    const corpo = `${numero}ª dose · ${fmt(dose)} mg (${fmt(ui)} UI) · ${fase}.${nota} Toque para registrar.`;
 
     const { data: inscricoes } = await db.from('inscricoes_push').select('id, endpoint, p256dh, auth').eq('user_id', perfil.user_id);
     let entregue = false;

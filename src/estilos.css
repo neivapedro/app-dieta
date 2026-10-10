@@ -384,3 +384,9 @@ details.ajuda summary { min-height: 32px; display: flex; align-items: center; }
 
 .grafico-fixo { height: auto; overflow: hidden; }
 .obs-curta { display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* Cartão da dose: "Fim da fase" e "Dose fora do plano" */
+.fim-fase { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--borda); gap: 10px; }
+.regras-fase { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 0.82rem; color: var(--texto-2); }
+.botoes-fase .botao { flex: 1 1 auto; }
+.vizinhas { font-size: 0.8rem; }

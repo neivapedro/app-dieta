@@ -42,4 +42,27 @@ describe('Backup', () => {
     expect(() => lerBackup('{"a":1}')).toThrow('não reconhecido');
     expect(() => lerBackup('xx')).toThrow('não reconhecido');
   });
+
+  it('leva as decisões de fase, a seringa e a concentração de cada aplicação', () => {
+    const ciclo = {
+      id: 'c',
+      nome: 'x',
+      data_inicio: '2026-10-08',
+      quantidade_total_mg: 60,
+      concentracao_mg_ml: 20,
+      intervalo_dias: 7,
+      passo_ui: 0.125,
+      fases: [],
+      seringa_capacidade_ui: 30,
+      seringa_marca_ui: 0.5,
+      frasco_aberto_em: '2026-10-01',
+      decisoes: [{ id: 'd', data: '2026-11-01', apos_aplicacao: 4, dose_mg: 1.25, fase_indice: 0, escolha: 'anotacao' as const, texto: 'náusea no D1' }],
+    };
+    const comCiclo = montarBackup({ ...b, ciclo, aplicacoes: [{ ...apl('2026-10-08'), concentracao_mg_ml: 20 }] }, '2026-11-02T12:00:00Z');
+    const lido = lerBackup(JSON.stringify(comCiclo));
+    expect(lido.ciclo).toMatchObject({ seringa_capacidade_ui: 30, seringa_marca_ui: 0.5, frasco_aberto_em: '2026-10-01' });
+    expect(lido.ciclo!.decisoes![0].texto).toBe('náusea no D1');
+    expect(lido.aplicacoes[0].concentracao_mg_ml).toBe(20);
+  });
 });
+

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { analisarFases, analisarGeral, diaAposDose, serieDePeso, sintomasPorFase } from './analise';
+import { analisarFases, analisarGeral, diaAposDose, rotuloBloco, serieDePeso, sintomasPorFase } from './analise';
 import { calcularCiclo, cicloPadrao, guiaSeringa, consumoPlano, faseDaDose, marcacao, mgParaUI, verificarPlano } from './ciclo';
 import { diaDaSemana, somarDias } from './datas';
 import { composicao, ganhos, percentualGordura } from './gordura';
@@ -41,9 +41,20 @@ describe('% de gordura (Planilha Gorgonoidiana)', () => {
 });
 
 describe('Plano (aba Plano)', () => {
-  it('consome exatamente 60 mg', () => {
+  it('consome exatamente 60 mg: fica sem margem (amarelo) e sugere reserva fora da conta', () => {
     expect(consumoPlano(ciclo.fases)).toBeCloseTo(60);
-    expect(verificarPlano(ciclo).situacao).toBe('exato');
+    const v = verificarPlano(ciclo);
+    expect(v.situacao).toBe('sem_margem');
+    expect(v.mensagem).toContain('a última dose pode não sair completa');
+    expect(v.reserva_ml).toBeCloseTo(0.1);
+    expect(v.reserva_mg).toBeCloseTo(2);
+    expect(v.consumo).toBeCloseTo(60);
+  });
+
+  it('sobra menor que 1 dose da última fase também fica sem margem', () => {
+    expect(verificarPlano({ ...ciclo, quantidade_total_mg: 62 }).situacao).toBe('sem_margem');
+    expect(verificarPlano({ ...ciclo, quantidade_total_mg: 62 }).mensagem).toContain('sobram só 2,00 mg');
+    expect(verificarPlano({ ...ciclo, quantidade_total_mg: 62.5 }).situacao).toBe('sobra');
   });
 
   it('avisa quando repetir uma fase passa do total', () => {
@@ -112,7 +123,7 @@ describe('Agenda recalculada pela última aplicação', () => {
     expect(r.projecao[1].data).toBe('2026-10-25');
   });
 
-  it('5ª aplicação sobe para 1,5 mg e saldo bate com o Painel', () => {
+  it('depois de 4 doses de 1,25 mg a fase termina: a 5ª continua 1,25 mg até decidir, e o saldo bate com o Painel', () => {
     const datas = ['2026-10-08', '2026-10-15', '2026-10-22', '2026-10-29'];
     const r = calcularCiclo(ciclo, datas.map((d) => ap(d, 1.25)), [], '2026-11-01');
     expect(r.total_aplicado_mg).toBe(5);
@@ -121,8 +132,11 @@ describe('Agenda recalculada pela última aplicação', () => {
     expect(r.saldo_ui).toBeCloseTo(275);
     expect(r.percentual_usado).toBeCloseTo(5 / 60);
     expect(r.doses_manutencao_restantes).toBe(22);
-    expect(r.proxima).toMatchObject({ numero: 5, dose_mg: 1.5, data: '2026-11-05' });
-    expect(r.proxima!.fase.fase.nome).toBe('Primeira progressão');
+    expect(r.proxima).toMatchObject({ numero: 5, dose_mg: 1.25, data: '2026-11-05', estado: 'pendente' });
+    expect(r.degrau.fase_seguinte!.fase).toMatchObject({ nome: 'Primeira progressão', dose_mg: 1.5 });
+    // Projeção marcada como hipótese: a 1,5 mg só vale se subir
+    expect(r.projecao[0]).toMatchObject({ dose_mg: 1.5, hipotese: true });
+    expect(r.fim_hipotese).toBe(true);
   });
 
   it('dose diferente da prevista entra no saldo e na diferença', () => {
@@ -187,13 +201,32 @@ describe('Análise do ciclo', () => {
     expect(g.medida_atual!.cintura_cm).toBe(95);
   });
 
-  it('separa resultados por fase', () => {
-    const aps = ['2026-10-08', '2026-10-15', '2026-10-22', '2026-10-29', '2026-11-05'].map((d) => ap(d, 1.25));
+  it('separa resultados por bloco de dose aplicada', () => {
+    const aps = ['2026-10-08', '2026-10-15', '2026-10-22', '2026-10-29'].map((d) => ap(d, 1.25)).concat(ap('2026-11-05', 1.5));
     const r = calcularCiclo(ciclo, aps, diario, '2026-11-12');
     const fases = analisarFases(r, serieDePeso(diario, medidas), diario, '2026-11-12');
     expect(fases).toHaveLength(2);
-    expect(fases[0]).toMatchObject({ nome: 'Adaptação', doses: 4, inicio: '2026-10-08', fim: '2026-11-05', peso_inicio: 96.5, peso_fim: 95.2, em_andamento: false });
-    expect(fases[1]).toMatchObject({ nome: 'Primeira progressão', doses: 1, em_andamento: true, peso_fim: 93 });
+    expect(fases[0]).toMatchObject({ nome: 'Adaptação', fase_indice: 0, dose_mg: 1.25, doses: 4, inicio: '2026-10-08', fim: '2026-11-05', peso_inicio: 96.5, peso_fim: 95.2, em_andamento: false });
+    expect(fases[1]).toMatchObject({ nome: 'Primeira progressão', fase_indice: 1, dose_mg: 1.5, doses: 1, em_andamento: true, peso_fim: 93 });
+  });
+
+  it('5ª dose repetida a 1,25 mg fica no mesmo bloco, rotulada com a dose aplicada', () => {
+    const aps = ['2026-10-08', '2026-10-15', '2026-10-22', '2026-10-29', '2026-11-05'].map((d) => ap(d, 1.25));
+    const r = calcularCiclo(ciclo, aps, diario, '2026-11-12');
+    const fases = analisarFases(r, serieDePeso(diario, medidas), diario, '2026-11-12');
+    expect(fases).toHaveLength(1);
+    expect(fases[0]).toMatchObject({ dose_mg: 1.25, doses: 5, fase_indice: 0, em_andamento: false });
+    expect(rotuloBloco(fases[0])).toBe('1,25 mg · fase 1');
+    // A 5ª aparece como prevista 1,25 (não "fase 2 · prevista 1,5")
+    expect(r.linhas[4]).toMatchObject({ dose_prevista: 1.25, diferenca_mg: 0 });
+    expect(r.linhas[4].fase!.indice).toBe(0);
+  });
+
+  it('blocos separados com a mesma dose não se juntam', () => {
+    const aps = [ap('2026-10-08', 1.25), ap('2026-10-15', 1.5), ap('2026-10-22', 1.25)];
+    const r = calcularCiclo(ciclo, aps, [], '2026-10-25');
+    const fases = analisarFases(r, [], [], '2026-10-25');
+    expect(fases.map((f) => f.dose_mg)).toEqual([1.25, 1.5, 1.25]);
   });
 
   it('kg/semana da fase usa o intervalo entre as pesagens (não muda sem pesagem nova)', () => {
