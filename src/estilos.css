@@ -218,6 +218,9 @@ th:first-child, td:first-child { text-align: left; }
 .proxima { border-color: color-mix(in srgb, var(--destaque) 50%, var(--borda)); }
 .proxima.atrasada { border-color: color-mix(in srgb, var(--ruim) 60%, var(--borda)); }
 .proxima.hoje { background: color-mix(in srgb, var(--destaque) 8%, var(--superficie)); }
+/* Várias etiquetas (fim da fase, atrasada): descem de linha em vez de espremer o título */
+.proxima > .cartao-cab { flex-wrap: wrap; }
+.proxima > .cartao-cab > .rotulo { flex: 1 0 auto; max-width: 100%; }
 
 .grafico { width: 100%; height: 260px; }
 .grafico .recharts-cartesian-axis-tick-value { fill: var(--texto-3); font-size: 11px; }

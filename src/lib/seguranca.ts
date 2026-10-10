@@ -114,7 +114,7 @@ export function alertasSeguranca({ diario, composicoes, aplicacoes, hoje }: Entr
   // Só medições até "hoje" (o histórico do PDF avalia dias passados)
   const ateHoje = composicoes.filter((c) => c.data <= hoje);
   const tend = tendenciaMedidas(ateHoje);
-  const ultimaMedida = ateHoje.at(-1);
+  const ultimaMedida = ateHoje.filter((c) => !c.atipica).at(-1);
   if (tend && ultimaMedida && diferencaDias(tend.ate, hoje) <= MEDICAO_RECENTE_DIAS) {
     const r = ritmoPercentual(tend.peso_semana, ultimaMedida.peso_kg);
     if (r.pct > RITMO_MAXIMO_PCT) {

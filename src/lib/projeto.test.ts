@@ -80,6 +80,9 @@ describe('Fase pós-remédio', () => {
     // A medição de referência é a última até a última dose (as anteriores não entram)
     const comAntigas = [comp('2027-01-01', 80, 80), ...lista.slice(0, 3)];
     expect(avisoReganho(comAntigas, inicio)).toBeNull();
+    // Medição atípica (inchado, viagem) não conta como subida
+    const comAtipica = [...lista.slice(0, 3), { ...comp('2027-03-08', 92, 87.5), atipica: true }];
+    expect(avisoReganho(comAtipica, inicio)).toBeNull();
   });
 
   it('sugere reduzir o déficit um degrau por medição nova, até 0, sem aplicar nada', () => {

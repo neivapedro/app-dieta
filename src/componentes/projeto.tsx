@@ -25,8 +25,10 @@ function Balanco() {
   const t = useTreino();
   if (!resumo || !proj) return null;
   const { periodo } = proj;
-  const inicial = medidaInicial(composicoes, periodo.inicio);
-  const ate = composicoes.filter((c) => c.data <= periodo.fim);
+  // Medição atípica fica só no histórico: não vira o início nem o resultado
+  const normais = composicoes.filter((c) => !c.atipica);
+  const inicial = medidaInicial(normais, periodo.inicio);
+  const ate = normais.filter((c) => c.data <= periodo.fim);
   const final = ate.length && ate[ate.length - 1].data !== inicial?.data ? ate[ate.length - 1] : null;
   const metas = perfil?.modulo_treino ? perfil.metas_projeto ?? null : null;
   const linhas = linhasBalanco(inicial, final, metas, sexo);

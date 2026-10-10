@@ -81,7 +81,9 @@ export interface AvisoReganho {
  * Aviso informativo quando a cintura ou o peso sobem 3 medições seguidas
  * depois da última dose (a referência é a última medição até a última dose).
  */
-export function avisoReganho(composicoes: Composicao[], inicioPos: string): AvisoReganho | null {
+export function avisoReganho(todas: Composicao[], inicioPos: string): AvisoReganho | null {
+  // Medição atípica (doente, inchado, viagem) não conta como subida
+  const composicoes = todas.filter((c) => !c.atipica);
   const antes = composicoes.filter((c) => c.data <= inicioPos);
   const serie = [...antes.slice(-1), ...composicoes.filter((c) => c.data > inicioPos)];
   if (serie.length < SUBIDAS_AVISO + 1) return null;

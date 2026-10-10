@@ -145,7 +145,7 @@ export function FaixaOntem() {
           )}
           {p.cardio && (
             <button className="botao pequeno" onClick={() => gravarTreino(p.data, { cardio: true })}>
-              Fiz o cardio <span className="mudo">({rotuloCardio(p.data).toLowerCase()})</span>
+              Fiz o cardio <span className="mudo">({rotuloCardio(p.data, treinos.find((x) => x.data === p.data)).toLowerCase()})</span>
             </button>
           )}
         </div>
@@ -224,6 +224,7 @@ export function CartaoFecharDia({ etiqueta }: { etiqueta?: string }) {
           ))}
         </div>
       </Campo>
+      {diaDeSintoma(reg) && <div className="alerta info">{TEXTO_SINTOMA_AGUA}</div>}
       {temPlano(dieta) && (
         <Campo rotulo="Segui o plano hoje?" grupo>
           <Escolhas opcoes={OPCOES_PLANO} valor={reg?.dieta_seguida ?? null} aoMudar={(v) => gravarDia(hoje, { dieta_seguida: v })} permitirVazio />
