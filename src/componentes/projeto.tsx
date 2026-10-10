@@ -146,7 +146,8 @@ export function CartaoFimProjeto({ aoRegistrar }: { aoRegistrar: () => void }) {
   const { pos, decisao } = proj;
   if (pos && decisao) {
     const aviso = avisoReganho(composicoes, pos.inicio);
-    const sugestao = dieta
+    // Depois das 52 semanas a fase acabou: sem sugestão de degrau
+    const sugestao = dieta && !pos.encerrada
       ? sugestaoDegrau({ ajuste: dieta.config.ajuste_kcal, inicioPos: pos.inicio, datasMedicoes: medidas.map((m) => m.data), tratada: dieta.config.pos_degrau_medicao })
       : null;
     return (
@@ -225,7 +226,7 @@ export function SugestaoPosDieta() {
   const { composicoes } = useCalculos();
   const proj = useProjeto();
   const pos = proj?.pos;
-  if (!pos || !dieta) return null;
+  if (!pos || pos.encerrada || !dieta) return null;
   const ajuste = dieta.config.ajuste_kcal;
   const sugestao = sugestaoDegrau({ ajuste, inicioPos: pos.inicio, datasMedicoes: medidas.map((m) => m.data), tratada: dieta.config.pos_degrau_medicao });
   const aviso = avisoReganho(composicoes, pos.inicio);
@@ -263,7 +264,9 @@ export function SugestaoPosDieta() {
           A cada medição de segunda, o app sugere reduzir o déficit um degrau ({num(DEGRAU_DEFICIT, 0)} kcal) até chegar a 0. A meta só muda se você aplicar.
         </p>
       ) : (
-        <p className="texto-2">Sem déficit: a meta está no gasto total. Ajuste quando quiser em Ajustar.</p>
+        <p className="texto-2">
+          Sem déficit: a meta está {ajuste === 0 ? 'no gasto total' : `${num(ajuste, 0)} kcal acima do gasto total`}. Ajuste quando quiser em Ajustar.
+        </p>
       )}
     </section>
   );

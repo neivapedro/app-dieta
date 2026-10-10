@@ -49,6 +49,11 @@ describe('Itens na unidade do plano', () => {
     expect(pluralPorcao('porção')).toBe('porções');
     expect(pluralPorcao('filé')).toBe('filés');
     expect(pluralPorcao('2 ovos')).toBe('2 ovos');
+    expect(pluralPorcao('colher de sopa cheia')).toBe('colheres de sopa cheias');
+    expect(pluralPorcao('unidade média')).toBe('unidades médias');
+    expect(pluralPorcao('lata drenada')).toBe('latas drenadas');
+    expect(pluralPorcao('colher de sopa (ralado)')).toBe('colheres de sopa (ralado)');
+    expect(pluralPorcao('unidade (150 g)')).toBe('unidades (150 g)');
   });
   it('nome completo e unidade do plano', () => {
     expect(textoItemPlano({ alimento_id: 'ovo', quantidade: 2, unidade: 'unidade' }, ovo)).toBe('Ovo, de galinha, inteiro, cozido · 2 unidades');

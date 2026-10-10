@@ -56,6 +56,9 @@ describe('Fase pós-remédio', () => {
     const proj = periodoProjeto(c, r, '2026-10-08');
     expect(proj).toEqual({ inicio: '2026-10-01', fim: '2026-10-15' });
     expect(periodoTreinoPos('2026-10-08', proj.fim)).toEqual({ inicio: '2026-10-16', fim: '2027-10-06' });
+    // Fase iniciada dias depois do fim do projeto: o placar começa no dia em que foi iniciada
+    expect(periodoTreinoPos('2026-10-08', proj.fim, '2026-10-20')).toEqual({ inicio: '2026-10-20', fim: '2027-10-06' });
+    expect(periodoTreinoPos('2026-10-08', proj.fim, '2026-10-10')).toEqual({ inicio: '2026-10-16', fim: '2027-10-06' });
   });
 
   it('subidas seguidas no fim da série', () => {

@@ -22,7 +22,7 @@ export function useTreino() {
     const pos = proj.pos;
     // Até 7 dias depois da última dose o check do dia ainda conta no placar do projeto
     const placarPos = !!pos && hoje > periodoProj.fim;
-    const { inicio, fim } = placarPos ? periodoTreinoPos(pos!.inicio, periodoProj.fim) : periodoProj;
+    const { inicio, fim } = placarPos ? periodoTreinoPos(pos!.inicio, periodoProj.fim, proj.decisao?.data) : periodoProj;
     const placar = placarPos ? calcularPlacar(treinos, inicio, fim, hoje) : placarProjeto;
     const semanas = semanasDoProjeto(treinos, inicio, fim, hoje, composicoes);
     const corridas = listarCorridas(treinos);

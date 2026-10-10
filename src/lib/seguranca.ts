@@ -106,7 +106,7 @@ export function alertasSeguranca({ diario, composicoes, aplicacoes, hoje }: Entr
       nivel: 'atencao',
       regra: 'nausea_forte',
       data: forte.ate,
-      texto: `Náusea forte em ${forte.n} dias seguidos (até ${curta(forte.ate)}). Pela regra do seu Plano, efeitos incômodos pedem conversar com o médico antes de subir a dose.`,
+      texto: `Náusea forte em ${forte.n} dias seguidos (até ${curta(forte.ate)}). Anote como foi o dia e mostre ao médico; as regras do seu Plano para o fim da fase estão na aba Ciclo.`,
     });
   }
 

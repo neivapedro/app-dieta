@@ -367,18 +367,24 @@ export function proximaRefeicao(refeicoes: Refeicao[], agoraMin: number): Refeic
   return depois.find((r) => r.itens.length && minutosDe(r.horario) === null) ?? null;
 }
 
-/** Plural do 1º termo da porção: unidade → unidades, colher de sopa → colheres de sopa, porção → porções. */
+/**
+ * Plural da porção: o nome e os adjetivos vão para o plural, o complemento
+ * depois de "de" e o que está entre parênteses não. unidade → unidades,
+ * colher de sopa cheia → colheres de sopa cheias, unidade média → unidades médias.
+ */
 export function pluralPorcao(nome: string): string {
-  const [primeiro, ...resto] = nome.split(' ');
-  if (!primeiro || /^\d/.test(primeiro)) return nome;
-  const p = primeiro.endsWith('ão')
-    ? `${primeiro.slice(0, -2)}ões`
-    : /[rz]$/.test(primeiro)
-      ? `${primeiro}es`
-      : /[aeiouáéíóúâêô]$/.test(primeiro)
-        ? `${primeiro}s`
-        : primeiro;
-  return [p, ...resto].join(' ');
+  const palavras = nome.split(' ');
+  if (!palavras[0] || /^\d/.test(palavras[0])) return nome;
+  const plural = (w: string) =>
+    w.endsWith('ão') ? `${w.slice(0, -2)}ões` : /[rz]$/.test(w) ? `${w}es` : /[aeiouáéíóúâêô]$/.test(w) ? `${w}s` : w;
+  let parenteses = false;
+  return palavras
+    .map((w, i) => {
+      if (w.startsWith('(')) parenteses = true;
+      if (parenteses || w === 'de' || palavras[i - 1] === 'de') return w;
+      return plural(w);
+    })
+    .join(' ');
 }
 
 function qtd(n: number): string {

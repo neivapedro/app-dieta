@@ -49,10 +49,14 @@ export function fasePos(inicio: string, hoje: string): FasePos {
 /**
  * Período do placar de treino da fase pós-remédio: começa no dia seguinte ao
  * fim do placar do projeto (que vai até 7 dias depois da última dose) e vai
- * até o fim das 52 semanas. Os dois placares nunca contam o mesmo dia.
+ * até o fim das 52 semanas. Os dois placares nunca contam o mesmo dia. Se o
+ * usuário iniciou a fase depois disso, o placar começa no dia em que iniciou:
+ * os dias em que o app não tinha check para marcar não contam como falta.
  */
-export function periodoTreinoPos(inicioPos: string, fimProjeto: string): { inicio: string; fim: string } {
-  return { inicio: somarDias(fimProjeto, 1), fim: fasePos(inicioPos, inicioPos).fim };
+export function periodoTreinoPos(inicioPos: string, fimProjeto: string, iniciadaEm?: string | null): { inicio: string; fim: string } {
+  const depoisDoProjeto = somarDias(fimProjeto, 1);
+  const inicio = iniciadaEm && iniciadaEm > depoisDoProjeto ? iniciadaEm : depoisDoProjeto;
+  return { inicio, fim: fasePos(inicioPos, inicioPos).fim };
 }
 
 /** Quantas medições seguidas, no fim da série, subiram em relação à anterior. */

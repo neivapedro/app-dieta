@@ -214,7 +214,7 @@ export function CartaoFecharDia({ etiqueta }: { etiqueta?: string }) {
       )}
       <form className="linha" style={{ alignItems: 'flex-end', flexWrap: 'nowrap' }} onSubmit={salvarPeso}>
         <label className="campo cresce">
-          <span>Peso (kg, opcional)</span>
+          <span>Peso em jejum (kg, opcional)</span>
           <input
             inputMode="decimal"
             value={peso}
