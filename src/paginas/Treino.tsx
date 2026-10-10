@@ -1,5 +1,6 @@
 import { lazy, Suspense, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { CartaoForca } from '../componentes/forca';
 import { CartaoTreinoHoje, FormDiaTreino, FormMetas } from '../componentes/treino';
 import { chanceMeta, PROJECAO, projecaoNoRitmo, type ChanceMeta, type ChaveProjecao } from '../lib/conferencia';
 import { diferencaDias } from '../lib/datas';
@@ -9,7 +10,7 @@ import { useTreino } from '../dados/useTreino';
 import { formatarData, somarDias } from '../lib/datas';
 import { cm, corVariacao, kg, num, pct, pp, sinal } from '../lib/formato';
 import { ajusteDoPerfil, cenariosPesoMeta, cinturaNecessaria, MDC, type ChaveMdc, type Composicao } from '../lib/gordura';
-import { formatarTempo, type Contagem } from '../lib/treino';
+import { formatarTempo, SUBIDA_ESFORCO, type ComparacaoEsforco, type Contagem } from '../lib/treino';
 import type { MetricaSemanal } from '../componentes/graficos';
 
 const GraficoAderencia = lazy(() => import('../componentes/graficos').then((m) => ({ default: m.GraficoAderencia })).catch(() => ({ default: SemGrafico })));
@@ -130,14 +131,15 @@ export function Treino() {
             <tbody>
               <LinhaPlacar nome="Treinos" c={p.treino} />
               <LinhaPlacar nome="Cardios" c={p.cardio} />
-              <LinhaPlacar nome="· Corrida (Qua/Dom)" c={p.corrida} extra={`${num(p.corrida.km, 1)} km corridos`} />
-              <LinhaPlacar nome="· Bike (demais dias)" c={p.bike} extra={`${p.bike.minutos} min pedalados`} />
+              <LinhaPlacar nome="· Corrida (2/sem.)" c={p.corrida} extra={`${num(p.corrida.km, 1)} km corridos`} />
+              <LinhaPlacar nome="· Bike (5/sem.)" c={p.bike} extra={`${p.bike.minutos} min pedalados`} />
             </tbody>
           </table>
         </div>
         <p className="mudo" style={{ marginTop: 8 }}>
           Meta até hoje: 1 treino e 1 cardio por dia, sem folga (o dia de hoje só conta depois de marcado). Projeção: quantos você terá feito
-          no fim do projeto, mantendo a % atual, de um total possível.
+          no fim do projeto, mantendo a % atual, de um total possível. Corrida e bike: a meta segue a regra (quarta e domingo = corrida) e o feito conta o
+          cardio real de cada dia, com a % limitada a 100%.
         </p>
       </section>
 
@@ -311,10 +313,14 @@ export function Treino() {
         <p className="mudo" style={{ marginTop: 6 }}>Barras: % de treinos e cardios cumpridos na semana. Linha: medição da segunda-feira seguinte (o resultado daquela semana).</p>
       </section>
 
+      <CartaoEsforco treino={t.esforco.treino} cardio={t.esforco.cardio} />
+
+      <CartaoForca esforcoSubiu={t.esforco.treino.alerta} />
+
       <section className="cartao">
         <h2>Corridas</h2>
         {t.corridas.length === 0 ? (
-          <Vazio>Ao marcar a corrida de quarta ou domingo, anote o tempo para acompanhar o pace.</Vazio>
+          <Vazio>Ao marcar uma corrida (em qualquer dia), anote o tempo para acompanhar o pace.</Vazio>
         ) : (
           <>
             <div className="grade grade-3">
@@ -360,5 +366,54 @@ export function Treino() {
       {diaAberto && <FormDiaTreino data={diaAberto} aoFechar={() => setDiaAberto(null)} />}
       {metasAbertas && <FormMetas base={atual ?? inicial} aoFechar={() => setMetasAbertas(false)} />}
     </div>
+  );
+}
+
+function BlocoEsforco({ nome, c }: { nome: string; c: ComparacaoEsforco }) {
+  return (
+    <div className="bloco">
+      <div className="rotulo">{nome} · 7 dias</div>
+      <div className={`valor ${c.alerta ? 'aviso-txt' : ''}`}>{c.media7 === null ? '–' : num(c.media7, 1)}</div>
+      <div className="sub-valor mudo">
+        {c.referencia === null ? 'sem as 4 semanas anteriores' : `4 sem. antes: ${num(c.referencia, 1)}`}
+        {c.subida !== null && ` (${sinal(c.subida, 1)})`}
+      </div>
+    </div>
+  );
+}
+
+/** Esforço percebido (CR-10): a tendência mostra a fadiga acumulando, já que não há dia de folga. */
+function CartaoEsforco({ treino, cardio }: { treino: ComparacaoEsforco; cardio: ComparacaoEsforco }) {
+  const semDados = treino.n7 + treino.nReferencia + cardio.n7 + cardio.nReferencia === 0;
+  const subiu = [treino.alerta && ['musculação', treino.subida!] as const, cardio.alerta && ['cardio', cardio.subida!] as const].filter(
+    (x): x is readonly ['musculação' | 'cardio', number] => !!x,
+  );
+  return (
+    <section className="cartao">
+      <h2>Esforço percebido</h2>
+      {semDados ? (
+        <Vazio>
+          Anote o esforço da sessão (1 a 10) ao marcar o treino e o cardio: toque em “Esforço e tipo de cardio” ou no dia no calendário. Com algumas
+          semanas, dá para ver a fadiga acumulando.
+        </Vazio>
+      ) : (
+        <div className="grade">
+          <BlocoEsforco nome="Musculação" c={treino} />
+          <BlocoEsforco nome="Cardio" c={cardio} />
+        </div>
+      )}
+      {subiu.map(([nome, d]) => (
+        <div key={nome} className="alerta" style={{ display: 'block', marginTop: 10 }}>
+          Esforço da {nome} subiu {num(d, 1)} ponto{d >= 2 ? 's' : ''} na última semana em relação às 4 anteriores. Pode ser fadiga acumulando; sono,
+          dieta, náusea e a fase da dose também mexem no esforço. Um dia leve (mesmos exercícios, menos carga ou séries) mantém a sequência.
+        </div>
+      ))}
+      {!semDados && (
+        <p className="mudo" style={{ marginTop: 8 }}>
+          Média dos últimos 7 dias × as 4 semanas anteriores. O aviso aparece com {num(SUBIDA_ESFORCO, 1)} ponto ou mais de subida (critério do app, não
+          um limite clínico), com 3 registros na semana e 6 nas semanas anteriores. Escala: 3 moderado · 5 pesado · 7 muito pesado · 10 máximo.
+        </p>
+      )}
+    </section>
   );
 }

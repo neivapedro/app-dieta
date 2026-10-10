@@ -384,3 +384,7 @@ details.ajuda summary { min-height: 32px; display: flex; align-items: center; }
 
 .grafico-fixo { height: auto; overflow: hidden; }
 .obs-curta { display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* Escala de 1 a 10 numa linha só, mesmo em 320 px */
+.escolhas-compactas .escolhas { gap: 4px; flex-wrap: nowrap; }
+.escolhas-compactas .escolhas button { padding: 0; min-width: 0; }

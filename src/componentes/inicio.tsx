@@ -56,7 +56,16 @@ export function CartaoDietaHoje() {
     // O dia virou com o app aberto: só atualiza a tela, não grava no dia de ontem
     if (hojeLocal() !== hoje) return void window.dispatchEvent(new Event('focus'));
     const vazio =
-      regHoje && regHoje.peso_kg === null && regHoje.nausea === null && !regHoje.observacoes && regHoje.vomito == null && regHoje.diarreia == null && regHoje.intestino_preso == null;
+      regHoje &&
+      regHoje.peso_kg === null &&
+      regHoje.nausea === null &&
+      !regHoje.observacoes &&
+      regHoje.vomito == null &&
+      regHoje.diarreia == null &&
+      regHoje.intestino_preso == null &&
+      regHoje.sono_h == null &&
+      regHoje.agua_l == null &&
+      regHoje.cor_urina == null;
     // Desmarcar num dia sem mais nada não deixa registro vazio no Diário
     if (v === null && vazio) return gravar({ tipo: 'excluir', dado: { alvo: 'diario', id: regHoje.id, data: hoje } });
     gravar({
@@ -69,6 +78,9 @@ export function CartaoDietaHoje() {
         vomito: regHoje?.vomito ?? null,
         diarreia: regHoje?.diarreia ?? null,
         intestino_preso: regHoje?.intestino_preso ?? null,
+        sono_h: regHoje?.sono_h ?? null,
+        agua_l: regHoje?.agua_l ?? null,
+        cor_urina: regHoje?.cor_urina ?? null,
         dieta_seguida: v,
       },
     });

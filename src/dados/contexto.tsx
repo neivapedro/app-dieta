@@ -3,7 +3,7 @@ import { planoPadrao, type PlanoDieta } from '../lib/dieta';
 import { hojeLocal } from '../lib/datas';
 import { ehErroDeRede, ehSessaoExpirada, traduzirErro } from '../lib/erros';
 import { esquecerAparelho, sincronizarInscricao } from '../lib/notificacoes';
-import type { Aplicacao, Ciclo, Medida, Perfil, RegistroDiario, TreinoDia } from '../lib/tipos';
+import type { Aplicacao, Ciclo, Medida, Perfil, RegistroDiario, RegistroForca, TreinoDia } from '../lib/tipos';
 import { SUPABASE_KEY, SUPABASE_URL } from '../config';
 import { apagarDadosLocais, aplicarFila, enfileirar, executarOperacao, gravarCache, gravarFila, lerCache, lerFila, type ItemFila, type Operacao } from './fila';
 import { RepositorioLocal } from './local';
@@ -20,12 +20,14 @@ export interface Dados {
   diario: RegistroDiario[];
   medidas: Medida[];
   treinos: TreinoDia[];
+  /** Força nos exercícios-âncora (só para quem tem a aba Treino) */
+  forca: RegistroForca[];
   dieta: PlanoDieta | null;
   /** Mensagem quando a tabela da Dieta ainda não existe no banco */
   dietaIndisponivel: string | null;
 }
 
-const VAZIO: Dados = { perfil: null, ciclo: null, aplicacoes: [], diario: [], medidas: [], treinos: [], dieta: null, dietaIndisponivel: null };
+const VAZIO: Dados = { perfil: null, ciclo: null, aplicacoes: [], diario: [], medidas: [], treinos: [], forca: [], dieta: null, dietaIndisponivel: null };
 
 /** salvo · salvando · pendente (sem internet, na fila) · erro */
 export type EstadoGravacao = 'salvo' | 'salvando' | 'pendente' | 'erro';
@@ -128,6 +130,8 @@ export function ProvedorDados({ children }: { children: ReactNode }) {
       ]);
       // A aba Treino é opcional: só busca (e só exige a tabela) para quem a tem liberada
       const treinos = perfil?.modulo_treino ? await repositorio.listarTreinos() : [];
+      // Força: tabela do SQL de evolução (sem ela, lista vazia)
+      const forca = perfil?.modulo_treino ? await repositorio.listarForca() : [];
       // A Dieta não derruba o app se a migração ainda não rodou
       let dieta: PlanoDieta | null = null;
       let dietaIndisponivel: string | null = null;
@@ -137,7 +141,7 @@ export function ProvedorDados({ children }: { children: ReactNode }) {
         if (ehErroDeRede(e)) throw e;
         dietaIndisponivel = e instanceof Error ? e.message : String(e);
       }
-      base = { perfil, ciclo, aplicacoes, diario, medidas, treinos, dieta, dietaIndisponivel };
+      base = { perfil, ciclo, aplicacoes, diario, medidas, treinos, forca, dieta, dietaIndisponivel };
       setFalhouCarregar(false);
       if (repositorio.modo === 'nuvem') gravarCache(u.id, base);
       carregouNaSessao.current = true;
@@ -156,7 +160,8 @@ export function ProvedorDados({ children }: { children: ReactNode }) {
         setSemConexao(true);
         return;
       }
-      base = cache.dados;
+      // Cópia guardada por uma versão anterior pode não ter a força
+      base = { ...cache.dados, forca: cache.dados.forca ?? [] };
       setOfflineDesde(cache.em);
     }
     setDados(aplicarFila(base, fila.current));

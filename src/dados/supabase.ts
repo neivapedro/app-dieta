@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { configPadrao, type PlanoDieta } from '../lib/dieta';
-import type { Aplicacao, Ciclo, Medida, MetasProjeto, Perfil, RegistroDiario, TreinoDia } from '../lib/tipos';
+import { tipoCardioEfetivo } from '../lib/treino';
+import type { Aplicacao, Ciclo, Medida, MetasProjeto, Perfil, RegistroDiario, RegistroForca, TreinoDia } from '../lib/tipos';
 import { ehErroDeRede } from '../lib/erros';
 import type { Repositorio, Usuario } from './repositorio';
 
@@ -43,6 +44,17 @@ function faltaNoBanco(e: { message: string; code?: string } | null, coluna: RegE
 }
 
 const AVISO_EVOLUCAO = 'falta rodar o SQL de evolução no Supabase.';
+
+function sem<T extends Record<string, unknown>>(linha: T, chaves: readonly string[]): Partial<T> {
+  return Object.fromEntries(Object.entries(linha).filter(([k]) => !chaves.includes(k))) as Partial<T>;
+}
+
+const preenchido = (v: unknown) => v !== null && v !== undefined;
+
+// Colunas por migração (o app grava o resto quando elas ainda não existem no banco)
+const DIARIO_MELHORIAS = ['vomito', 'diarreia', 'intestino_preso', 'dieta_seguida'] as const;
+const DIARIO_EVOLUCAO = ['sono_h', 'agua_l', 'cor_urina'] as const;
+const TREINO_EVOLUCAO = ['cardio_tipo', 'esforco_treino', 'esforco_cardio'] as const;
 
 /** Mensagens do login em português. */
 function traduzirAuth(msg: string): string {
@@ -164,13 +176,14 @@ export class RepositorioSupabase implements Repositorio {
       ajuste_gordura: numOuNulo(d.ajuste_gordura),
       exame_gordura_data: d.exame_gordura_data ?? null,
       exame_gordura_bf: numOuNulo(d.exame_gordura_bf),
+      exercicios_forca: Array.isArray(d.exercicios_forca) ? d.exercicios_forca : null,
     };
   }
 
   async salvarPerfil(p: Perfil) {
     // O token do calendário é gerado pelo banco; aqui ele não é sobrescrito
-    // Token, liberação da aba Treino e metas têm gravação própria
-    const { token_calendario: _token, modulo_treino: _modulo, metas_projeto: _metas, data_nascimento, ajuste_gordura, exame_gordura_data, exame_gordura_bf, ...dados } = p;
+    // Token, liberação da aba Treino, metas e exercícios da força têm gravação própria
+    const { token_calendario: _token, modulo_treino: _modulo, metas_projeto: _metas, exercicios_forca: _forca, data_nascimento, ajuste_gordura, exame_gordura_data, exame_gordura_bf, ...dados } = p;
     const base = { user_id: await this.uid(), ...dados };
     // undefined = não mexer (ex.: backup antigo); null = apagar a data
     const nascimento: Record<string, unknown> = data_nascimento === undefined ? {} : { data_nascimento };
@@ -245,20 +258,33 @@ export class RepositorioSupabase implements Repositorio {
       diarreia: r.diarreia ?? null,
       intestino_preso: r.intestino_preso ?? null,
       dieta_seguida: r.dieta_seguida ?? null,
+      sono_h: numOuNulo(r.sono_h),
+      agua_l: numOuNulo(r.agua_l),
+      cor_urina: r.cor_urina ?? null,
     }));
   }
 
   async salvarDiario(r: Omit<RegistroDiario, 'id'>) {
     const linha = { ...r, user_id: await this.uid() };
-    const res = await this.sb.from('diario').upsert(linha, { onConflict: 'user_id,data' });
-    // Banco sem as colunas novas (SQL de melhorias ainda não rodou): grava o básico
-    if (res.error && /vomito|diarreia|intestino_preso|dieta_seguida/.test(res.error.message)) {
-      const { vomito: _v, diarreia: _d, intestino_preso: _i, dieta_seguida: _s, ...basico } = linha;
-      erro(await this.sb.from('diario').upsert(basico, { onConflict: 'user_id,data' }));
-      // Avisa: o resto foi salvo, mas sintomas e "segui o plano?" precisam do SQL de melhorias
-      const marcouAlgo = [r.vomito, r.diarreia, r.intestino_preso, r.dieta_seguida].some((v) => v !== null && v !== undefined);
-      if (marcouAlgo) throw new Error('Sintomas e "segui o plano?" não foram salvos: falta rodar o SQL de melhorias no Supabase.');
-    } else erro(res);
+    let semMelhorias = false;
+    let semEvolucao = false;
+    for (;;) {
+      const res = await this.sb
+        .from('diario')
+        .upsert(sem(linha, [...(semMelhorias ? DIARIO_MELHORIAS : []), ...(semEvolucao ? DIARIO_EVOLUCAO : [])]), { onConflict: 'user_id,data' });
+      // Banco sem sono/água/urina (SQL de evolução ainda não rodou): grava o resto
+      if (!semEvolucao && faltaNoBanco(res.error, /sono_h|agua_l|cor_urina/)) semEvolucao = true;
+      // Banco sem as colunas de sintomas (SQL de melhorias ainda não rodou): grava o básico
+      else if (!semMelhorias && res.error && /vomito|diarreia|intestino_preso|dieta_seguida/.test(res.error.message)) semMelhorias = true;
+      else {
+        erro(res);
+        break;
+      }
+    }
+    // Avisa: o resto foi salvo, mas os campos novos precisam do SQL
+    if (semMelhorias && [r.vomito, r.diarreia, r.intestino_preso, r.dieta_seguida].some(preenchido))
+      throw new Error('Sintomas e "segui o plano?" não foram salvos: falta rodar o SQL de melhorias no Supabase.');
+    if (semEvolucao && [r.sono_h, r.agua_l, r.cor_urina].some(preenchido)) throw new Error(`Sono, água e cor da urina não foram salvos: ${AVISO_EVOLUCAO}`);
   }
 
   async excluirDiario(id: string) {
@@ -317,11 +343,54 @@ export class RepositorioSupabase implements Repositorio {
       cardio: t.cardio,
       corrida_km: numOuNulo(t.corrida_km),
       corrida_seg: t.corrida_seg ?? null,
+      cardio_tipo: t.cardio_tipo ?? null,
+      esforco_treino: t.esforco_treino ?? null,
+      esforco_cardio: t.esforco_cardio ?? null,
     }));
   }
 
   async salvarTreino(t: Omit<TreinoDia, 'id'>) {
-    erro(await this.sb.from('treino_dias').upsert({ ...t, user_id: await this.uid() }, { onConflict: 'user_id,data' }));
+    const linha = { ...t, user_id: await this.uid() };
+    const r = await this.sb.from('treino_dias').upsert(linha, { onConflict: 'user_id,data' });
+    // Banco sem tipo do cardio e esforço (SQL de evolução ainda não rodou): grava o resto
+    if (faltaNoBanco(r.error, /cardio_tipo|esforco_treino|esforco_cardio/)) {
+      erro(await this.sb.from('treino_dias').upsert(sem(linha, TREINO_EVOLUCAO), { onConflict: 'user_id,data' }));
+      // Sem a coluna, o tipo do cardio é inferido pela distância e pela regra do dia: só avisa se a inferência erraria
+      const tipoPerdido = !!t.cardio && preenchido(t.cardio_tipo) && tipoCardioEfetivo(t.data, { corrida_km: t.corrida_km, cardio_tipo: null }) !== t.cardio_tipo;
+      if (preenchido(t.esforco_treino) || preenchido(t.esforco_cardio) || tipoPerdido)
+        throw new Error(`${tipoPerdido ? 'Tipo do cardio' : 'Esforço da sessão'} não foi salvo: ${AVISO_EVOLUCAO}`);
+    } else erro(r);
+  }
+
+  async listarForca(): Promise<RegistroForca[]> {
+    const r = await this.sb.from('treino_forca').select('*').order('data');
+    // Tabela ainda não criada (SQL de evolução não rodou): sem registros
+    if (faltaNoBanco(r.error, /treino_forca/)) return [];
+    return lista(r).map((f) => ({
+      id: f.id,
+      data: f.data,
+      exercicio: f.exercicio,
+      carga_kg: num(f.carga_kg),
+      reps: num(f.reps),
+      rir: numOuNulo(f.rir),
+    }));
+  }
+
+  async salvarForca(f: RegistroForca) {
+    const r = await this.sb.from('treino_forca').upsert({ ...f, user_id: await this.uid() });
+    if (faltaNoBanco(r.error, /treino_forca/)) throw new Error(`Registro de força não foi salvo: ${AVISO_EVOLUCAO}`);
+    erro(r);
+  }
+
+  async excluirForca(id: string) {
+    const r = await this.sb.from('treino_forca').delete().eq('id', id);
+    if (!faltaNoBanco(r.error, /treino_forca/)) erro(r);
+  }
+
+  async salvarExerciciosForca(lista: string[] | null) {
+    const r = await this.sb.from('perfis').update({ exercicios_forca: lista }).eq('user_id', await this.uid());
+    if (faltaNoBanco(r.error, /exercicios_forca/)) throw new Error(`Lista de exercícios da força não foi salva: ${AVISO_EVOLUCAO}`);
+    erro(r);
   }
 
   async obterDieta(): Promise<PlanoDieta | null> {

@@ -8,6 +8,8 @@ import { CartaoTreinoHoje } from '../componentes/treino';
 import { Bloco, Icone } from '../componentes/ui';
 import { useDados } from '../dados/contexto';
 import { useCalculos } from '../dados/useCalculos';
+import { useMetaAgua } from '../dados/useTreino';
+import { diaDeSintoma, mediaSono7, TEXTO_SINTOMA_AGUA, TEXTO_SONO_BAIXO } from '../lib/bemestar';
 import { guiaSeringa } from '../lib/ciclo';
 import { diaDaSemana, formatarData } from '../lib/datas';
 import { cm, corVariacao, kg, mg, num, pct, pp, sinal, ui } from '../lib/formato';
@@ -26,6 +28,7 @@ export function Inicio() {
   const [medindo, setMedindo] = useState(false);
   const [resumoSemana, setResumo] = useState<string | null>(null);
   const [notif, setNotif] = useState<EstadoNotificacao | null>(null);
+  const metaAguaDe = useMetaAgua();
 
   useEffect(() => {
     estadoNotificacao().then(setNotif).catch(() => setNotif('sem-suporte'));
@@ -34,6 +37,8 @@ export function Inicio() {
   if (!ciclo || !resumo) return null;
   const p = resumo.proxima;
   const regHoje = diario.find((r) => r.data === hoje);
+  const sono = mediaSono7(diario, hoje);
+  const metaAguaHoje = metaAguaDe(hoje).meta;
 
   function fecharRegistro() {
     setRegistrar(false);
@@ -215,13 +220,34 @@ export function Inicio() {
             />
           </div>
         ) : null}
+        {regHoje && (regHoje.sono_h != null || regHoje.agua_l != null || regHoje.cor_urina) ? (
+          <p className="texto-2" style={{ marginTop: 8 }}>
+            {[
+              regHoje.sono_h != null && `Sono ${num(regHoje.sono_h, 1)} h`,
+              regHoje.agua_l != null && `Água ${num(regHoje.agua_l, 1)} de ${num(metaAguaHoje, 1)} L`,
+              regHoje.cor_urina && `urina ${regHoje.cor_urina}`,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          </p>
+        ) : null}
+        {diaDeSintoma(regHoje) && (
+          <div className="alerta info" style={{ marginTop: 8 }}>
+            {TEXTO_SINTOMA_AGUA}
+          </div>
+        )}
+        {sono.baixo && (
+          <div className="alerta" style={{ marginTop: 8 }}>
+            {TEXTO_SONO_BAIXO} (média de 7 dias: {num(sono.media, 1)} h)
+          </div>
+        )}
         {regHoje?.observacoes && (
           <p className="mudo obs-curta" style={{ marginTop: 8 }}>
             Obs.: {regHoje.observacoes}
           </p>
         )}
         {regHoje ? null : (
-          <p className="mudo">Anote peso, náusea e efeitos de hoje. Vale para qualquer dia, não só o da aplicação.</p>
+          <p className="mudo">Anote peso, náusea, efeitos, sono e água de hoje. Vale para qualquer dia, não só o da aplicação.</p>
         )}
       </section>
 

@@ -20,6 +20,8 @@ export interface Perfil {
   /** Exame usado para calibrar o ajuste (DXA, bioimpedância de qualidade): data e % de gordura */
   exame_gordura_data?: string | null;
   exame_gordura_bf?: number | null;
+  /** Exercícios-âncora da força (aba Treino); null = padrão (supino, agachamento ou leg press, remada, desenvolvimento) */
+  exercicios_forca?: string[] | null;
 }
 
 /** Metas para o fim do projeto (massa magra/gorda saem de peso + % gordura) */
@@ -38,6 +40,22 @@ export interface TreinoDia {
   cardio: boolean;
   corrida_km: number | null;
   corrida_seg: number | null;
+  /** Cardio feito no dia; null/ausente = inferido (distância preenchida = corrida, senão a regra do dia) */
+  cardio_tipo?: 'corrida' | 'bike' | null;
+  /** Esforço percebido da sessão (escala CR-10, 0 a 10), separado para musculação e cardio */
+  esforco_treino?: number | null;
+  esforco_cardio?: number | null;
+}
+
+/** Força: a primeira série válida de um exercício-âncora, 1x por semana */
+export interface RegistroForca {
+  id: string;
+  data: string;
+  exercicio: string;
+  carga_kg: number;
+  reps: number;
+  /** Repetições na reserva (0 = falha); opcional */
+  rir: number | null;
 }
 
 export interface Fase {
@@ -83,7 +101,14 @@ export interface RegistroDiario {
   intestino_preso?: boolean | null;
   /** Segui o plano da dieta hoje? */
   dieta_seguida?: 'sim' | 'parcial' | 'nao' | null;
+  /** Horas de sono total da noite anterior (do relógio, não o tempo na cama) */
+  sono_h?: number | null;
+  /** Água e outras bebidas do dia, em litros */
+  agua_l?: number | null;
+  cor_urina?: CorUrina | null;
 }
+
+export type CorUrina = 'clara' | 'amarela' | 'escura';
 
 export interface Medida {
   id: string;

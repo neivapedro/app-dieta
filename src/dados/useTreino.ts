@@ -1,5 +1,6 @@
-import { useMemo } from 'react';
-import { calcularPlacar, listarCorridas, medidaInicial, periodoProjeto, semanasDoProjeto } from '../lib/treino';
+import { useCallback, useMemo } from 'react';
+import { metaAgua } from '../lib/bemestar';
+import { calcularPlacar, horasExercicioDia, listarCorridas, medidaInicial, periodoProjeto, resumoEsforco, semanasDoProjeto } from '../lib/treino';
 import { useDados } from './contexto';
 import { useCalculos } from './useCalculos';
 
@@ -20,6 +21,23 @@ export function useTreino() {
     const ate = placar.encerrado ? normais.filter((c) => c.data <= fim) : normais;
     const atual = ate.length ? ate[ate.length - 1] : null;
     const doDia = (data: string) => treinos.find((t) => t.data === data);
-    return { inicio, fim, placar, semanas, corridas, inicial, atual, composicoes, metas: perfil.metas_projeto ?? null, doDia, hoje };
+    const esforco = resumoEsforco(treinos, hoje);
+    return { inicio, fim, placar, semanas, corridas, inicial, atual, composicoes, metas: perfil.metas_projeto ?? null, doDia, hoje, esforco };
   }, [perfil, ciclo, resumo, treinos, composicoes, hoje]);
+}
+
+/**
+ * Meta de água de uma data: 2,0 L + 0,7 L por hora de treino e cardio do dia
+ * (conta sem a aba Treino: só os 2,0 L).
+ */
+export function useMetaAgua() {
+  const { perfil, treinos, hoje } = useDados();
+  const comTreino = !!perfil?.modulo_treino;
+  return useCallback(
+    (data: string) => {
+      const horas = comTreino ? horasExercicioDia(data, treinos.find((t) => t.data === data), hoje) : 0;
+      return { meta: metaAgua(horas), horas };
+    },
+    [comTreino, treinos, hoje],
+  );
 }

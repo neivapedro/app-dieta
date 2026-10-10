@@ -5,7 +5,8 @@ import { Bloco, SemGrafico, Vazio } from '../componentes/ui';
 import { useDados } from '../dados/contexto';
 import { useAlimentos } from '../dados/useAlimentos';
 import { useCalculos } from '../dados/useCalculos';
-import { useTreino } from '../dados/useTreino';
+import { useMetaAgua, useTreino } from '../dados/useTreino';
+import { aguaSemana, mediaSono7, SONO_MINIMO_H, sonoPorFase, TEXTO_SONO_BAIXO } from '../lib/bemestar';
 import { composicaoPorFase, sintomasPorFase } from '../lib/analise';
 import { ritmoPercentual, tendenciaMedidas, tendenciaPeso, textoQualidade } from '../lib/conferencia';
 import { diferencaDias, formatarData } from '../lib/datas';
@@ -75,11 +76,18 @@ export function Analise() {
   const [msgPdf, setMsgPdf] = useState<{ tipo: string; texto: string } | null>(null);
   const [gerando, setGerando] = useState(false);
   const qualidade = useQualidade();
+  const metaAguaDe = useMetaAgua();
   if (!resumo) return null;
 
   const datasAplic = resumo.linhas.map((l) => l.aplicacao.data);
   const compFases = composicaoPorFase(fases, composicoes, treino ? treinos : null, hoje);
   const sintomas = sintomasPorFase(fases, datasAplic, diario, hoje);
+  // Sono por fase ao lado da massa magra e da cintura (associação, não causa)
+  const sonoFases = sonoPorFase(fases, diario, hoje);
+  const temSono = sonoFases.some((v) => v !== null);
+  const sono7 = mediaSono7(diario, hoje);
+  const agua = aguaSemana(diario, hoje, (d) => metaAguaDe(d).meta);
+  const temUrina = agua.urina.clara + agua.urina.amarela + agua.urina.escura > 0;
   const temSintomas = sintomas.some((s) => s.vomito !== null || s.diarreia !== null || s.intestino_preso !== null);
   // Ritmo pelas medições (em jejum, às segundas) quando houver 3 ou mais; senão, por todas as pesagens
   const serieMedidas = serie.filter((p) => p.origem === 'medida');
@@ -394,6 +402,7 @@ export function Analise() {
                   <th>Massa magra</th>
                   <th>% magra</th>
                   <th>Gordura/sem.</th>
+                  {temSono && <th>Sono</th>}
                   {treino && <th>Treino</th>}
                   {treino && <th>Cardio</th>}
                 </tr>
@@ -415,6 +424,11 @@ export function Analise() {
                       <td className={c.gorda_semana === null ? undefined : corVariacao(c.gorda_semana, true)}>
                         {c.gorda_semana === null ? (c.poucos_dados && c.de ? <span className="texto-2">poucos dados</span> : '–') : sinal(c.gorda_semana, 2)}
                       </td>
+                      {temSono && (
+                        <td className={sonoFases[i] !== null && sonoFases[i]! < SONO_MINIMO_H ? 'aviso-txt' : undefined}>
+                          {sonoFases[i] === null ? '–' : `${num(sonoFases[i], 1)} h`}
+                        </td>
+                      )}
                       {treino && <td>{c.treino === null ? '–' : pct(c.treino, 0)}</td>}
                       {treino && <td>{c.cardio === null ? '–' : pct(c.cardio, 0)}</td>}
                     </tr>
@@ -429,8 +443,41 @@ export function Analise() {
           medições da fase (3 ou mais cobrindo 14 dias); % magra = parte da perda de peso que saiu de massa magra (acima de 25% fica em destaque). Medições
           atípicas ficam de fora.
           {treino && ' Uma fase com pouca perda e baixa aderência ao treino pede ajuste de rotina, não necessariamente de dose.'}
+          {temSono && ' Sono: média das noites registradas na fase (4 ou mais); é associação, não causa.'}
         </p>
       </section>
+
+      {(sono7.noites > 0 || agua.dias > 0 || temUrina) && (
+        <section className="cartao">
+          <h2>Sono e hidratação</h2>
+          <div className="grade">
+            <Bloco
+              rotulo="Sono · média de 7 dias"
+              valor={sono7.media === null ? `${sono7.noites} de 4 noites` : `${num(sono7.media, 1)} h`}
+              classe={sono7.baixo ? 'aviso-txt' : undefined}
+            />
+            <Bloco
+              rotulo="Água · média da semana"
+              valor={agua.media === null ? '–' : `${num(agua.media, 1)} de ${num(agua.meta_media, 1)} L`}
+              classe={agua.media !== null && agua.meta_media !== null && agua.media < agua.meta_media - 0.25 ? 'aviso-txt' : undefined}
+            />
+          </div>
+          {sono7.baixo && (
+            <div className="alerta" style={{ marginTop: 10 }}>
+              {TEXTO_SONO_BAIXO}
+            </div>
+          )}
+          {temUrina && (
+            <p className="texto-2" style={{ marginTop: 8 }}>
+              Cor da urina nos últimos 7 dias: {agua.urina.clara} clara · {agua.urina.amarela} amarela · {agua.urina.escura} escura.
+            </p>
+          )}
+          <p className="mudo" style={{ marginTop: 8 }}>
+            Sono: média só com 4 noites ou mais registradas; 7 h ou mais é o recomendado para adultos. Água: dias com registro nos últimos 7; meta de
+            partida de 2 L de bebidas por dia{treino ? ' + 0,7 L por hora de treino e cardio' : ''}. Beber muito além da meta não ajuda.
+          </p>
+        </section>
+      )}
 
       <section className="cartao">
         <h2>Peso e náusea por fase</h2>

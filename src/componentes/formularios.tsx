@@ -1,11 +1,13 @@
 import { useState, type FormEvent } from 'react';
 import { useDados } from '../dados/contexto';
 import { useCalculos } from '../dados/useCalculos';
+import { useMetaAgua } from '../dados/useTreino';
+import { CORES_URINA, diaDeSintoma, TEXTO_SINTOMA_AGUA } from '../lib/bemestar';
 import { faseDaDose, guiaSeringa, marcacao, totalDosesPlano } from '../lib/ciclo';
 import { diaDaSemana, formatarData, hojeLocal } from '../lib/datas';
-import { cm, kg, num, lerPeso, paraNumero, paraTexto, pp, ui } from '../lib/formato';
+import { cm, kg, lerFaixa, lerPeso, num, paraNumero, paraTexto, pp, ui } from '../lib/formato';
 import { ajusteDoPerfil, composicao } from '../lib/gordura';
-import { LOCAIS_APLICACAO, NIVEIS_NAUSEA, type Aplicacao, type Medida, type RegistroDiario } from '../lib/tipos';
+import { LOCAIS_APLICACAO, NIVEIS_NAUSEA, type Aplicacao, type CorUrina, type Medida, type RegistroDiario } from '../lib/tipos';
 import { BotaoExcluir, Campo, CampoNumero, Escolhas, Folha } from './ui';
 
 const OPCOES_NAUSEA = NIVEIS_NAUSEA.map((r, i) => ({ valor: i, rotulo: `${i} · ${r}` }));
@@ -190,14 +192,19 @@ function sintomasDe(r?: RegistroDiario): Record<ChaveSintoma, boolean | null> {
 
 export function FormDiario({ registro, dataInicial, aoFechar }: { registro?: RegistroDiario; dataInicial?: string; aoFechar: () => void }) {
   const { diario, gravar } = useDados();
+  const metaAguaDe = useMetaAgua();
   const [data, setData] = useState(registro?.data ?? dataInicial ?? hojeLocal());
   const existente = registro ?? diario.find((r) => r.data === data);
   const [peso, setPeso] = useState(paraTexto(existente?.peso_kg));
   const [nausea, setNausea] = useState<number | null>(existente?.nausea ?? null);
   const [obs, setObs] = useState(existente?.observacoes ?? '');
   const [sintomas, setSintomas] = useState(sintomasDe(existente));
+  const [sono, setSono] = useState(paraTexto(existente?.sono_h));
+  const [agua, setAgua] = useState(paraTexto(existente?.agua_l));
+  const [urina, setUrina] = useState<CorUrina | null>(existente?.cor_urina ?? null);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
+  const { meta: metaAgua, horas } = metaAguaDe(data || hojeLocal());
 
   function trocarData(nova: string) {
     setData(nova);
@@ -206,6 +213,9 @@ export function FormDiario({ registro, dataInicial, aoFechar }: { registro?: Reg
     setNausea(r?.nausea ?? null);
     setObs(r?.observacoes ?? '');
     setSintomas(sintomasDe(r));
+    setSono(paraTexto(r?.sono_h));
+    setAgua(paraTexto(r?.agua_l));
+    setUrina(r?.cor_urina ?? null);
   }
 
   async function salvar(e: FormEvent) {
@@ -213,16 +223,31 @@ export function FormDiario({ registro, dataInicial, aoFechar }: { registro?: Reg
     if (!data) return setErro('Informe a data.');
     const p = lerPeso(peso);
     if (p.erro) return setErro(p.erro);
+    const s = lerFaixa(sono, 0, 24, 'Sono', 'h');
+    if (s.erro) return setErro(s.erro);
+    const a = lerFaixa(agua, 0, 15, 'Água', 'L');
+    if (a.erro) return setErro(a.erro);
     const pesoNum = p.valor;
     const algumSintoma = Object.values(sintomas).some((v) => v !== null);
-    if (pesoNum === null && nausea === null && !obs.trim() && !algumSintoma) return setErro('Preencha ao menos um campo.');
+    if (pesoNum === null && nausea === null && !obs.trim() && !algumSintoma && s.valor === null && a.valor === null && urina === null)
+      return setErro('Preencha ao menos um campo.');
     if (salvando) return;
     setSalvando(true);
     const atual = diario.find((x) => x.data === data);
     // Pela fila: grava na hora e, sem internet, envia quando a conexão voltar
     gravar({
       tipo: 'diario',
-      dado: { data, peso_kg: pesoNum, nausea, observacoes: obs.trim() || null, ...sintomas, dieta_seguida: atual?.dieta_seguida ?? null },
+      dado: {
+        data,
+        peso_kg: pesoNum,
+        nausea,
+        observacoes: obs.trim() || null,
+        ...sintomas,
+        dieta_seguida: atual?.dieta_seguida ?? null,
+        sono_h: s.valor,
+        agua_l: a.valor,
+        cor_urina: urina,
+      },
     });
     aoFechar();
   }
@@ -258,13 +283,27 @@ export function FormDiario({ registro, dataInicial, aoFechar }: { registro?: Reg
             ))}
           </div>
         </Campo>
+        {diaDeSintoma(sintomas) && <div className="alerta info">{TEXTO_SINTOMA_AGUA}</div>}
+        <div className="grade">
+          <CampoNumero rotulo="Sono" sufixo="h" valor={sono} aoMudar={setSono} dica="Sono total da noite, do relógio (ex.: 6,5)." />
+          <CampoNumero
+            rotulo="Água"
+            sufixo="L"
+            valor={agua}
+            aoMudar={setAgua}
+            dica={`Meta ≈ ${num(metaAgua, 1)} L${horas > 0 ? ` (2 L + 0,7 L por hora de treino e cardio: ${num(horas, 1)} h)` : ''}.`}
+          />
+        </div>
+        <Campo rotulo="Cor da urina (opcional)" grupo dica={urina === 'escura' ? 'Urina escura costuma indicar pouca água: beba mais.' : undefined}>
+          <Escolhas opcoes={CORES_URINA} valor={urina} aoMudar={setUrina} permitirVazio />
+        </Campo>
         <Campo rotulo="Observações / efeitos">
           <textarea value={obs} onChange={(e) => setObs(e.target.value)} />
         </Campo>
         <Erro msg={erro} />
         <button className="botao primario" disabled={salvando}>{salvando ? 'Salvando…' : 'Salvar'}</button>
         {diario.some((x) => x.data === data) && (
-          <BotaoExcluir rotulo="Excluir registro do dia" aviso="Excluir peso, náusea, sintomas, observações e o 'segui o plano?' deste dia?" aoConfirmar={excluir} />
+          <BotaoExcluir rotulo="Excluir registro do dia" aviso="Excluir peso, náusea, sintomas, sono, água, observações e o 'segui o plano?' deste dia?" aoConfirmar={excluir} />
         )}
       </form>
     </Folha>

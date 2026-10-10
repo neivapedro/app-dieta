@@ -1,5 +1,5 @@
 import type { PlanoDieta } from '../lib/dieta';
-import type { Aplicacao, Ciclo, Medida, MetasProjeto, Perfil, RegistroDiario, TreinoDia } from '../lib/tipos';
+import type { Aplicacao, Ciclo, Medida, MetasProjeto, Perfil, RegistroDiario, RegistroForca, TreinoDia } from '../lib/tipos';
 
 export interface Usuario {
   id: string;
@@ -56,6 +56,12 @@ export interface Repositorio {
   listarTreinos(): Promise<TreinoDia[]>;
   /** Um registro por dia: grava por cima se a data já existir */
   salvarTreino(t: Omit<TreinoDia, 'id'>): Promise<void>;
+  /** Força nos exercícios-âncora (lista vazia se a tabela ainda não existe no banco) */
+  listarForca(): Promise<RegistroForca[]>;
+  salvarForca(r: RegistroForca): Promise<void>;
+  excluirForca(id: string): Promise<void>;
+  /** Lista de exercícios-âncora do perfil (null = padrão) */
+  salvarExerciciosForca(lista: string[] | null): Promise<void>;
 
   // Aba Dieta: um plano por conta
   obterDieta(): Promise<PlanoDieta | null>;

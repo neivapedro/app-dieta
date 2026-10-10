@@ -69,3 +69,14 @@ export function lerPeso(texto: string): { valor: number | null; erro?: string } 
   if (v < 30 || v > 300) return { valor: null, erro: 'Peso fora da faixa (30 a 300 kg). Confira o número.' };
   return { valor: v };
 }
+
+/**
+ * Número opcional com faixa: vazio vale null; texto inválido ou fora da faixa vira
+ * erro com o nome do campo (ex.: sono de 0 a 24 h).
+ */
+export function lerFaixa(texto: string, min: number, max: number, nome: string, unidade: string): { valor: number | null; erro?: string } {
+  if (!texto.trim()) return { valor: null };
+  const v = paraNumero(texto);
+  if (v === null || v < min || v > max) return { valor: null, erro: `${nome} fora da faixa (${num(min, 0)} a ${num(max, 0)} ${unidade}). Confira o número.` };
+  return { valor: v };
+}

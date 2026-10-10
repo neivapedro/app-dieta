@@ -1,5 +1,5 @@
 import type { PlanoDieta } from '../lib/dieta';
-import type { Aplicacao, Ciclo, Medida, MetasProjeto, Perfil, RegistroDiario, TreinoDia } from '../lib/tipos';
+import type { Aplicacao, Ciclo, Medida, MetasProjeto, Perfil, RegistroDiario, RegistroForca, TreinoDia } from '../lib/tipos';
 import type { Repositorio, Usuario } from './repositorio';
 
 // Modo de demonstração: usado quando o Supabase ainda não foi configurado.
@@ -13,6 +13,7 @@ interface Banco {
   diario: RegistroDiario[];
   medidas: Medida[];
   treinos?: TreinoDia[];
+  forca?: RegistroForca[];
   dieta?: PlanoDieta | null;
 }
 
@@ -116,6 +117,7 @@ export class RepositorioLocal implements Repositorio {
         ...p,
         modulo_treino: b.perfil?.modulo_treino,
         metas_projeto: b.perfil?.metas_projeto,
+        exercicios_forca: b.perfil?.exercicios_forca,
         ajuste_gordura: manter('ajuste_gordura') as number | null,
         exame_gordura_data: manter('exame_gordura_data') as string | null,
         exame_gordura_bf: manter('exame_gordura_bf') as number | null,
@@ -184,6 +186,25 @@ export class RepositorioLocal implements Repositorio {
       const existente = b.treinos.find((x) => x.data === t.data);
       upsert(b.treinos, { ...t, id: existente?.id ?? novoId() });
     });
+  }
+
+  async listarForca() {
+    return this.banco().forca ?? [];
+  }
+
+  async salvarForca(r: RegistroForca) {
+    this.alterar((b) => {
+      b.forca ??= [];
+      upsert(b.forca, r);
+    });
+  }
+
+  async excluirForca(id: string) {
+    this.alterar((b) => (b.forca = (b.forca ?? []).filter((x) => x.id !== id)));
+  }
+
+  async salvarExerciciosForca(lista: string[] | null) {
+    this.alterar((b) => b.perfil && (b.perfil.exercicios_forca = lista));
   }
 
   async obterDieta() {

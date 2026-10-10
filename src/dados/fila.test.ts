@@ -60,3 +60,24 @@ describe('Fila: exclusão', () => {
   });
 });
 
+
+describe('Fila: força', () => {
+  it('registro de força aparece na hora, edição substitui e exclusão remove', () => {
+    const base = { treinos: [], diario: [], dieta: null, forca: [] };
+    const f1 = { id: 'f1', data: '2026-10-19', exercicio: 'Supino', carga_kg: 80, reps: 8, rir: 1 };
+    let f = enfileirar([], { tipo: 'forca', dado: f1 }, 1);
+    f = enfileirar(f, { tipo: 'forca', dado: { ...f1, carga_kg: 82.5 } }, 2);
+    expect(f).toHaveLength(1);
+    const d = aplicarFila(base, f);
+    expect(d.forca).toEqual([{ ...f1, carga_kg: 82.5 }]);
+    const ex = enfileirar(f, { tipo: 'excluir', dado: { alvo: 'forca', id: 'f1', data: f1.data } }, 3);
+    expect(ex).toHaveLength(1);
+    expect(aplicarFila({ ...base, forca: [f1] }, ex).forca).toEqual([]);
+  });
+
+  it('dado sem a lista de força (cópia antiga) não quebra', () => {
+    const f = enfileirar([], { tipo: 'forca', dado: { id: 'f1', data: '2026-10-19', exercicio: 'Supino', carga_kg: 80, reps: 8, rir: null } }, 1);
+    const d = aplicarFila({ treinos: [], diario: [], dieta: null }, f);
+    expect('forca' in d).toBe(false);
+  });
+});

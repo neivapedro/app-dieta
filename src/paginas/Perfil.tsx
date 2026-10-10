@@ -173,7 +173,7 @@ function dataDoBackup(iso: string): string {
 }
 
 export function Perfil() {
-  const { perfil, ciclo, aplicacoes, diario, medidas, treinos, dieta, usuario, repo, executar, sair, limparErro } = useDados();
+  const { perfil, ciclo, aplicacoes, diario, medidas, treinos, forca, dieta, usuario, repo, executar, sair, limparErro } = useDados();
   const [nome, setNome] = useState(perfil?.nome ?? '');
   const [sexo, setSexo] = useState<Sexo>(perfil?.sexo ?? 'Masculino');
   const [altura, setAltura] = useState(paraTexto(perfil?.altura_cm));
@@ -246,7 +246,7 @@ export function Perfil() {
   }
 
   async function exportar() {
-    const backup = montarBackup({ perfil, ciclo, aplicacoes, diario, medidas, dieta, treinos }, new Date().toISOString());
+    const backup = montarBackup({ perfil, ciclo, aplicacoes, diario, medidas, dieta, treinos, forca }, new Date().toISOString());
     const nomeArquivo = `ciclo-backup-${hojeLocal()}.json`;
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
     // No iPhone, o menu Compartilhar permite "Salvar em Arquivos"
@@ -271,7 +271,7 @@ export function Perfil() {
   async function prepararImportacao(f: File) {
     try {
       const b = lerBackup(await f.text());
-      setImportacao({ backup: b, plano: planejarImportacao(b, { aplicacoes, medidas, diario, treinos }) });
+      setImportacao({ backup: b, plano: planejarImportacao(b, { aplicacoes, medidas, diario, treinos, forca }) });
       setMsgBackup(null);
     } catch (e) {
       setMsgBackup({ tipo: 'erro', texto: (e as Error).message });
@@ -288,6 +288,7 @@ export function Perfil() {
         if (b.perfil) {
           await r.salvarPerfil(b.perfil);
           if (b.perfil.metas_projeto) await r.salvarMetas(b.perfil.metas_projeto);
+          if (b.perfil.exercicios_forca?.length && (perfil?.modulo_treino || b.perfil.modulo_treino)) await r.salvarExerciciosForca(b.perfil.exercicios_forca);
         }
         let cicloId = ciclo?.id;
         if (b.ciclo) {
@@ -311,6 +312,8 @@ export function Perfil() {
             const { id: _id, ...resto } = t;
             await r.salvarTreino(resto);
           }
+          // Id novo: o do arquivo pode ser de outra conta
+          for (const f of plano.forca) await r.salvarForca({ ...f, id: crypto.randomUUID() });
         }
         if (b.dieta) await r.salvarDieta(b.dieta);
       });
@@ -418,7 +421,7 @@ export function Perfil() {
       <section className="cartao pilha">
         <h2>Backup</h2>
         <p className="mudo">
-          Exporta todos os seus dados (perfil e metas, ciclo, aplicações, diário, medidas, treinos e dieta) em um arquivo. Ao importar, nada é
+          Exporta todos os seus dados (perfil e metas, ciclo, aplicações, diário, medidas, treinos, força e dieta) em um arquivo. Ao importar, nada é
           duplicado: aplicações e medidas de datas que já existem são puladas, e diário e treino substituem o mesmo dia.
         </p>
         <div className="linha">
@@ -438,6 +441,7 @@ export function Perfil() {
               <b>Backup de {dataDoBackup(importacao.backup.exportado_em)}.</b> Vai importar:{' '}
               {importacao.plano.aplicacoes.length} aplicação(ões), {importacao.plano.medidas.length} medição(ões),{' '}
               {importacao.plano.diario.length} dia(s) do diário, {importacao.plano.treinos.length} dia(s) de treino
+              {importacao.plano.forca.length ? `, ${importacao.plano.forca.length} série(s) de força` : ''}
               {importacao.backup.dieta ? ' e o plano da dieta (substitui o atual)' : ''}.
               {(importacao.backup.perfil || importacao.backup.ciclo) && (
                 <>

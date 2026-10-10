@@ -1,7 +1,8 @@
 import type { PlanoDieta } from './dieta';
-import type { Aplicacao, Ciclo, Medida, Perfil, RegistroDiario, TreinoDia } from './tipos';
+import { chaveExercicio } from './forca';
+import type { Aplicacao, Ciclo, Medida, Perfil, RegistroDiario, RegistroForca, TreinoDia } from './tipos';
 
-/** Arquivo de backup. Versão 2 inclui treinos e metas; a versão 1 continua aceita. */
+/** Arquivo de backup. Versão 2 inclui treinos, metas e força; a versão 1 continua aceita. */
 export interface Backup {
   versao: 1 | 2;
   exportado_em: string;
@@ -12,6 +13,7 @@ export interface Backup {
   medidas: Medida[];
   dieta?: PlanoDieta | null;
   treinos?: TreinoDia[];
+  forca?: RegistroForca[];
 }
 
 export interface DadosAtuais {
@@ -19,6 +21,7 @@ export interface DadosAtuais {
   medidas: Medida[];
   diario: RegistroDiario[];
   treinos: TreinoDia[];
+  forca?: RegistroForca[];
 }
 
 export function montarBackup(d: Omit<Backup, 'versao' | 'exportado_em'>, agora: string): Backup {
@@ -39,7 +42,8 @@ export function lerBackup(texto: string): Backup {
     typeof b.exportado_em !== 'string' ||
     !listaOk(b.medidas) ||
     !listaOk(b.diario) ||
-    !listaOk((b as { treinos?: unknown }).treinos)
+    !listaOk((b as { treinos?: unknown }).treinos) ||
+    !listaOk((b as { forca?: unknown }).forca)
   )
     throw new Error('Arquivo de backup não reconhecido.');
   return b;
@@ -52,6 +56,8 @@ export interface PlanoImportacao {
   /** Diário e treino têm uma linha por data: substituem o dia */
   diario: RegistroDiario[];
   treinos: TreinoDia[];
+  /** Força: só os pares data + exercício que ainda não existem */
+  forca: RegistroForca[];
   ignoradas: { aplicacoes: number; medidas: number };
 }
 
@@ -64,11 +70,15 @@ export function planejarImportacao(b: Backup, atuais: DadosAtuais): PlanoImporta
   };
   const aplicacoes = unicas(b.aplicacoes, datasAplic);
   const medidas = unicas(b.medidas ?? [], datasMed);
+  const chaveForca = (f: RegistroForca) => `${f.data}|${chaveExercicio(f.exercicio)}`;
+  const vistasForca = new Set((atuais.forca ?? []).map(chaveForca));
+  const forca = (b.forca ?? []).filter((f) => (vistasForca.has(chaveForca(f)) ? false : (vistasForca.add(chaveForca(f)), true)));
   return {
     aplicacoes,
     medidas,
     diario: b.diario ?? [],
     treinos: b.treinos ?? [],
+    forca,
     ignoradas: { aplicacoes: b.aplicacoes.length - aplicacoes.length, medidas: (b.medidas ?? []).length - medidas.length },
   };
 }
