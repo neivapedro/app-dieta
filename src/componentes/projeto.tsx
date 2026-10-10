@@ -8,6 +8,7 @@ import { cm, kg, mg, num, pct, pp, sinal } from '../lib/formato';
 import { avisoReganho, linhasBalanco, SEMANAS_POS, SEMANAS_SAIDA, type FasePos } from '../lib/projeto';
 import type { DecisaoFase } from '../lib/tipos';
 import { formatarTempo, medidaInicial } from '../lib/treino';
+import { LembreteFotosDepois } from './fotos';
 import { Bloco } from './ui';
 
 const fmtUnidade = (unidade: string) => (unidade === ' cm' ? cm : unidade === ' p.p.' ? pp : kg);
@@ -95,6 +96,7 @@ function Balanco() {
         <Bloco rotulo="Doses" valor={`${resumo.aplicacoes_realizadas} · ${mg(resumo.total_aplicado_mg)}`} />
         <Bloco rotulo="Sobra no frasco" valor={mg(Math.max(resumo.saldo_mg, 0))} />
       </div>
+      <LembreteFotosDepois />
     </div>
   );
 }

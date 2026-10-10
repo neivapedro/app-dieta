@@ -1,10 +1,12 @@
 import type { PlanoDieta } from './dieta';
 import { chaveExercicio } from './forca';
+import { fotosParaImportar, type FotoBackup, type Pose, type Sessao } from './fotos';
 import type { Aplicacao, Ciclo, Medida, Perfil, RegistroDecisao, RegistroDiario, RegistroForca, TreinoDia } from './tipos';
 
 /**
  * Arquivo de backup. Versão 2 inclui treinos, metas e força; a 3, o registro de
- * decisões. As versões 1 e 2 continuam aceitas.
+ * decisões. As versões 1 e 2 continuam aceitas. As fotos de antes e depois
+ * (opcionais, em base64) só existem no aparelho: o backup é a cópia delas.
  */
 export interface Backup {
   versao: 1 | 2 | 3;
@@ -18,6 +20,7 @@ export interface Backup {
   treinos?: TreinoDia[];
   registro_decisoes?: RegistroDecisao[];
   forca?: RegistroForca[];
+  fotos?: FotoBackup[];
 }
 
 export interface DadosAtuais {
@@ -27,6 +30,8 @@ export interface DadosAtuais {
   treinos: TreinoDia[];
   registro_decisoes?: RegistroDecisao[];
   forca?: RegistroForca[];
+  /** Fotos já guardadas neste aparelho (sessão + pose) */
+  fotos?: { sessao: Sessao; pose: Pose }[];
 }
 
 export function montarBackup(d: Omit<Backup, 'versao' | 'exportado_em'>, agora: string): Backup {
@@ -49,7 +54,8 @@ export function lerBackup(texto: string): Backup {
     !listaOk(b.diario) ||
     !listaOk((b as { treinos?: unknown }).treinos) ||
     !listaOk((b as { registro_decisoes?: unknown }).registro_decisoes) ||
-    !listaOk((b as { forca?: unknown }).forca)
+    !listaOk((b as { forca?: unknown }).forca) ||
+    !listaOk((b as { fotos?: unknown }).fotos)
   )
     throw new Error('Arquivo de backup não reconhecido.');
   return b;
@@ -66,7 +72,9 @@ export interface PlanoImportacao {
   registro_decisoes: RegistroDecisao[];
   /** Força: só os pares data + exercício que ainda não existem */
   forca: RegistroForca[];
-  ignoradas: { aplicacoes: number; medidas: number };
+  /** Fotos: só as dos lugares (sessão + pose) ainda vazios neste aparelho */
+  fotos: FotoBackup[];
+  ignoradas: { aplicacoes: number; medidas: number; fotos: number };
 }
 
 /** Mesma data, campo e valores: é a mesma linha (importar duas vezes não duplica). */
@@ -89,6 +97,7 @@ export function planejarImportacao(b: Backup, atuais: DadosAtuais): PlanoImporta
   const chaveForca = (f: RegistroForca) => `${f.data}|${chaveExercicio(f.exercicio)}`;
   const vistasForca = new Set((atuais.forca ?? []).map(chaveForca));
   const forca = (b.forca ?? []).filter((f) => (vistasForca.has(chaveForca(f)) ? false : (vistasForca.add(chaveForca(f)), true)));
+  const fotos = fotosParaImportar(b.fotos, atuais.fotos ?? []);
   return {
     aplicacoes,
     medidas,
@@ -96,6 +105,11 @@ export function planejarImportacao(b: Backup, atuais: DadosAtuais): PlanoImporta
     treinos: b.treinos ?? [],
     registro_decisoes: registrosNovos(b.registro_decisoes ?? [], atuais.registro_decisoes ?? []),
     forca,
-    ignoradas: { aplicacoes: b.aplicacoes.length - aplicacoes.length, medidas: (b.medidas ?? []).length - medidas.length },
+    fotos,
+    ignoradas: {
+      aplicacoes: b.aplicacoes.length - aplicacoes.length,
+      medidas: (b.medidas ?? []).length - medidas.length,
+      fotos: (b.fotos ?? []).length - fotos.length,
+    },
   };
 }

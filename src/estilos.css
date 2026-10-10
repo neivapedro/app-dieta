@@ -430,3 +430,29 @@ details.ajuda summary { min-height: 32px; display: flex; align-items: center; }
 /* Escala de 1 a 10 numa linha só, mesmo em 320 px */
 .escolhas-compactas .escolhas { gap: 4px; flex-wrap: nowrap; }
 .escolhas-compactas .escolhas button { padding: 0; min-width: 0; }
+
+/* Fotos de antes e depois (aba Medidas) */
+.fotos-sessao { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.fotos-cab { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.fotos-poses { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; max-width: 420px; }
+.foto-slot {
+  position: relative; display: flex; align-items: center; justify-content: center; width: 100%; aspect-ratio: 3 / 4; padding: 0; overflow: hidden;
+  border-radius: 12px; border: 1px dashed var(--borda); background: var(--superficie-2); color: var(--texto-3); cursor: pointer;
+}
+.foto-slot.cheio { border-style: solid; }
+.foto-slot.destaque { border: 2px dashed var(--aviso); }
+.foto-slot:disabled { cursor: progress; }
+.foto-slot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.foto-mais { font-size: 1.8rem; font-weight: 300; line-height: 1; }
+.foto-pose {
+  position: absolute; left: 4px; bottom: 4px; padding: 1px 7px; border-radius: 999px; font-size: 0.72rem; font-weight: 600;
+  background: rgb(0 0 0 / 0.6); color: #fff;
+}
+.foto-grande { width: 100%; max-height: 62dvh; object-fit: contain; border-radius: 12px; background: var(--superficie-2); display: block; }
+.fotos-numeros { display: flex; flex-direction: column; gap: 6px; font-size: 0.85rem; min-width: 0; }
+.fotos-numeros-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 6px; }
+.fotos-numero { display: flex; flex-direction: column; min-width: 0; padding: 6px 8px; border-radius: 10px; background: var(--superficie-2); font-variant-numeric: tabular-nums; }
+.fotos-numero .texto-2 { font-size: 0.72rem; }
+.marcar { display: flex; flex-wrap: nowrap; align-items: flex-start; gap: 10px; cursor: pointer; }
+.marcar input { width: 20px; height: 20px; flex: none; margin: 2px 0 0; }
+.marcar.desligado { cursor: default; opacity: 0.6; }

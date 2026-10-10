@@ -28,7 +28,7 @@ describe('Backup', () => {
     const p = planejarImportacao(b, { aplicacoes: [apl('2026-09-28'), apl('2026-10-05')], medidas: [med('2026-10-05')], diario: [], treinos: [] });
     expect(p.aplicacoes).toHaveLength(0);
     expect(p.medidas).toHaveLength(0);
-    expect(p.ignoradas).toEqual({ aplicacoes: 2, medidas: 1 });
+    expect(p.ignoradas).toEqual({ aplicacoes: 2, medidas: 1, fotos: 0 });
   });
 
   it('conta nova recebe tudo', () => {

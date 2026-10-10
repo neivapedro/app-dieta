@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { deBase64, montarSecoesFotos } from './fotos';
 import { gerarRelatorioPdf, textoPdf } from './relatorioPdf';
 
 describe('Relatório em PDF', () => {
@@ -50,5 +51,31 @@ describe('Relatório em PDF', () => {
     });
     const texto = new TextDecoder('latin1').decode(new Uint8Array(await blob.arrayBuffer()));
     expect(texto.startsWith('%PDF-')).toBe(true);
+  });
+
+  it('com fotos: página "Antes e depois" com as imagens embutidas', async () => {
+    // JPEG mínimo de 3x4 (retrato)
+    const jpeg = deBase64('/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABALDA4MChAODQ4SERATGCgaGBYWGDEjJR0oOjM9PDkzODdASFxOQERXRTc4UG1RV19iZ2hnPk1xeXBkeFxlZ2P/2wBDARESEhgVGC8aGi9jQjhCY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2P/wAARCAAEAAMDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwCOiiigD//Z');
+    const comp = (data: string, peso: number) => ({ data, peso_kg: peso, bf: 24, massa_magra_kg: null, massa_gorda_kg: null, cintura_cm: 97, pescoco_cm: 41, quadril_cm: null });
+    const secoes = montarSecoesFotos(
+      [
+        { sessao: 'antes', pose: 'frente', data: '2026-09-07' },
+        { sessao: 'depois', pose: 'frente', data: '2026-12-07' },
+        { sessao: 'antes', pose: 'costas', data: '2026-09-07' },
+      ],
+      [comp('2026-09-07', 96), comp('2026-12-07', 90)],
+      false,
+    );
+    const img = { dados: jpeg, largura: 3, altura: 4 };
+    const modelo = { titulo: 'Relatório', subtitulo: 's', resumo: [], ritmo: 'r', grafico: null, tabelas: [], rodape: 'rodapé' };
+    const semFotos = await gerarRelatorioPdf(modelo).arrayBuffer();
+    const blob = gerarRelatorioPdf({
+      ...modelo,
+      fotos: { secoes: secoes.map((s) => ({ ...s, imgAntes: img, imgDepois: s.depois ? img : null })), nota: 'nota' },
+    });
+    const texto = new TextDecoder('latin1').decode(new Uint8Array(await blob.arrayBuffer()));
+    expect((texto.match(/\/Type \/Page\b/g) ?? []).length).toBe(2);
+    expect(texto).toContain('/DCTDecode');
+    expect(new TextDecoder('latin1').decode(new Uint8Array(semFotos))).not.toContain('/DCTDecode');
   });
 });

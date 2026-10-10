@@ -1,6 +1,7 @@
 import { lazy, Suspense, useState } from 'react';
 import { ConferenciaGordura, LinhaQualidade, useQualidade } from '../componentes/composicao';
 import { FormMedida } from '../componentes/formularios';
+import { CartaoFotos } from '../componentes/fotos';
 import { ResumoSemana } from '../componentes/ResumoSemana';
 import { FormMetas } from '../componentes/treino';
 import { SemGrafico, Vazio } from '../componentes/ui';
@@ -114,6 +115,8 @@ export function Medidas() {
           <Vazio>Nenhuma medição ainda. Registre altura, pescoço, cintura{feminino ? ', quadril' : ''} e peso para calcular a % de gordura.</Vazio>
         )}
       </section>
+
+      <CartaoFotos />
 
       {composicoes.length > 0 && (
         <section className="cartao">

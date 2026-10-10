@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ListaDecisoes } from '../componentes/decisoes';
+import { prepararFotosPdf, useFotos } from '../componentes/fotos';
 import { LinhaQualidade, useQualidade } from '../componentes/composicao';
 import { Bloco, SemGrafico, Vazio } from '../componentes/ui';
 import { useDados } from '../dados/contexto';
@@ -28,7 +29,8 @@ import {
 import { dataPorExtenso, diferencaDias, formatarData, somarDias } from '../lib/datas';
 import { decisoesPorDia, marcosDasDecisoes } from '../lib/registroDecisoes';
 import { historicoAlertas } from '../lib/seguranca';
-import type { ModeloRelatorio } from '../lib/relatorioPdf';
+import { chaveSlot, montarSecoesFotos } from '../lib/fotos';
+import type { ImagemPdf, ModeloRelatorio } from '../lib/relatorioPdf';
 import { calcularMetas, corpoParaMetas, idade, macrosDaRefeicao, textoBaseMetas } from '../lib/dieta';
 import { cm, corVariacao, kg, mg, num, pct, pp, sinal } from '../lib/formato';
 import { MDC, ultimaNormal, type ChaveMdc, type Composicao } from '../lib/gordura';
@@ -93,6 +95,16 @@ export function Analise() {
   const [pdf, setPdf] = useState<File | null>(null);
   const [msgPdf, setMsgPdf] = useState<{ tipo: string; texto: string } | null>(null);
   const [gerando, setGerando] = useState(false);
+  // Fotos no PDF: desmarcado por padrão e sem lembrar a escolha (o PDF pode ser compartilhado)
+  const [incluirFotos, setIncluirFotos] = useState(false);
+  const { fotos } = useFotos();
+  const semFotos = fotos.length === 0;
+  // Com a opção marcada, as fotos já são reduzidas antes do toque: o PDF sai na hora
+  const fotosPdf = useRef<Promise<Map<string, ImagemPdf>> | null>(null);
+  useEffect(() => {
+    fotosPdf.current = incluirFotos && fotos.length ? prepararFotosPdf(fotos) : null;
+    fotosPdf.current?.catch(() => undefined);
+  }, [incluirFotos, fotos]);
   const qualidade = useQualidade();
   const metaAguaDe = useMetaAgua();
   if (!resumo) return null;
@@ -149,7 +161,7 @@ export function Analise() {
       ? conselhoConferencia(tendMedidas, ultimaComp.peso_kg, seguido, deficitPlano, dieta.config.ajuste_kcal)
       : null;
 
-  function montarModelo(): ModeloRelatorio {
+  function montarModelo(imagens: Map<string, ImagemPdf> | null): ModeloRelatorio {
     const dia = (d: string) => diferencaDias('1970-01-01', d);
     const rotulo = (n: number) => {
       const d = new Date(n * 86400000);
@@ -353,6 +365,16 @@ export function Analise() {
         marcos: decisoesPorDia(registroDecisoes).map((d) => dia(d.data)),
       },
       tabelas,
+      fotos: imagens
+        ? {
+            secoes: montarSecoesFotos(fotos, composicoes, perfil?.sexo === 'Feminino').map((sec) => ({
+              ...sec,
+              imgAntes: imagens.get(chaveSlot({ sessao: 'antes', pose: sec.pose })) ?? null,
+              imgDepois: imagens.get(chaveSlot({ sessao: 'depois', pose: sec.pose })) ?? null,
+            })),
+            nota: `Números da medição mais próxima da data de cada foto (até 7 dias). Variação: Depois menos Antes. Fotos registradas pelo próprio paciente.`,
+          }
+        : null,
       rodape: 'Este relatório registra e calcula; as decisões de dose são tomadas com acompanhamento médico.',
     };
   }
@@ -386,12 +408,14 @@ export function Analise() {
     try {
       gerador.current ??= import('../lib/relatorioPdf');
       const mod = await gerador.current;
-      const blob = mod.gerarRelatorioPdf(montarModelo());
+      const imagens = incluirFotos && !semFotos ? await (fotosPdf.current ??= prepararFotosPdf(fotos)) : null;
+      const blob = mod.gerarRelatorioPdf(montarModelo(imagens));
       const arquivo = new File([blob], `relatorio-ciclo-${hoje}.pdf`, { type: 'application/pdf' });
       setPdf(arquivo);
       await compartilhar(arquivo);
     } catch (e) {
       gerador.current = null;
+      fotosPdf.current = null;
       setMsgPdf({ tipo: 'erro', texto: `Não deu para gerar o PDF: ${(e as Error).message}` });
     } finally {
       setGerando(false);
@@ -407,6 +431,31 @@ export function Analise() {
             {gerando ? 'Gerando…' : 'Gerar PDF'}
           </button>
         </div>
+        <label className={`marcar ${semFotos ? 'desligado' : ''}`} style={{ marginTop: 10 }}>
+          <input
+            type="checkbox"
+            checked={incluirFotos && !semFotos}
+            disabled={semFotos}
+            onChange={(e) => {
+              setIncluirFotos(e.target.checked);
+              // O PDF já gerado era da outra escolha: gera de novo
+              setPdf(null);
+              setMsgPdf(null);
+            }}
+          />
+          <span>
+            Incluir fotos de antes e depois
+            <small className="texto-2" style={{ display: 'block' }}>
+              {semFotos ? (
+                <>
+                  Adicione as fotos em <Link to="/medidas">Medidas</Link>.
+                </>
+              ) : (
+                'Uma página com as fotos e os números de cada uma. Desmarque para compartilhar sem as fotos.'
+              )}
+            </small>
+          </span>
+        </label>
         {pdf && (
           <button className="botao bloco-largo" style={{ marginTop: 10 }} onClick={() => void compartilhar(pdf)}>
             Compartilhar PDF (salvar, imprimir, enviar)

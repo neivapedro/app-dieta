@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import { autoTable, type RowInput } from 'jspdf-autotable';
+import type { LadoFotoPdf, SecaoFotoPdf } from './fotos';
 
 // Relatório da Análise em PDF de verdade, gerado no próprio aparelho.
 // No iPhone com o app instalado, window.print() não funciona; o PDF vai para o
@@ -36,6 +37,19 @@ export interface QuadroRelatorio {
   nota?: string;
 }
 
+/** JPEG já reduzido para o PDF */
+export interface ImagemPdf {
+  dados: Uint8Array;
+  largura: number;
+  altura: number;
+}
+
+/** Página "Antes e depois": por pose, Antes × Depois com a data e os números de cada foto. */
+export interface FotosRelatorio {
+  secoes: (SecaoFotoPdf & { imgAntes: ImagemPdf | null; imgDepois: ImagemPdf | null })[];
+  nota?: string;
+}
+
 export interface ModeloRelatorio {
   titulo: string;
   subtitulo: string;
@@ -48,6 +62,8 @@ export interface ModeloRelatorio {
   ritmo: string;
   grafico: GraficoRelatorio | null;
   tabelas: TabelaRelatorio[];
+  /** Só quando a pessoa marca "Incluir fotos de antes e depois" */
+  fotos?: FotosRelatorio | null;
   rodape: string;
 }
 
@@ -265,6 +281,83 @@ function desenharGrafico(doc: jsPDF, y: number, g: GraficoRelatorio): number {
   return y + altura + 2;
 }
 
+/** Um lado (Antes ou Depois) de uma pose: foto à esquerda, data e números à direita. */
+function desenharLadoFoto(doc: jsPDF, x: number, y: number, largura: number, alturaImg: number, rotulo: string, lado: LadoFotoPdf | null, img: ImagemPdf | null, variacao: string[]) {
+  const larguraImg = (alturaImg * 3) / 4;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(...ESCURO);
+  doc.text(textoPdf(lado ? `${rotulo} · ${lado.data}` : rotulo), x, y + 3);
+  const yImg = y + 5;
+  if (img && img.largura > 0 && img.altura > 0) {
+    // Cabe inteira na caixa 3:4 (foto deitada fica menor, sem cortar)
+    const escala = Math.min(larguraImg / img.largura, alturaImg / img.altura);
+    const w = img.largura * escala;
+    const h = img.altura * escala;
+    doc.addImage(img.dados, 'JPEG', x + (larguraImg - w) / 2, yImg + (alturaImg - h) / 2, w, h, undefined, 'NONE');
+  } else {
+    doc.setDrawColor(225, 225, 228);
+    doc.setFillColor(247, 247, 248);
+    doc.setLineWidth(0.2);
+    doc.rect(x, yImg, larguraImg, alturaImg, 'FD');
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...CINZA);
+    doc.text('Sem foto', x + larguraImg / 2, yImg + alturaImg / 2, { align: 'center' });
+  }
+  // Números ao lado da foto
+  const xt = x + larguraImg + 3;
+  const lt = largura - larguraImg - 3;
+  let yt = yImg + 3;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(...ESCURO);
+  for (const l of lado?.linhas ?? []) {
+    const linhas = doc.splitTextToSize(textoPdf(l), lt);
+    doc.text(linhas, xt, yt);
+    yt += linhas.length * 3.4 + 0.6;
+  }
+  if (variacao.length) {
+    yt += 2;
+    doc.setFont('helvetica', 'bold');
+    doc.text(textoPdf('Variação'), xt, yt);
+    yt += 3.8;
+    doc.setFont('helvetica', 'normal');
+    for (const l of variacao) {
+      const linhas = doc.splitTextToSize(textoPdf(l), lt);
+      doc.text(linhas, xt, yt);
+      yt += linhas.length * 3.4 + 0.6;
+    }
+  }
+}
+
+/** Página "Antes e depois": uma linha por pose, Antes × Depois lado a lado. */
+function desenharFotos(doc: jsPDF, f: FotosRelatorio): number {
+  doc.addPage();
+  let y = titulo(doc, 18, 'Antes e depois');
+  const n = Math.max(f.secoes.length, 1);
+  // 3 poses cabem numa página; a altura da foto se ajusta ao número de poses
+  // (reserva o espaço da nota e do rodapé no fim da página)
+  const bloco = Math.min(92, (297 - 16 - y - 26) / n);
+  const alturaImg = Math.min(80, bloco - 12);
+  const coluna = (LARGURA - 6) / 2;
+  for (const s of f.secoes) {
+    y = garantirEspaco(doc, y + 2, bloco);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
+    doc.setTextColor(...ESCURO);
+    doc.text(textoPdf(s.titulo), MARGEM, y + 3);
+    doc.setDrawColor(225, 225, 228);
+    doc.setLineWidth(0.2);
+    doc.line(MARGEM + 16, y + 2, MARGEM + LARGURA, y + 2);
+    desenharLadoFoto(doc, MARGEM, y + 4, coluna, alturaImg, 'Antes', s.antes, s.imgAntes, []);
+    desenharLadoFoto(doc, MARGEM + coluna + 6, y + 4, coluna, alturaImg, 'Depois', s.depois, s.imgDepois, s.variacao);
+    y += bloco;
+  }
+  if (f.nota) y = nota(doc, y + 1, f.nota);
+  return y;
+}
+
 export function gerarRelatorioPdf(m: ModeloRelatorio): Blob {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   doc.setProperties({ title: textoPdf(m.titulo) });
@@ -314,6 +407,8 @@ export function gerarRelatorioPdf(m: ModeloRelatorio): Blob {
   }
 
   for (const t of m.tabelas) y = tabela(doc, y, t);
+
+  if (m.fotos?.secoes.length) y = desenharFotos(doc, m.fotos);
 
   y = nota(doc, y + 6, m.rodape);
 

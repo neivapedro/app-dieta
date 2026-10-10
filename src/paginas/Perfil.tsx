@@ -2,11 +2,14 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { BotaoExcluir, Campo, CampoNumero, Escolhas, Icone } from '../componentes/ui';
 import { CALENDARIO_URL } from '../config';
 import { textoAjuste } from '../componentes/composicao';
+import { useFotos } from '../componentes/fotos';
+import { fotoParaBackup, importarFotos } from '../dados/fotos';
 import { useDados } from '../dados/contexto';
 import { CicloSalvoEmParte, SalvoEmParte } from '../dados/repositorio';
 import { lerBackup, montarBackup, planejarImportacao, type Backup, type PlanoImportacao } from '../lib/backup';
 import { diferencaDias, formatarData, hojeLocal } from '../lib/datas';
 import { num, paraNumero, paraTexto, pp } from '../lib/formato';
+import { textoTamanho } from '../lib/fotos';
 import { AJUSTE_PADRAO, percentualGorduraBruto } from '../lib/gordura';
 import {
   ativarNotificacoes,
@@ -197,6 +200,10 @@ export function Perfil() {
   const arquivo = useRef<HTMLInputElement>(null);
   const [importacao, setImportacao] = useState<{ backup: Backup; plano: PlanoImportacao } | null>(null);
   const [msgBackup, setMsgBackup] = useState<{ tipo: string; texto: string } | null>(null);
+  // Fotos de antes e depois: só existem neste aparelho, então vão no backup (opção marcada por padrão)
+  const { fotos } = useFotos();
+  const [comFotos, setComFotos] = useState(true);
+  const tamanhoFotos = fotos.reduce((t, f) => t + Math.ceil(f.dados.byteLength / 3) * 4, 0);
 
   useEffect(() => {
     estadoNotificacao().then(setEstado).catch(() => setEstado('sem-suporte'));
@@ -247,7 +254,21 @@ export function Perfil() {
   }
 
   async function exportar() {
-    const backup = montarBackup({ perfil, ciclo, aplicacoes, diario, medidas, dieta, treinos, forca, registro_decisoes: registroDecisoes }, new Date().toISOString());
+    const backup = montarBackup(
+      {
+        perfil,
+        ciclo,
+        aplicacoes,
+        diario,
+        medidas,
+        dieta,
+        treinos,
+        forca,
+        registro_decisoes: registroDecisoes,
+        ...(comFotos && fotos.length ? { fotos: fotos.map(fotoParaBackup) } : {}),
+      },
+      new Date().toISOString(),
+    );
     const nomeArquivo = `ciclo-backup-${hojeLocal()}.json`;
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
     // No iPhone, o menu Compartilhar permite "Salvar em Arquivos"
@@ -272,7 +293,7 @@ export function Perfil() {
   async function prepararImportacao(f: File) {
     try {
       const b = lerBackup(await f.text());
-      setImportacao({ backup: b, plano: planejarImportacao(b, { aplicacoes, medidas, diario, treinos, forca, registro_decisoes: registroDecisoes }) });
+      setImportacao({ backup: b, plano: planejarImportacao(b, { aplicacoes, medidas, diario, treinos, forca, registro_decisoes: registroDecisoes, fotos }) });
       setMsgBackup(null);
     } catch (e) {
       setMsgBackup({ tipo: 'erro', texto: (e as Error).message });
@@ -344,6 +365,15 @@ export function Perfil() {
         } else for (const d of plano.registro_decisoes) await tolerar(r.salvarRegistroDecisao({ ...d, id: crypto.randomUUID() }));
         for (const aviso of avisos) emParte = emParte ? `${emParte} ${aviso}` : aviso;
       });
+      // Fotos: direto no IndexedDB deste aparelho (não passam pela nuvem)
+      if (plano.fotos.length && usuario) {
+        try {
+          await importarFotos(usuario.id, plano.fotos);
+        } catch (e) {
+          const aviso = `as fotos não foram restauradas (${(e as Error).message})`;
+          emParte = emParte ? `${emParte} Além disso, ${aviso}.` : `${aviso}.`;
+        }
+      }
       setImportacao(null);
       setMsgBackup(emParte ? { tipo: 'erro', texto: `Backup importado, com uma ressalva: ${emParte}` } : { tipo: 'info', texto: 'Backup importado.' });
     } catch (e) {
@@ -451,6 +481,17 @@ export function Perfil() {
           Exporta todos os seus dados (perfil e metas, ciclo, aplicações, diário, medidas, treinos, força, dieta e registro de decisões) em um arquivo. Ao importar, nada é
           duplicado: aplicações e medidas de datas que já existem são puladas, e diário e treino substituem o mesmo dia.
         </p>
+        {fotos.length > 0 && (
+          <label className="marcar">
+            <input type="checkbox" checked={comFotos} onChange={(e) => setComFotos(e.target.checked)} />
+            <span>
+              Incluir fotos no backup ({fotos.length} {fotos.length === 1 ? 'foto' : 'fotos'}, ~{textoTamanho(tamanhoFotos)})
+              <small className="texto-2" style={{ display: 'block' }}>
+                As fotos de antes e depois ficam só neste aparelho: o backup é a cópia delas para trocar de celular.
+              </small>
+            </span>
+          </label>
+        )}
         <div className="linha">
           <button className="botao" onClick={() => void exportar()}>Exportar</button>
           <button className="botao" onClick={() => arquivo.current?.click()}>Importar</button>
@@ -470,6 +511,7 @@ export function Perfil() {
               {importacao.plano.diario.length} dia(s) do diário, {importacao.plano.treinos.length} dia(s) de treino
               {importacao.plano.registro_decisoes.length > 0 ? `, ${importacao.plano.registro_decisoes.length} decisão(ões) registrada(s)` : ''}
               {importacao.plano.forca.length ? `, ${importacao.plano.forca.length} série(s) de força` : ''}
+              {importacao.plano.fotos.length ? `, ${importacao.plano.fotos.length} foto(s) de antes e depois (ficam só neste aparelho)` : ''}
               {importacao.backup.dieta ? ' e o plano da dieta (substitui o atual)' : ''}.
               {(importacao.backup.perfil || importacao.backup.ciclo) && (
                 <>
@@ -484,6 +526,7 @@ export function Perfil() {
               )}
               {importacao.plano.ignoradas.aplicacoes + importacao.plano.ignoradas.medidas > 0 &&
                 ` ${importacao.plano.ignoradas.aplicacoes + importacao.plano.ignoradas.medidas} registro(s) já existentes serão pulados.`}
+              {importacao.plano.ignoradas.fotos > 0 && ` ${importacao.plano.ignoradas.fotos} foto(s) já existem neste aparelho e ficam como estão.`}
             </div>
             <div className="linha">
               <button className="botao primario pequeno" onClick={() => void importar()}>Importar agora</button>
