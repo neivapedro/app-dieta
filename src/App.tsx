@@ -1,5 +1,5 @@
-import { BrowserRouter, HashRouter, Link, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { BrowserRouter, HashRouter, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { NovaSenha } from './paginas/Entrar';
 import { Protecao } from './componentes/Protecao';
 import { Icone } from './componentes/ui';
@@ -14,6 +14,9 @@ import { Medidas } from './paginas/Medidas';
 import { Perfil } from './paginas/Perfil';
 import { Treino } from './paginas/Treino';
 
+// Texto longo e só de leitura: baixa à parte (o service worker guarda junto com o resto)
+const Retatrutida = lazy(() => import('./paginas/Retatrutida'));
+
 const ABAS = [
   { para: '/', rotulo: 'Início', icone: 'inicio', titulo: 'Início' },
   { para: '/ciclo', rotulo: 'Ciclo', icone: 'ciclo', titulo: 'Ciclo' },
@@ -23,6 +26,9 @@ const ABAS = [
 ];
 
 const ABA_TREINO = { para: '/treino', rotulo: 'Treino', icone: 'treino', titulo: 'Treino' };
+
+// Telas abertas pelos botões do cabeçalho (fora da barra de abas)
+const TITULOS_EXTRAS: Record<string, string> = { '/perfil': 'Perfil', '/retatrutida': 'Retatrutida' };
 
 function AvisoNovaVersao() {
   // O aviso pode chegar antes desta parte da tela existir (ainda carregando)
@@ -91,7 +97,7 @@ function Estrutura() {
     window.scrollTo(0, 0);
   }, [pathname]);
   const abas = perfil?.modulo_treino ? [...ABAS.slice(0, 4), ABA_TREINO, ABAS[4]] : ABAS;
-  const titulo = pathname === '/perfil' ? 'Perfil' : abas.find((a) => a.para === pathname)?.titulo ?? '';
+  const titulo = TITULOS_EXTRAS[pathname] ?? abas.find((a) => a.para === pathname)?.titulo ?? '';
   const primeiroNome = perfil?.nome.split(' ')[0];
 
   return (
@@ -107,9 +113,14 @@ function Estrutura() {
               {pathname === '/' && <div className="sub">Olá{primeiroNome ? `, ${primeiroNome}` : ''} · {ciclo?.nome}</div>}
             </div>
           </div>
-          <Link to="/perfil" className="icone-botao" aria-label="Perfil">
-            <Icone nome="perfil" />
-          </Link>
+          <div className="topo-acoes">
+            <NavLink to="/retatrutida" className={({ isActive }) => `icone-botao${isActive ? ' ativo' : ''}`} aria-label="Sobre a retatrutida">
+              <Icone nome="livro" />
+            </NavLink>
+            <NavLink to="/perfil" className={({ isActive }) => `icone-botao${isActive ? ' ativo' : ''}`} aria-label="Perfil">
+              <Icone nome="perfil" />
+            </NavLink>
+          </div>
         </header>
         <Avisos />
         <main>
@@ -122,6 +133,14 @@ function Estrutura() {
             <Route path="/dieta" element={<Dieta />} />
             <Route path="/analise" element={<Analise />} />
             <Route path="/perfil" element={<Perfil />} />
+            <Route
+              path="/retatrutida"
+              element={
+                <Suspense fallback={<p className="mudo">Carregando…</p>}>
+                  <Retatrutida />
+                </Suspense>
+              }
+            />
             {perfil?.modulo_treino && <Route path="/treino" element={<Treino />} />}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

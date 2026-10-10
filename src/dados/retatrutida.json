@@ -1,0 +1,1520 @@
+{
+ "atualizado_em": "2026-10-10",
+ "aviso": "Conteúdo educativo. A retatrutida é um medicamento experimental: até 10/10/2026, segundo as fontes consultadas, não tem aprovação em nenhum país (nem FDA, nem EMA, nem ANVISA). Segundo notícias, a Lilly planeja pedir registro à FDA no 1º trimestre de 2027 (dado preliminar, não conferido na fonte). Os resultados de fase 3 divulgados até agora vêm, em grande parte, de comunicados da empresa, sem revisão por pares. Este texto não traz doses nem esquema de aumento de dose e não substitui orientação médica. Dose e qualquer ajuste de dose são decididos com o seu médico, conforme o plano já registrado no app. Itens marcados como “dado preliminar” não puderam ser conferidos na fonte original.",
+ "secoes": [
+  {
+   "id": "em-uma-frase",
+   "titulo": "Em uma frase",
+   "resumo": "Uma molécula semanal que imita três hormônios: dois fazem comer menos e um faz o fígado queimar gordura.",
+   "blocos": [
+    {
+     "tipo": "destaque",
+     "texto": "A retatrutida é uma única molécula, aplicada uma vez por semana, que imita ao mesmo tempo três hormônios do corpo: o GLP-1 e o GIP, que reduzem a fome e ajudam a controlar a glicose, e o glucagon, que faz o fígado queimar gordura. [1]"
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Para comparar: a semaglutida (Ozempic/Wegovy) imita só o GLP-1. A tirzepatida (Mounjaro/Zepbound) imita GLP-1 e GIP. A retatrutida acrescenta o glucagon, e por isso ganhou o apelido de “triplo agonista”."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "O que já se viu em pessoas: perda média de cerca de 24% do peso em 48 semanas na maior dose do estudo de fase 2 [2], e queda de mais de 80% da gordura do fígado em 24 semanas nas doses mais altas [3]."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "No primeiro resultado de fase 3, divulgado pela empresa, a perda chegou a cerca de 28,7% em 68 semanas. É dado de comunicado, ainda sem revisão por outros cientistas [4]."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "O que ainda falta: comparação direta com a tirzepatida, dados de proteção do coração, segurança acima de cerca de 2 anos e aprovação de alguma agência reguladora. “Mais potente” ainda não quer dizer “melhor” para cada pessoa."
+    }
+   ]
+  },
+  {
+   "id": "passo-a-passo",
+   "titulo": "Passo a passo: da aplicação ao efeito",
+   "resumo": "O caminho da molécula: pele, sangue, albumina, cérebro, estômago, pâncreas, fígado, gordura, coração e saída.",
+   "blocos": [
+    {
+     "tipo": "paragrafo",
+     "texto": "Antes, três palavras que vão aparecer muito. Peptídeo é uma corrente curta de aminoácidos, as mesmas “contas” que formam as proteínas, só que dezenas e não centenas."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Receptor é uma proteína na superfície da célula que funciona como uma fechadura. Agonista é a chave que encaixa nessa fechadura e a faz “girar”, imitando o hormônio natural."
+    },
+    {
+     "tipo": "destaque",
+     "texto": "Resumo da viagem: aplicação → absorção lenta (pico provável em 1 a 3 dias) → carona na albumina (meia-vida de cerca de 6 dias) → nível estável em cerca de 4 semanas na mesma dose → ação em cérebro, estômago, pâncreas, fígado, gordura e coração → quebra em pedaços e eliminação."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "1. A aplicação. A injeção é subcutânea: vai na camada de gordura logo abaixo da pele, não no músculo nem na veia. Ali se forma um pequeno depósito, e a molécula passa aos poucos para a circulação. Por isso ela não age “na hora”."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "2. A absorção e o pico. O nível no sangue sobe ao longo de horas e chega ao máximo depois de alguns dias. Na semaglutida, o pico vem em 1 a 3 dias; na tirzepatida, entre 8 e 72 horas [5, 6]."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Para a retatrutida, a faixa de 1 a 3 dias é provável, mas o número exato ainda não foi conferido nos estudos (dado preliminar)."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "3. A carona na albumina. Presa à molécula vai uma “cauda” de ácido graxo de 20 carbonos. Ela gruda, de forma reversível, na albumina, a proteína mais abundante do sangue [1]."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Sozinha, a retatrutida (cerca de 4,7 kDa) seria filtrada pelo rim e cortada por enzimas em pouco tempo. Presa à albumina (cerca de 66 kDa), ela escapa do filtro e fica protegida. A albumina vai soltando pequenas quantidades de droga livre, que é a parte que age."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Esse “reservatório circulante” explica a meia-vida de cerca de 6 dias [7]. Meia-vida é o tempo para a quantidade no sangue cair pela metade. Com 6 dias, uma aplicação por semana basta."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "4. O nível estável. Como parte da dose anterior ainda circula quando entra a seguinte, o nível vai “empilhando” até se estabilizar. Pela regra de 4 a 5 meias-vidas, isso leva cerca de 4 semanas na mesma dose."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "É um cálculo, não um dado medido para a retatrutida. Semaglutida e tirzepatida seguem o mesmo padrão nas bulas [5, 6]."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "5. No cérebro. A parte GLP-1 age no hipotálamo e no tronco encefálico, centros da fome e da saciedade [8]. Em roedores, a semaglutida chega a essas áreas por “janelas” naturais, como a área postrema, que também comanda a náusea [9]. Resultado: menos fome e menos “ruído mental” sobre comida."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "A parte GIP também age no cérebro. Em animais, ela ajuda a reduzir a ingestão [10] e diminui a náusea e o vômito provocados pelo GLP-1 [11]. Em humanos isso ainda é hipótese."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "6. No estômago. O GLP-1 retarda o esvaziamento: a comida fica mais tempo ali e a pessoa se sente cheia por mais tempo [8]. Esse efeito perde força com o uso contínuo, o que se chama taquifilaxia [12]."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "7. No pâncreas. GLP-1 e GIP fazem o pâncreas liberar mais insulina, mas só quando a glicose está alta. O GLP-1 também freia o glucagon produzido pelo próprio corpo [8]. Por isso, sozinhos, raramente causam hipoglicemia."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "8. No fígado. Aqui entra a peça nova, o glucagon. Ele manda o fígado queimar gordura (beta-oxidação), fabricar corpos cetônicos, parar de fabricar gordura nova e liberar FGF21, um hormônio que estimula a queima de gordura [13, 14]."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "O glucagon também acelera a quebra de aminoácidos no fígado, que viram ureia e glicose [15]."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Sozinho, o glucagon subiria a glicose. As partes GLP-1 e GIP da mesma molécula compensam, aumentando a insulina [16]. A retatrutida foi desenhada com o glucagon “mais fraco” que o natural justamente para manter esse equilíbrio [1]."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "9. Na gordura do corpo. O adipócito (célula de gordura) tem receptor de GIP; o de GLP-1 é baixo ou ausente. O GIP parece ajudar o adipócito a guardar e liberar gordura de forma mais organizada, tirando-a do fígado e do músculo. Se isso é bom ou ruim ainda se discute [17]."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "10. No coração. O GLP-1, e possivelmente o glucagon, acelera um pouco o coração. No estudo de fase 2, a frequência cardíaca subiu conforme a dose, teve pico por volta da semana 24 e depois caiu [2]."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "11. A saída. Não há estudo publicado mostrando como a retatrutida é eliminada. Por semelhança com a tirzepatida, espera-se que enzimas a quebrem em aminoácidos e fragmentos, que a cauda de gordura seja “queimada” e que os restos saiam pela urina e pelas fezes [6]. É inferência, não dado medido."
+    },
+    {
+     "tipo": "destaque",
+     "texto": "O que se costuma sentir na semana: como o pico vem 1 a 3 dias após a aplicação, náusea, estômago estufado e falta de apetite tendem a ser mais fortes nesses dias e a diminuir até a aplicação seguinte. Isso é extrapolação da classe, não medição dia a dia com a retatrutida."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Com as semanas, o corpo se adapta: o atraso do estômago perde força e os centros de náusea se acostumam [12]. No estudo de fase 2, os efeitos no estômago e no intestino se concentraram na fase de subida da dose e foram menores quando o tratamento começou com dose mais baixa [2]."
+    }
+   ]
+  },
+  {
+   "id": "queima-gordura",
+   "titulo": "Ela queima mais gordura?",
+   "resumo": "No fígado, sim, com boa evidência em humanos. No corpo todo, é plausível, mas ainda não foi medido em pessoas.",
+   "blocos": [
+    {
+     "tipo": "destaque",
+     "texto": "Resposta curta: no FÍGADO, sim, há forte evidência em humanos. No CORPO TODO, a ideia de que ela aumenta o gasto de calorias é plausível, mas ainda não foi medida diretamente em pessoas usando retatrutida. Em camundongos, foi."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Um esclarecimento: todo remédio que faz comer menos faz “queimar gordura”, porque com déficit de calorias o corpo usa a reserva. A pergunta real é se a retatrutida queima MAIS do que a redução de comida explicaria."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "O que está provado em humanos:"
+    },
+    {
+     "tipo": "lista",
+     "itens": [
+      "Perda de peso muito grande: cerca de 24% em 48 semanas na maior dose da fase 2, com a curva ainda descendo no fim do estudo [2].",
+      "Gordura do fígado: queda de cerca de 81% a 82% em 24 semanas nas duas maiores doses, contra +0,3% no placebo. Cerca de 8 em cada 10 voltaram a ter fígado normal, com menos de 5% de gordura [3].",
+      "Glucagon infundido na veia aumentou o gasto de energia em repouso em cerca de 15%, sem ativar a “gordura marrom”. Foi um estudo com 11 homens, por algumas horas, e não com retatrutida [18].",
+      "Glucagon e GLP-1 juntos também aumentaram o gasto em repouso e reduziram a ingestão, e o GLP-1 segurou a alta de glicose provocada pelo glucagon [16]."
+     ]
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "O que é hipótese ou só foi visto em animais:"
+    },
+    {
+     "tipo": "lista",
+     "itens": [
+      "Em camundongos obesos, a retatrutida emagreceu mais do que a redução de comida explicaria, e o extra foi atribuído ao gasto de energia via glucagon [1].",
+      "Não encontramos estudo publicado de calorimetria (medida do gasto de calorias) com retatrutida em humanos.",
+      "Quanto da perda vem de “comer menos” e quanto vem de “gastar mais” ainda não foi separado em pessoas.",
+      "Números que circulam em fóruns, como “+200 a 400 kcal por dia”, não têm base em estudo com humanos."
+     ]
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Nas outras duas, o gasto de energia NÃO sobe. Com a tirzepatida, um estudo em câmara metabólica mostrou que ela não aumenta o gasto nem impede a queda do metabolismo que acompanha o emagrecimento. Ela só faz o corpo usar proporcionalmente mais gordura como combustível [19]."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Com a semaglutida, a perda vem da redução de 24% a 35% na ingestão de calorias em refeições à vontade [20, 21]."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Um alerta de cautela: com outras moléculas que juntam GLP-1 e glucagon testadas em pessoas, como a cotadutida, o aumento do gasto foi pequeno ou não significativo. O que mais pesou foi o apetite [22]."
+    },
+    {
+     "tipo": "destaque",
+     "texto": "Conclusão honesta: a retatrutida junta o “comer menos” (GLP-1 + GIP) com um “queimar mais” que é claro no fígado. O “gasto calórico extra” no corpo inteiro, em humanos, ainda é inferência da fisiologia, não medida direta."
+    }
+   ]
+  },
+  {
+   "id": "por-que-chama-atencao",
+   "titulo": "Por que ela chama atenção e o que ainda não se sabe",
+   "resumo": "É a mais potente vista até agora em estudos separados, mas ainda sem confronto direto, sem dados de coração e sem aprovação.",
+   "blocos": [
+    {
+     "tipo": "paragrafo",
+     "texto": "Por que é considerada “a mais forte”: olhando cada estudo separadamente, a semaglutida levou a cerca de 15% de perda em 68 semanas [23], a tirzepatida a cerca de 21% em 72 semanas [24] e a retatrutida a cerca de 24% em apenas 48 semanas, ainda descendo [2]."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "No primeiro resultado de fase 3, a retatrutida chegou a cerca de 28,7% em 68 semanas (comunicado da empresa) [4]."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Além do peso, há a gordura do fígado, que caiu mais de 80% [3]. E a glicose: no diabetes tipo 2, a HbA1c caiu cerca de 2 pontos, mais que com a dulaglutida, um bom remédio da mesma família [25]."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "A explicação provável é a soma de três ações. GLP-1 e GIP cortam o apetite, com o GIP talvez deixando o tratamento mais tolerável, e o glucagon acrescenta a queima de gordura no fígado [1]."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "O que ainda NÃO se sabe:"
+    },
+    {
+     "tipo": "lista",
+     "itens": [
+      "Comparação direta: nenhum estudo publicado comparou a retatrutida lado a lado com tirzepatida ou semaglutida. O confronto com a tirzepatida (TRIUMPH-5) está em andamento [26].",
+      "Coração: a semaglutida já provou reduzir em 20% infarto, AVC e morte cardiovascular [27]. A retatrutida não tem estudo de desfecho cardiovascular concluído e aumenta a frequência cardíaca [2].",
+      "Segurança de longo prazo: os dados mais longos têm cerca de 1,5 a 2 anos.",
+      "Massa magra: ainda não há dado robusto de quanto músculo se perde com ela.",
+      "Pele: apareceu um sinal novo, a disestesia (formigamento ou sensibilidade alterada), em cerca de 1 a cada 5 pessoas na maior dose do TRIUMPH-4 [4].",
+      "Tolerância: mais gente abandonou o tratamento nas doses altas, em parte por perder peso “demais” [4].",
+      "Aprovação: segundo as fontes consultadas, nenhuma agência a aprovou até out/2026."
+     ]
+    },
+    {
+     "tipo": "destaque",
+     "texto": "Resumo: hoje ela parece a mais potente das três para perder peso e gordura do fígado. Mas as outras duas têm anos de uso, provas de proteção de coração e rim (no caso da semaglutida) e são aprovadas. Mais potente não é automaticamente melhor."
+    }
+   ]
+  },
+  {
+   "id": "o-que-e",
+   "titulo": "O que é: química e estrutura",
+   "resumo": "Um peptídeo de 39 aminoácidos com “blindagens” químicas e uma cauda de gordura que o prende à albumina.",
+   "blocos": [
+    {
+     "tipo": "paragrafo",
+     "texto": "A retatrutida tem o código LY3437943 e foi criada pela Eli Lilly. Foi descrita em 2022 num artigo que vai da descoberta até os primeiros testes em pessoas [1]."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "É um peptídeo de 39 aminoácidos. Os hormônios naturais (GLP-1, GIP e glucagon) também são peptídeos, mas duram só minutos no sangue."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Duas coisas os destroem. A DPP-4 é uma enzima do sangue que corta os dois primeiros aminoácidos desses hormônios. E o rim os filtra rapidamente, porque são pequenos."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Para durar uma semana, as três moléculas (semaglutida, tirzepatida e retatrutida) usam os mesmos dois truques químicos:"
+    },
+    {
+     "tipo": "lista",
+     "itens": [
+      "Blindagem contra a DPP-4: o 2º aminoácido é trocado por Aib (ácido alfa-aminoisobutírico), que não existe nas proteínas humanas. Ele tem um grupo químico a mais que impede a enzima de reconhecer o ponto de corte [1, 28].",
+      "Cauda de gordura: numa lisina da cadeia pendura-se um ácido graxo (um “rabo” de 18 ou 20 carbonos com ácido nas duas pontas), ligado por um espaçador flexível. Essa cauda gruda na albumina, que protege o peptídeo e o solta aos poucos [28, 29]."
+     ]
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Como foi desenhada: a Lilly partiu de uma base de GIP, a mesma estratégia da tirzepatida, e fez trocas pontuais para que a molécula também abrisse as fechaduras do GLP-1 e do glucagon [1]."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Além do Aib na posição 2, ela leva alfa-metil-leucina, outro aminoácido não natural, que ajuda a calibrar a atividade nos receptores. A cauda é um diácido de 20 carbonos (C20), como na tirzepatida [1]."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Fórmula: C221H342N46O68, cerca de 4,73 kDa [30]. Meia-vida de cerca de 6 dias, medida nos estudos de fase 1 [1, 7]. Uso nos estudos: injeção subcutânea uma vez por semana."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Detalhes finos (dado preliminar): fontes secundárias colocam a cauda na lisina da posição 17 e um segundo Aib na posição 20. Elas divergem sobre o espaçador: uma ou duas unidades OEG (também chamadas AEEA). Pela nossa conta, a fórmula publicada (C221H342N46O68) só fecha com uma unidade."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Lendo a sequência publicada, ela parece uma “colcha de retalhos”: começo parecido com o GIP, um trecho do meio parecido com o glucagon e uma cauda final igual à da exendina-4, peptídeo do lagarto monstro-de-gila que também aparece na tirzepatida [29]. Essa leitura é nossa, não uma afirmação das fontes."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "O equilíbrio das três fechaduras. Em células de laboratório com receptores humanos, comparada a cada hormônio natural, a retatrutida foi cerca de 8,9 vezes mais potente no receptor de GIP, cerca de 0,4 vez no de GLP-1 e cerca de 0,3 vez no de glucagon [1]."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Ou seja, ela “puxa” mais para o GIP, e o glucagon fica de propósito abaixo do natural. Forte demais, ele subiria a glicose e aceleraria o coração."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Atenção: isso é potência relativa em tubo de ensaio. Não mede quanto cada receptor contribui para o efeito no corpo, e os números mudam conforme o tipo de ensaio [31]."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Uma molécula, três fechaduras. Em 2024, imagens de crio-microscopia mostraram a retatrutida encaixada nos três receptores. Ela forma uma hélice: a ponta inicial entra no miolo do receptor e o “liga”, e o resto se apoia na parte externa, que funciona como um pegador [32]. Os detalhes numéricos dessas imagens não foram conferidos."
+    },
+    {
+     "tipo": "tabela",
+     "cabecalho": [
+      "",
+      "Semaglutida",
+      "Tirzepatida",
+      "Retatrutida"
+     ],
+     "linhas": [
+      [
+       "Receptores",
+       "GLP-1",
+       "GIP + GLP-1",
+       "GIP + GLP-1 + glucagon"
+      ],
+      [
+       "Base",
+       "GLP-1 humano (cerca de 94% idêntica)",
+       "GIP humano, com cauda final tipo exendina-4",
+       "GIP, com trocas para ativar também GLP-1 e glucagon"
+      ],
+      [
+       "Nº de aminoácidos",
+       "31",
+       "39",
+       "39"
+      ],
+      [
+       "Contra a DPP-4",
+       "Aib na “posição 8” (*)",
+       "Aib na posição 2",
+       "Aib na posição 2"
+      ],
+      [
+       "Outras trocas",
+       "Arg34 (deixa só uma lisina livre para a cauda)",
+       "Aib na posição 13",
+       "Alfa-metil-leucina; outro Aib (posição 20, dado preliminar)"
+      ],
+      [
+       "Cauda de gordura",
+       "Diácido C18 na Lys26",
+       "Diácido C20 na Lys20",
+       "Diácido C20 numa lisina (Lys17, dado preliminar)"
+      ],
+      [
+       "Espaçador",
+       "γ-Glu + 2 OEG",
+       "γ-Glu + 2 OEG",
+       "γ-Glu + 1 OEG (bate com a fórmula; fontes secundárias divergem)"
+      ],
+      [
+       "Fórmula",
+       "C187H291N45O59",
+       "C225H348N48O68",
+       "C221H342N46O68"
+      ],
+      [
+       "Massa",
+       "cerca de 4,11 kDa",
+       "cerca de 4,81 kDa",
+       "cerca de 4,73 kDa"
+      ],
+      [
+       "Meia-vida",
+       "cerca de 1 semana",
+       "cerca de 5 dias",
+       "cerca de 6 dias"
+      ]
+     ]
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Fontes da tabela: semaglutida [5, 28]; tirzepatida [6, 29]; retatrutida [1, 30]."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "(*) A semaglutida herda a numeração do GLP-1(7-37), que começa no 7. Por isso o “Aib8” é, na prática, o 2º aminoácido da cadeia de 31. Curiosidade: ela se liga ao receptor cerca de 3 vezes mais fraco que a liraglutida, mas compensa grudando mais na albumina [28]."
+    }
+   ]
+  },
+  {
+   "id": "tres-receptores",
+   "titulo": "Os três receptores e o que cada um faz",
+   "resumo": "GLP-1 freia a fome, GIP reforça e suaviza, glucagon liga a queima de gordura no fígado.",
+   "blocos": [
+    {
+     "tipo": "paragrafo",
+     "texto": "GLP-1 e GIP são incretinas: hormônios que o intestino libera depois de comer e que avisam o pâncreas para soltar insulina. O glucagon vem do próprio pâncreas e é o hormônio do jejum: manda o corpo usar as reservas."
+    },
+    {
+     "tipo": "destaque",
+     "texto": "Analogia: pense num carro. O GLP-1 tira o pé do acelerador da fome. O GIP é o copiloto que reforça a freada e, em animais, deixa a viagem menos enjoativa. O glucagon liga o “modo queima” no fígado. A retatrutida é uma chave mestra que gira as três fechaduras ao mesmo tempo."
+    },
+    {
+     "tipo": "lista",
+     "itens": [
+      "GLP-1. Onde age: cérebro, estômago, pâncreas e coração. O que faz: reduz a fome e aumenta a saciedade, retarda o esvaziamento do estômago, aumenta a insulina só com glicose alta, reduz o glucagon do próprio corpo e acelera um pouco o coração [8]. Está nas três substâncias.",
+      "GIP. Onde age: pâncreas, cérebro e tecido de gordura. O que faz: reforça a insulina; em animais, reduz a ingestão e a náusea; ajuda o adipócito a armazenar gordura de forma mais “organizada” [10, 11, 17]. Está na tirzepatida e na retatrutida.",
+      "Glucagon. Onde age: principalmente no fígado. O que faz: libera glicose, queima gordura no fígado, produz corpos cetônicos, freia a fabricação de gordura nova, aumenta a quebra de aminoácidos e, em humanos, aumenta o gasto de energia em repouso [13, 18]. Só está na retatrutida."
+     ]
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Por que juntar glucagon e GLP-1, se o glucagon sobe a glicose? Porque o GLP-1 corrige isso. Num estudo com voluntários, o glucagon sozinho aumentou o gasto de energia e a glicose. Somado ao GLP-1, o gasto subiu do mesmo jeito, a glicose ficou controlada e a ingestão caiu [16]."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "A ideia nasceu em 2009, com uma molécula GLP-1 + glucagon que eliminou a obesidade em camundongos [33]."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Um detalhe da tirzepatida ajuda a entender a família. Ela também “pesa” mais para o GIP. E, no receptor de GLP-1, ativa de preferência o sinal que estimula a insulina, puxando menos o receptor para dentro da célula. A hipótese é que isso o mantenha ativo por mais tempo [31]."
+    }
+   ]
+  },
+  {
+   "id": "como-age",
+   "titulo": "Como a retatrutida age no corpo",
+   "resumo": "Apetite, estômago, glicose, fígado, gasto de energia e coração, com o nível de prova de cada efeito.",
+   "blocos": [
+    {
+     "tipo": "paragrafo",
+     "texto": "Apetite. É o principal motor da perda de peso nessa família. Com a semaglutida, a ingestão de calorias em refeições à vontade caiu 24% a 35% [20, 21]. A retatrutida reduziu a ingestão em camundongos [1]; em pessoas, o que se mede é a perda de peso."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Estômago. O esvaziamento mais lento dá saciedade, sobretudo no início, e perde força com o tempo [12]. Esse atraso também pode reduzir a absorção de comprimidos: na tirzepatida, a bula pede cuidado com anticoncepcional oral [6]."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Insulina e glicose. HbA1c (hemoglobina glicada) é um exame de sangue que mostra a média da glicose dos últimos cerca de 3 meses. No diabetes tipo 2, a retatrutida baixou a HbA1c em cerca de 2 pontos em 24 semanas, contra 1,4 da dulaglutida e praticamente zero do placebo. Não houve hipoglicemia grave [25]."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Fígado e gordura. É onde a retatrutida mais se destaca. Num subestudo com 98 pessoas com fígado gorduroso, a gordura do fígado caiu de 43% a 82% em 24 semanas, conforme a dose [3]."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Nas doses mais altas, cerca de 8 em cada 10 normalizaram em 24 semanas, e até cerca de 9 em cada 10 em 48 semanas. A queda acompanhou a perda de peso e a melhora da sensibilidade à insulina. É correlação: o estudo não prova quanto vem do glucagon [3]."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Gasto de energia. Em camundongos, aumentou além do “comer menos” [1]. Em humanos, o glucagon aumenta o gasto [18], mas não há medida direta com a retatrutida. Veja a seção “Ela queima mais gordura?”."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Frequência cardíaca. Sobe conforme a dose, com pico perto da semana 24 e queda depois [2]. Fontes secundárias falam em alguns batimentos por minuto a mais na maior dose; o valor exato não foi conferido."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "O GLP-1 sozinho já faz isso: na semaglutida e na tirzepatida, as bulas citam aumento médio de 1 a 4 batimentos por minuto [5, 34]."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Outros efeitos. Na fase 2 houve queda da pressão arterial e dos triglicerídeos, maior nas doses mais altas. Os valores exatos não foram conferidos [2]."
+    },
+    {
+     "tipo": "destaque",
+     "texto": "Ninguém ainda separou, em humanos, quanto de cada efeito vem de cada receptor. O que se mede é o resultado final."
+    }
+   ]
+  },
+  {
+   "id": "comparativo",
+   "titulo": "Semaglutida × tirzepatida × retatrutida",
+   "resumo": "As três lado a lado, lembrando que só tirzepatida e semaglutida foram comparadas diretamente.",
+   "blocos": [
+    {
+     "tipo": "tabela",
+     "cabecalho": [
+      "",
+      "Semaglutida",
+      "Tirzepatida",
+      "Retatrutida"
+     ],
+     "linhas": [
+      [
+       "Receptores",
+       "GLP-1",
+       "GIP + GLP-1",
+       "GIP + GLP-1 + glucagon"
+      ],
+      [
+       "Fabricante",
+       "Novo Nordisk",
+       "Eli Lilly",
+       "Eli Lilly"
+      ],
+      [
+       "Nomes comerciais",
+       "Ozempic e Wegovy (injeção); Rybelsus e Wegovy comprimido (oral)",
+       "Mounjaro e Zepbound",
+       "Nenhum (código LY3437943; experimental)"
+      ],
+      [
+       "Estrutura",
+       "31 aminoácidos, base GLP-1 humano, cauda C18",
+       "39 aminoácidos, base GIP, cauda C20",
+       "39 aminoácidos, base GIP, cauda C20, ativa também o glucagon"
+      ],
+      [
+       "Meia-vida",
+       "cerca de 7 dias",
+       "cerca de 5 dias",
+       "cerca de 6 dias"
+      ],
+      [
+       "Frequência",
+       "1 vez por semana (injeção) ou diária (comprimido)",
+       "1 vez por semana",
+       "1 vez por semana nos estudos"
+      ],
+      [
+       "Status nos EUA",
+       "Aprovada: Ozempic 2017 (diabetes), Wegovy 2021 (obesidade), MASH 2025, comprimido para obesidade dez/2025 [35, 36]",
+       "Aprovada: Mounjaro 2022 (diabetes), Zepbound 2023 (obesidade), apneia do sono 2024",
+       "Não aprovada. Pedido à FDA previsto para o 1º tri/2027 (dado preliminar)"
+      ],
+      [
+       "Status no Brasil",
+       "Aprovada: Ozempic 2018; Wegovy 2023 (lançado em 2024). Patente expirou em mar/2026 e versões nacionais começaram a ser registradas (dado preliminar)",
+       "Aprovada: Mounjaro para diabetes em set/2023; à venda desde mai/2025; obesidade em jun/2025",
+       "Sem registro. Venda irregular; proibição noticiada (dado preliminar) [37]"
+      ],
+      [
+       "Perda de peso no principal estudo",
+       "cerca de 15% em 68 semanas (STEP 1) [23]",
+       "cerca de 21% em 72 semanas, maior dose (SURMOUNT-1) [24]",
+       "cerca de 24% em 48 semanas, maior dose (fase 2) [2]; cerca de 28,7% em 68 semanas (TRIUMPH-4, comunicado) [4]"
+      ],
+      [
+       "Confronto direto",
+       "13,7% no SURMOUNT-5 [38]",
+       "20,2% no SURMOUNT-5 [38]",
+       "Nenhum publicado (TRIUMPH-5 em andamento)"
+      ],
+      [
+       "Glicose (HbA1c)",
+       "queda de cerca de 1,9 ponto (1 mg, SURPASS-2) [39]",
+       "queda de até cerca de 2,3 pontos (SURPASS-2) [39]",
+       "queda de cerca de 2,0 pontos em 24 semanas (fase 2) [25]"
+      ],
+      [
+       "Fígado",
+       "MASH resolvida em 62,9% vs 34,3% no placebo (ESSENCE) [35]",
+       "MASH resolvida em até 62% vs 10% (fase 2) [40]",
+       "Gordura do fígado −82% em 24 semanas nas doses altas; até cerca de 86% normalizaram em 24 semanas [3]"
+      ],
+      [
+       "Frequência cardíaca",
+       "+1 a 4 bpm em média (bula) [5]",
+       "+2 a 4 bpm em média (bula) [34]",
+       "Aumento dependente da dose, pico perto da semana 24; valor exato não conferido [2]"
+      ],
+      [
+       "Coração (eventos)",
+       "−20% de infarto, AVC e morte CV (SELECT) [27]",
+       "Não inferior à dulaglutida (SURPASS-CVOT) [41]; benefício na insuficiência cardíaca de fração preservada (SUMMIT) [42]",
+       "Sem dados; estudo em andamento"
+      ],
+      [
+       "Massa magra (DXA)",
+       "cerca de 39–40% do peso perdido [23]",
+       "cerca de 25% do peso perdido [43]",
+       "Sem dado confirmado (subestudo pequeno, dado preliminar)"
+      ],
+      [
+       "Efeitos colaterais principais",
+       "Estômago e intestino (náusea 44% vs 16% na bula do Wegovy), vesícula, pancreatite rara, NAION muito rara [5, 44]",
+       "Estômago e intestino (náusea 25–33% vs 10%), vesícula, pancreatite rara [24]",
+       "Estômago e intestino (náusea em cerca de 4 a cada 10 na maior dose, dado preliminar), coração mais rápido, disestesia (até cerca de 21%), mais abandonos [4]"
+      ]
+     ]
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Por que comparar estudos diferentes engana: mudam a população (peso inicial, diabetes, artrose), a duração, o jeito de subir a dose, o tamanho da amostra e a forma de calcular a média."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "O único confronto direto publicado em obesidade é o SURMOUNT-5: tirzepatida 20,2% contra semaglutida 13,7% em 72 semanas [38]. No diabetes, o SURPASS-2 também mostrou a tirzepatida à frente da semaglutida [39]. A retatrutida nunca foi comparada lado a lado com nenhuma das duas em resultado publicado."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Estimando é a regra usada para calcular a média. O “de eficácia” considera quem usou o remédio como previsto e dá números maiores. O “de regime de tratamento” inclui todos que começaram, mesmo quem parou, e dá números menores. Comunicados de empresa costumam destacar o primeiro."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Vantagens que ainda são das mais antigas: a semaglutida tem mais tempo de uso, provas de proteção do coração, do rim e do fígado e versão em comprimido [27, 35, 36, 45]. A tirzepatida é hoje a mais eficaz entre as aprovadas para perder peso [38]."
+    }
+   ]
+  },
+  {
+   "id": "estudos",
+   "titulo": "O que os estudos mostraram",
+   "resumo": "Da fase 1 à fase 3, com o tipo de fonte de cada resultado.",
+   "blocos": [
+    {
+     "tipo": "paragrafo",
+     "texto": "Como ler: a fase 1 testa segurança em poucas pessoas; a fase 2 testa doses em centenas; a fase 3, com milhares, é a que as agências usam para aprovar."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "“Artigo revisado” passou pela análise de outros cientistas antes de sair numa revista. “Comunicado” é texto da própria empresa, ainda sem essa checagem."
+    },
+    {
+     "tipo": "lista",
+     "itens": [
+      "Fase 1 (2022), artigo revisado. Dose única em voluntários e doses semanais em pessoas com diabetes tipo 2 por 12 semanas. Meia-vida de cerca de 6 dias, perda de peso que aumentou com a dose e segurança considerada aceitável. Uma única dose já reduziu o peso por semanas [1, 7].",
+      "Fase 2 em obesidade (NEJM, 2023), artigo revisado. 338 adultos sem diabetes, 48 semanas. Perda média de 17,5% em 24 semanas e 24,2% em 48 semanas na maior dose, contra 2,1% no placebo, com a curva ainda descendo. Na maior dose, todos perderam pelo menos 5% do peso e 83% perderam pelo menos 15% [2].",
+      "Fase 2 em diabetes tipo 2 (Lancet, 2023), artigo revisado. 281 adultos, 36 semanas. HbA1c −2,0 pontos em 24 semanas; peso até −16,9% em 36 semanas [25].",
+      "Subestudo do fígado (Nature Medicine, 2024), artigo revisado. 98 pessoas com fígado gorduroso: gordura hepática −82% em 24 semanas nas doses mais altas [3].",
+      "Subestudo de composição corporal (Lancet Diabetes & Endocrinology, 2025), dado preliminar (números não conferidos). Massa gorda até cerca de 26% menor; perda de massa magra proporcional semelhante à de outros tratamentos [46].",
+      "TRIUMPH-4 (dez/2025), comunicado da Lilly. Obesidade com artrose de joelho, 68 semanas: −28,7% na maior dose e −26,4% na intermediária, contra −2,1% no placebo. A dor no joelho caiu cerca de 75% [4].",
+      "TRANSCEND-T2D-1 (mar/2026), dado preliminar. Diabetes tipo 2: HbA1c −1,9 ponto contra −0,8 no placebo.",
+      "TRIUMPH-1 (mai/2026), dado preliminar (comunicado; publicação não conferida). 2.339 adultos, 80 semanas: −28,3% na maior dose pelo estimando de eficácia e −25,0% contando todos que começaram; 45,3% perderam 30% ou mais [47].",
+      "TRIUMPH-2 e TRIUMPH-3 (jul/2026), dado preliminar. Obesidade com diabetes: até cerca de 20,8%. Obesidade grave com doença cardíaca: até cerca de 22,6%, sem conclusão sobre infarto e AVC.",
+      "Em andamento: TRIUMPH-5 (contra tirzepatida), TRIUMPH-Outcomes (coração e rim, cerca de 5 anos) e estudos em diabetes contra semaglutida [26]."
+     ]
+    },
+    {
+     "tipo": "destaque",
+     "texto": "Repare: quem tem diabetes costuma perder menos peso, por isso o TRIUMPH-2 tem números menores. E dados de comunicado podem mudar quando o artigo completo sai."
+    }
+   ]
+  },
+  {
+   "id": "efeitos-colaterais",
+   "titulo": "Efeitos colaterais e cuidados",
+   "resumo": "Estômago e intestino dominam; frequência cardíaca, disestesia e abandono crescem com a dose.",
+   "blocos": [
+    {
+     "tipo": "paragrafo",
+     "texto": "Na fase 2, 73% a 94% dos grupos com retatrutida tiveram algum evento adverso, contra 70% no placebo. Os mais comuns foram náusea, diarreia, vômito e intestino preso. Aumentaram com a dose, foram em geral leves a moderados e diminuíram quando o tratamento começou com dose menor [2]."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Abandono por efeito adverso: de 6% a 16% na fase 2, contra 0% no placebo [2]. No TRIUMPH-4, 18,2% na maior dose, contra 4,0% no placebo. Parte foi por perda de peso considerada excessiva, mais em quem tinha IMC menor [4]."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Para comparar: com a tirzepatida no SURMOUNT-1, a náusea foi de 25% a 33% (placebo 10%) e o abandono de 4% a 7% [24]. Com a semaglutida no STEP 1, 74% tiveram efeitos no estômago ou intestino (placebo 48%) [23]."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Disestesia é uma alteração da sensibilidade da pele: formigamento, ardor ou desconforto ao toque, até da roupa, sem lesão visível. No TRIUMPH-4, apareceu em 20,9% na maior dose e 8,8% na intermediária, contra menos de 1% no placebo. Foi em geral leve a moderada e raramente levou ao abandono [4]."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "O mecanismo é desconhecido. Não é exclusiva da retatrutida: a semaglutida em dose alta causou disestesia em cerca de 23% [48]. Atribuí-la ao glucagon é hipótese, não fato."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Frequência cardíaca: sobe, com pico perto da semana 24 [2]. Ainda não há estudo de desfecho cardiovascular concluído."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Hipoglicemia: nenhum caso grave no estudo de diabetes da fase 2 [25]. Na família toda, o risco aumenta quando o remédio é combinado com insulina ou sulfonilureia [6]."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Queda de cabelo: comum na família e ligada à perda de peso rápida. Na tirzepatida, 4% a 5% contra 1% no placebo [34]. Para a retatrutida não há taxa confirmada."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Avisos de classe (vêm das bulas de semaglutida e tirzepatida; a retatrutida ainda não tem bula):"
+    },
+    {
+     "tipo": "lista",
+     "itens": [
+      "Tumores de células C da tireoide em roedores. Não se sabe se vale para humanos, mas esses remédios são contraindicados para quem tem história pessoal ou familiar de carcinoma medular de tireoide ou MEN 2 [34]. Os estudos da retatrutida excluem essas pessoas.",
+      "Pancreatite e doença da vesícula; a perda de peso rápida favorece cálculos [5, 34].",
+      "Desidratação por vômito ou diarreia, com risco de lesão nos rins [34].",
+      "Piora de retinopatia em quem tem diabetes tipo 2 [6, 49].",
+      "Aspiração pulmonar durante anestesia ou sedação profunda: avise a equipe antes de cirurgia ou endoscopia [5, 34].",
+      "Anticoncepcional oral: com tirzepatida, a bula recomenda método não oral ou de barreira por 4 semanas após o início e após cada aumento de dose [6, 50]. Para a retatrutida não há estudo; a cautela é extrapolada.",
+      "Gravidez: o remédio é suspenso nos estudos, e a segurança na gestação não está estabelecida.",
+      "NAION (perda súbita de visão por falta de sangue no nervo óptico): efeito muito raro da semaglutida, até 1 em 10.000 usuários [44]."
+     ]
+    },
+    {
+     "tipo": "destaque",
+     "texto": "Procure o médico ou um pronto-socorro se tiver: dor forte na barriga que vai para as costas; dor no alto da barriga com febre ou pele amarelada; vômito ou diarreia que não deixam manter líquidos; inchaço no rosto ou garganta, ou falta de ar; caroço no pescoço ou rouquidão que não passa; coração disparado em repouso, palpitações ou desmaio; suor, tremor e confusão (se usa insulina); piora da visão; formigamento que piora ou atrapalha a rotina; pensamentos suicidas ou mudança forte de humor. [5, 34]"
+    }
+   ]
+  },
+  {
+   "id": "massa-magra",
+   "titulo": "Massa magra, proteína e treino de força",
+   "resumo": "Parte do peso perdido é massa magra; treino de força e proteína são as melhores defesas.",
+   "blocos": [
+    {
+     "tipo": "paragrafo",
+     "texto": "Quem emagrece, seja com dieta, cirurgia ou remédio, não perde só gordura. Parte é massa magra: músculo, mas também água, glicogênio e órgãos. O fígado, por exemplo, encolhe quando perde gordura."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "DXA é um exame de densitometria de corpo inteiro que separa gordura, massa magra e osso. A “massa magra” do DXA não é só músculo. Uma queda nela, sozinha, não quer dizer perda de músculo ou de força."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "O que os estudos com DXA mostram:"
+    },
+    {
+     "tipo": "lista",
+     "itens": [
+      "Semaglutida (STEP 1, subgrupo de 140 pessoas): gordura −19,3% e massa magra −9,7%. Cerca de 39–40% do peso perdido foi massa magra, por cálculo a partir dos dados [23].",
+      "Tirzepatida (SURMOUNT-1, 160 pessoas): gordura −33,9% e massa magra −10,9%. Cerca de 3 kg de gordura para cada 1 kg de massa magra, ou seja, cerca de 25% [43].",
+      "Retatrutida: só um subestudo pequeno de fase 2, em diabetes tipo 2. Gordura até cerca de 26% menor e proporção de massa magra perdida semelhante à de outros tratamentos (dado preliminar). Os estudos de fase 3 ainda não divulgaram DXA [46]."
+     ]
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Nos três casos, a fração de massa magra no corpo costuma até subir, porque sai mais gordura que músculo. Mas, com perdas de 25–30% do peso, a perda absoluta de massa magra pode ser grande. Isso pesa mais para idosos e para quem tem pouca reserva muscular."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "O ponto de atenção próprio da retatrutida: o glucagon faz o fígado captar e quebrar aminoácidos, transformando o nitrogênio em ureia. Em tese, isso poderia deixar menos aminoácidos para o músculo. Não há dado em humanos com a retatrutida que confirme ou descarte essa hipótese [15]."
+    },
+    {
+     "tipo": "destaque",
+     "texto": "O que tem melhor apoio para proteger o músculo: treino de força regular e proteína suficiente em todas as refeições, como recomendam os consensos sobre nutrição com remédios da família GLP-1 [51]. A meta de proteína em gramas deve ser definida com o médico ou nutricionista."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Por que o app acompanha massa magra: para ver a tendência ao longo das semanas, não o número de um dia. Se a massa magra cair rápido junto com o peso, ou a força no treino cair muito, vale levar isso ao médico. Compare sempre medidas feitas nas mesmas condições."
+    }
+   ]
+  },
+  {
+   "id": "como-aplicar",
+   "titulo": "Como aplicar: técnica, cuidados e armazenamento",
+   "resumo": "Técnica de injeção subcutânea, rodízio, seringa U-100, preparo, guarda e descarte, sem falar de doses.",
+   "blocos": [
+    {
+     "tipo": "destaque",
+     "texto": "A retatrutida não tem bula. As regras abaixo vêm das bulas da semaglutida e da tirzepatida e das recomendações de técnica de injeção. Dose, dia e qualquer ajuste: só com o seu médico, conforme o plano já registrado no app."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Onde aplicar:"
+    },
+    {
+     "tipo": "lista",
+     "itens": [
+      "Via subcutânea, uma vez por semana, sempre no mesmo dia da semana, a qualquer hora, com ou sem comida [34, 49].",
+      "Regiões: barriga (a pelo menos 5 cm do umbigo), frente da coxa e parte de trás do braço. O braço, de preferência, aplicado por outra pessoa [34].",
+      "Rodízio: troque o ponto a cada aplicação. Pode repetir a região, mas cada nova picada deve ficar a pelo menos 1 cm (um dedo) da anterior [52].",
+      "Não aplique em pele roxa, dolorida, endurecida, avermelhada, com cicatriz ou estria [34].",
+      "Picar sempre no mesmo ponto forma nódulos de gordura (lipo-hipertrofia), que pioram a absorção [52]."
+     ]
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Ângulo, prega e higiene:"
+    },
+    {
+     "tipo": "lista",
+     "itens": [
+      "Lave as mãos. Em casa, passar álcool na pele não é obrigatório; se passar, espere secar antes de picar [52].",
+      "Agulha de caneta de 4 mm: aplique reto (90°), em geral sem prega, mesmo em quem tem mais gordura [52].",
+      "Seringa (as agulhas costumam ter 6 a 8 mm) ou pessoa magra: faça uma prega leve de pele ou incline a agulha a 45°, para não atingir o músculo [52].",
+      "Depois de empurrar o êmbolo, mantenha a agulha na pele por alguns segundos. Nas canetas aprovadas: Ozempic, contar até 6; Mounjaro/Zepbound, até cerca de 10 segundos ou o segundo clique; Wegovy, até a barra amarela parar [5, 34, 49].",
+      "Agulha e seringa novas a cada aplicação. Nunca compartilhe caneta ou seringa, mesmo trocando a agulha [49]."
+     ]
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Como ler a seringa U-100: a escala é em “unidades”, mas essas unidades medem VOLUME. 100 unidades = 1 mL, então 1 unidade = 0,01 mL [53]. A seringa não diz quantos miligramas entram: isso depende da concentração do frasco."
+    },
+    {
+     "tipo": "lista",
+     "itens": [
+      "Tamanhos comuns: 0,3 mL (30 unidades), 0,5 mL (50 unidades, marcação de 1 em 1) e 1 mL (100 unidades, marcação de 2 em 2). Alguns modelos de 0,3 mL têm marcação de meia unidade [53].",
+      "Leia a medida na borda do êmbolo voltada para a agulha [53]."
+     ]
+    },
+    {
+     "tipo": "destaque",
+     "texto": "Cuidado sério: em 2024 a FDA registrou pessoas que aplicaram de 5 a 20 vezes a dose pretendida de semaglutida manipulada por confundir unidades, mL e mg. Houve internações por vômito, desidratação e pancreatite [54]. A conversão de mg para unidades deve ser feita e conferida com o médico ou farmacêutico, e checada de novo antes de cada aplicação."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Se o produto vier em pó (liofilizado): produtos vendidos como “retatrutida de pesquisa” costumam vir em pó, para dissolver. Não existe estudo publicado de estabilidade da retatrutida depois de dissolvida; os prazos que circulam em fóruns são palpite. Boa prática geral para medicamentos estéreis:"
+    },
+    {
+     "tipo": "lista",
+     "itens": [
+      "Mãos lavadas; tampas de borracha limpas com álcool 70% e secas.",
+      "Agulha e seringa novas e estéreis.",
+      "Use só o diluente indicado. Água bacteriostática é água estéril com 0,9% de álcool benzílico como conservante, o que permite perfurar o frasco mais de uma vez [55].",
+      "Injete o diluente devagar, escorrendo pela parede do frasco.",
+      "Gire suavemente, sem chacoalhar: agitar com força pode estragar o peptídeo.",
+      "Solução turva, com partículas ou com cor alterada: não use.",
+      "Frasco de várias doses já perfurado: a regra farmacêutica é usar em até 28 dias, salvo outra indicação do fabricante. Isso vale para o diluente com conservante, não garante a validade do peptídeo [56].",
+      "Guarde na geladeira (2 a 8 °C), sem congelar, por analogia com outros peptídeos."
+     ]
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Armazenamento dos produtos aprovados:"
+    },
+    {
+     "tipo": "lista",
+     "itens": [
+      "Antes do uso: geladeira (2 a 8 °C), na caixa, protegido da luz. Nunca congele; se congelou, descarte [5, 34].",
+      "Tirzepatida (caneta de dose única): pode ficar até 21 dias fora da geladeira, a até 30 °C [34].",
+      "Wegovy (caneta de dose única): até 28 dias entre 8 e 30 °C [5].",
+      "Ozempic depois de aberta: 56 dias nos EUA e 6 semanas na Europa. Vale a bula da embalagem que você tem; no Brasil, a da ANVISA [49].",
+      "Não guarde caneta com a agulha rosqueada [49]."
+     ]
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Dose esquecida: cada remédio aprovado tem sua regra, e ela NÃO vale automaticamente para a retatrutida, que não tem regra oficial. Combine com o médico o que fazer. Só como referência, as regras desses medicamentos são:"
+    },
+    {
+     "tipo": "lista",
+     "itens": [
+      "Ozempic: aplicar em até 5 dias após a data perdida; depois disso, pular e seguir no dia de sempre [49].",
+      "Wegovy: aplicar se a próxima aplicação estiver a mais de 2 dias; se faltar menos, pular [5].",
+      "Mounjaro/Zepbound: aplicar em até 4 dias (96 horas) após a data perdida; depois disso, pular [34].",
+      "Mudar o dia da semana: intervalo mínimo de 2 dias entre duas aplicações na semaglutida e de 3 dias na tirzepatida [34, 49]."
+     ]
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Descarte: agulhas e seringas vão logo para um coletor de perfurocortantes ou, na falta dele, para um frasco plástico rígido com tampa (tipo frasco de amaciante), cheio até no máximo 3/4. Entregue numa UBS ou farmácia que receba. Nunca solte no lixo comum nem no reciclável [57]."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Manejo da náusea [58]:"
+    },
+    {
+     "tipo": "lista",
+     "itens": [
+      "Refeições menores, comendo devagar; pare ao se sentir satisfeito.",
+      "Evite frituras e comida muito gordurosa ou condimentada.",
+      "Beba líquidos em goles ao longo do dia.",
+      "Não deite logo depois de comer.",
+      "Mantenha proteína nas refeições e o treino de força, para proteger o músculo."
+     ]
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Os sintomas costumam ser mais fortes no início e depois de cada aumento de dose, e diminuem com o tempo [58]. Se vômito ou diarreia impedirem manter líquidos, procure atendimento. Os demais sinais de alerta estão na seção de efeitos colaterais."
+    }
+   ]
+  },
+  {
+   "id": "foruns",
+   "titulo": "O que dizem os fóruns de musculação",
+   "resumo": "Relatos de usuários: úteis para saber o que observar, mas não são evidência.",
+   "blocos": [
+    {
+     "tipo": "destaque",
+     "texto": "RELATO, NÃO EVIDÊNCIA. Abaixo, temas que circulam em comunidades como o Reddit e fóruns de musculação. Nesta pesquisa os fóruns não puderam ser abertos e lidos um a um; é uma caracterização geral. Relatos não têm grupo de comparação, têm o viés de quem resolve postar e muitas vezes envolvem produtos de origem e pureza desconhecidas."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "O que os usuários costumam relatar:"
+    },
+    {
+     "tipo": "lista",
+     "itens": [
+      "Relato: corte de apetite muito forte e fim do “food noise” (pensamento constante em comida), descrito por muitos como mais intenso que com semaglutida.",
+      "Relato: coração mais acelerado em repouso, percebido no smartwatch.",
+      "Relato: pele sensível, ardor ou formigamento sem lesão visível, até ao toque da roupa.",
+      "Relato: náusea, arrotos com gosto de enxofre, intestino preso ou solto, cansaço nos dias seguintes à aplicação e sono pior.",
+      "Relato: queda de cabelo alguns meses depois de perder muito peso.",
+      "Relato (musculação): queda de força e de “pump”, tontura em treinos longos e dificuldade de bater a meta de proteína por falta de apetite.",
+      "Relato (musculação): quem diz ter feito “recomposição corporal” quase sempre manteve treino de força e proteína alta, mas raramente mediu com DXA."
+     ]
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "O que tem respaldo nos estudos:"
+    },
+    {
+     "tipo": "lista",
+     "itens": [
+      "Coração acelerado: sim. A frequência cardíaca sobe com a dose, com pico perto da semana 24 [2].",
+      "Pele sensível: sim. A disestesia apareceu em até cerca de 21% na maior dose do TRIUMPH-4 (comunicado) [4].",
+      "Náusea e intestino: sim. São os efeitos mais comuns e aumentam com a dose [2].",
+      "Queda de cabelo: plausível. Na tirzepatida aparece em 4–5% e está ligada à perda de peso rápida [34]; para a retatrutida não há taxa confirmada.",
+      "Manejo citado (água, proteína em cada refeição, fibra, refeições menores, treino de força): bom senso alinhado às orientações gerais da família GLP-1, mas não testado especificamente com retatrutida [58]."
+     ]
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Mitos × fatos:"
+    },
+    {
+     "tipo": "lista",
+     "itens": [
+      "Mito: “ela só queima gordura e não tira músculo, por causa do glucagon”. Fato: não há evidência publicada em humanos. Nas outras duas, de 25% (tirzepatida) a 40% (semaglutida) do peso perdido foi massa magra [23, 43]. E o glucagon, em tese, até aumenta a quebra de aminoácidos.",
+      "Mito: “ela acelera o metabolismo em 200 a 400 kcal por dia”. Fato: não há medida do gasto de energia com retatrutida em humanos.",
+      "Mito: “depois de parar, o peso não volta”. Fato: com semaglutida e tirzepatida, boa parte volta em 1 ano [59, 60]. Não há dado da retatrutida.",
+      "Mito: “coração acelerado é sempre normal”. Fato: o aumento médio nos estudos é pequeno, mas a média de um grupo não diz o risco de cada pessoa. Aumento persistente ou com palpitações pede avaliação médica.",
+      "Mito: “o formigamento é só falta de B12 ou de eletrólitos”. Fato: a disestesia é um efeito adverso que aumenta com a dose, de mecanismo desconhecido. Não há evidência de que suplementos resolvam [4].",
+      "Mito: “o produto de laboratório de pesquisa é igual ao do estudo”. Fato: os resultados valem para o medicamento fabricado pela Lilly, usado com acompanhamento. Produtos “para pesquisa” não têm garantia de identidade, dose, pureza ou esterilidade [61]."
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ao-parar",
+   "titulo": "Ao parar o remédio",
+   "resumo": "Com semaglutida e tirzepatida, boa parte do peso tende a voltar; para a retatrutida ainda não há dados.",
+   "blocos": [
+    {
+     "tipo": "paragrafo",
+     "texto": "Esses remédios agem enquanto estão no corpo. Quando saem, a fome volta, e o peso tende a voltar junto."
+    },
+    {
+     "tipo": "lista",
+     "itens": [
+      "Semaglutida (STEP 4): quem trocou o remédio por placebo depois de 20 semanas recuperou 6,9% do peso em 48 semanas; quem continuou perdeu mais 7,9% [62].",
+      "Semaglutida (extensão do STEP 1): um ano depois de parar, as pessoas tinham recuperado cerca de dois terços do que haviam perdido. Pressão, glicose e gorduras do sangue voltaram para perto do início [59].",
+      "Tirzepatida (SURMOUNT-4): depois de perder cerca de 21% em 36 semanas, quem foi para o placebo recuperou 14% em 52 semanas; quem continuou perdeu mais 5,5% [60]."
+     ]
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Retatrutida: não há estudo publicado de suspensão. Imaginar um padrão parecido é razoável, mas não comprovado."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Quanto tempo a molécula leva para sair: com meia-vida de cerca de 6 dias, a conta de 5 meias-vidas dá cerca de 4 a 5 semanas depois da última aplicação. É cálculo, não dado medido."
+    },
+    {
+     "tipo": "destaque",
+     "texto": "Os autores desses estudos concluem que o tratamento da obesidade provavelmente precisa ser contínuo [59]. Qualquer plano de parar ou reduzir deve ser feito com o médico, mantendo treino de força e alimentação."
+    }
+   ]
+  },
+  {
+   "id": "produtos-online",
+   "titulo": "Produtos não aprovados vendidos online",
+   "resumo": "“Retatrutida” vendida fora de estudos clínicos não tem garantia do que há no frasco.",
+   "blocos": [
+    {
+     "tipo": "paragrafo",
+     "texto": "Até 10/10/2026, segundo as fontes consultadas, a retatrutida não é aprovada em nenhum país. A Lilly afirma que ela só está legalmente disponível dentro de estudos clínicos (dado preliminar) [63]."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "No Brasil, foi noticiado que a ANVISA proibiu comercialização, importação, divulgação e uso de retatrutida de qualquer marca (Resolução-RE nº 214/2026) e reforçou o alerta em julho de 2026. Dado preliminar: número e data não conferidos no Diário Oficial [37]."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "A ANVISA também proibiu canetas paraguaias de tirzepatida sem registro e mandou apreender lotes falsificados de Mounjaro [64]."
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "Riscos dos produtos “para pesquisa”:"
+    },
+    {
+     "tipo": "lista",
+     "itens": [
+      "Identidade: pode não ser retatrutida, ou ser outra substância.",
+      "Quantidade: pode ter mais, menos ou nada do que diz o rótulo.",
+      "Pureza: impurezas e restos de fabricação.",
+      "Esterilidade e endotoxina: sem garantia de que o injetável é estéril.",
+      "Documentos: certificados de análise falsificados foram relatados na imprensa (dado preliminar).",
+      "Preparo em casa: dissolver e medir aumenta o risco de dose errada [54]."
+     ]
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "A FDA mantém alertas sobre remédios da família GLP-1 não aprovados e falsificados [61]."
+    },
+    {
+     "tipo": "destaque",
+     "texto": "Um remédio que já causa vômito, coração acelerado e disestesia na dose certa fica mais arriscado com dose errada ou produto contaminado. Se você usa ou pensa em usar, fale abertamente com o seu médico sobre a origem do produto."
+    }
+   ]
+  },
+  {
+   "id": "linha-do-tempo",
+   "titulo": "Linha do tempo e o que vem por aí",
+   "resumo": "De 2005 a 2027: como essa família de remédios evoluiu e quais são os próximos candidatos.",
+   "blocos": [
+    {
+     "tipo": "lista",
+     "itens": [
+      "2005: exenatida (Byetta), o primeiro remédio da família GLP-1 nos EUA. Durava cerca de 2,4 horas no sangue: duas injeções por dia.",
+      "2010 e 2014: liraglutida, injeção diária. Victoza para diabetes (2010) e Saxenda para obesidade (2014), com cerca de 8% de perda em 56 semanas [65].",
+      "2017 a 2019: semaglutida. Ozempic nos EUA (2017) e no Brasil (2018); Rybelsus, a versão em comprimido (2019).",
+      "2021: Wegovy aprovado nos EUA para obesidade [23].",
+      "2022: tirzepatida (Mounjaro) aprovada nos EUA para diabetes; publicados os primeiros dados da retatrutida em humanos [1, 7].",
+      "2023: Zepbound (tirzepatida) para obesidade nos EUA; fase 2 da retatrutida, com 24% de perda [2]; SELECT mostra proteção do coração com semaglutida [27]; Wegovy aprovado e Mounjaro aprovado (diabetes) no Brasil; começa a fase 3 TRIUMPH.",
+      "2024: Zepbound aprovado para apneia do sono nos EUA; subestudo do fígado da retatrutida [3]; Wegovy lançado no Brasil.",
+      "2025: Mounjaro chega às farmácias brasileiras (mai) e ganha indicação para obesidade (jun); mazdutida aprovada na China (jun); Wegovy aprovado para MASH nos EUA (ago); Wegovy em comprimido nos EUA (dez); TRIUMPH-4, primeiro resultado de fase 3 da retatrutida (dez, comunicado) [4].",
+      "2026: patente da semaglutida expira no Brasil (mar); TRIUMPH-1 (mai) e TRIUMPH-2/3 (jul), dados preliminares [47].",
+      "2027: pedido de aprovação da retatrutida à FDA previsto para o 1º trimestre, segundo a Lilly (dado preliminar)."
+     ]
+    },
+    {
+     "tipo": "paragrafo",
+     "texto": "O que vem por aí (uma linha cada):"
+    },
+    {
+     "tipo": "lista",
+     "itens": [
+      "Orforglipron (Lilly): GLP-1 em comprimido diário, molécula pequena; cerca de 12,4% de perda em 72 semanas [66].",
+      "CagriSema (Novo Nordisk): semaglutida + análogo de amilina, semanal; cerca de 20,4% em 68 semanas [67].",
+      "Amicretina (Novo Nordisk): GLP-1 + amilina numa só molécula, injetável e oral; cerca de 22% em 36 semanas na versão injetável (estudo inicial) [68].",
+      "Survodutida (Boehringer Ingelheim): GLP-1 + glucagon, semanal; até cerca de 18,7% em 46 semanas em quem completou e forte efeito no fígado [69, 70].",
+      "Mazdutida (Innovent/Lilly): GLP-1 + glucagon; aprovada na China em 2025 [71].",
+      "MariTide (Amgen): anticorpo + peptídeo, aplicação mensal; cerca de 16% a 20% em 52 semanas (fase 2) [72]."
+     ]
+    },
+    {
+     "tipo": "destaque",
+     "texto": "Tendência: mais receptores combinados numa só molécula, mais opções em comprimido e intervalos maiores entre as aplicações."
+    }
+   ]
+  }
+ ],
+ "glossario": [
+  {
+   "termo": "Peptídeo",
+   "definicao": "Corrente curta de aminoácidos (dezenas). Muitos hormônios do intestino são peptídeos."
+  },
+  {
+   "termo": "Aminoácido",
+   "definicao": "Cada “conta” que forma peptídeos e proteínas."
+  },
+  {
+   "termo": "Receptor",
+   "definicao": "Proteína na superfície da célula que funciona como fechadura: quando o hormônio certo encaixa, dispara um sinal dentro da célula."
+  },
+  {
+   "termo": "Agonista",
+   "definicao": "Molécula que encaixa no receptor e o ativa, imitando o hormônio natural. A retatrutida é agonista de três receptores."
+  },
+  {
+   "termo": "Incretina",
+   "definicao": "Hormônio que o intestino libera depois de comer e que estimula a insulina. GLP-1 e GIP são incretinas."
+  },
+  {
+   "termo": "GLP-1",
+   "definicao": "Incretina que reduz a fome, retarda o estômago e aumenta a insulina quando a glicose está alta."
+  },
+  {
+   "termo": "GIP",
+   "definicao": "Incretina que reforça a insulina e age no tecido de gordura e no cérebro."
+  },
+  {
+   "termo": "Glucagon",
+   "definicao": "Hormônio do jejum, feito no pâncreas. Libera glicose e faz o fígado queimar gordura."
+  },
+  {
+   "termo": "Meia-vida",
+   "definicao": "Tempo para a quantidade do remédio no sangue cair pela metade. Na retatrutida, cerca de 6 dias."
+  },
+  {
+   "termo": "DPP-4",
+   "definicao": "Enzima do sangue que corta e inativa GLP-1 e GIP em minutos. O Aib protege contra ela."
+  },
+  {
+   "termo": "Aib",
+   "definicao": "Ácido alfa-aminoisobutírico: aminoácido que não existe nas proteínas humanas, usado como blindagem contra a DPP-4."
+  },
+  {
+   "termo": "Albumina",
+   "definicao": "Proteína mais abundante do sangue. A cauda de gordura do remédio gruda nela, o que prolonga sua duração."
+  },
+  {
+   "termo": "Ácido graxo / diácido C20",
+   "definicao": "“Rabo” de gordura com 20 carbonos preso à molécula para que ela se ligue à albumina."
+  },
+  {
+   "termo": "HbA1c (hemoglobina glicada)",
+   "definicao": "Exame que mostra a média da glicose dos últimos cerca de 3 meses."
+  },
+  {
+   "termo": "DXA",
+   "definicao": "Densitometria de corpo inteiro que separa gordura, massa magra e osso."
+  },
+  {
+   "termo": "Massa magra",
+   "definicao": "Tudo que não é gordura nem osso: músculo, água, órgãos e tecido conjuntivo."
+  },
+  {
+   "termo": "Beta-oxidação",
+   "definicao": "Processo em que a célula queima ácidos graxos para gerar energia."
+  },
+  {
+   "termo": "Corpos cetônicos",
+   "definicao": "Moléculas que o fígado produz a partir da gordura, usadas como combustível."
+  },
+  {
+   "termo": "FGF21",
+   "definicao": "Hormônio liberado pelo fígado que estimula a queima de gordura."
+  },
+  {
+   "termo": "Calorimetria",
+   "definicao": "Medida do gasto de energia do corpo, pela troca de gases na respiração ou em câmara metabólica."
+  },
+  {
+   "termo": "Quociente respiratório",
+   "definicao": "Razão entre gás carbônico exalado e oxigênio consumido; quanto menor, mais gordura está sendo usada como combustível."
+  },
+  {
+   "termo": "Área postrema",
+   "definicao": "Região do tronco encefálico, fora da barreira do cérebro, ligada à náusea e à saciedade."
+  },
+  {
+   "termo": "Taquifilaxia",
+   "definicao": "Perda de efeito com o uso repetido. Acontece com o atraso do estômago causado pelo GLP-1."
+  },
+  {
+   "termo": "MASLD / MASH",
+   "definicao": "Doença do fígado gorduroso ligada ao metabolismo; MASH é a forma com inflamação."
+  },
+  {
+   "termo": "Disestesia",
+   "definicao": "Sensação anormal na pele (formigamento, ardor, sensibilidade ao toque) sem lesão visível."
+  },
+  {
+   "termo": "Estimando",
+   "definicao": "Regra de cálculo da média num estudo. “De eficácia” considera quem usou como previsto; “de regime de tratamento” inclui todos que começaram."
+  },
+  {
+   "termo": "Revisão por pares",
+   "definicao": "Análise de um estudo por outros cientistas antes da publicação. Comunicados de empresa não passam por ela."
+  },
+  {
+   "termo": "Fases 1, 2 e 3",
+   "definicao": "Etapas dos testes em humanos: segurança, escolha de doses e confirmação em milhares de pessoas."
+  },
+  {
+   "termo": "Lipo-hipertrofia",
+   "definicao": "Nódulo de gordura que se forma quando se aplica sempre no mesmo ponto; piora a absorção."
+  },
+  {
+   "termo": "Seringa U-100",
+   "definicao": "Seringa de insulina em que 100 unidades equivalem a 1 mL; as unidades medem volume, não miligramas."
+  },
+  {
+   "termo": "Liofilizado",
+   "definicao": "Remédio seco em pó, que precisa ser dissolvido antes do uso."
+  },
+  {
+   "termo": "Água bacteriostática",
+   "definicao": "Água estéril com 0,9% de álcool benzílico, usada para dissolver pós e permitir vários usos do frasco."
+  },
+  {
+   "termo": "MEN 2",
+   "definicao": "Síndrome genética que aumenta o risco de câncer medular de tireoide; contraindica essa família de remédios."
+  },
+  {
+   "termo": "NAION",
+   "definicao": "Perda súbita de visão por falta de sangue no nervo óptico; efeito muito raro da semaglutida."
+  },
+  {
+   "termo": "Off-label",
+   "definicao": "Uso de um remédio fora da indicação aprovada na bula."
+  }
+ ],
+ "referencias": [
+  {
+   "n": 1,
+   "texto": "Coskun T, Urva S, Roell WC et al. LY3437943, a novel triple glucagon, GIP, and GLP-1 receptor agonist for glycemic control and weight loss: from discovery to clinical proof of concept. Cell Metabolism, 2022;34(9):1234-1247.",
+   "url": "https://doi.org/10.1016/j.cmet.2022.07.013"
+  },
+  {
+   "n": 2,
+   "texto": "Jastreboff AM et al. Triple-hormone-receptor agonist retatrutide for obesity: a phase 2 trial. New England Journal of Medicine, 2023;389:514-526.",
+   "url": "https://doi.org/10.1056/NEJMoa2301972"
+  },
+  {
+   "n": 3,
+   "texto": "Sanyal AJ et al. Retatrutida e gordura no fígado (subestudo da fase 2). Nature Medicine, 2024;30:2037-2048.",
+   "url": "https://doi.org/10.1038/s41591-024-03018-2"
+  },
+  {
+   "n": 4,
+   "texto": "Eli Lilly. Comunicado de imprensa sobre o TRIUMPH-4, 11/12/2025 (sem revisão por pares).",
+   "url": "https://investor.lilly.com/news-releases/news-release-details/lillys-triple-agonist-retatrutide-delivered-weight-loss-average"
+  },
+  {
+   "n": 5,
+   "texto": "Novo Nordisk / FDA. Bula americana (Prescribing Information) do Wegovy.",
+   "url": "https://www.novo-pi.com/wegovy.pdf"
+  },
+  {
+   "n": 6,
+   "texto": "Eli Lilly / FDA. Bula americana (Prescribing Information) do Mounjaro.",
+   "url": "https://pi.lilly.com/us/mounjaro-uspi.pdf"
+  },
+  {
+   "n": 7,
+   "texto": "Urva S et al. Fase 1b da retatrutida em diabetes tipo 2 (12 semanas). The Lancet, 2022;400:1869-1881.",
+   "url": "https://doi.org/10.1016/S0140-6736(22)02033-5"
+  },
+  {
+   "n": 8,
+   "texto": "Drucker DJ. Mechanisms of action and therapeutic application of glucagon-like peptide-1. Cell Metabolism, 2018;27(4):740-756.",
+   "url": "https://doi.org/10.1016/j.cmet.2018.03.001"
+  },
+  {
+   "n": 9,
+   "texto": "Gabery S et al. Semaglutide lowers body weight in rodents via distributed neural pathways. JCI Insight, 2020;5(6):e133429.",
+   "url": "https://insight.jci.org/articles/view/133429"
+  },
+  {
+   "n": 10,
+   "texto": "Zhang Q et al. GIP no sistema nervoso central e controle do peso (camundongos). Cell Metabolism, 2021;33(4):833-844.",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/?term=Zhang+2021+Cell+Metab+GIPR+central+nervous+system+weight"
+  },
+  {
+   "n": 11,
+   "texto": "Borner T et al. GIP receptor agonism attenuates GLP-1 receptor agonist-induced nausea and emesis in preclinical models. Diabetes, 2021;70(11):2545-2553.",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/?term=Borner+GIP+receptor+agonism+attenuates+nausea+emesis"
+  },
+  {
+   "n": 12,
+   "texto": "Nauck MA et al. Rapid tachyphylaxis of the GLP-1-induced deceleration of gastric emptying in humans. Diabetes, 2011;60:1561.",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/?term=Nauck+2011+rapid+tachyphylaxis+gastric+emptying+GLP-1"
+  },
+  {
+   "n": 13,
+   "texto": "Müller TD, Finan B, Clemmensen C, DiMarchi RD, Tschöp MH. The new biology and pharmacology of glucagon. Physiological Reviews, 2017;97(2):721-766.",
+   "url": "https://doi.org/10.1152/physrev.00025.2016"
+  },
+  {
+   "n": 14,
+   "texto": "Habegger KM et al. FGF21 media parte das ações metabólicas do glucagon. Diabetes, 2013.",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/?term=Habegger+2013+FGF21+glucagon+Diabetes"
+  },
+  {
+   "n": 15,
+   "texto": "Wewer Albrechtsen NJ e colaboradores. Eixo fígado-célula alfa: glucagon e metabolismo de aminoácidos (revisões).",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/?term=Wewer+Albrechtsen+liver+alpha+cell+axis+glucagon+amino+acids"
+  },
+  {
+   "n": 16,
+   "texto": "Tan TM et al. Coadministration of glucagon-like peptide-1 during glucagon infusion in humans. Diabetes, 2013;62(4):1131-1138.",
+   "url": "https://doi.org/10.2337/db12-0797"
+  },
+  {
+   "n": 17,
+   "texto": "Samms RJ, Coghlan MP, Sloop KW. How may GIP enhance the therapeutic efficacy of GLP-1? Trends in Endocrinology & Metabolism, 2020;31(6):410-421.",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/?term=Samms+Coghlan+Sloop+2020+Trends+Endocrinol+Metab+GIP"
+  },
+  {
+   "n": 18,
+   "texto": "Salem V et al. Glucagon increases energy expenditure independently of brown adipose tissue activation in humans. Diabetes, Obesity and Metabolism, 2016;18(1):72-81.",
+   "url": "https://doi.org/10.1111/dom.12585"
+  },
+  {
+   "n": 19,
+   "texto": "Ravussin E et al. Tirzepatida e gasto energético medido em câmara metabólica. Cell Metabolism, 2025 (resumo do Pennington Biomedical).",
+   "url": "https://www.pbrc.edu/news/media/2025/tirzepatide.aspx"
+  },
+  {
+   "n": 20,
+   "texto": "Blundell J et al. Effects of once-weekly semaglutide on appetite, energy intake, control of eating, food preference and body weight. Diabetes, Obesity and Metabolism, 2017;19(9):1242-1251.",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/?term=Blundell+2017+semaglutide+appetite+energy+intake"
+  },
+  {
+   "n": 21,
+   "texto": "Friedrichsen M et al. Semaglutida em dose de obesidade e ingestão de energia. Diabetes, Obesity and Metabolism, 2021;23(3):754-762.",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/?term=Friedrichsen+2021+semaglutide+2.4+mg+energy+intake"
+  },
+  {
+   "n": 22,
+   "texto": "Parker VER et al. Estudos mecanísticos da cotadutida (GLP-1 + glucagon) em humanos. J Clin Endocrinol Metab 2020; Nature Metabolism 2023.",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/?term=Parker+cotadutide+energy+expenditure+mechanistic"
+  },
+  {
+   "n": 23,
+   "texto": "Wilding JPH et al. Once-weekly semaglutide in adults with overweight or obesity (STEP 1). New England Journal of Medicine, 2021;384:989-1002 (inclui subestudo DXA no apêndice).",
+   "url": "https://doi.org/10.1056/NEJMoa2032183"
+  },
+  {
+   "n": 24,
+   "texto": "Jastreboff AM et al. Tirzepatide once weekly for the treatment of obesity (SURMOUNT-1). New England Journal of Medicine, 2022;387:205-216.",
+   "url": "https://doi.org/10.1056/NEJMoa2206038"
+  },
+  {
+   "n": 25,
+   "texto": "Rosenstock J et al. Retatrutida em diabetes tipo 2: fase 2. The Lancet, 2023;402:529-544.",
+   "url": "https://doi.org/10.1016/S0140-6736(23)01053-X"
+  },
+  {
+   "n": 26,
+   "texto": "ClinicalTrials.gov. Estudos registrados com retatrutida (TRIUMPH, TRANSCEND-T2D, TRIUMPH-Outcomes).",
+   "url": "https://clinicaltrials.gov/search?intr=retatrutide"
+  },
+  {
+   "n": 27,
+   "texto": "Lincoff AM et al. Semaglutide and cardiovascular outcomes in obesity without diabetes (SELECT). New England Journal of Medicine, 2023;389:2221-2232.",
+   "url": "https://doi.org/10.1056/NEJMoa2307563"
+  },
+  {
+   "n": 28,
+   "texto": "Lau J et al. Discovery of the once-weekly GLP-1 analogue semaglutide. Journal of Medicinal Chemistry, 2015;58:7370-7380.",
+   "url": "https://doi.org/10.1021/acs.jmedchem.5b00726"
+  },
+  {
+   "n": 29,
+   "texto": "Coskun T et al. LY3298176 (tirzepatida), agonista duplo GIP/GLP-1: da descoberta à prova de conceito. Molecular Metabolism, 2018;18:3-14.",
+   "url": "https://doi.org/10.1016/j.molmet.2018.09.009"
+  },
+  {
+   "n": 30,
+   "texto": "PubChem. Retatrutide (ficha do composto: fórmula e massa).",
+   "url": "https://pubchem.ncbi.nlm.nih.gov/compound/Retatrutide"
+  },
+  {
+   "n": 31,
+   "texto": "Willard FS et al. Tirzepatide is an imbalanced and biased dual GIP and GLP-1 receptor agonist. JCI Insight, 2020;5(17):e140532.",
+   "url": "https://insight.jci.org/articles/view/140532"
+  },
+  {
+   "n": 32,
+   "texto": "Li et al. Estruturas de crio-microscopia da retatrutida ligada aos receptores de GLP-1, GIP e glucagon. Cell Discovery, 2024;10:77.",
+   "url": "https://www.nature.com/articles/s41421-024-00700-0"
+  },
+  {
+   "n": 33,
+   "texto": "Day JW et al. A new glucagon and GLP-1 co-agonist eliminates obesity in rodents. Nature Chemical Biology, 2009;5:749-757.",
+   "url": "https://doi.org/10.1038/nchembio.209"
+  },
+  {
+   "n": 34,
+   "texto": "Eli Lilly / FDA. Bula americana (Prescribing Information e Instructions for Use) do Zepbound.",
+   "url": "https://pi.lilly.com/us/zepbound-uspi.pdf"
+  },
+  {
+   "n": 35,
+   "texto": "Sanyal AJ et al. Semaglutide in metabolic dysfunction-associated steatohepatitis (ESSENCE, parte 1). New England Journal of Medicine, 2025.",
+   "url": "https://doi.org/10.1056/NEJMoa2413258"
+  },
+  {
+   "n": 36,
+   "texto": "Wharton S et al. Semaglutida oral em obesidade (OASIS 4). New England Journal of Medicine, 2025.",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/?term=Wharton+2025+OASIS+4+oral+semaglutide"
+  },
+  {
+   "n": 37,
+   "texto": "Agência Brasil. ANVISA proíbe venda de canetas emagrecedoras sem registro no país, jan/2026 (dado preliminar; resolução não conferida no DOU).",
+   "url": "https://agenciabrasil.ebc.com.br/saude/noticia/2026-01/anvisa-proibe-venda-de-canetas-emagrecedoras-sem-registro-no-pais"
+  },
+  {
+   "n": 38,
+   "texto": "Aronne LJ et al. Tirzepatide as compared with semaglutide for the treatment of obesity (SURMOUNT-5). New England Journal of Medicine, 2025;393:26-36.",
+   "url": "https://doi.org/10.1056/NEJMoa2416394"
+  },
+  {
+   "n": 39,
+   "texto": "Frías JP et al. Tirzepatide versus semaglutide once weekly in type 2 diabetes (SURPASS-2). New England Journal of Medicine, 2021;385:503-515.",
+   "url": "https://doi.org/10.1056/NEJMoa2107519"
+  },
+  {
+   "n": 40,
+   "texto": "Loomba R et al. Tirzepatide for metabolic dysfunction-associated steatohepatitis with liver fibrosis (SYNERGY-NASH). New England Journal of Medicine, 2024;391:299-310.",
+   "url": "https://doi.org/10.1056/NEJMoa2401943"
+  },
+  {
+   "n": 41,
+   "texto": "Nicholls SJ et al. SURPASS-CVOT: tirzepatida vs dulaglutida em desfechos cardiovasculares. Comunicado Lilly 31/07/2025 e apresentação no EASD 2025.",
+   "url": "https://investor.lilly.com/news-releases"
+  },
+  {
+   "n": 42,
+   "texto": "Packer M et al. Tirzepatide for heart failure with preserved ejection fraction and obesity (SUMMIT). New England Journal of Medicine, 2025;392:427-437.",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/?term=Packer+SUMMIT+tirzepatide+heart+failure+preserved+ejection+fraction"
+  },
+  {
+   "n": 43,
+   "texto": "Look M et al. Composição corporal (DXA) no SURMOUNT-1. Diabetes, Obesity and Metabolism, 2025.",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/39996356/"
+  },
+  {
+   "n": 44,
+   "texto": "EMA / PRAC. Conclusão de 06/06/2025: NAION como efeito muito raro da semaglutida.",
+   "url": "https://www.ema.europa.eu/en/search?search_api_fulltext=semaglutide%20NAION"
+  },
+  {
+   "n": 45,
+   "texto": "Perkovic V et al. Effects of semaglutide on chronic kidney disease in type 2 diabetes (FLOW). New England Journal of Medicine, 2024;391:109-121.",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/?term=Perkovic+2024+FLOW+semaglutide+kidney"
+  },
+  {
+   "n": 46,
+   "texto": "Coskun T et al. Composição corporal (DXA) com retatrutida, subestudo da fase 2 em diabetes tipo 2. Lancet Diabetes & Endocrinology, 2025. (Números não conferidos no original - dado preliminar.)",
+   "url": "https://www.thelancet.com/journals/landia/article/PIIS2213-8587(25)00092-0/abstract"
+  },
+  {
+   "n": 47,
+   "texto": "Eli Lilly. Comunicado de imprensa sobre o TRIUMPH-1, 21/05/2026 (dado preliminar; não conferido).",
+   "url": "https://investor.lilly.com/news-releases/news-release-details/lillys-triple-agonist-retatrutide-delivered-powerful-weight-loss"
+  },
+  {
+   "n": 48,
+   "texto": "Wharton S et al. Semaglutida em dose alta (STEP UP). Lancet Diabetes & Endocrinology, 2025.",
+   "url": "https://www.thelancet.com/journals/landia/article/PIIS2213-8587(25)00226-8/abstract"
+  },
+  {
+   "n": 49,
+   "texto": "Novo Nordisk / FDA. Bula americana (Prescribing Information) do Ozempic.",
+   "url": "https://www.novo-pi.com/ozempic.pdf"
+  },
+  {
+   "n": 50,
+   "texto": "TGA (Austrália). Updated contraception advice for Mounjaro (tirzepatide).",
+   "url": "https://www.tga.gov.au/news/safety-updates/updated-contraception-advice-mounjaro-tirzepatide"
+  },
+  {
+   "n": 51,
+   "texto": "Mozaffarian D et al. Nutritional priorities to support GLP-1 therapy for obesity: joint advisory (ACLM, ASN, OMA, TOS), 2025.",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/?term=Mozaffarian+2025+nutritional+priorities+GLP-1+therapy+joint+advisory"
+  },
+  {
+   "n": 52,
+   "texto": "Frid AH et al. New insulin delivery recommendations (FITTER). Mayo Clinic Proceedings, 2016;91(9):1231-1255.",
+   "url": "https://doi.org/10.1016/j.mayocp.2016.06.010"
+  },
+  {
+   "n": 53,
+   "texto": "BD. Seringas de insulina U-100: tamanhos e escalas.",
+   "url": "https://www.bd.com/en-us/products-and-solutions/products/product-families/bd-insulin-syringes"
+  },
+  {
+   "n": 54,
+   "texto": "FDA. Alerta sobre erros de dosagem com semaglutida injetável manipulada, 26/07/2024.",
+   "url": "https://www.fda.gov/drugs/human-drug-compounding/fda-alerts-health-care-providers-compounders-and-patients-dosing-errors-associated-compounded"
+  },
+  {
+   "n": 55,
+   "texto": "DailyMed. Bacteriostatic Water for Injection, USP (bulas).",
+   "url": "https://dailymed.nlm.nih.gov/dailymed/search.cfm?query=bacteriostatic+water"
+  },
+  {
+   "n": 56,
+   "texto": "USP. General Chapter <797> Pharmaceutical Compounding - Sterile Preparations.",
+   "url": "https://www.usp.org/compounding/general-chapter-797"
+  },
+  {
+   "n": 57,
+   "texto": "FDA. Safely using sharps (needles and syringes) at home, at work and on travel.",
+   "url": "https://www.fda.gov/medical-devices/consumer-products/safely-using-sharps-needles-and-syringes-home-work-and-travel"
+  },
+  {
+   "n": 58,
+   "texto": "Wharton S et al. Managing the gastrointestinal side effects of GLP-1 receptor agonists in obesity: recommendations for clinical practice. Postgraduate Medicine, 2022;134(1):14-19.",
+   "url": "https://doi.org/10.1080/00325481.2021.2002616"
+  },
+  {
+   "n": 59,
+   "texto": "Wilding JPH et al. Weight regain and cardiometabolic effects after withdrawal of semaglutide: STEP 1 extension. Diabetes, Obesity and Metabolism, 2022;24(8):1553-1564.",
+   "url": "https://doi.org/10.1111/dom.14725"
+  },
+  {
+   "n": 60,
+   "texto": "Aronne LJ et al. Continued treatment with tirzepatide for maintenance of weight reduction (SURMOUNT-4). JAMA, 2024;331(1):38-48.",
+   "url": "https://doi.org/10.1001/jama.2023.24945"
+  },
+  {
+   "n": 61,
+   "texto": "FDA. FDA's concerns with unapproved GLP-1 drugs used for weight loss.",
+   "url": "https://www.fda.gov/drugs/postmarket-drug-safety-information-patients-and-providers/fdas-concerns-unapproved-glp-1-drugs-used-weight-loss"
+  },
+  {
+   "n": 62,
+   "texto": "Rubino D et al. Effect of continued weekly semaglutide vs placebo on weight loss maintenance (STEP 4). JAMA, 2021;325(14):1414-1425.",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/?term=Rubino+2021+STEP+4+JAMA+semaglutide"
+  },
+  {
+   "n": 63,
+   "texto": "Eli Lilly. What to know about retatrutide (dado preliminar; página não reaberta na checagem).",
+   "url": "https://lilly.com/news/stories/what-to-know-about-retatrutide"
+  },
+  {
+   "n": 64,
+   "texto": "ICTQ. ANVISA proíbe canetas emagrecedoras do Paraguai vendidas sem registro no Brasil.",
+   "url": "https://ictq.com.br/assuntos-regulatorios/4884-anvisa-proibe-canetas-emagrecedoras-do-paraguai-vendidas-sem-registro-no-brasil"
+  },
+  {
+   "n": 65,
+   "texto": "Pi-Sunyer X et al. A randomized, controlled trial of 3.0 mg of liraglutide in weight management (SCALE). New England Journal of Medicine, 2015;373:11-22.",
+   "url": "https://doi.org/10.1056/NEJMoa1411892"
+  },
+  {
+   "n": 66,
+   "texto": "Wharton S et al. Orforglipron em obesidade (ATTAIN-1). New England Journal of Medicine, 2025.",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/?term=Wharton+2025+orforglipron+ATTAIN-1"
+  },
+  {
+   "n": 67,
+   "texto": "Garvey WT et al. CagriSema em obesidade (REDEFINE 1). New England Journal of Medicine, 2025.",
+   "url": "https://doi.org/10.1056/NEJMoa2502081"
+  },
+  {
+   "n": 68,
+   "texto": "Estudos de fase 1 e 1b/2a da amicretina (oral e subcutânea). The Lancet, 2025.",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/?term=amycretin+Lancet+2025"
+  },
+  {
+   "n": 69,
+   "texto": "le Roux CW et al. Survodutida em obesidade, fase 2. Lancet Diabetes & Endocrinology, 2024;12(3):162-173.",
+   "url": "https://doi.org/10.1016/S2213-8587(23)00356-X"
+  },
+  {
+   "n": 70,
+   "texto": "Sanyal AJ et al. Survodutida em MASH, fase 2. New England Journal of Medicine, 2024.",
+   "url": "https://doi.org/10.1056/NEJMoa2401755"
+  },
+  {
+   "n": 71,
+   "texto": "Ji L et al. Mazdutida em adultos chineses com obesidade (GLORY-1). New England Journal of Medicine, 2025.",
+   "url": "https://doi.org/10.1056/NEJMoa2411528"
+  },
+  {
+   "n": 72,
+   "texto": "Jastreboff AM et al. MariTide (maridebart cafraglutida), fase 2. New England Journal of Medicine, 2025.",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/?term=maridebart+cafraglutide+phase+2+obesity+2025"
+  }
+ ]
+}
