@@ -3,7 +3,7 @@ import { useDados } from '../dados/contexto';
 import { useCalculos } from '../dados/useCalculos';
 import { faseDaDose, guiaSeringa, marcacao } from '../lib/ciclo';
 import { diaDaSemana, formatarData, hojeLocal } from '../lib/datas';
-import { cm, kg, num, paraNumero, paraTexto, pp, ui } from '../lib/formato';
+import { cm, kg, num, lerPeso, paraNumero, paraTexto, pp, ui } from '../lib/formato';
 import { composicao } from '../lib/gordura';
 import { LOCAIS_APLICACAO, NIVEIS_NAUSEA, type Aplicacao, type Medida, type RegistroDiario } from '../lib/tipos';
 import { BotaoExcluir, Campo, CampoNumero, Escolhas, Folha } from './ui';
@@ -20,25 +20,34 @@ export function FormAplicacao({ aplicacao, aoFechar }: { aplicacao?: Aplicacao; 
   const { ciclo, diario, gravar } = useDados();
   const { resumo, hoje } = useCalculos();
   const [data, setData] = useState(aplicacao?.data ?? hoje);
-  const numero = aplicacao ? resumo!.linhas.find((l) => l.aplicacao.id === aplicacao.id)!.numero : resumo!.aplicacoes_realizadas + 1;
+  // Posição pela data escolhida: uma dose esquecida registrada depois entra no lugar certo
+  const outras = resumo!.linhas.filter((l) => l.aplicacao.id !== aplicacao?.id);
+  const numeroDe = (d: string) => (d ? outras.filter((l) => l.aplicacao.data <= d).length + 1 : outras.length + 1);
+  const numero = numeroDe(data);
   const fase = faseDaDose(ciclo!.fases, numero);
+  const renumera = !!data && outras.some((l) => l.aplicacao.data > data);
   const [dose, setDose] = useState(paraTexto(aplicacao?.dose_mg ?? fase.fase.dose_mg));
+  const [mexeuDose, setMexeuDose] = useState(false);
   const [local, setLocal] = useState(aplicacao?.local ?? resumo!.sugestao_local);
   const [obs, setObs] = useState(aplicacao?.observacoes ?? '');
   const regDia = diario.find((r) => r.data === data);
   const [peso, setPeso] = useState(paraTexto(regDia?.peso_kg));
   const [nausea, setNausea] = useState<number | null>(regDia?.nausea ?? null);
-  // O Diário só é tocado se você mexeu no peso ou na náusea aqui
-  const [mexeuDiario, setMexeuDiario] = useState(false);
+  // O Diário só é tocado no campo que você mexeu aqui (peso e náusea separados)
+  const [mexeuPeso, setMexeuPeso] = useState(false);
+  const [mexeuNausea, setMexeuNausea] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const [confirmado, setConfirmado] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
 
   function trocarData(nova: string) {
     setData(nova);
-    if (mexeuDiario) return;
+    setConfirmado(null);
     const r = diario.find((x) => x.data === nova);
-    setPeso(paraTexto(r?.peso_kg));
-    setNausea(r?.nausea ?? null);
+    if (!mexeuPeso) setPeso(paraTexto(r?.peso_kg));
+    if (!mexeuNausea) setNausea(r?.nausea ?? null);
+    // Dose ainda não mexida acompanha a fase da nova posição
+    if (!mexeuDose && !aplicacao) setDose(paraTexto(faseDaDose(ciclo!.fases, numeroDe(nova)).fase.dose_mg));
   }
 
   const doseNum = paraNumero(dose);
@@ -48,19 +57,34 @@ export function FormAplicacao({ aplicacao, aoFechar }: { aplicacao?: Aplicacao; 
     e.preventDefault();
     if (!doseNum || doseNum <= 0) return setErro('Informe a dose em mg.');
     if (!data) return setErro('Informe a data.');
+    const p = lerPeso(peso);
+    if (mexeuPeso && p.erro) return setErro(p.erro);
+    // Pontos para conferir antes de gravar (segundo toque confirma)
+    const avisos: string[] = [];
+    const saldo = resumo!.saldo_mg + (aplicacao?.dose_mg ?? 0);
+    if (m && m.ui_pratica > 100) avisos.push('passa da capacidade da seringa U-100 (100 UI)');
+    if (doseNum > saldo + 1e-9) avisos.push(`é maior que o saldo do frasco (${num(saldo)} mg)`);
+    if (doseNum > fase.fase.dose_mg * 2) avisos.push(`é mais que o dobro da prevista (${num(fase.fase.dose_mg)} mg)`);
+    if (outras.some((l) => l.aplicacao.data === data)) avisos.push('já existe uma aplicação nesta data');
+    const chave = `${data}|${doseNum}`;
+    if (avisos.length && confirmado !== chave) {
+      setConfirmado(chave);
+      return setErro(`Confira: a dose de ${num(doseNum)} mg ${avisos.join('; ')}. Toque em Salvar de novo para confirmar.`);
+    }
     setSalvando(true);
     // Pela fila: aparece na hora e, sem sinal, é enviada quando a internet voltar
     gravar({
       tipo: 'aplicacao',
       dado: { id: aplicacao?.id ?? crypto.randomUUID(), ciclo_id: ciclo!.id, data, dose_mg: doseNum, local: local || null, observacoes: obs.trim() || null },
     });
-    const pesoNum = paraNumero(peso);
-    if (mexeuDiario && (pesoNum !== null || nausea !== null)) {
+    if (mexeuPeso || mexeuNausea) {
       const { id: _id, ...resto } = regDia ?? ({} as Partial<RegistroDiario>);
-      gravar({
-        tipo: 'diario',
-        dado: { ...resto, data, peso_kg: pesoNum ?? regDia?.peso_kg ?? null, nausea: nausea ?? regDia?.nausea ?? null, observacoes: regDia?.observacoes ?? null },
-      });
+      const pesoFinal = mexeuPeso ? p.valor : regDia?.peso_kg ?? null;
+      const nauseaFinal = mexeuNausea ? nausea : regDia?.nausea ?? null;
+      // Apagar o peso ou a náusea aqui também apaga do Diário
+      if (regDia || pesoFinal !== null || nauseaFinal !== null) {
+        gravar({ tipo: 'diario', dado: { ...resto, data, peso_kg: pesoFinal, nausea: nauseaFinal, observacoes: regDia?.observacoes ?? null } });
+      }
     }
     aoFechar();
   }
@@ -78,16 +102,29 @@ export function FormAplicacao({ aplicacao, aoFechar }: { aplicacao?: Aplicacao; 
           <span className="etiqueta destaque">Fase {fase.indice + 1} · {fase.fase.nome}</span>
           <span className="etiqueta">Prevista: {num(fase.fase.dose_mg)} mg</span>
         </div>
-        <Campo rotulo="Data da aplicação" dica={data ? diaDaSemana(data) : undefined}>
+        <Campo
+          rotulo="Data da aplicação"
+          dica={data ? `${diaDaSemana(data)}${renumera ? '. Fica antes de aplicações já registradas: a numeração das seguintes muda.' : ''}` : undefined}
+        >
           <input type="date" value={data} max={hojeLocal()} onChange={(e) => trocarData(e.target.value)} required />
         </Campo>
         <CampoNumero
           rotulo="Dose aplicada"
           sufixo="mg"
           valor={dose}
-          aoMudar={setDose}
+          aoMudar={(v) => {
+            setDose(v);
+            setMexeuDose(true);
+            setConfirmado(null);
+          }}
           obrigatorio
-          dica={m ? `Puxar até ${ui(m.ui_pratica)} na seringa U-100 (${guiaSeringa(m.ui_pratica)}) · entrega ${num(m.mg_pratica)} mg` : undefined}
+          dica={
+            m && m.ui_pratica > 100
+              ? `Passa da capacidade da seringa U-100 (100 UI): confira a dose.`
+              : m
+                ? `Puxar até ${ui(m.ui_pratica)} na seringa U-100 (${guiaSeringa(m.ui_pratica)}) · entrega ${num(m.mg_pratica)} mg`
+                : undefined
+          }
         />
         <Campo rotulo="Local da aplicação" dica={!aplicacao ? 'Sugestão pelo rodízio: diferente do último local usado.' : undefined}>
           <select value={local} onChange={(e) => setLocal(e.target.value)}>
@@ -103,9 +140,9 @@ export function FormAplicacao({ aplicacao, aoFechar }: { aplicacao?: Aplicacao; 
           valor={peso}
           aoMudar={(v) => {
             setPeso(v);
-            setMexeuDiario(true);
+            setMexeuPeso(true);
           }}
-          dica={`Opcional, vai para o Diário de ${formatarData(data)}.`}
+          dica={data ? `Opcional, vai para o Diário de ${formatarData(data)}.` : 'Opcional, vai para o Diário.'}
         />
         <Campo rotulo="Náusea no dia (opcional)" grupo>
           <Escolhas
@@ -113,7 +150,7 @@ export function FormAplicacao({ aplicacao, aoFechar }: { aplicacao?: Aplicacao; 
             valor={nausea}
             aoMudar={(v) => {
               setNausea(v);
-              setMexeuDiario(true);
+              setMexeuNausea(true);
             }}
             permitirVazio
           />
@@ -168,7 +205,10 @@ export function FormDiario({ registro, dataInicial, aoFechar }: { registro?: Reg
 
   async function salvar(e: FormEvent) {
     e.preventDefault();
-    const pesoNum = paraNumero(peso);
+    if (!data) return setErro('Informe a data.');
+    const p = lerPeso(peso);
+    if (p.erro) return setErro(p.erro);
+    const pesoNum = p.valor;
     const algumSintoma = Object.values(sintomas).some((v) => v !== null);
     if (pesoNum === null && nausea === null && !obs.trim() && !algumSintoma) return setErro('Preencha ao menos um campo.');
     if (salvando) return;
@@ -219,7 +259,7 @@ export function FormDiario({ registro, dataInicial, aoFechar }: { registro?: Reg
         <Erro msg={erro} />
         <button className="botao primario" disabled={salvando}>{salvando ? 'Salvando…' : 'Salvar'}</button>
         {diario.some((x) => x.data === data) && (
-          <BotaoExcluir rotulo="Excluir registro do dia" aviso="Excluir peso, náusea e observações deste dia?" aoConfirmar={excluir} />
+          <BotaoExcluir rotulo="Excluir registro do dia" aviso="Excluir peso, náusea, sintomas, observações e o 'segui o plano?' deste dia?" aoConfirmar={excluir} />
         )}
       </form>
     </Folha>
@@ -285,7 +325,7 @@ function Leituras({
   );
 }
 
-export function FormMedida({ medida, aoFechar, aoSalvar }: { medida?: Medida; aoFechar: () => void; aoSalvar?: () => void }) {
+export function FormMedida({ medida, aoFechar, aoSalvar }: { medida?: Medida; aoFechar: () => void; aoSalvar?: (data: string) => void }) {
   const { perfil, medidas, gravar } = useDados();
   const ultima = [...medidas].sort((a, b) => b.data.localeCompare(a.data))[0];
   const sexo = perfil?.sexo ?? 'Masculino';
@@ -310,17 +350,23 @@ export function FormMedida({ medida, aoFechar, aoSalvar }: { medida?: Medida; ao
     quadril_cm: paraNumero(quadril),
     peso_kg: paraNumero(peso),
   };
+  const positivo = (v: number | null) => v !== null && v > 0;
   const completo =
-    valores.altura_cm && valores.pescoco_cm && valores.cintura_cm && valores.peso_kg && (sexo === 'Masculino' || valores.quadril_cm);
+    positivo(valores.altura_cm) && positivo(valores.pescoco_cm) && positivo(valores.cintura_cm) && positivo(valores.peso_kg) && (sexo === 'Masculino' || positivo(valores.quadril_cm));
   // Medição anterior a esta data, para comparar e pegar erro de digitação
   const anterior = [...medidas].filter((m) => m.data < data && m.id !== medida?.id).sort((a, b) => b.data.localeCompare(a.data))[0];
   const previa = completo ? composicao({ id: '', data, ...(valores as Omit<Medida, 'id' | 'data'>) }, sexo) : null;
 
   async function salvar(e: FormEvent) {
     e.preventDefault();
+    if (!data) return setErro('Informe a data.');
     if (!completo) return setErro(sexo === 'Feminino' ? 'Preencha altura, pescoço, cintura, quadril e peso.' : 'Preencha altura, pescoço, cintura e peso.');
-    if (valores.altura_cm! < 100) return setErro('A altura é em centímetros (ex.: 182).');
-    if (!medida && medidas.some((m) => m.data === data)) return setErro('Já existe uma medição nesta data. Toque nela no histórico para editar.');
+    if (valores.altura_cm! < 100 || valores.altura_cm! > 250) return setErro('A altura é em centímetros (ex.: 182).');
+    if (valores.peso_kg! < 30 || valores.peso_kg! > 300) return setErro('Peso fora da faixa (30 a 300 kg). Confira o número.');
+    const forDaFaixa = [valores.pescoco_cm!, valores.cintura_cm!, ...(sexo === 'Feminino' ? [valores.quadril_cm!] : [])].some((v) => v < 20 || v > 250);
+    if (forDaFaixa) return setErro('Medidas em centímetros, entre 20 e 250. Confira os números.');
+    if (previa && previa.bf === null) return setErro('Com essas medidas não dá para calcular a % de gordura (a cintura precisa ser maior que o pescoço). Confira.');
+    if (medidas.some((m) => m.data === data && m.id !== medida?.id)) return setErro('Já existe uma medição nesta data. Toque nela no histórico para editar.');
     if (salvando) return;
     setSalvando(true);
     // Pela fila: aparece na hora e, sem sinal, é enviada quando a internet voltar
@@ -337,7 +383,7 @@ export function FormMedida({ medida, aoFechar, aoSalvar }: { medida?: Medida; ao
       },
     });
     aoFechar();
-    aoSalvar?.();
+    aoSalvar?.(data);
   }
 
   function excluir() {

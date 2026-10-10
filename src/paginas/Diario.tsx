@@ -16,7 +16,9 @@ export function Diario() {
   const [novo, setNovo] = useState<string | null>(null);
 
   // Une registros do dia com as aplicações para mostrar uma linha do tempo única
-  const aplicacaoPorData = new Map((resumo?.linhas ?? []).map((l) => [l.aplicacao.data, l]));
+  // Pode haver duas aplicações no mesmo dia (dose complementar): guarda todas
+  const aplicacaoPorData = new Map<string, NonNullable<typeof resumo>['linhas']>();
+  for (const l of resumo?.linhas ?? []) aplicacaoPorData.set(l.aplicacao.data, [...(aplicacaoPorData.get(l.aplicacao.data) ?? []), l]);
   const datas = [...new Set([...diario.map((r) => r.data), ...aplicacaoPorData.keys()])].sort().reverse();
   const regPorData = new Map(diario.map((r) => [r.data, r]));
   const datasAplic = [...aplicacaoPorData.keys()].sort();
@@ -35,14 +37,19 @@ export function Diario() {
           <div className="lista">
             {datas.map((d) => {
               const r = regPorData.get(d);
-              const a = aplicacaoPorData.get(d);
+              const aps = aplicacaoPorData.get(d) ?? [];
+              const a = aps[0];
               return (
                 <div className="item item-acao" key={d} onClick={() => (r ? setEditando(r) : setNovo(d))}>
                   <div className={`marcador ${a ? 'feito' : ''}`}>{d.slice(8, 10)}</div>
                   <div className="cresce">
                     <div className="titulo">
                       {diaDaSemana(d)}, {formatarData(d, true)}
-                      {a && <span className="etiqueta destaque" style={{ marginLeft: 6 }}>💉 {a.numero}ª · {mg(a.aplicacao.dose_mg)}</span>}
+                      {aps.map((x) => (
+                        <span key={x.aplicacao.id} className="etiqueta destaque" style={{ marginLeft: 6 }}>
+                          💉 {x.numero}ª · {mg(x.aplicacao.dose_mg)}
+                        </span>
+                      ))}
                       {!a && diaAposDose(d, datasAplic) !== null && diaAposDose(d, datasAplic)! <= 6 && (
                         <span className="etiqueta" style={{ marginLeft: 6 }} title="Dias depois da última dose">
                           D+{diaAposDose(d, datasAplic)}
@@ -57,9 +64,9 @@ export function Diario() {
                         r?.diarreia && 'diarreia',
                         r?.intestino_preso && 'intestino preso',
                         r?.dieta_seguida && `dieta: ${r.dieta_seguida === 'sim' ? 'seguida' : r.dieta_seguida === 'parcial' ? 'em parte' : 'não seguida'}`,
-                        a?.aplicacao.local,
+                        ...aps.map((x) => x.aplicacao.local),
                         r?.observacoes,
-                        a?.aplicacao.observacoes,
+                        ...aps.map((x) => x.aplicacao.observacoes),
                       ]
                         .filter(Boolean)
                         .join(' · ') || 'Sem registro do dia'}

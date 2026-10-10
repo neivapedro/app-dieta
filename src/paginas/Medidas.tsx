@@ -19,7 +19,7 @@ export function Medidas() {
   const [editando, setEditando] = useState<Medida | null>(null);
   const [nova, setNova] = useState(false);
   const [pedirMetas, setPedirMetas] = useState(false);
-  const [resumoAberto, setResumoAberto] = useState(false);
+  const [resumoAberto, setResumoAberto] = useState<string | null>(null);
 
   const g = composicoes.length >= 2 ? ganhos(composicoes[0], composicoes[composicoes.length - 1]) : null;
   const atual = composicoes[composicoes.length - 1];
@@ -133,10 +133,14 @@ export function Medidas() {
       {nova && (
         <FormMedida
           aoFechar={() => setNova(false)}
-          aoSalvar={() => (perfil?.modulo_treino && !perfil.metas_projeto ? setPedirMetas(true) : setResumoAberto(true))}
+          aoSalvar={(data) => {
+            // Metas só na 1ª medição; nas outras (ou se adiou as metas) abre o resumo da semana
+            if (perfil?.modulo_treino && !perfil.metas_projeto && medidas.length === 0) setPedirMetas(true);
+            else setResumoAberto(data);
+          }}
         />
       )}
-      {resumoAberto && <ResumoSemana aoFechar={() => setResumoAberto(false)} />}
+      {resumoAberto && <ResumoSemana data={resumoAberto} aoFechar={() => setResumoAberto(null)} />}
       {pedirMetas && <FormMetas primeiraVez base={composicoes[composicoes.length - 1] ?? null} aoFechar={() => setPedirMetas(false)} />}
       {editando && <FormMedida medida={editando} aoFechar={() => setEditando(null)} />}
     </div>

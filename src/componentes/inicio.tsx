@@ -86,10 +86,16 @@ export function CartaoDietaHoje() {
         <div className="macros" style={{ fontSize: '0.85rem', marginBottom: 8 }}>
           <span className="m-k">{kcal(metas.meta_kcal)}</span>
           <span className="m-pa">Ptn A {gr(saldo.meta.ptn_animal)} g</span>
-          <span className="m-c">Carb {gr(saldo.meta.carb)} g</span>
+          <span className="m-c">Carb {gr(Math.max(0, saldo.meta.carb))} g</span>
           <span className="m-g">Gord {gr(saldo.meta.gord)} g</span>
         </div>
-      ) : (
+      ) : null}
+      {metas && saldo && saldo.meta.carb < 0 && (
+        <div className="alerta" style={{ display: 'block', marginBottom: 8 }}>
+          A proteína e a gordura já passam da meta de kcal. Reduza o g/kg delas ou o déficit em Ajustar, na aba Dieta.
+        </div>
+      )}
+      {metas && saldo ? null : (
         <p className="texto-2" style={{ marginBottom: 8 }}>
           Registre uma medição para calcular a meta.
         </p>

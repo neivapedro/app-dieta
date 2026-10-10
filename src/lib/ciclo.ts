@@ -217,7 +217,8 @@ export function calcularCiclo(
     const saldo = ciclo.quantidade_total_mg - acumulado;
     if (i > 0) {
       const dias = diferencaDias(ordenadas[i - 1].data, ap.data);
-      if (dias < intervalo - 2) {
+      // Mesmo dia é sempre suspeito, qualquer que seja o intervalo
+      if (dias === 0 || dias < intervalo - 2) {
         alertas.push(`Aplicações nº ${numero - 1} e nº ${numero} com apenas ${dias} dia(s) de intervalo. Confira se não houve registro duplicado.`);
       }
     }

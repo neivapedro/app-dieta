@@ -24,7 +24,10 @@ export function Configurar() {
     const concN = paraNumero(conc);
     const alturaN = paraNumero(altura);
     if (!nome.trim()) return setErro('Informe seu nome.');
-    if (!totalN || !concN) return setErro('Informe a quantidade e a concentração.');
+    if (totalN === null || concN === null) return setErro('Informe a quantidade e a concentração.');
+    if (totalN <= 0 || concN <= 0) return setErro('A quantidade e a concentração precisam ser maiores que zero.');
+    if (alturaN !== null && (alturaN < 100 || alturaN > 250)) return setErro('Altura em centímetros, entre 100 e 250 (ex.: 181).');
+    if (!inicio) return setErro('Informe a data da 1ª aplicação.');
     try {
       await executar(async (r) => {
         await r.salvarPerfil({
@@ -64,7 +67,7 @@ export function Configurar() {
         </section>
         <section className="cartao pilha">
           <h2>Ciclo de retatrutida</h2>
-          <Campo rotulo="Data da 1ª aplicação" dica={`${diaDaSemana(inicio)}. As próximas datas partem daqui e se ajustam a cada aplicação real.`}>
+          <Campo rotulo="Data da 1ª aplicação" dica={!inicio ? "Informe a data." : `${diaDaSemana(inicio)}. As próximas datas partem daqui e se ajustam a cada aplicação real.`}>
             <input type="date" value={inicio} onChange={(e) => setInicio(e.target.value)} required />
           </Campo>
           <div className="grade">

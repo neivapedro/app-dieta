@@ -184,6 +184,11 @@ function Plano() {
 
   async function salvar() {
     if (fasesValidas.some((f) => f.dose_mg <= 0)) return setErro('Toda fase precisa de uma dose maior que zero.');
+    const semanasInvalidas = fases.some((f) => {
+      const n = paraNumero(f.semanas);
+      return n === null || n < 1 || !Number.isInteger(n);
+    });
+    if (semanasInvalidas) return setErro('Toda fase precisa de um número inteiro de semanas (1 ou mais).');
     setErro(null);
     await executar((r) => r.salvarCiclo({ ...ciclo!, fases: fasesValidas }));
     setSalvo(true);
@@ -304,6 +309,7 @@ function Ajustes() {
     const intervaloN = Math.round(paraNumero(intervalo) ?? 0);
     const passoN = paraNumero(passo) ?? 0;
     if (totalN <= 0 || concN <= 0 || intervaloN <= 0 || passoN <= 0) return setMsg({ tipo: 'erro', texto: 'Todos os valores precisam ser maiores que zero.' });
+    if (!inicio) return setMsg({ tipo: 'erro', texto: 'Informe a data da 1ª aplicação.' });
     try {
       await executar((r) => r.salvarCiclo({ ...c, nome: nome.trim() || c.nome, data_inicio: inicio, quantidade_total_mg: totalN, concentracao_mg_ml: concN, intervalo_dias: intervaloN, passo_ui: passoN }));
       setMsg({ tipo: 'info', texto: 'Parâmetros salvos. Tudo foi recalculado.' });
@@ -318,7 +324,7 @@ function Ajustes() {
       <Campo rotulo="Nome do ciclo">
         <input value={nome} onChange={(e) => setNome(e.target.value)} />
       </Campo>
-      <Campo rotulo="Data da 1ª aplicação" dica={`${diaDaSemana(inicio)}. Usada até a 1ª aplicação ser registrada; depois, vale a data real.`}>
+      <Campo rotulo="Data da 1ª aplicação" dica={!inicio ? "Informe a data." : `${diaDaSemana(inicio)}. Usada até a 1ª aplicação ser registrada; depois, vale a data real.`}>
         <input type="date" value={inicio} onChange={(e) => setInicio(e.target.value)} required />
       </Campo>
       <div className="grade">

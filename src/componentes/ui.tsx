@@ -94,6 +94,7 @@ export function CampoNumero({
   sufixo,
   dica,
   obrigatorio,
+  permitirNegativo,
 }: {
   rotulo: string;
   valor: string;
@@ -101,6 +102,8 @@ export function CampoNumero({
   sufixo?: string;
   dica?: ReactNode;
   obrigatorio?: boolean;
+  /** Por padrão o sinal de menos não entra (peso, medidas, doses) */
+  permitirNegativo?: boolean;
 }) {
   return (
     <Campo rotulo={sufixo ? `${rotulo} (${sufixo})` : rotulo} dica={dica}>
@@ -108,7 +111,7 @@ export function CampoNumero({
         inputMode="decimal"
         value={valor}
         required={obrigatorio}
-        onChange={(e) => aoMudar(e.target.value.replace(/[^\d.,-]/g, ''))}
+        onChange={(e) => aoMudar(e.target.value.replace(permitirNegativo ? /[^\d.,-]/g : /[^\d.,]/g, ''))}
       />
     </Campo>
   );

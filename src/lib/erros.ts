@@ -34,6 +34,7 @@ export function traduzirErro(e: unknown): string {
   if (ehSessaoExpirada(e)) return 'Sessão expirada. Entre novamente.';
   if (/duplicate key|already exists/i.test(msg)) return 'Esse registro já existe.';
   if (/row-level security/i.test(msg)) return 'Sem permissão para gravar esse dado. Entre novamente.';
+  if (/violates check constraint/i.test(msg)) return 'Algum valor está fora do permitido. Confira os números.';
   if (/invalid input syntax/i.test(msg)) return 'Esse registro ainda não chegou ao servidor. Tente de novo em instantes.';
   if (/Importing a module script failed|dynamically imported module|error loading/i.test(msg)) return 'Parte do app não carregou. Recarregue a página.';
   // Nunca mostrar HTML ou corpo cru do servidor

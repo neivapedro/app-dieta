@@ -56,3 +56,15 @@ export function ui(n: number | null | undefined): string {
   if (n === null || n === undefined || !Number.isFinite(n)) return '–';
   return `${n.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} UI`;
 }
+
+/**
+ * Peso digitado num campo opcional: vazio vale null; texto inválido ou fora de
+ * 30 a 300 kg vira erro (nunca apaga em silêncio o peso que já existia).
+ */
+export function lerPeso(texto: string): { valor: number | null; erro?: string } {
+  if (!texto.trim()) return { valor: null };
+  const v = paraNumero(texto);
+  if (v === null) return { valor: null, erro: 'Peso inválido. Use só um separador decimal, ex.: 93,2.' };
+  if (v < 30 || v > 300) return { valor: null, erro: 'Peso fora da faixa (30 a 300 kg). Confira o número.' };
+  return { valor: v };
+}

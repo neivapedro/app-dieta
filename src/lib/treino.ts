@@ -93,7 +93,10 @@ export function calcularPlacar(dias: TreinoDia[], inicio: string, fim: string, h
   const bike = contar(bikes(ateHoje), hoje, (d) => ok(d, 'cardio'), bikes(todas).length, bikes(futuras).length);
   const km = corridas(ateHoje)
     .filter((d) => ok(d, 'cardio'))
-    .reduce((s, d) => s + (porData.get(d)?.corrida_km ?? KM_CORRIDA_PADRAO), 0);
+    .reduce((s, d) => {
+      const k = porData.get(d)?.corrida_km;
+      return s + (k && k > 0 ? k : KM_CORRIDA_PADRAO);
+    }, 0);
 
   // Sequência: dias seguidos com treino E cardio. Hoje incompleto não quebra a sequência.
   const completo = (d: string) => ok(d, 'treino') && ok(d, 'cardio');
@@ -161,6 +164,8 @@ export function lerTempo(texto: string): number | null {
   const partes = texto.trim().split(':').map((p) => p.trim());
   if (!partes.length || partes.length > 3 || partes.some((p) => !/^\d+$/.test(p))) return null;
   const n = partes.map(Number);
+  // Minutos e segundos depois da primeira parte vão de 0 a 59 (28:90 não existe)
+  if (n.slice(1).some((x) => x >= 60)) return null;
   const seg = n.length === 3 ? n[0] * 3600 + n[1] * 60 + n[2] : n.length === 2 ? n[0] * 60 + n[1] : n[0] * 60;
   return seg > 0 ? seg : null;
 }

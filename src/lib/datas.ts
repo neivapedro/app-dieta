@@ -31,10 +31,12 @@ export function hojeLocal(agora: Date = new Date()): string {
 const DIAS_SEMANA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 
 export function diaDaSemana(data: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}/.test(data)) return '';
   return DIAS_SEMANA[new Date(paraUTC(data)).getUTCDay()];
 }
 
 export function formatarData(data: string, anoCurto = false): string {
+  if (!/^\d{4}-\d{2}-\d{2}/.test(data)) return '';
   const [a, m, d] = data.split('-');
   return `${d}/${m}/${anoCurto ? a.slice(2) : a}`;
 }

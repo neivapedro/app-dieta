@@ -241,8 +241,8 @@ export function calcularMetas(config: ConfigDieta, corpo: Corpo, aderencia?: Ade
     pela_aderencia,
     gasto_total,
     meta_kcal: gasto_total + config.ajuste_kcal,
-    ptn_animal_g: config.ptn_gkg * corpo.massa_magra_kg,
-    gord_g: config.gord_gkg * corpo.peso_kg,
+    ptn_animal_g: Math.max(0, config.ptn_gkg) * corpo.massa_magra_kg,
+    gord_g: Math.max(0, config.gord_gkg) * corpo.peso_kg,
   };
 }
 

@@ -296,6 +296,7 @@ export function FormConfigDieta({
   const [ajuste, setAjuste] = useState(paraTexto(Math.abs(config.ajuste_kcal) || 300));
   const [ptn, setPtn] = useState(paraTexto(config.ptn_gkg));
   const [gord, setGord] = useState(paraTexto(config.gord_gkg));
+  const [erro, setErro] = useState<string | null>(null);
 
   const montar = (): ConfigDieta => ({
     fator_atividade: fator,
@@ -311,6 +312,13 @@ export function FormConfigDieta({
 
   function salvar(e: FormEvent) {
     e.preventDefault();
+    const aj = paraNumero(ajuste);
+    if (sentido !== 'manter' && (aj === null || aj <= 0 || aj > 1500))
+      return setErro(`Informe o ${sentido === 'deficit' ? 'déficit' : 'superávit'} por dia (1 a 1.500 kcal) ou escolha Manter.`);
+    const p = paraNumero(ptn);
+    const g = paraNumero(gord);
+    if (p === null || p < 0 || p > 5) return setErro('Proteína animal: informe de 0 a 5 g/kg.');
+    if (g === null || g < 0 || g > 3) return setErro('Gordura: informe de 0 a 3 g/kg.');
     aoSalvar(montar());
     aoFechar();
   }
@@ -415,6 +423,7 @@ export function FormConfigDieta({
             Meta: {kcal(previa.meta_kcal)} · gasto total {kcal(previa.gasto_total)}
           </div>
         )}
+        {erro && <div className="alerta erro">{erro}</div>}
         <button className="botao primario">Salvar</button>
       </form>
     </Folha>

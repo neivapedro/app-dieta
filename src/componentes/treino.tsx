@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useDados } from '../dados/contexto';
 import { useTreino } from '../dados/useTreino';
 import { diaDaSemana, formatarData, hojeLocal } from '../lib/datas';
@@ -91,6 +91,7 @@ export function FormDiaTreino({ data, marcarCardio, aoFechar }: { data: string; 
   function salvar(e: FormEvent) {
     e.preventDefault();
     if (tempo.trim() && !seg) return setErro('Tempo inválido. Digite só os números, ex.: 2830 para 28:30.');
+    if (corrida && cardio && km.trim() && !(kmN !== null && kmN > 0 && kmN <= 60)) return setErro('Informe a distância da corrida (maior que zero), em km.');
     if (corrida && cardio && pace && !paceValido(pace)) return setErro(`Confira o tempo: deu ${formatarTempo(pace)} por km.`);
     gravar({
       tipo: 'treino',
@@ -158,6 +159,8 @@ export function FormMetas({ base, aoFechar, primeiraVez }: { base: Composicao | 
 
   const pesoN = paraNumero(peso);
   const bfN = paraNumero(bf);
+  // O aviso some assim que algum campo é preenchido
+  useEffect(() => setErro(null), [pescoco, cintura, quadril, peso, bf]);
 
   async function salvar(e: FormEvent) {
     e.preventDefault();
@@ -211,7 +214,7 @@ export function FormMetas({ base, aoFechar, primeiraVez }: { base: Composicao | 
             <>
               {bfDasMedidas !== null && (
                 <div className={`alerta ${bfN !== null && Math.abs(bfDasMedidas - bfN) > 2 ? '' : 'info'}`}>
-                  Cintura {cintura} e pescoço {pescoco} dão {num(bfDasMedidas, 1)}% de gordura (altura {num(altura, 0)} cm).
+                  Cintura {cintura}{feminino ? `, quadril ${quadril}` : ''} e pescoço {pescoco} dão {num(bfDasMedidas, 1)}% de gordura (altura {num(altura, 0)} cm).
                   {bfN !== null && Math.abs(bfDasMedidas - bfN) > 2 ? ' Diferente do % da meta: ajuste um dos dois.' : ''}
                 </div>
               )}

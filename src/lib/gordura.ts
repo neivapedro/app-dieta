@@ -24,11 +24,14 @@ export function percentualGordura(
     if (!(base > 0)) return null;
     bf = 495 / (1.0324 - 0.19077 * Math.log10(base) + 0.15456 * Math.log10(altura_cm)) - 450 + 2;
   } else {
-    const base = cintura_cm + (quadril_cm ?? 0) - pescoco_cm;
+    // Sem quadril não há fórmula feminina (tratar como 0 daria % negativa)
+    if (quadril_cm == null || !(quadril_cm > 0)) return null;
+    const base = cintura_cm + quadril_cm - pescoco_cm;
     if (!(base > 0)) return null;
     bf = 495 / (1.29579 - 0.35004 * Math.log10(base) + 0.221 * Math.log10(altura_cm)) - 450;
   }
-  return Number.isFinite(bf) ? bf : null;
+  // Fora de 2 a 75% é erro de medida/digitação, não composição corporal
+  return Number.isFinite(bf) && bf >= 2 && bf <= 75 ? bf : null;
 }
 
 export interface Composicao {

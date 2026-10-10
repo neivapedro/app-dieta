@@ -9,15 +9,19 @@ import { Folha } from './ui';
 const FAIXA = { lento: 'abaixo de 0,5%', ideal: 'na faixa de 0,5 a 1%', rapido: 'acima de 1%: atenção à massa magra', ganho: 'subindo' } as const;
 
 /** Aberto ao salvar a medição: como foi a semana, tudo numa tela só. */
-export function ResumoSemana({ aoFechar }: { aoFechar: () => void }) {
-  const { aplicacoes, treinos, diario } = useDados();
+export function ResumoSemana({ data, aoFechar }: { data?: string; aoFechar: () => void }) {
+  const { aplicacoes, treinos, diario, ciclo } = useDados();
   const { composicoes, resumo } = useCalculos();
   const treino = useTreino();
-  const atual = composicoes[composicoes.length - 1];
-  const ant = composicoes[composicoes.length - 2];
+  // A medição que acabou de ser salva (pode ser retroativa), comparada com a anterior a ela
+  const i = data ? composicoes.findIndex((c) => c.data === data) : composicoes.length - 1;
+  const idx = i >= 0 ? i : composicoes.length - 1;
+  const atual = composicoes[idx];
+  const ant = composicoes[idx - 1];
   if (!atual) return null;
-  const tend = tendenciaMedidas(composicoes, 28);
-  const inicio = resumo?.linhas[0]?.aplicacao.data ?? composicoes[0].data;
+  const tend = tendenciaMedidas(composicoes.slice(0, idx + 1), 42);
+  const inicio = resumo?.linhas[0]?.aplicacao.data ?? ciclo?.data_inicio ?? composicoes[0].data;
+  const antesDoCiclo = atual.data < inicio;
   const semana = Math.max(Math.floor(diferencaDias(inicio, atual.data) / 7) + 1, 1);
   // Semana que esta medição fecha: os 7 dias antes dela
   const de = somarDias(atual.data, -7);
@@ -25,6 +29,8 @@ export function ResumoSemana({ aoFechar }: { aoFechar: () => void }) {
   const naSemana = <T extends { data: string }>(l: T[]) => l.filter((x) => x.data >= de && x.data <= ate);
   const doses = naSemana(aplicacoes);
   const dias = naSemana(treinos);
+  // Dias da semana que já eram do projeto (antes do início não contam como falta)
+  const diasProjeto = treino ? Math.max(0, Math.min(7, diferencaDias(treino.inicio > de ? treino.inicio : de, ate) + 1)) : 7;
   const planoDieta = naSemana(diario).filter((r) => r.dieta_seguida);
 
   const linhas: [string, number | null, number | null, (n: number | null | undefined) => string, string, boolean][] = [
@@ -36,7 +42,7 @@ export function ResumoSemana({ aoFechar }: { aoFechar: () => void }) {
   ];
 
   return (
-    <Folha titulo={`Semana ${semana} · ${formatarData(atual.data)}`} aoFechar={aoFechar}>
+    <Folha titulo={antesDoCiclo ? `Medição · ${formatarData(atual.data)}` : `Semana ${semana} · ${formatarData(atual.data)}`} aoFechar={aoFechar}>
       <div className="pilha">
         <div className="tabela-rolagem">
           <table>
@@ -79,9 +85,9 @@ export function ResumoSemana({ aoFechar }: { aoFechar: () => void }) {
           </div>
           {treino && (
             <div className="bloco">
-              <div className="rotulo">Treino · cardio (7 dias)</div>
+              <div className="rotulo">Treino · cardio ({diasProjeto} dias)</div>
               <div className="valor">
-                {dias.filter((d) => d.treino).length}/7 · {dias.filter((d) => d.cardio).length}/7
+                {dias.filter((d) => d.treino).length}/{diasProjeto} · {dias.filter((d) => d.cardio).length}/{diasProjeto}
               </div>
             </div>
           )}
