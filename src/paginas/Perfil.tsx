@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { BotaoExcluir, Campo, CampoNumero, Escolhas, Icone } from '../componentes/ui';
 import { CALENDARIO_URL } from '../config';
 import { useDados } from '../dados/contexto';
+import { CicloSalvoEmParte } from '../dados/repositorio';
 import { lerBackup, montarBackup, planejarImportacao, type Backup, type PlanoImportacao } from '../lib/backup';
 import { formatarData, hojeLocal } from '../lib/datas';
 import { paraNumero, paraTexto } from '../lib/formato';
@@ -138,6 +139,7 @@ export function Perfil() {
   async function importar() {
     if (!importacao) return;
     const { backup: b, plano } = importacao;
+    let emParte: string | null = null;
     try {
       await executar(async (r) => {
         if (b.perfil) {
@@ -147,7 +149,14 @@ export function Perfil() {
         let cicloId = ciclo?.id;
         if (b.ciclo) {
           const { id: _ignorado, ...resto } = b.ciclo;
-          cicloId = (await r.salvarCiclo({ ...resto, id: ciclo?.id })).id;
+          try {
+            cicloId = (await r.salvarCiclo({ ...resto, id: ciclo?.id })).id;
+          } catch (e) {
+            // Banco sem o SQL de evolução: o ciclo foi gravado sem os campos novos; segue a importação
+            if (!(e instanceof CicloSalvoEmParte)) throw e;
+            cicloId = e.ciclo.id;
+            emParte = e.message;
+          }
         }
         for (const a of plano.aplicacoes) {
           const { id: _id, ...resto } = a;
@@ -170,7 +179,7 @@ export function Perfil() {
         if (b.dieta) await r.salvarDieta(b.dieta);
       });
       setImportacao(null);
-      setMsgBackup({ tipo: 'info', texto: 'Backup importado.' });
+      setMsgBackup(emParte ? { tipo: 'erro', texto: `Backup importado, com uma ressalva: ${emParte}` } : { tipo: 'info', texto: 'Backup importado.' });
     } catch (e) {
       setMsgBackup({ tipo: 'erro', texto: (e as Error).message });
     }

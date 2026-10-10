@@ -2,7 +2,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { configPadrao, type PlanoDieta } from '../lib/dieta';
 import type { Aplicacao, Ciclo, Medida, MetasProjeto, Perfil, RegistroDiario, TreinoDia } from '../lib/tipos';
 import { ehErroDeRede } from '../lib/erros';
-import type { DecisoesCiclo, Repositorio, Usuario } from './repositorio';
+import { CicloSalvoEmParte, type DecisoesCiclo, type Repositorio, type Usuario } from './repositorio';
 
 // O isolamento entre contas é garantido no banco (Row Level Security, ver
 // supabase/migrations): mesmo que o app pedisse dados de outra pessoa, o
@@ -218,8 +218,9 @@ export class RepositorioSupabase implements Repositorio {
         (c.seringa_capacidade_ui ?? null) !== null || (c.seringa_marca_ui ?? null) !== null ? 'A seringa (capacidade e marcas)' : null,
         c.frasco_aberto_em ? '"Frasco aberto em"' : null,
       ].filter(Boolean);
-      if (faltou.length) throw new Error(`${faltou.join(' e ')} não foi salvo: ${AVISO_EVOLUCAO}`);
-      return { ...c, id: d!.id } as Ciclo;
+      const salvo = { ...c, id: d!.id } as Ciclo;
+      if (faltou.length) throw new CicloSalvoEmParte(`${faltou.join(' e ')} não foi salvo: ${AVISO_EVOLUCAO}`, salvo);
+      return salvo;
     }
     const d = erro(r);
     return { ...c, id: d!.id } as Ciclo;

@@ -86,7 +86,7 @@ export function Inicio() {
           <div className="cartao-cab">
             <span className="rotulo">Próxima aplicação · {p.numero}ª dose</span>
             {p.extra && <span className="etiqueta aviso">Dose extra · sobra do frasco</span>}
-            {p.estado === 'pendente' && <span className="etiqueta aviso">Fim da fase</span>}
+            {p.estado === 'pendente' && <span className="etiqueta aviso">Fase concluída · decidir</span>}
             {p.estado === 'fora_do_plano' && <span className="etiqueta aviso">Fora do plano</span>}
             {p.situacao === 'hoje' && <span className="etiqueta destaque">Hoje</span>}
             {p.situacao === 'atrasada' && <span className="etiqueta ruim">Atrasada {p.dias} dia(s)</span>}

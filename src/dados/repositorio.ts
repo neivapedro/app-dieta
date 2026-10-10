@@ -6,6 +6,20 @@ export interface Usuario {
   email: string;
 }
 
+/**
+ * O ciclo foi gravado, mas sem algum campo novo (falta o SQL de evolução no
+ * banco). Leva o ciclo salvo para quem chamou poder seguir (ex.: importação).
+ */
+export class CicloSalvoEmParte extends Error {
+  constructor(
+    mensagem: string,
+    readonly ciclo: Ciclo,
+  ) {
+    super(mensagem);
+    this.name = 'CicloSalvoEmParte';
+  }
+}
+
 export interface DecisoesCiclo {
   ciclo_id: string;
   decisoes: DecisaoFase[];

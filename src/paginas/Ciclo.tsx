@@ -5,6 +5,7 @@ import { AvisoRapido } from '../componentes/dose';
 import { FormAplicacao } from '../componentes/formularios';
 import { Campo, CampoNumero, Escolhas, Vazio } from '../componentes/ui';
 import { useDados } from '../dados/contexto';
+import { CicloSalvoEmParte } from '../dados/repositorio';
 import { useCalculos } from '../dados/useCalculos';
 import {
   CAPACIDADES_SERINGA,
@@ -75,9 +76,16 @@ function Agenda() {
           Datas recalculadas a partir da última aplicação real{resumo.proxima?.situacao === 'atrasada' ? ', considerando que a dose atrasada será tomada hoje' : ''}.
           {resumo.fim_hipotese && ' Doses marcadas "se subir" são hipótese: a dose só sobe quando você decide no fim da fase (Início).'}
         </p>
+        {resumo.degrau.estado === 'pendente' && resumo.proxima && (
+          <div className="alerta" style={{ marginBottom: 8 }}>
+            Fim da fase: a próxima dose ({formatarData(resumo.proxima.data)}) continua {num(resumo.proxima.dose_mg)} mg até você decidir no Início. A lista abaixo
+            mostra o plano se subir.
+          </div>
+        )}
         {resumo.degrau.estado === 'fora_do_plano' && (
           <div className="alerta" style={{ marginBottom: 8 }}>
-            A última dose ({num(resumo.degrau.degrau?.bloco.dose_mg)} mg) não bate com nenhuma fase do Plano. Confirme no Início qual fase seguir.
+            A última dose ({num(resumo.degrau.degrau?.bloco.dose_mg)} mg) não bate com nenhuma fase do Plano: a próxima continua {num(resumo.degrau.dose_mg)} mg. Confirme no Início qual
+            fase seguir; a lista abaixo é a hipótese das fases seguintes.
           </div>
         )}
         {proximas.length === 0 ? (
@@ -357,21 +365,29 @@ function Ajustes() {
     if (totalN <= 0 || concN <= 0 || intervaloN <= 0) return setMsg({ tipo: 'erro', texto: 'Todos os valores precisam ser maiores que zero.' });
     if (!inicio) return setMsg({ tipo: 'erro', texto: 'Informe a data da 1ª aplicação.' });
     if (concMudou && !mudancaConc) return setMsg({ tipo: 'erro', texto: 'Diga se a concentração nova é de um frasco novo ou a correção de um erro de digitação.' });
+    // Gravado sem algum campo novo (banco sem o SQL de evolução): o resto vale
+    let emParte: string | null = null;
     try {
-      await executar((r) =>
-        r.salvarCiclo({
-          ...c,
-          nome: nome.trim() || c.nome,
-          data_inicio: inicio,
-          quantidade_total_mg: totalN,
-          concentracao_mg_ml: concN,
-          intervalo_dias: intervaloN,
-          passo_ui: passo,
-          seringa_capacidade_ui: capacidade,
-          seringa_marca_ui: marca,
-          frasco_aberto_em: aberto || null,
-        }),
-      );
+      await executar(async (r) => {
+        try {
+          await r.salvarCiclo({
+            ...c,
+            nome: nome.trim() || c.nome,
+            data_inicio: inicio,
+            quantidade_total_mg: totalN,
+            concentracao_mg_ml: concN,
+            intervalo_dias: intervaloN,
+            passo_ui: passo,
+            seringa_capacidade_ui: capacidade,
+            // Marcas de 1 UI sem nunca ter escolhido: continua "não informada"
+            seringa_marca_ui: c.seringa_marca_ui == null && marca === 1 ? null : marca,
+            frasco_aberto_em: aberto || null,
+          });
+        } catch (e) {
+          if (!(e instanceof CicloSalvoEmParte)) throw e;
+          emParte = e.message;
+        }
+      });
       if (concMudou) {
         // Novo frasco: as aplicações antigas guardam a concentração de antes.
         // Correção: todas passam a usar a concentração certa.
@@ -381,7 +397,7 @@ function Ajustes() {
         }
       }
       setMudancaConc(null);
-      setMsg({ tipo: 'info', texto: 'Parâmetros salvos. Tudo foi recalculado.' });
+      setMsg(emParte ? { tipo: 'erro', texto: `Os outros parâmetros foram salvos. ${emParte}` } : { tipo: 'info', texto: 'Parâmetros salvos. Tudo foi recalculado.' });
     } catch (e) {
       setMsg({ tipo: 'erro', texto: (e as Error).message });
     }
