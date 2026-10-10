@@ -1,0 +1,76 @@
+# Atualiza o Supabase sozinho: aplica as migrações novas (idempotentes) e
+# publica as funções de lembrete e de calendário. Roda a cada mudança em
+# supabase/ na main e também pelo botão "Run workflow".
+# Requer o segredo SUPABASE_ACCESS_TOKEN (token pessoal do Supabase) em
+# Settings → Secrets and variables → Actions. Sem ele, só avisa e não faz nada.
+name: Atualizar Supabase
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/functions/**'
+      - 'supabase/migrations/**'
+      - '.github/workflows/atualizar-supabase.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase
+  cancel-in-progress: false
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      PROJETO: dqxpiyjdwwrcwkcuuyys
+      # Migrações a partir desta são aplicadas aqui (as anteriores já foram rodadas à mão)
+      DESDE: '20261015000000'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Confere o token
+        id: token
+        run: |
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then
+            echo "::warning::Falta o segredo SUPABASE_ACCESS_TOKEN: nada foi atualizado no Supabase."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Aplica as migrações
+        if: steps.token.outputs.ok == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in supabase/migrations/*.sql; do
+            nome=$(basename "$f")
+            [[ "$nome" < "$DESDE" ]] && continue
+            echo "Aplicando $nome"
+            jq -Rs '{query: .}' "$f" > /tmp/consulta.json
+            codigo=$(curl -sS -o /tmp/resposta.json -w '%{http_code}' -X POST \
+              "https://api.supabase.com/v1/projects/$PROJETO/database/query" \
+              -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+              -H 'Content-Type: application/json' \
+              --data @/tmp/consulta.json)
+            cat /tmp/resposta.json; echo
+            if [ "$codigo" -lt 200 ] || [ "$codigo" -ge 300 ]; then
+              echo "::error::A migração $nome falhou (HTTP $codigo)."
+              exit 1
+            fi
+          done
+
+      - uses: supabase/setup-cli@v1
+        if: steps.token.outputs.ok == 'true'
+        with:
+          version: latest
+
+      - name: Publica as funções
+        if: steps.token.outputs.ok == 'true'
+        run: |
+          supabase functions deploy enviar-lembretes --project-ref "$PROJETO" --no-verify-jwt
+          supabase functions deploy calendario --project-ref "$PROJETO" --no-verify-jwt
