@@ -79,7 +79,8 @@ function Agenda() {
         </p>
         {resumo.degrau.estado === 'pendente' && resumo.proxima && (
           <div className="alerta" style={{ marginBottom: 8 }}>
-            Fim da fase: a próxima dose ({formatarData(resumo.proxima.data)}) continua {num(resumo.proxima.dose_mg)} mg até você decidir no Início. A lista abaixo
+            Fim da fase: a próxima dose (
+            {resumo.proxima.situacao === 'atrasada' ? `atrasada desde ${formatarData(resumo.proxima.data)}` : formatarData(resumo.proxima.data)}) continua {num(resumo.proxima.dose_mg)} mg até você decidir no Início. A lista abaixo
             mostra o plano se subir.
           </div>
         )}

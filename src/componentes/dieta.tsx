@@ -34,11 +34,16 @@ export function kcal(n: number): string {
   return `${num(n, 0)} kcal`;
 }
 
-/** Macros compactos: só o que não é zero (menos ruído na tela do iPhone) */
-export function LinhaMacros({ m, kcalFinal = true }: { m: Macros; kcalFinal?: boolean }) {
+/**
+ * Macros compactos: só o que não é zero (menos ruído na tela do iPhone).
+ * `colageno` (g): a parte da proteína vegetal que é colágeno/gelatina, mostrada
+ * à parte ("Colág"), porque não conta como proteína (as kcal contam).
+ */
+export function LinhaMacros({ m, kcalFinal = true, colageno = 0 }: { m: Macros; kcalFinal?: boolean; colageno?: number }) {
   const itens: [string, string, number][] = [
     ['m-pa', 'Ptn A', m.ptn_animal],
-    ['m-pv', 'Ptn V', m.ptn_vegetal],
+    ['m-pv', 'Ptn V', Math.max(0, m.ptn_vegetal - colageno)],
+    ['texto-2', 'Colág', colageno],
     ['m-c', 'Carb', m.carb],
     ['m-g', 'Gord', m.gord],
   ];
@@ -102,7 +107,7 @@ export function FolhaTroca({ troca, aoEscolher, aoFechar }: { troca: Troca; aoEs
           <button key={rotulo} type="button" className="botao" onClick={() => aoEscolher(item)}>
             <span className="pilha" style={{ gap: 2, alignItems: 'center' }}>
               <span>{rotulo}</span>
-              <LinhaMacros m={macrosDoItem(item, novo)} />
+              <LinhaMacros m={macrosDoItem(item, novo)} colageno={ehColageno(novo) ? macrosDoItem(item, novo).ptn_vegetal : 0} />
             </span>
           </button>
         ))}
@@ -203,7 +208,7 @@ export function LinhaItem({
         </select>
         {item.unidade !== 'g' && <span className="mudo">= {num(gramas, 0)} g</span>}
       </div>
-      <LinhaMacros m={m} />
+      <LinhaMacros m={m} colageno={alimento && ehColageno(alimento) ? m.ptn_vegetal : 0} />
       {foco && faltaNoFoco}
       {foco && fechar && (
         <button

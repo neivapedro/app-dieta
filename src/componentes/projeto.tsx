@@ -3,7 +3,7 @@ import { useDados } from '../dados/contexto';
 import { useCalculos } from '../dados/useCalculos';
 import { useProjeto } from '../dados/useProjeto';
 import { useTreino } from '../dados/useTreino';
-import { formatarData } from '../lib/datas';
+import { formatarData, somarDias } from '../lib/datas';
 import { cm, kg, mg, num, pct, pp, sinal } from '../lib/formato';
 import { avisoReganho, DEGRAU_DEFICIT, linhasBalanco, SEMANAS_POS, SEMANAS_SAIDA, sugestaoDegrau, type FasePos } from '../lib/projeto';
 import type { DecisaoFase } from '../lib/tipos';
@@ -108,7 +108,7 @@ function SaidaDoRemedio({ pos }: { pos: FasePos }) {
   if (!pos.saida) return null;
   return (
     <p className="texto-2">
-      <span className="etiqueta aviso">saída do remédio</span> Semanas 0 a {SEMANAS_SAIDA} depois da última dose ({formatarData(pos.inicio)}): o remédio ainda está
+      <span className="etiqueta aviso">saída do remédio</span> Semanas 1 a {SEMANAS_SAIDA + 1} depois da última dose ({formatarData(pos.inicio)}): o remédio ainda está
       saindo do corpo e o apetite volta aos poucos.
     </p>
   );
@@ -150,13 +150,13 @@ export function CartaoFimProjeto({ aoRegistrar }: { aoRegistrar: () => void }) {
     const aviso = avisoReganho(composicoes, pos.inicio);
     // Depois das 52 semanas a fase acabou: sem sugestão de degrau
     const sugestao = dieta && !pos.encerrada
-      ? sugestaoDegrau({ ajuste: dieta.config.ajuste_kcal, inicioPos: pos.inicio, datasMedicoes: medidas.map((m) => m.data), tratada: dieta.config.pos_degrau_medicao })
+      ? sugestaoDegrau({ ajuste: dieta.config.ajuste_kcal, inicioPos: pos.inicio, datasMedicoes: medidas.filter((m) => !m.atipica).map((m) => m.data), tratada: dieta.config.pos_degrau_medicao })
       : null;
     return (
       <section className="cartao pilha" style={{ gap: 10 }}>
         <div className="cartao-cab" style={{ marginBottom: 0 }}>
           <h2>Fase pós-remédio</h2>
-          <span className="etiqueta">{pos.encerrada ? 'concluída' : pos.semana === null ? 'a começar' : `semana ${pos.semana} de ${SEMANAS_POS}`}</span>
+          <span className="etiqueta">{pos.encerrada ? 'concluída' : pos.semana === null ? 'a começar' : `semana ${pos.semana + 1} de ${SEMANAS_POS}`}</span>
         </div>
         <SaidaDoRemedio pos={pos} />
         {aviso && <div className="alerta info">{aviso.texto}</div>}
@@ -165,7 +165,13 @@ export function CartaoFimProjeto({ aoRegistrar }: { aoRegistrar: () => void }) {
             Sugestão na Dieta: reduzir o déficit de {ajusteTexto(sugestao.de)} para {ajusteTexto(sugestao.para)} kcal/dia. Você decide se aplica.
           </Link>
         )}
-        {t && <p className="texto-2">O check diário de treino e cardio continua num placar novo, na aba Treino.</p>}
+        {t && (
+          <p className="texto-2">
+            {t.placarPos
+              ? 'O check diário de treino e cardio continua num placar novo, na aba Treino.'
+              : `A partir de ${formatarData(somarDias(t.projeto.fim, 1))}, o check diário de treino e cardio continua num placar novo, na aba Treino.`}
+          </p>
+        )}
         <details className="ajuda">
           <summary>Balanço do projeto</summary>
           <Balanco />
@@ -230,7 +236,7 @@ export function SugestaoPosDieta() {
   const pos = proj?.pos;
   if (!pos || pos.encerrada || !dieta) return null;
   const ajuste = dieta.config.ajuste_kcal;
-  const sugestao = sugestaoDegrau({ ajuste, inicioPos: pos.inicio, datasMedicoes: medidas.map((m) => m.data), tratada: dieta.config.pos_degrau_medicao });
+  const sugestao = sugestaoDegrau({ ajuste, inicioPos: pos.inicio, datasMedicoes: medidas.filter((m) => !m.atipica).map((m) => m.data), tratada: dieta.config.pos_degrau_medicao });
   const aviso = avisoReganho(composicoes, pos.inicio);
 
   const tratar = (aplicar: boolean) =>
@@ -241,7 +247,7 @@ export function SugestaoPosDieta() {
     <section className="cartao pilha" style={{ gap: 10 }}>
       <div className="cartao-cab" style={{ marginBottom: 0 }}>
         <h2>Fase pós-remédio</h2>
-        <span className="etiqueta">{pos.semana === null ? 'a começar' : `semana ${pos.semana} de ${SEMANAS_POS}`}</span>
+        <span className="etiqueta">{pos.semana === null ? 'a começar' : `semana ${pos.semana + 1} de ${SEMANAS_POS}`}</span>
       </div>
       <SaidaDoRemedio pos={pos} />
       {aviso && (

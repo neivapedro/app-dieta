@@ -15,7 +15,7 @@ import {
   toleranciaIntervalo,
 } from './consulta';
 import { ritmoComFaixa, tendenciaMedidas } from './conferencia';
-import { dataPorExtenso, segundaDaSemana } from './datas';
+import { dataPorExtenso, segundaDaSemana, somarDias } from './datas';
 import type { Composicao } from './gordura';
 import type { Aplicacao, RegistroDiario } from './tipos';
 
@@ -77,7 +77,9 @@ describe('Semana a semana', () => {
   });
 
   it('dieta em % dos dias respondidos', () => {
-    expect(textoDieta({ sim: 5, parcial: 1, nao: 1 })).toBe('71% (5 S · 1 P · 1 N)');
+    expect(textoDieta({ sim: 5, parcial: 1, nao: 1 })).toBe('79% (5 S · 1 P · 1 N)');
+    // "Em parte" vale meio dia, como no Resumo e na Dieta: 24 S + 4 P em 28 = 93%
+    expect(textoDieta({ sim: 24, parcial: 4, nao: 0 })).toBe('93% (24 S · 4 P · 0 N)');
     expect(textoDieta({ sim: 0, parcial: 0, nao: 0 })).toBe('–');
   });
 });
@@ -105,8 +107,8 @@ describe('Quadro de decisão', () => {
   });
   const fases = [bloco(0, '2026-10-05', '2026-10-19', 1.25, false), bloco(1, '2026-10-19', '2026-11-01', 1.5, true)];
   const compFases: ComposicaoFase[] = [
-    { indice: 0, de: comp('2026-10-05', 95, 97), ate: comp('2026-10-12', 94, 96), cintura: -1, gorda: -0.25, magra: -0.75, gorda_semana: -0.25, magra_pct: null, poucos_dados: false, treino: 0.5, cardio: 0.25 },
-    { indice: 1, de: null, ate: null, cintura: null, gorda: null, magra: null, gorda_semana: null, magra_pct: null, poucos_dados: true, treino: 1, cardio: 0 },
+    { indice: 0, de: comp('2026-10-05', 95, 97), ate: comp('2026-10-12', 94, 96), cintura: -1, gorda: -0.25, magra: -0.75, gorda_semana: -0.25, cintura_semana: -1, magra_semana: -0.75, magra_pct: null, poucos_dados: false, treino: 0.5, cardio: 0.25 },
+    { indice: 1, de: null, ate: null, cintura: null, gorda: null, magra: null, gorda_semana: null, cintura_semana: null, magra_semana: null, magra_pct: null, poucos_dados: true, treino: 1, cardio: 0 },
   ];
   const diario = [
     reg('2026-10-06', { nausea: 3 }),
@@ -179,6 +181,9 @@ describe('Tendências, eventos e decisões no PDF', () => {
     expect(ritmoDoBloco(serie, { inicio: '2026-10-05', fim: '2026-10-19', kg_por_semana: null }, false)).toBe('poucas pesagens');
     // Sem regressão (pesagem só às segundas), fica a conta entre as pesagens, sem faixa
     expect(ritmoDoBloco(serie, { inicio: '2026-10-05', fim: '2026-10-19', kg_por_semana: -0.5 }, false)).toBe('− 0,50 (sem faixa: poucas pesagens)');
+    // Medição atípica fica fora do ritmo (como na tela)
+    const comAtipica = [100, 99.5, 99, 104, 98].map((peso_kg, i) => ({ data: somarDias('2026-01-05', i * 7), peso_kg, origem: 'medida' as const, ...(i === 3 ? { atipica: true } : {}) }));
+    expect(ritmoDoBloco(comAtipica, { inicio: '2026-01-05', fim: '2026-02-02', kg_por_semana: null }, true)).toBe('− 0,50 ± 0,00 (4 pesagens)');
   });
 
   it('eventos juntam alertas e anotações em ordem de data; decisões com motivo', () => {

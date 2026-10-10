@@ -7,10 +7,22 @@ export interface Usuario {
 }
 
 /**
+ * Aviso, não erro: o dado foi gravado sem algum campo novo (ou a tabela nova
+ * não existe) porque falta o SQL de evolução no banco. Quem importa um backup
+ * junta o aviso numa ressalva e segue com o resto.
+ */
+export class SalvoEmParte extends Error {
+  constructor(mensagem: string) {
+    super(mensagem);
+    this.name = 'SalvoEmParte';
+  }
+}
+
+/**
  * O ciclo foi gravado, mas sem algum campo novo (falta o SQL de evolução no
  * banco). Leva o ciclo salvo para quem chamou poder seguir (ex.: importação).
  */
-export class CicloSalvoEmParte extends Error {
+export class CicloSalvoEmParte extends SalvoEmParte {
   constructor(
     mensagem: string,
     readonly ciclo: Ciclo,

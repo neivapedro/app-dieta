@@ -209,6 +209,9 @@ export interface ComposicaoFase {
   magra: number | null;
   /** Massa gorda por semana, pela regressão das medições da fase (3+ cobrindo 14+ dias) */
   gorda_semana: number | null;
+  /** Cintura e massa magra por semana, pela mesma regressão (mesmo mínimo) */
+  cintura_semana: number | null;
+  magra_semana: number | null;
   /** Fração da perda de peso da fase que saiu de massa magra (pela regressão); null sem perda ou com poucos dados */
   magra_pct: number | null;
   /** Menos de 3 medições ou de 14 dias na fase */
@@ -241,6 +244,7 @@ export function composicaoPorFase(fases: AnaliseFase[], todas: Composicao[], tre
     const xs = pontos.map((c) => diferencaDias(pontos[0].data, c.data));
     const gSem = temRitmo ? reta(xs, pontos.map((c) => c.massa_gorda_kg!)).inclinacao * 7 : null;
     const mSem = temRitmo ? reta(xs, pontos.map((c) => c.massa_magra_kg!)).inclinacao * 7 : null;
+    const cSem = temRitmo ? reta(xs, pontos.map((c) => c.cintura_cm)).inclinacao * 7 : null;
     const pesoSem = gSem !== null && mSem !== null ? gSem + mSem : null;
     let treino: number | null = null;
     let cardio: number | null = null;
@@ -261,6 +265,8 @@ export function composicaoPorFase(fases: AnaliseFase[], todas: Composicao[], tre
       gorda,
       magra: dif('massa_magra_kg'),
       gorda_semana: gSem,
+      cintura_semana: cSem,
+      magra_semana: mSem,
       // Menos de 0,1 kg/sem de perda: não há perda para dividir
       magra_pct: pesoSem !== null && pesoSem < -0.1 ? mSem! / pesoSem : null,
       poucos_dados: !temRitmo,

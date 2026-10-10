@@ -1,5 +1,5 @@
 import type { QualidadePerda, Tendencia } from './conferencia';
-import { faixaImprecisa, ritmoPercentual } from './conferencia';
+import { faixaImprecisa, magraCaindo, ritmoPercentual } from './conferencia';
 import { diaSemanaCurto, diferencaDias, somarDias } from './datas';
 import type { RegistroDiario, TreinoDia } from './tipos';
 
@@ -133,12 +133,12 @@ export function sugestaoSemana(tendencia: Tendencia | null, peso: number, diario
   }
   const seguido = fracaoSeguida(dieta) ?? 0;
   const ritmo = ritmoPercentual(tendencia.peso_semana, peso).pct;
-  const base = `Plano seguido em ${pctTxt(seguido)} dos dias respondidos · ritmo ${ritmo.toLocaleString('pt-BR', { maximumFractionDigits: 2, minimumFractionDigits: 2 })}%/sem · massa magra ${tendencia.magra_semana < 0 ? 'caindo' : 'estável ou subindo'} na tendência.`;
+  const base = `Plano seguido em ${pctTxt(seguido)} dos dias respondidos · ritmo ${ritmo.toLocaleString('pt-BR', { maximumFractionDigits: 2, minimumFractionDigits: 2 })}%/sem · massa magra ${magraCaindo(tendencia) ? 'caindo' : 'estável ou subindo'} na tendência.`;
   if (seguido < LIMITE_SUGESTAO.seguido) return { tipo: 'seguir_plano', texto: 'Siga o plano antes de mexer no déficit.', motivo: base };
   if (ajusteKcal !== null && ajusteKcal >= 0) {
     return { tipo: 'manter', texto: 'Manter.', motivo: `${base} O plano está sem déficit (manutenção ou superávit): as regras de reduzir ou aumentar o déficit não se aplicam.` };
   }
-  if (ritmo > 1 && tendencia.magra_semana < 0) return { tipo: 'reduzir', texto: 'Considere reduzir o déficit.', motivo: base };
+  if (ritmo > 1 && magraCaindo(tendencia)) return { tipo: 'reduzir', texto: 'Considere reduzir o déficit.', motivo: base };
   if (ritmo < 0.5) return { tipo: 'aumentar', texto: 'Considere aumentar o déficit.', motivo: base };
   return { tipo: 'manter', texto: 'Manter.', motivo: base };
 }
@@ -184,7 +184,7 @@ export function conselhoConferencia(tendencia: Tendencia, peso: number, dieta: D
     return { tipo: 'seguir_plano', texto: 'Antes de mexer no déficit, tente seguir o plano: as medidas só dizem algo sobre o plano quando ele é seguido.' };
   }
   const ritmo = ritmoPercentual(tendencia.peso_semana, peso).pct;
-  if ((ajusteKcal === null || ajusteKcal < 0) && ritmo > 1 && tendencia.magra_semana < 0) {
+  if ((ajusteKcal === null || ajusteKcal < 0) && ritmo > 1 && magraCaindo(tendencia)) {
     return { tipo: 'reduzir', texto: 'Perda acima de 1% do peso por semana com a massa magra caindo: considere reduzir o déficit.' };
   }
   if (faixaImprecisa(tendencia)) return { tipo: 'impreciso', texto: 'Plano seguido; a faixa das medidas ainda é larga para comparar com o plano. Espere mais medições.' };

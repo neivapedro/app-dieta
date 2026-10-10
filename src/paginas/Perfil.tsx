@@ -3,7 +3,7 @@ import { BotaoExcluir, Campo, CampoNumero, Escolhas, Icone } from '../componente
 import { CALENDARIO_URL } from '../config';
 import { textoAjuste } from '../componentes/composicao';
 import { useDados } from '../dados/contexto';
-import { CicloSalvoEmParte } from '../dados/repositorio';
+import { CicloSalvoEmParte, SalvoEmParte } from '../dados/repositorio';
 import { lerBackup, montarBackup, planejarImportacao, type Backup, type PlanoImportacao } from '../lib/backup';
 import { diferencaDias, formatarData, hojeLocal } from '../lib/datas';
 import { num, paraNumero, paraTexto, pp } from '../lib/formato';
@@ -285,12 +285,23 @@ export function Perfil() {
     if (!importacao) return;
     const { backup: b, plano } = importacao;
     let emParte: string | null = null;
+    // Banco sem o SQL de evolução: o dado foi gravado sem o campo novo. Junta o
+    // aviso (uma vez cada) numa ressalva e segue a importação com o resto
+    const avisos = new Set<string>();
+    const tolerar = async (gravacao: Promise<unknown>) => {
+      try {
+        await gravacao;
+      } catch (e) {
+        if (!(e instanceof SalvoEmParte)) throw e;
+        avisos.add(e.message);
+      }
+    };
     try {
       await executar(async (r) => {
         if (b.perfil) {
-          await r.salvarPerfil(b.perfil);
+          await tolerar(r.salvarPerfil(b.perfil));
           if (b.perfil.metas_projeto) await r.salvarMetas(b.perfil.metas_projeto);
-          if (b.perfil.exercicios_forca?.length && (perfil?.modulo_treino || b.perfil.modulo_treino)) await r.salvarExerciciosForca(b.perfil.exercicios_forca);
+          if (b.perfil.exercicios_forca?.length && (perfil?.modulo_treino || b.perfil.modulo_treino)) await tolerar(r.salvarExerciciosForca(b.perfil.exercicios_forca));
         }
         let cicloId = ciclo?.id;
         if (b.ciclo) {
@@ -306,23 +317,23 @@ export function Perfil() {
         }
         for (const a of plano.aplicacoes) {
           const { id: _id, ...resto } = a;
-          await r.salvarAplicacao({ ...resto, ciclo_id: cicloId! });
+          await tolerar(r.salvarAplicacao({ ...resto, ciclo_id: cicloId! }));
         }
         for (const d of plano.diario) {
           const { id: _id, ...resto } = d;
-          await r.salvarDiario(resto);
+          await tolerar(r.salvarDiario(resto));
         }
         for (const m of plano.medidas) {
           const { id: _id, ...resto } = m;
-          await r.salvarMedida(resto);
+          await tolerar(r.salvarMedida(resto));
         }
         if (perfil?.modulo_treino || b.perfil?.modulo_treino) {
           for (const t of plano.treinos) {
             const { id: _id, ...resto } = t;
-            await r.salvarTreino(resto);
+            await tolerar(r.salvarTreino(resto));
           }
           // Id novo: o do arquivo pode ser de outra conta
-          for (const f of plano.forca) await r.salvarForca({ ...f, id: crypto.randomUUID() });
+          for (const f of plano.forca) await tolerar(r.salvarForca({ ...f, id: crypto.randomUUID() }));
         }
         if (b.dieta) await r.salvarDieta(b.dieta);
         // Id novo: o banco é compartilhado entre contas e o id do backup pode já existir em outra
@@ -330,7 +341,8 @@ export function Perfil() {
           // Banco sem a tabela do registro: o resto já foi importado; avisa o que ficou de fora
           const aviso = 'o registro de decisões não foi importado: falta rodar o SQL de evolução no Supabase.';
           emParte = emParte ? `${emParte} Além disso, ${aviso}` : aviso;
-        } else for (const d of plano.registro_decisoes) await r.salvarRegistroDecisao({ ...d, id: crypto.randomUUID() });
+        } else for (const d of plano.registro_decisoes) await tolerar(r.salvarRegistroDecisao({ ...d, id: crypto.randomUUID() }));
+        for (const aviso of avisos) emParte = emParte ? `${emParte} ${aviso}` : aviso;
       });
       setImportacao(null);
       setMsgBackup(emParte ? { tipo: 'erro', texto: `Backup importado, com uma ressalva: ${emParte}` } : { tipo: 'info', texto: 'Backup importado.' });

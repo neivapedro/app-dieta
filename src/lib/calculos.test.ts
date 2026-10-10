@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { analisarFases, analisarGeral, diaAposDose, rotuloBloco, serieDePeso, sintomasPorFase } from './analise';
 import { calcularCiclo, cicloPadrao, guiaSeringa, consumoPlano, faseDaDose, marcacao, mgParaUI, verificarPlano } from './ciclo';
 import { diaDaSemana, somarDias } from './datas';
-import { composicao, ganhos, historicoComposicao, percentualGordura } from './gordura';
+import { composicao, ganhos, historicoComposicao, percentualGordura, ultimaNormal } from './gordura';
+import { sinal } from './formato';
 import type { Aplicacao, Ciclo, Medida, RegistroDiario } from './tipos';
 
 const ciclo: Ciclo = { id: 'c1', ...cicloPadrao('2026-10-08') };
@@ -271,5 +272,24 @@ describe('Análise do ciclo', () => {
     const r = calcularCiclo(ciclo, aps, diario, '2026-11-01');
     const fases = analisarFases(r, serieDePeso(diario, medidas), diario, '2026-11-01');
     expect(fases[0]).toMatchObject({ doses: 4, em_andamento: false, fim: '2026-11-01' });
+  });
+});
+
+describe('Medição que vale para as metas', () => {
+  const c = (data: string, magra: number | null, atipica = false) => ({ data, massa_magra_kg: magra, atipica });
+  it('a última normal com massa magra; a atípica fica só no histórico', () => {
+    expect(ultimaNormal([c('2026-10-05', 70), c('2026-10-12', 71.5, true)])?.data).toBe('2026-10-05');
+    expect(ultimaNormal([c('2026-10-05', 70), c('2026-10-12', null)])?.data).toBe('2026-10-05');
+    // Todas atípicas: vale a última de todas (como na aba Medidas)
+    expect(ultimaNormal([c('2026-10-05', 70, true), c('2026-10-12', 71, true)])?.data).toBe('2026-10-12');
+    expect(ultimaNormal([])).toBeNull();
+  });
+});
+
+describe('Sinal das variações', () => {
+  it('sem "− 0,00": o que arredonda para zero sai sem sinal', () => {
+    expect(sinal(-0.004, 2, ' kg')).toBe('0,00 kg');
+    expect(sinal(-0.006, 2)).toBe('− 0,01');
+    expect(sinal(0.25, 1)).toBe('+ 0,3');
   });
 });

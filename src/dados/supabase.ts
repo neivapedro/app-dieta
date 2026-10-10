@@ -3,7 +3,7 @@ import { configPadrao, type PlanoDieta } from '../lib/dieta';
 import { tipoCardioEfetivo } from '../lib/treino';
 import type { Aplicacao, Ciclo, Medida, MetasProjeto, Perfil, RegistroDecisao, RegistroDiario, RegistroForca, TreinoDia } from '../lib/tipos';
 import { ehErroDeRede } from '../lib/erros';
-import { CicloSalvoEmParte, type DecisoesCiclo, type Repositorio, type Usuario } from './repositorio';
+import { CicloSalvoEmParte, SalvoEmParte, type DecisoesCiclo, type Repositorio, type Usuario } from './repositorio';
 
 // O isolamento entre contas é garantido no banco (Row Level Security, ver
 // supabase/migrations): mesmo que o app pedisse dados de outra pessoa, o
@@ -209,7 +209,7 @@ export class RepositorioSupabase implements Repositorio {
       }
     }
     const calibrou = [ajuste_gordura, exame_gordura_data, exame_gordura_bf].some((v) => v !== null && v !== undefined);
-    if (semCalibracao && calibrou) throw new Error(`Ajuste de calibração do % de gordura não foi salvo: ${AVISO_EVOLUCAO}`);
+    if (semCalibracao && calibrou) throw new SalvoEmParte(`Ajuste de calibração do % de gordura não foi salvo: ${AVISO_EVOLUCAO}`);
   }
 
   async novoTokenCalendario(): Promise<string> {
@@ -265,7 +265,7 @@ export class RepositorioSupabase implements Repositorio {
     if (r.error && faltaNoBanco(r.error)) {
       // O plano (Repetir fase) é gravado; a decisão em si precisa da coluna nova
       erro(await this.sb.from('ciclos').update({ fases }).eq('id', ciclo_id));
-      throw new Error(`A decisão da fase não foi salva: ${AVISO_EVOLUCAO}`);
+      throw new SalvoEmParte(`A decisão da fase não foi salva: ${AVISO_EVOLUCAO}`);
     }
     erro(r);
   }
@@ -290,6 +290,14 @@ export class RepositorioSupabase implements Repositorio {
     if (r.error && faltaNoBanco(r.error)) {
       const { concentracao_mg_ml: _c, ...basica } = linha;
       erro(await this.sb.from('aplicacoes').upsert(basica));
+      // "Frasco novo": a aplicação guarda uma concentração diferente da do ciclo, que se perderia sem aviso
+      if (a.concentracao_mg_ml != null) {
+        const c = await this.sb.from('ciclos').select('concentracao_mg_ml').eq('id', a.ciclo_id).maybeSingle();
+        const doCiclo = c.data ? num(c.data.concentracao_mg_ml) : null;
+        if (doCiclo !== null && Math.abs(doCiclo - a.concentracao_mg_ml) > 1e-9) {
+          throw new SalvoEmParte(`Concentração do frasco anterior nesta aplicação não foi salva: ${AVISO_EVOLUCAO}`);
+        }
+      }
     } else erro(r);
   }
 
@@ -335,7 +343,7 @@ export class RepositorioSupabase implements Repositorio {
     // Avisa: o resto foi salvo, mas os campos novos precisam do SQL
     if (semMelhorias && [r.vomito, r.diarreia, r.intestino_preso, r.dieta_seguida].some(preenchido))
       throw new Error('Sintomas e "segui o plano?" não foram salvos: falta rodar o SQL de melhorias no Supabase.');
-    if (semEvolucao && [r.sono_h, r.agua_l, r.cor_urina].some(preenchido)) throw new Error(`Sono, água e cor da urina não foram salvos: ${AVISO_EVOLUCAO}`);
+    if (semEvolucao && [r.sono_h, r.agua_l, r.cor_urina].some(preenchido)) throw new SalvoEmParte(`Sono, água e cor da urina não foram salvos: ${AVISO_EVOLUCAO}`);
   }
 
   async excluirDiario(id: string) {
@@ -365,7 +373,7 @@ export class RepositorioSupabase implements Repositorio {
     if (faltaNoBanco(r.error, /atipica/)) {
       const { atipica: _a, ...basica } = linha;
       erro(await this.sb.from('medidas').upsert(basica));
-      if (m.atipica) throw new Error(`"Medição atípica" não foi salvo: ${AVISO_EVOLUCAO}`);
+      if (m.atipica) throw new SalvoEmParte(`"Medição atípica" não foi salvo: ${AVISO_EVOLUCAO}`);
     } else erro(r);
   }
 
@@ -409,7 +417,7 @@ export class RepositorioSupabase implements Repositorio {
       // Sem a coluna, o tipo do cardio é inferido pela distância e pela regra do dia: só avisa se a inferência erraria
       const tipoPerdido = !!t.cardio && preenchido(t.cardio_tipo) && tipoCardioEfetivo(t.data, { corrida_km: t.corrida_km, cardio_tipo: null }) !== t.cardio_tipo;
       if (preenchido(t.esforco_treino) || preenchido(t.esforco_cardio) || tipoPerdido)
-        throw new Error(`${tipoPerdido ? 'Tipo do cardio' : 'Esforço da sessão'} não foi salvo: ${AVISO_EVOLUCAO}`);
+        throw new SalvoEmParte(`${tipoPerdido ? 'Tipo do cardio' : 'Esforço da sessão'} não foi salvo: ${AVISO_EVOLUCAO}`);
     } else erro(r);
   }
 
@@ -429,7 +437,7 @@ export class RepositorioSupabase implements Repositorio {
 
   async salvarForca(f: RegistroForca) {
     const r = await this.sb.from('treino_forca').upsert({ ...f, user_id: await this.uid() });
-    if (faltaNoBanco(r.error, /treino_forca/)) throw new Error(`Registro de força não foi salvo: ${AVISO_EVOLUCAO}`);
+    if (faltaNoBanco(r.error, /treino_forca/)) throw new SalvoEmParte(`Registro de força não foi salvo: ${AVISO_EVOLUCAO}`);
     erro(r);
   }
 
@@ -440,7 +448,7 @@ export class RepositorioSupabase implements Repositorio {
 
   async salvarExerciciosForca(lista: string[] | null) {
     const r = await this.sb.from('perfis').update({ exercicios_forca: lista }).eq('user_id', await this.uid());
-    if (faltaNoBanco(r.error, /exercicios_forca/)) throw new Error(`Lista de exercícios da força não foi salva: ${AVISO_EVOLUCAO}`);
+    if (faltaNoBanco(r.error, /exercicios_forca/)) throw new SalvoEmParte(`Lista de exercícios da força não foi salva: ${AVISO_EVOLUCAO}`);
     erro(r);
   }
 
@@ -478,8 +486,8 @@ export class RepositorioSupabase implements Repositorio {
     if (r.error && faltaNoBanco(r.error)) {
       // Registro automático sem a tabela: não interrompe quem só mudou a Dieta ou o Plano
       // (a Análise avisa que falta o SQL). O que o usuário escreveu, sim, precisa do aviso.
-      if (d.tipo === 'nota') throw new Error(`A decisão anotada não foi salva: ${AVISO_EVOLUCAO}`);
-      if (d.motivo) throw new Error(`O motivo da decisão não foi salvo: ${AVISO_EVOLUCAO}`);
+      if (d.tipo === 'nota') throw new SalvoEmParte(`A decisão anotada não foi salva: ${AVISO_EVOLUCAO}`);
+      if (d.motivo) throw new SalvoEmParte(`O motivo da decisão não foi salvo: ${AVISO_EVOLUCAO}`);
       return;
     }
     erro(r);

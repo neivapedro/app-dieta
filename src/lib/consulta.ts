@@ -31,10 +31,10 @@ function contarDieta(regs: RegistroDiario[]): ContagemDieta {
   };
 }
 
-/** "71% (5 S · 1 P · 1 N)": % de dias "sim" entre os dias respondidos. */
+/** "79% (5 S · 1 P · 1 N)": plano seguido entre os dias respondidos ("em parte" vale meio dia, como no resto do app). */
 export function textoDieta(c: ContagemDieta): string {
   const total = c.sim + c.parcial + c.nao;
-  return total ? `${pct(c.sim / total, 0)} (${c.sim} S · ${c.parcial} P · ${c.nao} N)` : '–';
+  return total ? `${pct((c.sim + 0.5 * c.parcial) / total, 0)} (${c.sim} S · ${c.parcial} P · ${c.nao} N)` : '–';
 }
 
 const temSintoma = (r: RegistroDiario) => r.vomito === true || r.diarreia === true || r.intestino_preso === true;
@@ -160,16 +160,15 @@ export function colunasQuadro(
     const comNausea = regs.filter((r) => r.nausea !== null);
     const max = comNausea.length ? Math.max(...comNausea.map((r) => r.nausea as number)) : null;
     const pico = max === null ? null : comNausea.find((r) => r.nausea === max)!;
-    const diasMed = c?.de && c?.ate ? diferencaDias(c.de.data, c.ate.data) : 0;
-    const porSemana = (v: number | null | undefined) => (v === null || v === undefined || diasMed <= 0 ? null : (v / diasMed) * 7);
     return {
       rotulo: rotuloBloco(f),
       inicio: f.inicio,
       fim,
       em_andamento: f.em_andamento,
+      // As três pela mesma regressão (3+ medições em 14+ dias), para serem comparáveis
       gorda_semana: c?.gorda_semana ?? null,
-      cintura_semana: porSemana(c?.cintura),
-      magra_semana: porSemana(c?.magra),
+      cintura_semana: c?.cintura_semana ?? null,
+      magra_semana: c?.magra_semana ?? null,
       medicoes: c?.de && c?.ate ? { de: c.de.data, ate: c.ate.data } : null,
       nausea_pico: pico ? { valor: max!, data: pico.data, d: diaAposDose(pico.data, datasAplicacoes) } : null,
       vomitos: regs.filter((r) => r.vomito === true).map((r) => ({ data: r.data, d: diaAposDose(r.data, datasAplicacoes) })),
@@ -342,7 +341,7 @@ export function tabelaTendencias(composicoes: Composicao[]): TabelaRelatorio {
 /** kg/semana de um bloco de dose pela regressão das pesagens do bloco, com a faixa: "− 0,45 ± 0,20 (8 pesagens)". */
 export function ritmoDoBloco(serie: PontoPeso[], f: Pick<AnaliseFase, 'inicio' | 'fim' | 'kg_por_semana'>, ultimoDoBloco: boolean): string {
   const fim = ultimoDoBloco ? f.fim : somarDias(f.fim, -1);
-  const r = ritmoComFaixa(serie.filter((p) => p.data >= f.inicio && p.data <= fim).map((p) => ({ data: p.data, valor: p.peso_kg })));
+  const r = ritmoComFaixa(serie.filter((p) => !p.atipica && p.data >= f.inicio && p.data <= fim).map((p) => ({ data: p.data, valor: p.peso_kg })));
   if (r) return `${sinal(r.semana, 2)} ± ${num(r.ic95, 2)} (${r.n} pesagens)`;
   // Bloco curto com pesagem só às segundas: fica a conta entre a primeira e a última pesagem, sem faixa
   return f.kg_por_semana !== null ? `${sinal(f.kg_por_semana, 2)} (sem faixa: poucas pesagens)` : 'poucas pesagens';

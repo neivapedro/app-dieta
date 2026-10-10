@@ -8,6 +8,7 @@ import { useCalculos } from '../dados/useCalculos';
 import { useTreino } from '../dados/useTreino';
 import { deficitNecessario, faixaImprecisa, fracaoMagraDaPerda, kcalPorKgPerdido, ritmoEstimado, ritmoPercentual, tendenciaMedidas } from '../lib/conferencia';
 import { diferencaDias, formatarData } from '../lib/datas';
+import { ultimaNormal } from '../lib/gordura';
 import {
   alvoProteinaRefeicao,
   calcularMetas,
@@ -77,7 +78,7 @@ export function Dieta() {
     return () => clearTimeout(t);
   }, [removidos]);
 
-  const ultima = [...composicoes].reverse().find((c) => c.massa_magra_kg !== null) ?? null;
+  const ultima = ultimaNormal(composicoes);
   const corpo: Corpo | null = ultima ? { peso_kg: ultima.peso_kg, massa_magra_kg: ultima.massa_magra_kg! } : null;
   const altura = medidas.find((m) => m.data === ultima?.data)?.altura_cm ?? perfil?.altura_cm ?? null;
   const anos = idade(perfil?.data_nascimento, hoje);
@@ -91,6 +92,8 @@ export function Dieta() {
   const total = somar(porRefeicao);
   // Colágeno e gelatina entram como vegetal nas kcal, mas ficam fora da proteína total
   const colageno = useMemo(() => (plano && mapa ? proteinaColageno(plano.refeicoes, mapa) : 0), [plano, mapa]);
+  // Vegetal "de verdade": a mesma do Ajustar e da proteína total
+  const ptnVegetal = Math.max(0, total.ptn_vegetal - colageno);
   const usados = useMemo(() => new Set(plano?.refeicoes.flatMap((r) => r.itens.map((i) => i.alimento_id)) ?? []), [plano]);
 
   if (dietaIndisponivel) {
@@ -342,7 +345,7 @@ export function Dieta() {
           </div>
         ) : (
           <div className="alerta" style={{ display: 'block' }}>
-            O basal (taxa metabólica basal) é calculado pela sua massa magra, que vem da medição de cintura, pescoço e peso. Registre uma medição na aba{' '}
+            O basal (taxa metabólica basal) é calculado pela sua massa magra, que vem da medição de cintura, pescoço{perfil?.sexo === 'Feminino' ? ', quadril' : ''} e peso. Registre uma medição na aba{' '}
             <b>Medidas</b> e aqui aparecem o basal, o gasto total e a meta do dia.
           </div>
         )}
@@ -398,7 +401,7 @@ export function Dieta() {
                 </button>
                 {r.itens.length > 0 && m && (
                   <div className="pilha" style={{ gap: 2, alignItems: 'flex-end' }}>
-                    <LinhaMacros m={m} kcalFinal={false} />
+                    <LinhaMacros m={m} kcalFinal={false} colageno={proteinaColageno([r], banco.mapa)} />
                     {alvoRefeicao !== null && (
                       <span className={`sub-valor ${ptnOk ? 'bom' : 'texto-2'}`}>
                         Ptn A {gr(m.ptn_animal)} de ~{num(alvoRefeicao, 0)} g {ptnOk ? '✓' : ''}
@@ -460,11 +463,12 @@ export function Dieta() {
                   <td>
                     <div className="m-pv">Proteína vegetal</div>
                     <div className="sub-linha">
-                      {num(total.ptn_vegetal * 4, 0)} kcal · {total.kcal ? num(((total.ptn_vegetal * 4) / total.kcal) * 100, 0) : 0}% · sai da conta do carbo
+                      {num(ptnVegetal * 4, 0)} kcal · {total.kcal ? num(((ptnVegetal * 4) / total.kcal) * 100, 0) : 0}% · sai da conta do carbo
+                      {colageno >= 0.05 && ` · colágeno e gelatina (${gr(colageno)} g) à parte`}
                     </div>
                   </td>
                   <td>–</td>
-                  <td>{gr(total.ptn_vegetal)} g</td>
+                  <td>{gr(ptnVegetal)} g</td>
                   <td>–</td>
                 </tr>
                 <tr>
@@ -561,7 +565,7 @@ export function Dieta() {
           aderencia={aderencia}
           fracaoMagra={fracaoMagra?.p ?? null}
           ritmoMedido={ritmoMedido && ritmoMedido.faixa !== 'ganho' ? ritmoMedido.pct : null}
-          ptnVegetalPlano={Math.max(0, total.ptn_vegetal - colageno)}
+          ptnVegetalPlano={ptnVegetal}
           aoSalvar={(c) => atualizar({ config: c })}
           aoFechar={() => setConfig(false)}
         />

@@ -8,6 +8,7 @@ import { diaDeSintoma, mediaSono7, TEXTO_SINTOMA_AGUA, TEXTO_SONO_BAIXO } from '
 import { diferencaDias, formatarData, hojeLocal, somarDias } from '../lib/datas';
 import { calcularMetas, calcularSaldo, macrosDaRefeicao, proximaRefeicao, resumoPlano, somar, textoItemPlano } from '../lib/dieta';
 import { kg, lerPeso, num, paraTexto } from '../lib/formato';
+import { ultimaNormal } from '../lib/gordura';
 import { diaCurto, horaDaFaixaOntem, pendenciasDeOntem, textoPendencias } from '../lib/rotina';
 import { alertasSeguranca, AVISO_SEGURANCA } from '../lib/seguranca';
 import { NIVEIS_NAUSEA, type RegistroDiario } from '../lib/tipos';
@@ -232,7 +233,7 @@ export function CartaoFecharDia({ etiqueta }: { etiqueta?: string }) {
       )}
       <form className="linha" style={{ alignItems: 'flex-end', flexWrap: 'nowrap' }} onSubmit={salvarPeso}>
         <label className="campo cresce">
-          <span>Peso em jejum (kg, opcional)</span>
+          <span>Peso (kg, opcional)</span>
           <input
             inputMode="decimal"
             value={peso}
@@ -341,7 +342,7 @@ export function CartaoDietaHoje({ semPergunta }: { semPergunta?: boolean }) {
   const { banco } = useAlimentos();
   const gravarDia = useGravarDia();
   if (!dieta || !temPlano(dieta)) return null;
-  const ultima = [...composicoes].reverse().find((c) => c.massa_magra_kg !== null) ?? null;
+  const ultima = ultimaNormal(composicoes);
   const aderencia = treino ? aderenciaRecente(treinos, treino.inicio, hoje, 28, treino.fim) : null;
   const metas = ultima ? calcularMetas(dieta.config, { peso_kg: ultima.peso_kg, massa_magra_kg: ultima.massa_magra_kg! }, aderencia) : null;
   const total = banco ? somar(dieta.refeicoes.map((r) => macrosDaRefeicao(r, banco.mapa))) : null;

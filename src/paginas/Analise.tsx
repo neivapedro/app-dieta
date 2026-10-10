@@ -31,7 +31,7 @@ import { historicoAlertas } from '../lib/seguranca';
 import type { ModeloRelatorio } from '../lib/relatorioPdf';
 import { calcularMetas, idade, macrosDaRefeicao } from '../lib/dieta';
 import { cm, corVariacao, kg, mg, num, pct, pp, sinal } from '../lib/formato';
-import { MDC, type ChaveMdc, type Composicao } from '../lib/gordura';
+import { MDC, ultimaNormal, type ChaveMdc, type Composicao } from '../lib/gordura';
 import { conselhoConferencia, dietaNaTendencia, textoDietaSemana, textoPlanoSeguido } from '../lib/semana';
 import { aderenciaRecente, formatarTempo } from '../lib/treino';
 
@@ -133,7 +133,7 @@ export function Analise() {
   const dif = (k: 'cintura_cm' | 'massa_gorda_kg' | 'massa_magra_kg') => (ini && atu && ini[k] !== null && atu[k] !== null ? (atu[k] as number) - (ini[k] as number) : null);
 
   // Plano alimentar (para o relatório)
-  const ultimaComp = [...composicoes].reverse().find((c) => c.massa_magra_kg !== null);
+  const ultimaComp = ultimaNormal(composicoes);
   const metasDieta = dieta && ultimaComp ? calcularMetas(dieta.config, { peso_kg: ultimaComp.peso_kg, massa_magra_kg: ultimaComp.massa_magra_kg! }, treino ? aderenciaRecente(treinos, treino.inicio, hoje, 28, treino.fim) : null) : null;
   const refeicoes = dieta && banco ? dieta.refeicoes.filter((r) => r.itens.length).map((r) => ({ r, m: macrosDaRefeicao(r, banco.mapa) })) : [];
   // "Segui o plano?" na janela da tendência das medidas, com o mesmo conselho da Conferência da Dieta

@@ -78,8 +78,10 @@ export function FimDeFase() {
         {s.estado === 'pendente' ? <span className="etiqueta aviso">a decidir</span> : <span className="etiqueta bom">decidido</span>}
       </div>
       <p className="texto-2">
-        {d.bloco.aplicacoes} {d.bloco.aplicacoes === 1 ? 'dose' : 'doses'} de {num(doseAtual)} mg desde {formatarData(d.bloco.data_inicio)}. O app não sobe a dose
-        sozinho: a próxima continua {num(doseAtual)} mg até você decidir.
+        {d.bloco.aplicacoes} {d.bloco.aplicacoes === 1 ? 'dose' : 'doses'} de {num(doseAtual)} mg desde {formatarData(d.bloco.data_inicio)}.{' '}
+        {s.estado === 'pendente'
+          ? `O app não sobe a dose sozinho: a próxima continua ${num(doseAtual)} mg até você decidir.`
+          : `Você decidiu subir: a próxima dose é ${num(doseNova)} mg.`}
       </p>
       <div className="grade">
         <Bloco rotulo="Náusea média · máx." valor={numeros.nausea_media === null ? '–' : `${num(numeros.nausea_media, 1)} · ${numeros.nausea_max}`} />

@@ -214,6 +214,25 @@ th, td { padding: 8px 6px; text-align: right; white-space: nowrap; border-bottom
 @media (max-width: 400px) { table { font-size: 0.78rem; } th, td { padding: 7px 4px; } }
 th { color: var(--texto-2); font-weight: 600; font-size: 0.75rem; }
 th:first-child, td:first-child { text-align: left; }
+/* Tabela que continua para o lado: sombra na borda indica que dá para arrastar */
+.tabela-rolagem {
+  background:
+    linear-gradient(to right, var(--superficie) 30%, transparent) left / 24px 100%,
+    linear-gradient(to left, var(--superficie) 30%, transparent) right / 24px 100%,
+    radial-gradient(farthest-side at 0 50%, color-mix(in srgb, var(--texto) 28%, transparent), transparent) left / 10px 100%,
+    radial-gradient(farthest-side at 100% 50%, color-mix(in srgb, var(--texto) 28%, transparent), transparent) right / 10px 100%;
+  background-repeat: no-repeat;
+  background-attachment: local, local, scroll, scroll;
+}
+/* 320 px: tabelas mais compactas; a "Variação" do Antes × agora vai para baixo do "Agora" */
+.so-estreita { display: none; }
+@media (max-width: 340px) {
+  table { font-size: 0.72rem; }
+  th, td { padding: 6px 2px; }
+  th { font-size: 0.68rem; }
+  .col-larga { display: none; }
+  .so-estreita { display: block; }
+}
 
 .proxima { border-color: color-mix(in srgb, var(--destaque) 50%, var(--borda)); }
 .proxima.atrasada { border-color: color-mix(in srgb, var(--ruim) 60%, var(--borda)); }
@@ -285,7 +304,9 @@ details.ajuda[open] summary { margin-bottom: 8px; }
 .dia-celula.fora { background: transparent; }
 .dia-celula.hoje, .legenda-hoje { border: 2px solid var(--texto); }
 .legenda-hoje { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: -2px; }
-.dia-data { font-size: 0.66rem; color: var(--texto-2); font-variant-numeric: tabular-nums; }
+.dia-data { font-size: 0.66rem; color: var(--texto-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* Em 320 px a data "03/09" precisa caber numa linha só */
+@media (max-width: 340px) { .dia-data { font-size: 0.58rem; letter-spacing: -0.02em; } }
 .dia-checks { display: flex; gap: 2px; }
 .mini {
   display: inline-flex; align-items: center; justify-content: center; width: 17px; height: 17px; border-radius: 4px;
@@ -313,7 +334,9 @@ details.ajuda[open] summary { margin-bottom: 8px; }
 
 .refeicao { padding-bottom: 12px; }
 .refeicao-titulo { display: flex; align-items: baseline; gap: 8px; min-width: 0; padding: 0; border: 0; background: none; cursor: pointer; text-align: left; }
-.refeicao-titulo h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.refeicao-titulo h2 { min-width: 0; overflow-wrap: anywhere; }
+/* "editar" nunca quebra; o título quebra em 2 linhas (o horário não some) */
+.refeicao-titulo .texto-2 { white-space: nowrap; flex: none; }
 .refeicao-rodape { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding-top: 10px; border-top: 1px solid var(--borda); }
 
 .item-dieta { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; border-top: 1px solid var(--borda); }
@@ -379,7 +402,7 @@ details.ajuda summary { min-height: 32px; display: flex; align-items: center; }
   .app { padding: 0; max-width: none; }
   .pilha { gap: 10px; }
   .cartao { box-shadow: none; break-inside: avoid; padding: 10px 12px; }
-  .tabela-rolagem { overflow: visible; margin: 0; padding: 0; }
+  .tabela-rolagem { overflow: visible; margin: 0; padding: 0; background: none; }
   table { font-size: 0.75rem; }
   tr { break-inside: avoid; }
   .grafico { height: 220px; }

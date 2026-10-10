@@ -18,7 +18,7 @@ import { Bloco, Icone } from '../componentes/ui';
 import { useDados } from '../dados/contexto';
 import { useCalculos } from '../dados/useCalculos';
 import { useProjeto } from '../dados/useProjeto';
-import { guiaSeringa, marcasVizinhas, seringaDo, textoSeringa } from '../lib/ciclo';
+import { guiaSeringa, marcasVizinhas, semanasDoDegrau, seringaDo, textoSeringa } from '../lib/ciclo';
 import { diaDaSemana, diferencaDias, formatarData } from '../lib/datas';
 import { cm, corVariacao, kg, mg, num, pct, pp, sinal, ui } from '../lib/formato';
 import { cinturaAlvoRca, MDC, type ChaveMdc } from '../lib/gordura';
@@ -41,7 +41,7 @@ function CartaoDose({ aoRegistrar, aoRecolher }: { aoRegistrar: () => void; aoRe
     deg.estado === 'em_curso' && deg.previstas
       ? ` · dose ${deg.feitas + 1} de ${deg.previstas}`
       : deg.estado === 'inicio' || deg.estado === 'subir'
-        ? ` · dose 1 de ${p.fase?.fase.semanas ?? '–'}`
+        ? ` · dose 1 de ${p.fase ? semanasDoDegrau(ciclo.fases, p.fase.indice) : '–'}`
         : deg.estado === 'pendente'
           ? ' · fim'
           : '';
@@ -53,8 +53,8 @@ function CartaoDose({ aoRegistrar, aoRecolher }: { aoRegistrar: () => void; aoRe
         {p.estado === 'pendente' && <span className="etiqueta aviso">Fase concluída · decidir</span>}
         {p.estado === 'fora_do_plano' && <span className="etiqueta aviso">Fora do plano</span>}
         {p.situacao === 'hoje' && <span className="etiqueta destaque">Hoje</span>}
-        {p.situacao === 'atrasada' && <span className="etiqueta ruim">Atrasada {p.dias} dia(s)</span>}
-        {p.situacao === 'futura' && <span className="etiqueta">{p.dias === 1 ? 'amanhã' : `em ${p.dias} dia(s)`}</span>}
+        {p.situacao === 'atrasada' && <span className="etiqueta ruim">Atrasada {p.dias} {p.dias === 1 ? 'dia' : 'dias'}</span>}
+        {p.situacao === 'futura' && <span className="etiqueta">{p.dias === 1 ? 'amanhã' : `em ${p.dias} dias`}</span>}
       </div>
       <div className="linha entre" style={{ alignItems: 'flex-end' }}>
         <div>
@@ -175,8 +175,11 @@ export function Inicio() {
       <tr key={rotulo}>
         <td>{rotulo}</td>
         <td>{fmt(a)}</td>
-        <td>{fmt(b)}</td>
-        <td className={corVariacao(d, menorMelhor, MDC[chave])}>{d === null ? '–' : fmtDelta(d)}</td>
+        <td>
+          {fmt(b)}
+          {d !== null && <div className={`sub-valor so-estreita ${corVariacao(d, menorMelhor, MDC[chave])}`}>{fmtDelta(d)}</div>}
+        </td>
+        <td className={`col-larga ${corVariacao(d, menorMelhor, MDC[chave])}`}>{d === null ? '–' : fmtDelta(d)}</td>
         {metas && <td>{meta === null ? '–' : fmt(meta)}</td>}
       </tr>
     );
@@ -312,7 +315,7 @@ export function Inicio() {
                   <th></th>
                   <th>Início</th>
                   <th>Agora</th>
-                  <th>Variação</th>
+                  <th className="col-larga">Variação</th>
                   {metas && <th>Meta</th>}
                 </tr>
               </thead>

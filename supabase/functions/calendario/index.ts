@@ -7,7 +7,7 @@
 // registrada no app (../_shared/dose.ts). Mantenha em sincronia com src/lib/ciclo.ts.
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { degraus, faseNoDegrau, planoDeDoses, type Decisao, type Fase } from '../_shared/dose.ts';
+import { degraus, dosesDoCalendario, faseNoDegrau, planoDeDoses, type Decisao, type Fase } from '../_shared/dose.ts';
 
 const url = Deno.env.get('SUPABASE_URL')!;
 const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -129,11 +129,12 @@ Deno.serve(async (req) => {
       );
     });
 
-    // Próximas doses: a próxima oficial (nunca sobe sem decisão) e o resto do
-    // plano, com "(se subir)" nas que dependem de uma decisão no fim da fase
+    // Próximas doses: as mesmas da agenda do app, com "(se subir)" nas que
+    // dependem de uma decisão no fim da fase; a dose oficial até decidir vai na nota
     let saldo = Number(ciclo.quantidade_total_mg) - lista.reduce((s, a) => s + Number(a.dose_mg), 0);
-    const { estado, proxima, resto } = planoDeDoses(fases, lista, decisoes);
-    const futuras = estado === 'fim_plano' ? [{ ...proxima, dose_mg: Math.min(proxima.dose_mg, Math.round(saldo * 100) / 100) }] : estado === 'pendente' || estado === 'fora_do_plano' ? [proxima, ...resto] : resto;
+    const plano = planoDeDoses(fases, lista, decisoes);
+    const { estado, proxima } = plano;
+    const futuras = dosesDoCalendario(plano, saldo);
     const ultima = lista[lista.length - 1]?.data as string | undefined;
     const prevista = ultima ? somarDias(ultima, intervalo) : (ciclo.data_inicio as string);
     const hoje = hojeNoFuso(fuso);
@@ -150,7 +151,9 @@ Deno.serve(async (req) => {
       const ui = Math.floor(((fase.dose_mg / conc) * 100) / passo + 0.5 + EPS) * passo;
       const inicio = localParaUtc(data, hora, fuso);
       const atrasada = k === 0 && prevista < hoje;
-      const nota = f.hipotese ? ' (se subir)' : k === 0 && estado === 'pendente' ? ' · fim da fase: decida no app' : '';
+      const aDecidir = k === 0 && (estado === 'pendente' || estado === 'fora_do_plano');
+      const nota = `${f.hipotese ? ' (se subir)' : ''}${aDecidir ? ' · decida no app' : ''}`;
+      const aviso = aDecidir ? `\n${estado === 'pendente' ? 'Fim da fase' : 'Dose fora do plano'}: até decidir no app, a dose continua ${fmtMg(proxima.dose_mg)} mg.` : '';
       eventos.push(
         'BEGIN:VEVENT',
         `UID:dose-${n}-${ciclo.id}@app-dieta`,
@@ -159,7 +162,7 @@ Deno.serve(async (req) => {
         `DTEND:${carimbo(new Date(inicio.getTime() + 15 * 60_000))}`,
         `SUMMARY:${escapar(`💉 Retatrutida ${fmtMg(fase.dose_mg)} mg · ${fmt(ui)} UI${atrasada ? ' (atrasada)' : ''}${nota}`)}`,
         `DESCRIPTION:${escapar(
-          `${n}ª dose · ${indice >= 0 ? `Fase ${indice + 1} · ${fase.nome}` : 'dose fora do plano'}${nota}\n` +
+          `${n}ª dose · ${indice >= 0 ? `Fase ${indice + 1} · ${fase.nome}` : 'dose fora do plano'}${nota}${aviso}\n` +
             `Seringa U-100: ${fmt(ui)} UI (${guiaSeringa(ui, marca)})\n` +
             `Saldo após esta dose: ${fmtMg(Math.max(saldo, 0))} mg\n` +
             `Registre no app: ${SITE}`,

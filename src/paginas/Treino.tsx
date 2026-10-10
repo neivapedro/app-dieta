@@ -117,7 +117,7 @@ export function Treino() {
         {!p.iniciado && <p className="mudo" style={{ marginTop: 10 }}>O projeto começa no dia da 1ª aplicação ({formatarData(p.inicio)}).</p>}
         {t.placarPos && t.pos && (
           <p className="mudo" style={{ marginTop: 10 }}>
-            {t.pos.semana !== null && `Semana ${t.pos.semana} de ${SEMANAS_POS} depois da última dose (${formatarData(t.pos.inicio)})`}
+            {t.pos.semana !== null && `Semana ${t.pos.semana + 1} de ${SEMANAS_POS} depois da última dose (${formatarData(t.pos.inicio)})`}
             {t.pos.saida ? ' · saída do remédio' : ''}. Placar novo, separado do período do remédio ({formatarData(t.projeto.inicio, true)} →{' '}
             {formatarData(t.projeto.fim, true)}: {t.projeto.placar.treino.feito} treinos e {t.projeto.placar.cardio.feito} cardios).
           </p>
@@ -141,7 +141,7 @@ export function Treino() {
               <LinhaPlacar nome="Treinos" c={p.treino} />
               <LinhaPlacar nome="Cardios" c={p.cardio} />
               <LinhaPlacar nome="· Corrida (2/sem.)" c={p.corrida} extra={`${num(p.corrida.km, 1)} km corridos`} />
-              <LinhaPlacar nome="· Bike (5/sem.)" c={p.bike} extra={`${p.bike.minutos} min pedalados`} />
+              <LinhaPlacar nome="· Bike (5/sem.)" c={p.bike} extra={`${num(p.bike.minutos, 0)} min pedalados`} />
             </tbody>
           </table>
         </div>

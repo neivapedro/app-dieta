@@ -242,8 +242,13 @@ describe('Fases por regressão', () => {
     expect(c[0].magra_pct).not.toBeNull();
     expect(c[0].magra_pct!).toBeGreaterThan(0);
     expect(c[0].magra_pct!).toBeLessThan(0.5);
+    // Cintura e massa magra pela mesma regressão da massa gorda
+    expect(c[0].cintura_semana).toBeCloseTo(-1, 6);
+    expect(c[0].magra_semana! + c[0].gorda_semana!).toBeCloseTo(-1, 6);
     const poucos = composicaoPorFase(fases, comps.slice(0, 2), null, '2026-11-03');
     expect(poucos[0].gorda_semana).toBeNull();
+    expect(poucos[0].cintura_semana).toBeNull();
+    expect(poucos[0].magra_semana).toBeNull();
     expect(poucos[0].poucos_dados).toBe(true);
   });
 });
@@ -334,6 +339,10 @@ describe('Sugestão da semana', () => {
   it('rápido com massa magra caindo: reduzir; lento seguindo bem: aumentar; senão manter', () => {
     expect(sugestaoSemana(tend(-1.2, -0.2), 95, dias('sim')).tipo).toBe('reduzir');
     expect(sugestaoSemana(tend(-1.2, 0.05), 95, dias('sim')).tipo).toBe('manter');
+    // Queda de massa magra dentro do ruído (−0,004 kg/sem) é "estável", não "caindo"
+    const ruido = sugestaoSemana(tend(-1.2, -0.004), 95, dias('sim'));
+    expect(ruido.tipo).toBe('manter');
+    expect(ruido.motivo).toContain('massa magra estável ou subindo');
     expect(sugestaoSemana(tend(-0.3, 0), 95, dias('sim')).tipo).toBe('aumentar');
     // Plano em manutenção ou superávit (escolha do usuário): sem regras do déficit
     expect(sugestaoSemana(tend(-0.3, 0), 95, dias('sim'), 200).tipo).toBe('manter');

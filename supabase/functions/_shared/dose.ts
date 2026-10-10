@@ -99,9 +99,15 @@ export function planoDeDoses(
   const depois = (de: number) => {
     for (let f = de; f < fases.length; f++) inteira(f, true);
   };
+  // Degrau decidido inteiro: as fases seguidas com a mesma dose não dependem de subir
+  const degrauInteiro = (f: number) => {
+    let j = f;
+    inteira(f, false);
+    while (j + 1 < fases.length && mesma(fases[j + 1].dose_mg, fases[f].dose_mg)) inteira(++j, false);
+    depois(j + 1);
+  };
   if (!aplicacoes.length) {
-    inteira(0, false);
-    depois(1);
+    degrauInteiro(0);
     return { estado: 'inicio', proxima: resto[0], resto };
   }
   const lista = degraus(fases, aplicacoes, decisoes);
@@ -124,10 +130,20 @@ export function planoDeDoses(
   const n = aplicacoes.length;
   const subir = decisoes.some((x) => x.escolha === 'subir' && x.apos_aplicacao === n && mesma(Number(x.dose_mg), d.dose));
   if (subir) {
-    inteira(d.ultima + 1, false);
-    depois(d.ultima + 2);
+    degrauInteiro(d.ultima + 1);
     return { estado: 'subir', proxima: resto[0], resto };
   }
   depois(d.ultima + 1);
   return { estado: 'pendente', proxima: { dose_mg: doseDe(d.ultima), fase_indice: d.ultima, hipotese: false }, resto };
+}
+
+/**
+ * Doses que o calendário mostra, as mesmas da agenda do app (projecao de
+ * calcularCiclo): no fim da fase sem decisão (ou fora do plano) vêm as fases
+ * seguintes como hipótese ("se subir"), e a dose oficial até decidir vai na nota.
+ * Depois do plano, só a dose extra com a sobra do frasco.
+ */
+export function dosesDoCalendario(plano: { estado: Estado; proxima: DoseFutura; resto: DoseFutura[] }, saldo: number): DoseFutura[] {
+  if (plano.estado === 'fim_plano') return [{ ...plano.proxima, dose_mg: Math.min(plano.proxima.dose_mg, Math.round(saldo * 100) / 100) }];
+  return plano.resto;
 }

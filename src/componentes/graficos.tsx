@@ -110,8 +110,8 @@ export function GraficoComposicao({ dados, marcos }: { dados: Composicao[]; marc
         <ComposedChart data={pontos} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
           <CartesianGrid vertical={false} />
           {eixoX()}
-          <YAxis yAxisId="kg" domain={['auto', 'auto']} tickFormatter={(v: number) => num(v, 0)} tickLine={false} axisLine={false} width={36} />
-          <YAxis yAxisId="bf" orientation="right" domain={['dataMin - 2', 'dataMax + 2']} tickFormatter={(v: number) => `${num(v, 0)}%`} tickLine={false} axisLine={false} width={40} />
+          <YAxis yAxisId="kg" domain={['auto', 'auto']} allowDecimals={false} tickFormatter={(v: number) => num(v, 0)} tickLine={false} axisLine={false} width={36} />
+          <YAxis yAxisId="bf" orientation="right" domain={['auto', 'auto']} allowDecimals={false} tickFormatter={(v: number) => `${num(v, 0)}%`} tickLine={false} axisLine={false} width={40} />
           <Tooltip content={<Dica marcos={noPeriodo} />} />
           <Legend iconType="plainline" />
           {linhasDeMarco(noPeriodo, 'kg', CORES.dose)}
@@ -157,7 +157,7 @@ export function GraficoPesoDose({
         <ComposedChart data={pontos} margin={{ top: 8, right: 4, left: 4, bottom: 0 }} {...(larguraFixa ? { width: larguraFixa, height: 240 } : {})}>
           <CartesianGrid vertical={false} />
           {eixoX()}
-          <YAxis yAxisId="kg" domain={['auto', 'auto']} tickFormatter={(v: number) => num(v, 0)} tickLine={false} axisLine={false} width={36} />
+          <YAxis yAxisId="kg" domain={['auto', 'auto']} allowDecimals={false} tickFormatter={(v: number) => num(v, 0)} tickLine={false} axisLine={false} width={36} />
           <YAxis yAxisId="mg" orientation="right" domain={[0, (max: number) => Math.ceil(max + 0.5)]} tickFormatter={(v: number) => String(Math.round(v * 100) / 100).replace('.', ',')} tickLine={false} axisLine={false} width={36} />
           <Tooltip content={<Dica marcos={noPeriodo} />} />
           <Legend iconType="plainline" />

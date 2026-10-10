@@ -7,7 +7,7 @@ import { qualidadePerda, textoQualidade, type QualidadePerda } from '../lib/conf
 import { alvoProteinaRefeicao, calcularMetas, macrosDaRefeicao, somar } from '../lib/dieta';
 import { formatarData } from '../lib/datas';
 import { num, pp } from '../lib/formato';
-import { ajusteDoPerfil, AJUSTE_PADRAO, COR_RCA, faixaRca, percentualGorduraBruto, rca, rfm, TEXTO_RCA, type Composicao } from '../lib/gordura';
+import { ajusteDoPerfil, AJUSTE_PADRAO, COR_RCA, faixaRca, percentualGorduraBruto, rca, rfm, TEXTO_RCA, ultimaNormal, type Composicao } from '../lib/gordura';
 import { acaoQualidade } from '../lib/semana';
 import { aderenciaRecente } from '../lib/treino';
 import type { Perfil } from '../lib/tipos';
@@ -57,7 +57,7 @@ function AcaoQualidadeLink({ q }: { q: QualidadePerda }) {
   const treino = useTreino();
   const { banco } = useAlimentos();
   // A mesma medição que a aba Dieta usa nas metas, para os números baterem ao abrir a Dieta
-  const ultima = [...composicoes].reverse().find((c) => c.massa_magra_kg !== null) ?? null;
+  const ultima = ultimaNormal(composicoes);
   const aderencia = treino ? aderenciaRecente(treinos, treino.inicio, hoje, 28, treino.fim) : null;
   const refeicoes = dieta && banco ? dieta.refeicoes.filter((r) => r.itens.length).map((r) => ({ r, m: macrosDaRefeicao(r, banco.mapa) })) : [];
   const alvo = ultima ? alvoProteinaRefeicao(ultima.massa_magra_kg!) : null;

@@ -58,12 +58,22 @@ Mesmo método do Diário de Carga:
 ### 2. Supabase: banco e lembretes (uma vez, no projeto do Diário de Carga)
 
 1. **Edge Functions → Secrets:** cadastre `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (`mailto:seu-email`) e `CRON_SECRET`.
-2. **Edge Functions → Deploy a new function → Via Editor:**
-   - Nome: `enviar-lembretes`.
-   - Cole o conteúdo de `supabase/functions/enviar-lembretes/index.ts` e publique.
-   - Nos detalhes da função, **desligue "Enforce JWT verification"**. A função valida o próprio CRON_SECRET.
+2. **Publique a função `enviar-lembretes` pela linha de comando** (veja "Publicar as Edge Functions" abaixo). A função valida o próprio CRON_SECRET, por isso fica sem a verificação de JWT.
 3. **SQL Editor:** abra `supabase/configurar_tudo.sql`, troque o CRON_SECRET marcado no topo e clique em **Run**. O script cria as tabelas com Row Level Security, guarda os segredos no Vault e agenda os lembretes de hora em hora.
 4. **Authentication → URL Configuration → Redirect URLs:** adicione `https://neivapedro.github.io/app-dieta/**`. Isso é usado nos links de confirmação e de troca de senha. O *Site URL* do Diário de Carga continua como está.
+5. **Evolução (rodar uma vez):** no **SQL Editor**, rode `supabase/migrations/20261015000000_evolucao_a.sql` e depois `supabase/migrations/20261015000001_evolucao_b.sql`, nessa ordem. Eles criam os campos novos: seringa, decisões do fim da fase, concentração de cada aplicação, registro de decisões, calibração do % de gordura, medição atípica, sono/água/urina, tipo de cardio, esforço e força. Os dois podem ser rodados de novo sem problema (são idempotentes). Sem eles o app funciona, mas avisa "… não foi salvo: falta rodar o SQL de evolução no Supabase." quando você preenche um desses campos.
+
+#### Publicar as Edge Functions
+
+As funções `enviar-lembretes` e `calendario` usam o arquivo comum `supabase/functions/_shared/dose.ts` (a mesma regra da próxima dose do app). O editor do painel (**Deploy a new function → Via Editor**) cria só o `index.ts` e a publicação falha com "módulo não encontrado". Publique pela CLI do Supabase, que leva a pasta `_shared` junto:
+
+```bash
+npx supabase login
+npx supabase functions deploy enviar-lembretes --project-ref <id do projeto> --no-verify-jwt
+npx supabase functions deploy calendario --project-ref <id do projeto> --no-verify-jwt
+```
+
+O `<id do projeto>` é o começo da URL em `src/config.ts` (`https://<id>.supabase.co`). O `--no-verify-jwt` (também em `supabase/config.toml`) deixa a verificação de JWT desligada, como as duas funções precisam. Rode de novo sempre que mudar algo em `supabase/functions/`.
 
 ### 3. Instalar no celular
 
@@ -79,10 +89,7 @@ Ative as notificações em cada aparelho que for usar.
 Coloca todas as doses do plano no Calendário do iPhone. É um calendário **assinado**: quando uma dose atrasa ou o plano muda, as datas se ajustam sozinhas.
 
 1. No **SQL Editor**, rode `supabase/migrations/20261009000000_calendario.sql`. Ele cria o endereço secreto de cada conta.
-2. Em **Edge Functions → Deploy a new function → Via Editor**:
-   - Nome: `calendario`.
-   - Cole `supabase/functions/calendario/index.ts` e publique.
-   - Nos detalhes da função, **desligue a verificação de JWT**.
+2. Publique a função `calendario` pela linha de comando (veja "Publicar as Edge Functions" acima), já sem a verificação de JWT.
 3. No app, vá em **Perfil → Adicionar ao Calendário** e confirme em **Assinar**.
 
 Detalhes:

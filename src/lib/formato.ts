@@ -27,7 +27,9 @@ export function pp(n: number | null | undefined, casas = 1): string {
 
 export function sinal(n: number | null | undefined, casas = 1, sufixo = ''): string {
   if (n === null || n === undefined || !Number.isFinite(n)) return '–';
-  const s = n > 0.00001 ? '+ ' : n < -0.00001 ? '− ' : '';
+  // Sem sinal quando o valor arredondado é zero (nada de "− 0,00")
+  const zero = Number(Math.abs(n).toFixed(casas)) === 0;
+  const s = zero ? '' : n > 0 ? '+ ' : '− ';
   return `${s}${num(Math.abs(n), casas)}${sufixo}`;
 }
 

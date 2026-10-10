@@ -125,6 +125,17 @@ export function ganhos(primeira: Composicao, ultima: Composicao): Ganhos {
   };
 }
 
+/**
+ * Medição que vale para as metas (Katch-McArdle, proteína) e para o "agora":
+ * a última normal com massa magra. A atípica fica só no histórico; se todas
+ * forem atípicas, vale a última de todas (mesmo critério da aba Medidas).
+ */
+export function ultimaNormal<T extends Pick<Composicao, 'massa_magra_kg' | 'atipica'>>(composicoes: T[]): T | null {
+  const com = composicoes.filter((c) => c.massa_magra_kg !== null);
+  const normais = com.filter((c) => !c.atipica);
+  return (normais.length ? normais[normais.length - 1] : com[com.length - 1]) ?? null;
+}
+
 export function historicoComposicao(medidas: Medida[], sexo: Sexo, opcoes: OpcoesComposicao = {}): Composicao[] {
   return [...medidas].sort((a, b) => a.data.localeCompare(b.data)).map((m) => composicao(m, sexo, opcoes));
 }

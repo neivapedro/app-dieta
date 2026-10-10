@@ -11,6 +11,7 @@ import {
   marcacao,
   marcasVizinhas,
   passoDaMarca,
+  semanasDoDegrau,
   situacaoDoDegrau,
   textoSeringa,
 } from './ciclo';
@@ -26,6 +27,10 @@ function ap(data: string, dose: number, extra: Partial<Aplicacao> = {}): Aplicac
 /** n aplicações semanais a partir de `inicio` com a mesma dose */
 function semanas(inicio: string, n: number, dose: number): Aplicacao[] {
   return Array.from({ length: n }, (_, i) => ap(somarDias(inicio, i * 7), dose));
+}
+
+function fase(dose_mg: number, semanas: number) {
+  return { nome: `${dose_mg} mg`, semanas, dose_mg, objetivo: '' };
 }
 
 function subir(apos: number, dose: number, nova: number): DecisaoFase {
@@ -259,5 +264,45 @@ describe('Edge Functions seguem a mesma regra da próxima dose', () => {
       expect(edge.proxima.dose_mg).toBe(app.proxima!.dose_mg);
       expect(edge.resto.map((d) => [d.dose_mg, d.hipotese])).toEqual(app.projecao.map((d) => [d.dose_mg, d.hipotese]));
     }
+  });
+
+  it('o calendário mostra as mesmas doses da agenda do app, também no fim da fase sem decisão', async () => {
+    const { planoDeDoses, dosesDoCalendario } = await import('../../supabase/functions/_shared/dose');
+    const c: Ciclo = { ...base, quantidade_total_mg: 500, fases: [fase(2.5, 2), fase(5, 2)] };
+    const aps = [ap('2027-01-01', 2.5), ap('2027-01-08', 2.5)];
+    const app = calcularCiclo(c, aps, [], '2027-01-10');
+    expect(app.proxima).toMatchObject({ dose_mg: 2.5, estado: 'pendente' });
+    const cal = dosesDoCalendario(planoDeDoses(c.fases, aps, []), 500 - 5);
+    expect(cal.map((d) => [d.dose_mg, d.hipotese])).toEqual(app.projecao.map((d) => [d.dose_mg, d.hipotese]));
+    expect(cal).toHaveLength(2);
+  });
+});
+
+describe('Fases seguidas com a mesma dose formam um degrau só', () => {
+  const c: Ciclo = { ...base, quantidade_total_mg: 500, fases: [fase(2.5, 2), fase(5, 2), fase(5, 3)] };
+
+  it('decidido subir: o degrau inteiro (as duas fases de 5 mg) sai firme, sem "se subir"', async () => {
+    const aps = semanas('2027-01-01', 2, 2.5);
+    const r = calcularCiclo({ ...c, decisoes: [subir(2, 2.5, 5)] }, aps, [], '2027-01-10');
+    expect(r.projecao.map((p) => p.hipotese)).toEqual([false, false, false, false, false]);
+    expect(r.fim_hipotese).toBe(false);
+    expect(semanasDoDegrau(c.fases, 1)).toBe(5);
+    const { planoDeDoses } = await import('../../supabase/functions/_shared/dose');
+    const edge = planoDeDoses(c.fases, aps, [subir(2, 2.5, 5)]);
+    expect(edge.resto.map((d) => d.hipotese)).toEqual([false, false, false, false, false]);
+  });
+
+  it('antes da 1ª dose: um plano que começa com duas fases de mesma dose não é hipótese', async () => {
+    const c2: Ciclo = { ...c, fases: [fase(2.5, 2), fase(2.5, 1), fase(5, 2)] };
+    const r = calcularCiclo(c2, [], [], '2027-01-01');
+    expect(r.projecao.map((p) => [p.dose_mg, p.hipotese])).toEqual([
+      [2.5, false],
+      [2.5, false],
+      [2.5, false],
+      [5, true],
+      [5, true],
+    ]);
+    const { planoDeDoses } = await import('../../supabase/functions/_shared/dose');
+    expect(planoDeDoses(c2.fases, [], []).resto.map((d) => d.hipotese)).toEqual([false, false, false, true, true]);
   });
 });

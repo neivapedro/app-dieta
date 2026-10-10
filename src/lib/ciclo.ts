@@ -260,6 +260,20 @@ export function localizarDegraus(fases: Fase[], blocos: BlocoDose[], decisoes: D
   });
 }
 
+/** Última fase do degrau que começa na fase f (fases seguidas com a mesma dose somam). */
+export function fimDoDegrau(fases: Fase[], f: number): number {
+  let j = f;
+  while (j + 1 < fases.length && mesmaDose(fases[j + 1].dose_mg, fases[f].dose_mg)) j++;
+  return j;
+}
+
+/** Aplicações previstas no degrau que começa na fase f ("dose 1 de N"). */
+export function semanasDoDegrau(fases: Fase[], f: number): number {
+  let s = 0;
+  for (let i = f; i <= fimDoDegrau(fases, f); i++) s += fases[i].semanas;
+  return s;
+}
+
 /** Fase da p-ésima aplicação (1 = primeira) dentro do degrau; além do previsto, fica na última. */
 function faseNoDegrau(fases: Fase[], numeradas: FaseLocalizada[], d: DegrauBloco, posicao: number): FaseLocalizada | null {
   if (d.primeira_fase === null || d.ultima_fase === null) return null;
@@ -543,10 +557,15 @@ export function calcularCiclo(
     const fasesDepois = (de: number) => {
       for (let f = de; f < ciclo.fases.length; f++) faseInteira(f, true);
     };
+    // Degrau decidido inteiro: as fases seguidas com a mesma dose não dependem de subir
+    const degrauInteiro = (f: number) => {
+      const j = fimDoDegrau(ciclo.fases, f);
+      for (let k = f; k <= j; k++) faseInteira(k, false);
+      fasesDepois(j + 1);
+    };
     const d = situacao.degrau;
     if (situacao.estado === 'inicio') {
-      faseInteira(0, false);
-      fasesDepois(1);
+      degrauInteiro(0);
     } else if (situacao.estado === 'em_curso' && d && d.ultima_fase !== null) {
       for (let p = situacao.feitas + 1; p <= situacao.previstas!; p++) {
         const f = faseNoDegrau(ciclo.fases, numeradas, d, p)!;
@@ -556,8 +575,7 @@ export function calcularCiclo(
     } else if (situacao.estado === 'pendente' && d?.ultima_fase != null) {
       fasesDepois(d.ultima_fase + 1);
     } else if (situacao.estado === 'subir' && d?.ultima_fase != null) {
-      faseInteira(d.ultima_fase + 1, false);
-      fasesDepois(d.ultima_fase + 2);
+      degrauInteiro(d.ultima_fase + 1);
     } else if (situacao.estado === 'fora_do_plano') {
       fasesDepois((situacao.ultima_fase_conhecida ?? -1) + 1);
     }

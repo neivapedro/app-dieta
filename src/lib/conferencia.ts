@@ -189,6 +189,16 @@ export interface QualidadePerda {
   sem_perda: boolean;
 }
 
+/**
+ * Abaixo de 0,05 kg/sem de queda, a massa magra conta como estável: é ruído da
+ * fita e da balança, não sinal (vale para o texto e para "reduzir o déficit").
+ */
+export const RUIDO_MAGRA_SEMANA = 0.05;
+
+export function magraCaindo(t: Pick<Tendencia, 'magra_semana'>): boolean {
+  return t.magra_semana < -RUIDO_MAGRA_SEMANA;
+}
+
 /** Gordura abaixo desta fração da perda pede atenção (a regra clássica é ~3/4 de gordura). */
 export const GORDURA_MINIMA_DA_PERDA = 0.75;
 
