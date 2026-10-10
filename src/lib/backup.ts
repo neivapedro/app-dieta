@@ -1,6 +1,6 @@
 import type { PlanoDieta } from './dieta';
 import { chaveExercicio } from './forca';
-import { fotosParaImportar, type FotoBackup, type Pose, type Sessao } from './fotos';
+import { fotoBackupValida, fotosParaImportar, type FotoBackup, type Pose, type Sessao } from './fotos';
 import type { Aplicacao, Ciclo, Medida, Perfil, RegistroDecisao, RegistroDiario, RegistroForca, TreinoDia } from './tipos';
 
 /**
@@ -109,7 +109,8 @@ export function planejarImportacao(b: Backup, atuais: DadosAtuais): PlanoImporta
     ignoradas: {
       aplicacoes: b.aplicacoes.length - aplicacoes.length,
       medidas: (b.medidas ?? []).length - medidas.length,
-      fotos: (b.fotos ?? []).length - fotos.length,
+      // Só as fotos válidas que já têm lugar ocupado (as estragadas são ignoradas em silêncio)
+      fotos: (b.fotos ?? []).filter(fotoBackupValida).length - fotos.length,
     },
   };
 }

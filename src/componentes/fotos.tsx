@@ -222,7 +222,7 @@ export function CartaoFotos() {
                 type="date"
                 value={vista.data}
                 max={hoje}
-                onChange={(e) => e.target.value && void mudarDataFoto(usuario.id, vista.sessao, vista.pose, e.target.value).catch((x: Error) => setMsg(x.message))}
+                onChange={(e) => e.target.value && e.target.value <= hoje && void mudarDataFoto(usuario.id, vista.sessao, vista.pose, e.target.value).catch((x: Error) => setMsg(x.message))}
               />
             </Campo>
             <NumerosSessao

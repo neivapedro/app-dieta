@@ -119,6 +119,13 @@ describe('Fotos: backup', () => {
     expect(p.ignoradas.fotos).toBe(1);
     expect(deBase64(p.fotos[0].base64).length).toBe(70000);
   });
+  it('fotos estragadas no backup não contam como "já existem"', () => {
+    const b = montarBackup({ perfil: null, ciclo: null, aplicacoes: [], diario: [], medidas: [], fotos: [foto('antes', 'frente')] }, '2026-12-08T12:00:00Z');
+    const lido = lerBackup(JSON.stringify({ ...b, fotos: [...b.fotos!, null, 42, { ...foto('depois', 'lado'), sessao: 'durante' }] }));
+    const vazio = { aplicacoes: [], medidas: [], diario: [], treinos: [] };
+    expect(planejarImportacao(lido, vazio).ignoradas.fotos).toBe(0);
+    expect(planejarImportacao(lido, { ...vazio, fotos: [{ sessao: 'antes', pose: 'frente' }] }).ignoradas.fotos).toBe(1);
+  });
   it('backup sem fotos e backup antigo continuam funcionando', () => {
     const b = montarBackup({ perfil: null, ciclo: null, aplicacoes: [], diario: [], medidas: [] }, '2026-12-08T12:00:00Z');
     const texto = JSON.stringify(b);
