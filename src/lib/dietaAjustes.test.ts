@@ -9,7 +9,9 @@ import {
   lerAlimentos,
   macroPrincipal,
   macrosDoItem,
+  ehColageno,
   opcoesTroca,
+  proteinaColageno,
   proteinaTotal,
   somar,
   type Alimento,
@@ -60,6 +62,18 @@ describe('Proteína total (animal + vegetal)', () => {
     expect(t.gkg_peso).toBeCloseTo(181.1 / 95.5, 6);
     expect(t.abaixo).toBe(false);
     expect(proteinaTotal({ ptn_animal: 120, ptn_vegetal: 20 }, { peso_kg: 95.5, massa_magra_kg: 72.6 }).abaixo).toBe(true);
+  });
+  it('colágeno e gelatina ficam fora da proteína total', () => {
+    for (const id of ['x14', 'x44', 'x45', 't515']) expect(ehColageno(mapa.get(id)!)).toBe(true);
+    for (const id of ['x01', 't3', 't488']) expect(ehColageno(mapa.get(id)!)).toBe(false);
+    const refeicoes = [
+      { id: 'r1', nome: 'R1', horario: null, itens: [{ alimento_id: 'x14', quantidade: 2, unidade: 'dose' }, { alimento_id: 't3', quantidade: 100, unidade: 'g' }] },
+      { id: 'r2', nome: 'R2', horario: null, itens: [{ alimento_id: 'x44', quantidade: 0, unidade: 'porção' }] },
+    ];
+    const colageno = proteinaColageno(refeicoes, mapa);
+    expect(colageno).toBeCloseTo(18, 6);
+    const t = proteinaTotal({ ptn_animal: 100, ptn_vegetal: 20.5 }, { peso_kg: 80, massa_magra_kg: 65 }, colageno);
+    expect(t.g).toBeCloseTo(102.5, 6);
   });
 });
 

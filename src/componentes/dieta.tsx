@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } 
 import {
   buscarAlimentos,
   calcularMetas,
+  ehColageno,
   exercicioReal,
   FATORES_ATIVIDADE,
   gramasDoItem,
@@ -59,17 +60,20 @@ export function novoItem(a: Alimento): ItemRefeicao {
   return itemPadrao(a);
 }
 
+/** Porções de meia em meia, sem ",0" sobrando: 7 · 6,5 */
+const meia = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+
 /** "430 g" ou "2,5 unidade (125 g)" */
 function textoQuantidade(item: ItemRefeicao, a: Alimento | undefined): string {
   if (item.unidade === 'g') return `${num(item.quantidade, 0)} g`;
-  return `${num(item.quantidade, 1)} ${item.unidade} (${num(gramasDoItem(item, a), 0)} g)`;
+  return `${meia(item.quantidade)} ${item.unidade} (${num(gramasDoItem(item, a), 0)} g)`;
 }
 
 /** "430 g (+130)" ou, em porções, "6,5 unidade (+3,5)" */
 function textoFechar(f: Fechamento, atual: ItemRefeicao): string {
   const g = f.item.unidade === 'g';
   const delta = g ? f.delta : f.item.quantidade - atual.quantidade;
-  return `${num(f.item.quantidade, g ? 0 : 1)} ${f.item.unidade} (${delta > 0 ? '+' : '−'}${num(Math.abs(delta), g ? 0 : 1)})`;
+  return `${g ? num(f.item.quantidade, 0) : meia(f.item.quantidade)} ${f.item.unidade} (${delta > 0 ? '+' : '−'}${g ? num(Math.abs(delta), 0) : meia(Math.abs(delta))})`;
 }
 
 export interface Troca {
@@ -216,9 +220,6 @@ export function LinhaItem({
   );
 }
 
-/** Colágeno e gelatina: proteína incompleta, fora da meta de proteína animal */
-const COLAGENO = /\b(colageno|gelatina)\b/;
-
 /** Busca no banco de alimentos. */
 export function SeletorAlimento({
   lista,
@@ -263,7 +264,7 @@ export function SeletorAlimento({
                   <div className="detalhe">
                     {p ? `1 ${p.nome} (${num(p.g, 0)} g)` : '100 g'}: {kcal(m.kcal)} · P {gr(m.ptn_animal + m.ptn_vegetal)} · C {gr(m.carb)} · G{' '}
                     {gr(m.gord)}
-                    {a.animal ? ' · proteína animal' : COLAGENO.test(a.busca) ? ' · colágeno: não conta na meta' : ''}
+                    {a.animal ? ' · proteína animal' : ehColageno(a) ? ' · colágeno: não conta na meta' : ''}
                   </div>
                 </div>
               </button>

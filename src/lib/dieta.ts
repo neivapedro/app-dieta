@@ -352,9 +352,30 @@ export interface ProteinaTotal {
   abaixo: boolean;
 }
 
-/** Proteína animal + vegetal do plano: a meta continua só animal; isto mostra o total. */
-export function proteinaTotal(plano: Pick<Macros, 'ptn_animal' | 'ptn_vegetal'>, corpo: Corpo): ProteinaTotal {
-  const g = plano.ptn_animal + plano.ptn_vegetal;
+/** Colágeno e gelatina: proteína incompleta, fora da meta e da proteína total (as kcal contam) */
+export function ehColageno(a: Alimento): boolean {
+  return !a.animal && /\b(colageno|gelatina)\b/.test(a.busca);
+}
+
+/** Proteína do plano que vem de colágeno ou gelatina (g) */
+export function proteinaColageno(refeicoes: Refeicao[], mapa: Map<string, Alimento>): number {
+  return refeicoes.reduce(
+    (s, r) =>
+      s +
+      r.itens.reduce((t, i) => {
+        const a = mapa.get(i.alimento_id);
+        return a && ehColageno(a) && i.quantidade > 0 ? t + (a.prot * gramasDoItem(i, a)) / 100 : t;
+      }, 0),
+    0,
+  );
+}
+
+/**
+ * Proteína animal + vegetal do plano: a meta continua só animal; isto mostra o
+ * total. A de colágeno e gelatina (`colageno`, em g) fica fora.
+ */
+export function proteinaTotal(plano: Pick<Macros, 'ptn_animal' | 'ptn_vegetal'>, corpo: Corpo, colageno = 0): ProteinaTotal {
+  const g = Math.max(0, plano.ptn_animal + plano.ptn_vegetal - colageno);
   const gkg_peso = corpo.peso_kg > 0 ? g / corpo.peso_kg : 0;
   return { g, gkg_magra: corpo.massa_magra_kg > 0 ? g / corpo.massa_magra_kg : 0, gkg_peso, abaixo: gkg_peso < PTN_TOTAL_MIN_GKG_PESO };
 }

@@ -19,6 +19,7 @@ import {
   metaFibra,
   novoId,
   opcoesTroca,
+  proteinaColageno,
   proteinaTotal,
   PTN_TOTAL_MIN_GKG_PESO,
   MINIMO_REFEICOES_ALVO,
@@ -87,6 +88,8 @@ export function Dieta() {
   const mapa = banco?.mapa;
   const porRefeicao = useMemo(() => (plano && mapa ? plano.refeicoes.map((r) => macrosDaRefeicao(r, mapa)) : []), [plano, mapa]);
   const total = somar(porRefeicao);
+  // Colágeno e gelatina entram como vegetal nas kcal, mas ficam fora da proteína total
+  const colageno = useMemo(() => (plano && mapa ? proteinaColageno(plano.refeicoes, mapa) : 0), [plano, mapa]);
   const usados = useMemo(() => new Set(plano?.refeicoes.flatMap((r) => r.itens.map((i) => i.alimento_id)) ?? []), [plano]);
 
   if (dietaIndisponivel) {
@@ -107,7 +110,7 @@ export function Dieta() {
         corpo.massa_magra_kg,
       )
     : null;
-  const ptnTotal = corpo ? proteinaTotal(total, corpo) : null;
+  const ptnTotal = corpo ? proteinaTotal(total, corpo, colageno) : null;
   const diasMedicao = ultima ? diferencaDias(ultima.data, hoje) : 0;
 
   // Conferência com as medidas: déficit do plano × o que as medidas mostram × o necessário para a meta
@@ -484,7 +487,7 @@ export function Dieta() {
             <>
               <p className="texto-2" style={{ marginTop: 8 }}>
                 <b>Proteína total (animal + vegetal): {gr(ptnTotal.g)} g</b> = {num(ptnTotal.gkg_magra, 1)} g/kg de massa magra · {num(ptnTotal.gkg_peso, 1)} g/kg
-                de peso. A meta continua só a animal.
+                de peso. A meta continua só a animal.{colageno >= 1 && ` Colágeno e gelatina (${gr(colageno)} g) ficam fora.`}
               </p>
               {ptnTotal.abaixo && (
                 <div className="alerta" style={{ marginTop: 8 }}>
@@ -554,7 +557,7 @@ export function Dieta() {
           aderencia={aderencia}
           fracaoMagra={fracaoMagra?.p ?? null}
           ritmoMedido={ritmoMedido && ritmoMedido.faixa !== 'ganho' ? ritmoMedido.pct : null}
-          ptnVegetalPlano={total.ptn_vegetal}
+          ptnVegetalPlano={Math.max(0, total.ptn_vegetal - colageno)}
           aoSalvar={(c) => atualizar({ config: c })}
           aoFechar={() => setConfig(false)}
         />
