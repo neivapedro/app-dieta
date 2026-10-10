@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useDados } from '../dados/contexto';
 import { useTreino } from '../dados/useTreino';
-import { diaDaSemana, formatarData } from '../lib/datas';
+import { diaDaSemana, formatarData, hojeLocal } from '../lib/datas';
 import { cm, kg, num, paraNumero, paraTexto, pp } from '../lib/formato';
 import { percentualGordura, type Composicao } from '../lib/gordura';
 import { digitosParaTempo, formatarTempo, KM_CORRIDA_PADRAO, lerTempo, paceValido, rotuloCardio, tipoCardio } from '../lib/treino';
@@ -33,6 +33,8 @@ export function CartaoTreinoHoje() {
   // Cada toque grava o dia a partir do estado mais recente (a fila aplica na hora),
   // então tocar Treino e logo depois Cardio nunca apaga o primeiro check
   const alternar = (campo: 'treino' | 'cardio') => {
+    // O dia virou com o app aberto: só atualiza a tela, não grava no dia de ontem
+    if (hojeLocal() !== hoje) return void window.dispatchEvent(new Event('focus'));
     const atual = t.doDia(hoje);
     gravar({
       tipo: 'treino',

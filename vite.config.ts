@@ -13,10 +13,17 @@ function serviceWorkerVersionado(): Plugin {
   return {
     name: 'sw-versionado',
     apply: 'build',
-    generateBundle() {
+    // Depois dos plugins do Vite: o pacote já tem todos os JS e CSS
+    enforce: 'post',
+    generateBundle(_opcoes, pacote) {
       const versao = VERSAO;
       this.emitFile({ type: 'asset', fileName: 'versao.json', source: JSON.stringify({ versao }) });
-      const fonte = readFileSync(resolve(__dirname, 'pwa/sw.js'), 'utf8').replace("'__VERSAO__'", `'${versao}'`);
+      // Lista de todos os arquivos da versão (inclusive gráficos e PDF, que só carregam sob demanda),
+      // para o app abrir inteiro sem internet logo depois de atualizar
+      const arquivos = Object.keys(pacote).filter((f) => f.startsWith('assets/') && /\.(js|css)$/.test(f));
+      const fonte = readFileSync(resolve(__dirname, 'pwa/sw.js'), 'utf8')
+        .replace("'__VERSAO__'", `'${versao}'`)
+        .replace("['__ARQUIVOS__']", JSON.stringify(arquivos));
       this.emitFile({ type: 'asset', fileName: 'sw.js', source: fonte });
     },
   };

@@ -17,7 +17,7 @@ function Erro({ msg }: { msg: string | null }) {
 // ---------- Aplicação ----------
 
 export function FormAplicacao({ aplicacao, aoFechar }: { aplicacao?: Aplicacao; aoFechar: () => void }) {
-  const { ciclo, diario, executar, gravar } = useDados();
+  const { ciclo, diario, gravar } = useDados();
   const { resumo, hoje } = useCalculos();
   const [data, setData] = useState(aplicacao?.data ?? hoje);
   const numero = aplicacao ? resumo!.linhas.find((l) => l.aplicacao.id === aplicacao.id)!.numero : resumo!.aplicacoes_realizadas + 1;
@@ -65,9 +65,9 @@ export function FormAplicacao({ aplicacao, aoFechar }: { aplicacao?: Aplicacao; 
     aoFechar();
   }
 
-  async function excluir() {
+  function excluir() {
     if (!aplicacao) return;
-    await executar((repo) => repo.excluirAplicacao(aplicacao.id));
+    gravar({ tipo: 'excluir', dado: { alvo: 'aplicacao', id: aplicacao.id, data: aplicacao.data } });
     aoFechar();
   }
 
@@ -147,7 +147,7 @@ function sintomasDe(r?: RegistroDiario): Record<ChaveSintoma, boolean | null> {
 }
 
 export function FormDiario({ registro, dataInicial, aoFechar }: { registro?: RegistroDiario; dataInicial?: string; aoFechar: () => void }) {
-  const { diario, executar, gravar } = useDados();
+  const { diario, gravar } = useDados();
   const [data, setData] = useState(registro?.data ?? dataInicial ?? hojeLocal());
   const existente = registro ?? diario.find((r) => r.data === data);
   const [peso, setPeso] = useState(paraTexto(existente?.peso_kg));
@@ -182,10 +182,10 @@ export function FormDiario({ registro, dataInicial, aoFechar }: { registro?: Reg
     aoFechar();
   }
 
-  async function excluir() {
+  function excluir() {
     const r = diario.find((x) => x.data === data);
     if (!r) return;
-    await executar((repo) => repo.excluirDiario(r.id));
+    gravar({ tipo: 'excluir', dado: { alvo: 'diario', id: r.id, data: r.data } });
     aoFechar();
   }
 
@@ -286,7 +286,7 @@ function Leituras({
 }
 
 export function FormMedida({ medida, aoFechar, aoSalvar }: { medida?: Medida; aoFechar: () => void; aoSalvar?: () => void }) {
-  const { perfil, medidas, executar, gravar } = useDados();
+  const { perfil, medidas, gravar } = useDados();
   const ultima = [...medidas].sort((a, b) => b.data.localeCompare(a.data))[0];
   const sexo = perfil?.sexo ?? 'Masculino';
   const [data, setData] = useState(medida?.data ?? hojeLocal());
@@ -340,9 +340,9 @@ export function FormMedida({ medida, aoFechar, aoSalvar }: { medida?: Medida; ao
     aoSalvar?.();
   }
 
-  async function excluir() {
+  function excluir() {
     if (!medida) return;
-    await executar((repo) => repo.excluirMedida(medida.id));
+    gravar({ tipo: 'excluir', dado: { alvo: 'medida', id: medida.id, data: medida.data } });
     aoFechar();
   }
 

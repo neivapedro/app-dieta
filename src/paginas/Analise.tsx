@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Bloco, Vazio } from '../componentes/ui';
+import { Bloco, SemGrafico, Vazio } from '../componentes/ui';
 import { useDados } from '../dados/contexto';
 import { useAlimentos } from '../dados/useAlimentos';
 import { useCalculos } from '../dados/useCalculos';
@@ -14,7 +14,7 @@ import { cm, corVariacao, kg, mg, num, pct, pp, sinal } from '../lib/formato';
 import type { Composicao } from '../lib/gordura';
 import { aderenciaRecente, formatarTempo } from '../lib/treino';
 
-const GraficoPesoDose = lazy(() => import('../componentes/graficos').then((m) => ({ default: m.GraficoPesoDose })));
+const GraficoPesoDose = lazy(() => import('../componentes/graficos').then((m) => ({ default: m.GraficoPesoDose })).catch(() => ({ default: SemGrafico })));
 
 function linhaComparacao(rotulo: string, a: number | null, b: number | null, fmt: (n: number | null) => string, fmtDelta: (n: number) => string, menorMelhor: boolean) {
   const d = a !== null && b !== null ? b - a : null;

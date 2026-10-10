@@ -161,7 +161,7 @@ function SemConexao() {
 }
 
 export function App() {
-  const { usuario, carregando, perfil, ciclo, erro, semConexao, recuperandoSenha } = useDados();
+  const { usuario, carregando, perfil, ciclo, erro, semConexao, recuperandoSenha, falhouCarregar, recarregar } = useDados();
   if (recuperandoSenha) return <NovaSenha />;
   if (semConexao) return <SemConexao />;
   if (carregando) {
@@ -173,8 +173,16 @@ export function App() {
   }
   if (!usuario) return <Entrar />;
   if (!perfil || !ciclo) {
-    return erro ? (
-      <div className="centro"><div className="alerta erro">{erro}</div></div>
+    // Falha ao carregar não é conta nova: não abre a configuração inicial por cima dos dados
+    return erro || falhouCarregar ? (
+      <div className="centro">
+        <div className="pilha" style={{ alignItems: 'center' }}>
+          <div className="alerta erro">{erro ?? 'Não foi possível carregar seus dados.'}</div>
+          <button className="botao primario" onClick={() => void recarregar()}>
+            Tentar de novo
+          </button>
+        </div>
+      </div>
     ) : (
       <Configurar />
     );

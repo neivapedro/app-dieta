@@ -5,8 +5,23 @@ const CACHE = 'app-dieta-' + VERSAO;
 // Caminhos relativos ao escopo (ex.: /app-dieta/ no GitHub Pages)
 const BASE = new URL(self.registration.scope).pathname;
 
+// Arquivos da versão (vite.config.ts injeta a lista na publicação)
+const ARQUIVOS = ['__ARQUIVOS__'];
+const FIXOS = ['manifest.webmanifest', 'icone-192.png', 'braco.webp'];
+
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll([BASE, BASE + 'manifest.webmanifest', BASE + 'icone-192.png', BASE + 'braco.webp'])));
+  // Guarda a versão inteira antes de assumir: se algo falhar, a versão anterior continua valendo
+  e.waitUntil(
+    caches.open(CACHE).then(async (c) => {
+      const pagina = await fetch(BASE, { cache: 'no-store' });
+      if (!pagina.ok) throw new Error('página indisponível');
+      const html = await pagina.clone().text();
+      await c.put(BASE, pagina);
+      const doHtml = [...html.matchAll(/(?:src|href)="([^"]*assets\/[^"]+)"/g)].map((m) => new URL(m[1], self.registration.scope).pathname);
+      const lista = [...FIXOS.map((f) => BASE + f), ...ARQUIVOS.filter((f) => f !== '__ARQUIVOS__').map((f) => BASE + f), ...doHtml];
+      await c.addAll([...new Set(lista)]);
+    }),
+  );
   self.skipWaiting();
 });
 
@@ -16,6 +31,15 @@ self.addEventListener('activate', (e) => {
   );
 });
 
+function guardar(req, r) {
+  // Só guarda resposta boa (uma página de erro 503 não pode virar a cópia offline)
+  if (r.ok && r.type === 'basic') {
+    const copia = r.clone();
+    caches.open(CACHE).then((c) => c.put(req, copia));
+  }
+  return r;
+}
+
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   const url = new URL(req.url);
@@ -24,29 +48,18 @@ self.addEventListener('fetch', (e) => {
     // Páginas: rede primeiro, sem cópia do navegador (senão o app reabre na versão antiga); cache se estiver offline
     e.respondWith(
       fetch(req, { cache: 'no-store' })
-        .then((r) => {
-          const copia = r.clone();
-          caches.open(CACHE).then((c) => c.put(BASE, copia));
-          return r;
-        })
+        .then((r) => guardar(BASE, r))
         .catch(() => caches.match(BASE)),
     );
     return;
   }
-  if (url.pathname.startsWith(BASE + 'assets/')) {
-    // Arquivos com hash no nome: cache primeiro
-    e.respondWith(
-      caches.match(req).then(
-        (hit) =>
-          hit ||
-          fetch(req).then((r) => {
-            const copia = r.clone();
-            caches.open(CACHE).then((c) => c.put(req, copia));
-            return r;
-          }),
-      ),
-    );
+  if (url.pathname.startsWith(BASE + 'assets/') || FIXOS.some((f) => url.pathname === BASE + f)) {
+    // Arquivos com hash no nome e fixos: cache primeiro
+    e.respondWith(caches.match(req).then((hit) => hit || fetch(req).then((r) => guardar(req, r))));
+    return;
   }
+  // Demais arquivos: rede, e a cópia guardada se estiver sem internet
+  if (!url.pathname.endsWith('versao.json')) e.respondWith(fetch(req).catch(() => caches.match(req).then((hit) => hit || Response.error())));
 });
 
 self.addEventListener('push', (e) => {

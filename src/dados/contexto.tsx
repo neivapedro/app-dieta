@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { planoPadrao, type PlanoDieta } from '../lib/dieta';
-import { ehErroDeRede, traduzirErro } from '../lib/erros';
+import { hojeLocal } from '../lib/datas';
+import { ehErroDeRede, ehSessaoExpirada, traduzirErro } from '../lib/erros';
 import { esquecerAparelho, sincronizarInscricao } from '../lib/notificacoes';
 import type { Aplicacao, Ciclo, Medida, Perfil, RegistroDiario, TreinoDia } from '../lib/tipos';
 import { SUPABASE_KEY, SUPABASE_URL } from '../config';
@@ -39,6 +40,8 @@ interface Contexto extends Dados {
   offlineDesde: string | null;
   /** Abriu sem internet e sem cópia guardada */
   semConexao: boolean;
+  /** A última carga falhou (não confundir com conta nova sem perfil) */
+  falhouCarregar: boolean;
   /** Gravações guardadas no aparelho esperando internet */
   pendentes: number;
   /** Link de recuperação de senha aberto: mostrar a tela de nova senha */
@@ -54,6 +57,10 @@ interface Contexto extends Dados {
   /** Atualiza o plano na hora e grava em seguida (agrupando digitações rápidas) */
   salvarDieta: (p: PlanoDieta) => void;
   estadoDieta: EstadoGravacao;
+  /** Data de hoje (vira à meia-noite mesmo com o app aberto ou em segundo plano) */
+  hoje: string;
+  /** Muda a cada minuto e ao voltar ao app: para o que depende da hora (próxima refeição) */
+  tique: number;
 }
 
 const Ctx = createContext<Contexto | null>(null);
@@ -66,6 +73,10 @@ export function ProvedorDados({ children }: { children: ReactNode }) {
   const [offlineDesde, setOfflineDesde] = useState<string | null>(null);
   const [semConexao, setSemConexao] = useState(false);
   const [recuperandoSenha, setRecuperandoSenha] = useState(false);
+  const [hoje, setHoje] = useState(hojeLocal);
+  const [tique, setTique] = useState(0);
+  const carregouNaSessao = useRef(false);
+  const [falhouCarregar, setFalhouCarregar] = useState(false);
 
   const uid = useRef<string | null>(null);
   const fila = useRef<ItemFila[]>([]);
@@ -101,6 +112,9 @@ export function ProvedorDados({ children }: { children: ReactNode }) {
     if (uid.current !== u.id) {
       uid.current = u.id;
       fila.current = lerFila(u.id);
+      // O contador continua de onde a fila guardada parou (senão uma edição nova
+      // ganharia a mesma versão de um item antigo e sairia da fila sem ser enviada)
+      versao.current = Math.max(versao.current, 0, ...fila.current.map((i) => i.versao));
       setPendentes(fila.current.length);
     }
     let base: Dados;
@@ -124,11 +138,18 @@ export function ProvedorDados({ children }: { children: ReactNode }) {
         dietaIndisponivel = e instanceof Error ? e.message : String(e);
       }
       base = { perfil, ciclo, aplicacoes, diario, medidas, treinos, dieta, dietaIndisponivel };
+      setFalhouCarregar(false);
       if (repositorio.modo === 'nuvem') gravarCache(u.id, base);
+      carregouNaSessao.current = true;
       setOfflineDesde(null);
       setSemConexao(false);
     } catch (e) {
       if (!ehErroDeRede(e)) throw e;
+      // Já carregou nesta sessão: a tela tem dados mais novos que a cópia guardada
+      if (carregouNaSessao.current) {
+        setOfflineDesde((d) => d ?? new Date().toISOString());
+        return;
+      }
       // Sem internet (ou servidor pausado): abre com a última cópia guardada
       const cache = lerCache<Dados>(u.id);
       if (!cache) {
@@ -147,6 +168,7 @@ export function ProvedorDados({ children }: { children: ReactNode }) {
     if (enviando.current || !fila.current.length) return;
     enviando.current = true;
     let enviou = false;
+    let esperar = false;
     try {
       while (fila.current.length) {
         const item = fila.current[0];
@@ -154,12 +176,24 @@ export function ProvedorDados({ children }: { children: ReactNode }) {
           await executarOperacao(repositorio, item);
           enviou = true;
           if (item.tipo === 'dieta') setErroDieta(false);
+          // A cópia offline já leva o que foi enviado (mesmo que a recarga falhe depois)
+          if (uid.current && repositorio.modo === 'nuvem') {
+            const c = lerCache<Dados>(uid.current);
+            if (c) gravarCache(uid.current, aplicarFila(c.dados, [item]), c.em);
+          }
           // Só sai da fila se não foi substituída por uma edição mais nova durante o envio
           atualizarFila(fila.current.filter((i) => !(i.chave === item.chave && i.versao === item.versao)));
         } catch (e) {
           if (ehErroDeRede(e)) {
+            esperar = true;
             setFalhaRede(true);
             timer.current = setTimeout(() => void processarFila(), 15000);
+            return;
+          }
+          // Acesso vencido: guarda tudo e espera o novo login (que reenvia a fila)
+          if (ehSessaoExpirada(e)) {
+            esperar = true;
+            setErro('Sessão expirada. Entre novamente: o que você marcou continua guardado no aparelho.');
             return;
           }
           // Erro de dados: descarta a operação e mostra o motivo
@@ -174,6 +208,8 @@ export function ProvedorDados({ children }: { children: ReactNode }) {
       if (enviou) await carregar().catch(() => undefined);
     } finally {
       enviando.current = false;
+      // Algo gravado durante a recarga final: envia também
+      if (!esperar && fila.current.length) void processarFila();
     }
   }, [atualizarFila, carregar, setErro]);
 
@@ -198,7 +234,10 @@ export function ProvedorDados({ children }: { children: ReactNode }) {
           setCarregando(true);
           carregar()
             .then(() => processarFila())
-            .catch((e) => setErro(traduzirErro(e)))
+            .catch((e) => {
+              setFalhouCarregar(true);
+              setErro(traduzirErro(e));
+            })
             .finally(() => setCarregando(false));
         }
         return u;
@@ -207,7 +246,11 @@ export function ProvedorDados({ children }: { children: ReactNode }) {
     const pararRecuperacao = repositorio.aoRecuperarSenha(() => setRecuperandoSenha(true));
     carregar()
       .then(() => processarFila())
-      .catch((e) => vivo && setErro(traduzirErro(e)))
+      .catch((e) => {
+        if (!vivo) return;
+        setFalhouCarregar(true);
+        setErro(traduzirErro(e));
+      })
       .finally(() => vivo && setCarregando(false));
     return () => {
       vivo = false;
@@ -215,6 +258,24 @@ export function ProvedorDados({ children }: { children: ReactNode }) {
       pararRecuperacao();
     };
   }, [carregar, processarFila, setErro]);
+
+  // A data vira à meia-noite mesmo com o app aberto, e ao voltar do segundo plano
+  useEffect(() => {
+    const conferir = () => {
+      setHoje((h) => (h === hojeLocal() ? h : hojeLocal()));
+      setTique((t) => t + 1);
+    };
+    const id = setInterval(conferir, 60000);
+    window.addEventListener('focus', conferir);
+    window.addEventListener('pageshow', conferir);
+    document.addEventListener('visibilitychange', conferir);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener('focus', conferir);
+      window.removeEventListener('pageshow', conferir);
+      document.removeEventListener('visibilitychange', conferir);
+    };
+  }, []);
 
   // Internet de volta ou app reaberto: envia a fila e atualiza os dados
   useEffect(() => {
@@ -257,6 +318,7 @@ export function ProvedorDados({ children }: { children: ReactNode }) {
       await carregar();
       await processarFila();
     } catch (e) {
+      setFalhouCarregar(true);
       setErro(traduzirErro(e));
     } finally {
       setCarregando(false);
@@ -265,9 +327,19 @@ export function ProvedorDados({ children }: { children: ReactNode }) {
 
   const sair = useCallback(async () => {
     await esquecerAparelho(repositorio).catch(() => undefined);
+    try {
+      await repositorio.sair();
+    } catch (e) {
+      setErro(`Não foi possível sair: ${traduzirErro(e)}`);
+      return;
+    }
+    // Só apaga a cópia do aparelho depois de sair de fato
     if (uid.current) apagarDadosLocais(uid.current);
-    await repositorio.sair();
-  }, []);
+    uid.current = null;
+    carregouNaSessao.current = false;
+    setUsuario(null);
+    setDados(VAZIO);
+  }, [setErro]);
 
   const temDieta = fila.current.some((i) => i.tipo === 'dieta');
   const estadoDieta: EstadoGravacao = temDieta ? (falhaRede ? 'pendente' : 'salvando') : erroDieta ? 'erro' : 'salvo';
@@ -282,6 +354,7 @@ export function ProvedorDados({ children }: { children: ReactNode }) {
       limparErro: () => setErro(null),
       offlineDesde,
       semConexao,
+      falhouCarregar,
       pendentes,
       recuperandoSenha,
       encerrarRecuperacao: () => setRecuperandoSenha(false),
@@ -291,8 +364,10 @@ export function ProvedorDados({ children }: { children: ReactNode }) {
       gravar: (op: Operacao) => gravar(op),
       salvarDieta,
       estadoDieta,
+      hoje,
+      tique,
     }),
-    [dados, usuario, carregando, erro, setErro, offlineDesde, semConexao, pendentes, recuperandoSenha, recarregar, sair, executar, gravar, salvarDieta, estadoDieta],
+    [dados, usuario, carregando, erro, setErro, offlineDesde, semConexao, falhouCarregar, pendentes, recuperandoSenha, recarregar, sair, executar, gravar, salvarDieta, estadoDieta, hoje, tique],
   );
 
   return <Ctx.Provider value={valor}>{children}</Ctx.Provider>;

@@ -33,3 +33,22 @@ describe('Fila: aplicação e medição', () => {
     expect(aplicarFila({ ...d }, f).aplicacoes).toHaveLength(1);
   });
 });
+
+describe('Fila: exclusão', () => {
+  it('excluir substitui a edição pendente do mesmo registro e some da tela', () => {
+    const reg = { data: '2026-10-17', peso_kg: 89.5, nausea: 1, observacoes: null };
+    let f = enfileirar([], { tipo: 'diario', dado: reg }, 1);
+    f = enfileirar(f, { tipo: 'excluir', dado: { alvo: 'diario', id: 'pendente:2026-10-17', data: '2026-10-17' } }, 2);
+    expect(f).toHaveLength(1);
+    expect(f[0].tipo).toBe('excluir');
+    const base = { treinos: [], diario: [{ id: 'r1', ...reg }], dieta: null };
+    expect(aplicarFila(base, f).diario).toEqual([]);
+  });
+  it('excluir aplicação pela fila', () => {
+    const ap = { id: 'x1', ciclo_id: 'c', data: '2026-10-15', dose_mg: 1.5, local: null, observacoes: null };
+    let f = enfileirar([], { tipo: 'aplicacao', dado: ap }, 1);
+    f = enfileirar(f, { tipo: 'excluir', dado: { alvo: 'aplicacao', id: 'x1', data: ap.data } }, 2);
+    expect(f).toHaveLength(1);
+    expect(aplicarFila({ treinos: [], diario: [], dieta: null, aplicacoes: [ap], medidas: [] }, f).aplicacoes).toEqual([]);
+  });
+});

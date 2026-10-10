@@ -15,13 +15,35 @@ function numOuNulo(v: unknown): number | null {
   return v === null || v === undefined ? null : num(v);
 }
 
-function erro<T>(r: { data: T; error: { message: string } | null }): T {
-  if (r.error) throw new Error(r.error.message);
+/** Erro do servidor com o status HTTP e o código do PostgREST (para separar falha temporária de erro de dados). */
+export class ErroServidor extends Error {
+  constructor(
+    mensagem: string,
+    readonly status?: number,
+    readonly code?: string,
+  ) {
+    super(mensagem);
+  }
+}
+
+function erro<T>(r: { data: T; error: { message: string; code?: string } | null; status?: number }): T {
+  if (r.error) throw new ErroServidor(r.error.message, r.status, r.error.code);
   return r.data;
 }
 
-function lista<T>(r: { data: T[] | null; error: { message: string } | null }): T[] {
+function lista<T>(r: { data: T[] | null; error: { message: string; code?: string } | null; status?: number }): T[] {
   return erro(r) ?? [];
+}
+
+/** Mensagens do login em português. */
+function traduzirAuth(msg: string): string {
+  if (/email not confirmed/i.test(msg)) return 'Confirme seu e-mail pelo link que enviamos antes de entrar.';
+  if (/already registered/i.test(msg)) return 'Esse e-mail já tem conta. Use Entrar.';
+  if (/rate limit|for security purposes/i.test(msg)) return 'Muitas tentativas. Aguarde alguns minutos e tente de novo.';
+  if (/should be different/i.test(msg)) return 'A senha nova precisa ser diferente da atual.';
+  if (/signups not allowed|signup is disabled/i.test(msg)) return 'O cadastro de contas novas está fechado.';
+  if (/password should be at least/i.test(msg)) return 'A senha precisa ter pelo menos 6 caracteres.';
+  return msg;
 }
 
 export class RepositorioSupabase implements Repositorio {
@@ -54,8 +76,16 @@ export class RepositorioSupabase implements Repositorio {
   }
 
   async usuarioAtual(): Promise<Usuario | null> {
+    // Sem internet, não espera o cliente tentar renovar o acesso (~25 s): usa a sessão guardada
+    const guardado = this.usuarioGuardado();
+    if (guardado && typeof navigator !== 'undefined' && navigator.onLine === false) return guardado;
     try {
-      const { data, error } = await this.sb.auth.getSession();
+      const sessao = this.sb.auth.getSession();
+      const limite = guardado ? new Promise<'tempo'>((r) => setTimeout(() => r('tempo'), 4000)) : null;
+      const resposta = limite ? await Promise.race([sessao, limite]) : await sessao;
+      // Rede lenta: segue com a sessão guardada; a renovação termina em segundo plano
+      if (resposta === 'tempo') return guardado;
+      const { data, error } = resposta;
       const u = data.session?.user;
       if (u) return { id: u.id, email: u.email ?? '' };
       // Falha de rede ao renovar o acesso não é "deslogado"
@@ -75,7 +105,7 @@ export class RepositorioSupabase implements Repositorio {
 
   async definirSenha(nova: string) {
     const { error } = await this.sb.auth.updateUser({ password: nova });
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(traduzirAuth(error.message));
     this.abertoParaRecuperar = false;
   }
 
@@ -86,22 +116,25 @@ export class RepositorioSupabase implements Repositorio {
 
   async entrar(email: string, senha: string) {
     const { error } = await this.sb.auth.signInWithPassword({ email, password: senha });
-    if (error) throw new Error(error.message === 'Invalid login credentials' ? 'E-mail ou senha incorretos.' : error.message);
+    if (error) throw new Error(error.message === 'Invalid login credentials' ? 'E-mail ou senha incorretos.' : traduzirAuth(error.message));
   }
 
   async cadastrar(email: string, senha: string) {
     const { data, error } = await this.sb.auth.signUp({ email, password: senha, options: { emailRedirectTo: location.origin + import.meta.env.BASE_URL } });
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(traduzirAuth(error.message));
     return { confirmarEmail: !data.session };
   }
 
   async recuperarSenha(email: string) {
     const { error } = await this.sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + import.meta.env.BASE_URL });
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(traduzirAuth(error.message));
   }
 
   async sair() {
-    await this.sb.auth.signOut();
+    // 'local' remove a sessão do aparelho mesmo sem internet (o acesso no servidor expira sozinho)
+    const { error } = await this.sb.auth.signOut({ scope: 'local' });
+    if (error && !ehErroDeRede(error)) throw new Error(error.message);
+    if (error) localStorage.removeItem(this.chaveSessao);
   }
 
   async obterPerfil(): Promise<Perfil | null> {
@@ -202,7 +235,9 @@ export class RepositorioSupabase implements Repositorio {
   }
 
   async excluirDiario(id: string) {
-    erro(await this.sb.from('diario').delete().eq('id', id));
+    // Registro criado sem internet ainda não tem id do servidor: exclui pela data
+    if (id.startsWith('pendente:')) erro(await this.sb.from('diario').delete().eq('data', id.slice(9)));
+    else erro(await this.sb.from('diario').delete().eq('id', id));
   }
 
   async listarMedidas(): Promise<Medida[]> {

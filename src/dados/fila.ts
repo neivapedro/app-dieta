@@ -12,12 +12,16 @@ export type Operacao =
   | { tipo: 'dieta'; dado: PlanoDieta }
   // Aplicação e medição levam o id criado no aparelho: reenviar nunca duplica
   | { tipo: 'aplicacao'; dado: Aplicacao }
-  | { tipo: 'medida'; dado: Medida };
+  | { tipo: 'medida'; dado: Medida }
+  // Exclusão também passa pela fila: substitui uma edição pendente do mesmo registro
+  // e funciona sem internet. No Diário, o id pode ser 'pendente:<data>'.
+  | { tipo: 'excluir'; dado: { alvo: 'aplicacao' | 'medida' | 'diario'; id: string; data: string } };
 
 export type ItemFila = Operacao & { chave: string; versao: number };
 
 export function chaveDe(op: Operacao): string {
   if (op.tipo === 'dieta') return 'dieta';
+  if (op.tipo === 'excluir') return op.dado.alvo === 'diario' ? `diario:${op.dado.data}` : `${op.dado.alvo}:${op.dado.id}`;
   if (op.tipo === 'aplicacao' || op.tipo === 'medida') return `${op.tipo}:${op.dado.id}`;
   return `${op.tipo}:${op.dado.data}`;
 }
@@ -52,6 +56,11 @@ export async function executarOperacao(repo: Repositorio, op: Operacao) {
   if (op.tipo === 'diario') return repo.salvarDiario(op.dado);
   if (op.tipo === 'aplicacao') return repo.salvarAplicacao(op.dado);
   if (op.tipo === 'medida') return repo.salvarMedida(op.dado);
+  if (op.tipo === 'excluir') {
+    if (op.dado.alvo === 'aplicacao') return repo.excluirAplicacao(op.dado.id);
+    if (op.dado.alvo === 'medida') return repo.excluirMedida(op.dado.id);
+    return repo.excluirDiario(op.dado.id);
+  }
   return repo.salvarDieta(op.dado);
 }
 
@@ -69,6 +78,13 @@ const porData = <T extends { data: string }>(a: T, b: T) => a.data.localeCompare
 export function aplicarFila<T extends Aplicavel>(dados: T, fila: ItemFila[]): T {
   let { treinos, diario, dieta, aplicacoes, medidas } = dados;
   for (const op of fila) {
+    if (op.tipo === 'excluir') {
+      const { alvo, id, data } = op.dado;
+      if (alvo === 'aplicacao' && aplicacoes) aplicacoes = aplicacoes.filter((a) => a.id !== id);
+      if (alvo === 'medida' && medidas) medidas = medidas.filter((m) => m.id !== id);
+      if (alvo === 'diario') diario = diario.filter((r) => r.data !== data);
+      continue;
+    }
     if (op.tipo === 'aplicacao' && aplicacoes) {
       aplicacoes = [...aplicacoes.filter((a) => a.id !== op.dado.id), op.dado].sort(porData);
       continue;
@@ -108,9 +124,9 @@ export function lerCache<T>(usuario: string): { em: string; dados: T } | null {
   }
 }
 
-export function gravarCache(usuario: string, dados: unknown) {
+export function gravarCache(usuario: string, dados: unknown, em = new Date().toISOString()) {
   try {
-    localStorage.setItem(prefixoCache + usuario, JSON.stringify({ em: new Date().toISOString(), dados }));
+    localStorage.setItem(prefixoCache + usuario, JSON.stringify({ em, dados }));
   } catch {
     /* sem espaço: segue sem cópia offline */
   }

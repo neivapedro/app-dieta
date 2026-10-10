@@ -1,13 +1,12 @@
 import { useMemo } from 'react';
 import { analisarFases, analisarGeral, serieDePeso } from '../lib/analise';
 import { calcularCiclo } from '../lib/ciclo';
-import { hojeLocal } from '../lib/datas';
 import { historicoComposicao } from '../lib/gordura';
 import { useDados } from './contexto';
 
 export function useCalculos() {
   const d = useDados();
-  const hoje = hojeLocal();
+  const hoje = d.hoje;
   return useMemo(() => {
     const sexo = d.perfil?.sexo ?? 'Masculino';
     const resumo = d.ciclo ? calcularCiclo(d.ciclo, d.aplicacoes, d.diario, hoje) : null;

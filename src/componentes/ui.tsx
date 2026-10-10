@@ -157,7 +157,7 @@ export function Vazio({ children }: { children: ReactNode }) {
 }
 
 /** Exclusão em dois toques: o primeiro pede confirmação, o segundo executa. */
-export function BotaoExcluir({ rotulo, aviso, aoConfirmar }: { rotulo: string; aviso: string; aoConfirmar: () => void }) {
+export function BotaoExcluir({ rotulo, aviso, aoConfirmar }: { rotulo: string; aviso: string; aoConfirmar: () => unknown }) {
   const [armado, setArmado] = useState(false);
   useEffect(() => {
     if (!armado) return;
@@ -165,8 +165,13 @@ export function BotaoExcluir({ rotulo, aviso, aoConfirmar }: { rotulo: string; a
     return () => clearTimeout(t);
   }, [armado]);
   return (
-    <button type="button" className="botao perigo" onClick={() => (armado ? aoConfirmar() : setArmado(true))}>
+    <button type="button" className="botao perigo" onClick={() => (armado ? void Promise.resolve(aoConfirmar()).catch(() => undefined) : setArmado(true))}>
       {armado ? `${aviso} Toque de novo para confirmar.` : rotulo}
     </button>
   );
+}
+
+/** No lugar do gráfico quando o arquivo dele não pôde ser baixado (sem internet). */
+export function SemGrafico() {
+  return <p className="mudo">Gráfico indisponível sem internet. Ele volta quando a conexão voltar.</p>;
 }

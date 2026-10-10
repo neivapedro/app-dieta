@@ -141,7 +141,7 @@ export class RepositorioLocal implements Repositorio {
     });
   }
   async excluirDiario(id: string) {
-    this.alterar((b) => (b.diario = b.diario.filter((x) => x.id !== id)));
+    this.alterar((b) => (b.diario = b.diario.filter((x) => x.id !== id && `pendente:${x.data}` !== id)));
   }
 
   async listarMedidas() {

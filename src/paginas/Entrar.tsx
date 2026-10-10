@@ -1,3 +1,4 @@
+import { ehErroDeRede } from '../lib/erros';
 import { useState, type FormEvent } from 'react';
 import { useDados } from '../dados/contexto';
 import { Campo } from '../componentes/ui';
@@ -27,7 +28,7 @@ export function Entrar() {
         setMsg({ tipo: 'info', texto: 'Se o e-mail estiver cadastrado, você receberá um link para redefinir a senha.' });
       }
     } catch (e) {
-      setMsg({ tipo: 'erro', texto: (e as Error).message });
+      setMsg({ tipo: 'erro', texto: ehErroDeRede(e) ? 'Sem conexão com a internet. Confira o sinal e tente de novo.' : (e as Error).message });
     } finally {
       setEnviando(false);
     }
@@ -106,7 +107,7 @@ export function NovaSenha() {
       setPronto(true);
       setMsg({ tipo: 'info', texto: 'Senha alterada. Se você instalou o app na Tela de Início, abra-o pelo ícone e entre com a senha nova.' });
     } catch (e) {
-      setMsg({ tipo: 'erro', texto: (e as Error).message });
+      setMsg({ tipo: 'erro', texto: ehErroDeRede(e) ? 'Sem conexão com a internet. Confira o sinal e tente de novo.' : (e as Error).message });
     } finally {
       setEnviando(false);
     }

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { CartaoTreinoHoje, FormDiaTreino, FormMetas } from '../componentes/treino';
 import { tendenciaMedidas } from '../lib/conferencia';
 import { diferencaDias } from '../lib/datas';
-import { Bloco, Vazio } from '../componentes/ui';
+import { Bloco, SemGrafico, Vazio } from '../componentes/ui';
 import { useDados } from '../dados/contexto';
 import { useTreino } from '../dados/useTreino';
 import { formatarData, somarDias } from '../lib/datas';
@@ -12,8 +12,8 @@ import type { Composicao } from '../lib/gordura';
 import { formatarTempo, type Contagem } from '../lib/treino';
 import type { MetricaSemanal } from '../componentes/graficos';
 
-const GraficoAderencia = lazy(() => import('../componentes/graficos').then((m) => ({ default: m.GraficoAderencia })));
-const GraficoPace = lazy(() => import('../componentes/graficos').then((m) => ({ default: m.GraficoPace })));
+const GraficoAderencia = lazy(() => import('../componentes/graficos').then((m) => ({ default: m.GraficoAderencia })).catch(() => ({ default: SemGrafico })));
+const GraficoPace = lazy(() => import('../componentes/graficos').then((m) => ({ default: m.GraficoPace })).catch(() => ({ default: SemGrafico })));
 
 const DIAS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
 

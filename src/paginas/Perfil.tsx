@@ -26,7 +26,7 @@ const TEXTO_ESTADO: Record<EstadoNotificacao, string> = {
 
 
 export function Perfil() {
-  const { perfil, ciclo, aplicacoes, diario, medidas, treinos, dieta, usuario, repo, executar, sair } = useDados();
+  const { perfil, ciclo, aplicacoes, diario, medidas, treinos, dieta, usuario, repo, executar, sair, limparErro } = useDados();
   const [nome, setNome] = useState(perfil?.nome ?? '');
   const [sexo, setSexo] = useState<Sexo>(perfil?.sexo ?? 'Masculino');
   const [altura, setAltura] = useState(paraTexto(perfil?.altura_cm));
@@ -46,6 +46,11 @@ export function Perfil() {
 
   async function salvar(e: FormEvent) {
     e.preventDefault();
+    const alt = paraNumero(altura);
+    if (!nome.trim()) return setMsg({ tipo: 'erro', texto: 'Informe o nome.' });
+    if (alt === null || alt < 100 || alt > 250) return setMsg({ tipo: 'erro', texto: 'Altura em centímetros, entre 100 e 250 (ex.: 181).' });
+    if (nascimento && (nascimento > hojeLocal() || nascimento < '1900-01-01')) return setMsg({ tipo: 'erro', texto: 'Data de nascimento inválida.' });
+    if (ativos && !/^\d{2}:\d{2}/.test(hora)) return setMsg({ tipo: 'erro', texto: 'Informe o horário do lembrete.' });
     try {
       await executar((r) =>
         r.salvarPerfil({
@@ -60,6 +65,8 @@ export function Perfil() {
       );
       setMsg({ tipo: 'info', texto: 'Dados salvos.' });
     } catch (e) {
+      // A mensagem fica só aqui, perto do botão (sem repetir no topo)
+      limparErro();
       setMsg({ tipo: 'erro', texto: (e as Error).message });
     }
   }

@@ -2,7 +2,7 @@ import { lazy, Suspense, useState } from 'react';
 import { FormMedida } from '../componentes/formularios';
 import { ResumoSemana } from '../componentes/ResumoSemana';
 import { FormMetas } from '../componentes/treino';
-import { Vazio } from '../componentes/ui';
+import { SemGrafico, Vazio } from '../componentes/ui';
 import { useDados } from '../dados/contexto';
 import { useCalculos } from '../dados/useCalculos';
 import { formatarData } from '../lib/datas';
@@ -10,7 +10,7 @@ import { cm, corVariacao, kg, pp, sinal } from '../lib/formato';
 import { ganhos } from '../lib/gordura';
 import type { Medida } from '../lib/tipos';
 
-const GraficoComposicao = lazy(() => import('../componentes/graficos').then((m) => ({ default: m.GraficoComposicao })));
+const GraficoComposicao = lazy(() => import('../componentes/graficos').then((m) => ({ default: m.GraficoComposicao })).catch(() => ({ default: SemGrafico })));
 
 /** Equivale à aba "% de Gordura" da Planilha Gorgonoidiana. */
 export function Medidas() {

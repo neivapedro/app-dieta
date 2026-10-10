@@ -3,7 +3,7 @@ import { useDados } from '../dados/contexto';
 import { useAlimentos } from '../dados/useAlimentos';
 import { useCalculos } from '../dados/useCalculos';
 import { useTreino } from '../dados/useTreino';
-import { diferencaDias, formatarData } from '../lib/datas';
+import { diferencaDias, formatarData, hojeLocal } from '../lib/datas';
 import { calcularMetas, calcularSaldo, gramasDoItem, macrosDaRefeicao, somar, type Refeicao } from '../lib/dieta';
 import { num } from '../lib/formato';
 import { aderenciaRecente, segundaDaSemana } from '../lib/treino';
@@ -26,7 +26,8 @@ function proximaRefeicao(refeicoes: Refeicao[]): Refeicao | null {
   const comItens = refeicoes.filter((r) => r.itens.length);
   if (!comItens.length) return null;
   const agora = minutosAgora();
-  const comHora = comItens.filter((r) => minutos(r.horario) !== null);
+  // Pela hora, não pela ordem da lista
+  const comHora = comItens.filter((r) => minutos(r.horario) !== null).sort((a, b) => minutos(a.horario)! - minutos(b.horario)!);
   return comHora.find((r) => minutos(r.horario)! >= agora - 30) ?? (comHora.length ? null : comItens[0]) ?? null;
 }
 
@@ -52,6 +53,12 @@ export function CartaoDietaHoje() {
   const regHoje = diario.find((r) => r.data === hoje);
 
   function marcar(v: 'sim' | 'parcial' | 'nao' | null) {
+    // O dia virou com o app aberto: só atualiza a tela, não grava no dia de ontem
+    if (hojeLocal() !== hoje) return void window.dispatchEvent(new Event('focus'));
+    const vazio =
+      regHoje && regHoje.peso_kg === null && regHoje.nausea === null && !regHoje.observacoes && regHoje.vomito == null && regHoje.diarreia == null && regHoje.intestino_preso == null;
+    // Desmarcar num dia sem mais nada não deixa registro vazio no Diário
+    if (v === null && vazio) return gravar({ tipo: 'excluir', dado: { alvo: 'diario', id: regHoje.id, data: hoje } });
     gravar({
       tipo: 'diario',
       dado: {
