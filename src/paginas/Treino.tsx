@@ -9,7 +9,7 @@ import { useDados } from '../dados/contexto';
 import { useTreino } from '../dados/useTreino';
 import { formatarData, somarDias } from '../lib/datas';
 import { cm, corVariacao, kg, num, pct, pp, sinal } from '../lib/formato';
-import { ajusteDoPerfil, cenariosPesoMeta, cinturaNecessaria, MDC, type ChaveMdc, type Composicao } from '../lib/gordura';
+import { ajusteVigente, cenariosPesoMeta, cinturaNecessaria, MDC, type ChaveMdc, type Composicao } from '../lib/gordura';
 import { SEMANAS_POS } from '../lib/projeto';
 import { formatarTempo, SUBIDA_ESFORCO, type ComparacaoEsforco, type Contagem } from '../lib/treino';
 import type { MetricaSemanal } from '../componentes/graficos';
@@ -85,7 +85,7 @@ export function Treino() {
   const ref = atual ?? inicial;
   const cinturaMeta =
     m?.bf && altura && ref
-      ? cinturaNecessaria(perfil?.sexo ?? 'Masculino', altura, m.pescoco_cm ?? ref.pescoco_cm, m.bf, ajusteDoPerfil(perfil), m.quadril_cm ?? ref.quadril_cm)
+      ? cinturaNecessaria(perfil?.sexo ?? 'Masculino', altura, m.pescoco_cm ?? ref.pescoco_cm, m.bf, ajusteVigente(perfil, medidas), m.quadril_cm ?? ref.quadril_cm)
       : null;
   const cenarios = m?.bf && ref?.massa_magra_kg ? cenariosPesoMeta(ref.massa_magra_kg, ref.peso_kg, m.bf) : [];
   // Grade: até a semana que vem; mostra as 6 mais recentes, com opção de ver tudo
@@ -114,7 +114,12 @@ export function Treino() {
           <Bloco rotulo="Sequência atual" valor={`🔥 ${p.sequenciaAtual} ${p.sequenciaAtual === 1 ? 'dia' : 'dias'}`} />
           <Bloco rotulo="Recorde" valor={`${p.recorde} ${p.recorde === 1 ? 'dia' : 'dias'}`} />
         </div>
-        {!p.iniciado && <p className="mudo" style={{ marginTop: 10 }}>O projeto começa no dia da 1ª aplicação ({formatarData(p.inicio)}).</p>}
+        {!p.iniciado && (
+          <p className="mudo" style={{ marginTop: 10 }}>
+            {/* Data planejada já passou sem dose registrada: o início vale a partir de quando a 1ª dose for registrada */}
+            O projeto começa no dia da 1ª aplicação ({p.inicio === somarDias(hoje, 1) ? 'quando você a registrar' : formatarData(p.inicio)}). Até lá, os dias não contam no placar.
+          </p>
+        )}
         {t.placarPos && t.pos && (
           <p className="mudo" style={{ marginTop: 10 }}>
             {t.pos.semana !== null && `Semana ${t.pos.semana + 1} de ${SEMANAS_POS} depois da última dose (${formatarData(t.pos.inicio)})`}

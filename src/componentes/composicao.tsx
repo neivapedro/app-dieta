@@ -7,7 +7,7 @@ import { qualidadePerda, textoQualidade, type QualidadePerda } from '../lib/conf
 import { alvoProteinaRefeicao, calcularMetas, corpoParaMetas, macrosDaRefeicao, somar } from '../lib/dieta';
 import { formatarData } from '../lib/datas';
 import { num, pp } from '../lib/formato';
-import { ajusteDoPerfil, AJUSTE_PADRAO, COR_RCA, faixaRca, percentualGorduraBruto, rca, rfm, TEXTO_RCA, type Composicao } from '../lib/gordura';
+import { ajusteVigente, AJUSTE_PADRAO, calibracaoAtual, COR_RCA, faixaRca, percentualGorduraBruto, rca, rfm, TEXTO_RCA, type Composicao } from '../lib/gordura';
 import { acaoQualidade } from '../lib/semana';
 import { aderenciaRecente } from '../lib/treino';
 import type { Perfil } from '../lib/tipos';
@@ -98,7 +98,8 @@ export function ConferenciaGordura({ c }: { c: Composicao }) {
   const altura = perfil?.altura_cm ?? medidas.find((m) => m.data === c.data)?.altura_cm ?? null;
   const sexo = perfil?.sexo ?? 'Masculino';
   const bruta = brutaDe(c, perfil, altura);
-  const ajuste = ajusteDoPerfil(perfil);
+  const ajuste = ajusteVigente(perfil, medidas);
+  const calib = calibracaoAtual(perfil, medidas);
   const r = altura ? rfm(sexo, altura, c.cintura_cm) : null;
   if (bruta === null) return null;
   const padrao = perfil?.ajuste_gordura === null || perfil?.ajuste_gordura === undefined;
@@ -127,7 +128,9 @@ export function ConferenciaGordura({ c }: { c: Composicao }) {
           {padrao
             ? `padrão ${sexo === 'Masculino' ? 'da planilha' : 'do feminino'}: ${num(AJUSTE_PADRAO[sexo], 1)} p.p.`
             : perfil?.exame_gordura_data && perfil.exame_gordura_bf != null
-              ? `calibrado por exame em ${formatarData(perfil.exame_gordura_data)}, a ${pp(perfil.exame_gordura_bf)}`
+              ? calib?.ok
+                ? `calibrado por exame em ${formatarData(perfil.exame_gordura_data)}, a ${pp(perfil.exame_gordura_bf)}; refeito com a altura e a medição atuais`
+                : `exame de ${formatarData(perfil.exame_gordura_data)} sem medição normal perto para refazer a conta: vale o último ajuste salvo. Refaça a calibração no Perfil`
               : 'ajuste definido no Perfil'}
           ). Medição de {formatarData(c.data)}.
         </p>

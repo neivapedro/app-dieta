@@ -99,7 +99,26 @@ function Agenda() {
             fase seguir; a lista abaixo é a hipótese das fases seguintes.
           </div>
         )}
-        {proximas.length === 0 ? (
+        {proximas.length === 0 && resumo.proxima && !resumo.proxima.saldo_suficiente ? (
+          // O saldo não cobre a próxima dose: a projeção fica vazia, mas a dose continua no plano (como no Início)
+          <div className="lista">
+            <div className="item">
+              <div className="marcador">{resumo.proxima.numero}</div>
+              <div className="cresce">
+                <div className="titulo">
+                  {diaDaSemana(resumo.proxima.data)}, {formatarData(resumo.proxima.data)}
+                  {resumo.proxima.situacao === 'atrasada' && <span className="etiqueta ruim" style={{ marginLeft: 6 }}>atrasada</span>}
+                </div>
+                <div className="detalhe">{resumo.proxima.fase ? `Fase ${resumo.proxima.fase.indice + 1} · ${resumo.proxima.fase.fase.nome}` : 'Fora do plano'}</div>
+                <div className="detalhe ruim">O saldo ({num(Math.max(resumo.saldo_mg, 0))} mg) não cobre esta dose.</div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div className="titulo numero">{num(resumo.proxima.dose_mg)} mg</div>
+                <div className="detalhe numero">{ui(resumo.proxima.ui)}</div>
+              </div>
+            </div>
+          </div>
+        ) : proximas.length === 0 ? (
           <Vazio>Nenhuma aplicação restante no plano.</Vazio>
         ) : (
           <div className="lista">
@@ -124,6 +143,12 @@ function Agenda() {
               </div>
             ))}
           </div>
+        )}
+        {resumo.doses_plano_restantes > resumo.projecao.length && (
+          <p className="mudo" style={{ marginTop: 8 }}>
+            Doses restantes no plano: {resumo.doses_plano_restantes} · o frasco cobre {resumo.projecao.length}. {resumo.doses_plano_restantes - resumo.projecao.length}{' '}
+            {resumo.doses_plano_restantes - resumo.projecao.length === 1 ? 'dose fica' : 'doses ficam'} sem saldo.
+          </p>
         )}
         {resumo.projecao.length > 6 && (
           <button className="botao pequeno bloco-largo" style={{ marginTop: 8 }} onClick={() => setTodas(!todas)}>

@@ -251,7 +251,11 @@ export class RepositorioSupabase implements Repositorio {
       const faltou = [
         (c.seringa_capacidade_ui ?? null) !== null || (c.seringa_marca_ui ?? null) !== null ? 'a seringa (capacidade e marcas)' : null,
         c.frasco_aberto_em ? '"frasco aberto em"' : null,
-        (c.decisoes ?? []).length ? 'as decisões do fim de fase (subir, repetir e anotações para o médico)' : null,
+        // Descreve pelo tipo: a troca do intervalo é gravada como decisão (para não reavaliar as doses antigas)
+        (c.decisoes ?? []).some((x) => x.escolha === 'intervalo')
+          ? 'o registro da troca do intervalo (até rodar o SQL, o intervalo novo vale também para conferir as doses antigas, que podem aparecer com atraso)'
+          : null,
+        (c.decisoes ?? []).some((x) => x.escolha !== 'intervalo') ? 'as decisões do fim de fase (subir, repetir e anotações para o médico)' : null,
       ].filter(Boolean);
       const salvo = { ...c, id: d!.id } as Ciclo;
       if (faltou.length) throw new CicloSalvoEmParte(`Itens não salvos no servidor: ${faltou.join('; ')}. Motivo: ${AVISO_EVOLUCAO}`, salvo);
@@ -266,7 +270,10 @@ export class RepositorioSupabase implements Repositorio {
     const r = await this.sb.from('ciclos').update(fases ? { decisoes, fases } : { decisoes }).eq('id', ciclo_id);
     if (r.error && faltaNoBanco(r.error)) {
       // O plano (Repetir fase) é gravado; a decisão em si precisa da coluna nova
-      if (fases) erro(await this.sb.from('ciclos').update({ fases }).eq('id', ciclo_id));
+      if (fases) {
+        erro(await this.sb.from('ciclos').update({ fases }).eq('id', ciclo_id));
+        throw new SalvoEmParte(`O Plano foi estendido, mas o registro da decisão não foi salvo: ${AVISO_EVOLUCAO}`);
+      }
       throw new SalvoEmParte(`A decisão da fase não foi salva: ${AVISO_EVOLUCAO}`);
     }
     erro(r);
@@ -384,7 +391,13 @@ export class RepositorioSupabase implements Repositorio {
   }
 
   async salvarInscricaoPush(i: { endpoint: string; p256dh: string; auth: string }) {
-    erro(await this.sb.from('inscricoes_push').upsert({ ...i, user_id: await this.uid() }, { onConflict: 'endpoint' }));
+    // A função do servidor passa o endereço para esta conta mesmo se ele ainda for de outra (conta anterior neste aparelho)
+    const r = await this.sb.rpc('assumir_inscricao_push', { p_endpoint: i.endpoint, p_p256dh: i.p256dh, p_auth: i.auth });
+    if (!r.error) return;
+    // Banco sem a função (SQL ainda não rodou): grava direto
+    if (faltaNoBanco(r.error) || r.error.code === 'PGRST202') {
+      erro(await this.sb.from('inscricoes_push').upsert({ ...i, user_id: await this.uid() }, { onConflict: 'endpoint' }));
+    } else erro(r);
   }
 
   async removerInscricaoPush(endpoint: string) {

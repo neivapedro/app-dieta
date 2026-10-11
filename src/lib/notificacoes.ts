@@ -83,13 +83,24 @@ export async function ativarNotificacoes(repo: Repositorio): Promise<EstadoNotif
   return 'ativo';
 }
 
-export async function desativarNotificacoes(repo: Repositorio): Promise<void> {
-  if (!('serviceWorker' in navigator)) return;
+/**
+ * Desativa os lembretes neste aparelho: cancela a inscrição aqui primeiro (vale
+ * mesmo sem internet: o endereço deixa de existir no serviço de push e o servidor
+ * o apaga no próximo envio recusado) e depois tenta apagar no servidor.
+ * Devolve false quando a exclusão no servidor não deu (ex.: sem internet).
+ */
+export async function desativarNotificacoes(repo: Repositorio): Promise<boolean> {
+  if (!('serviceWorker' in navigator)) return true;
   const reg = await navigator.serviceWorker.ready;
   const sub = await reg.pushManager?.getSubscription();
-  if (sub) {
-    await repo.removerInscricaoPush(sub.endpoint);
-    await sub.unsubscribe();
+  if (!sub) return true;
+  const endpoint = sub.endpoint;
+  await sub.unsubscribe();
+  try {
+    await repo.removerInscricaoPush(endpoint);
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -121,12 +132,20 @@ export async function sincronizarInscricao(repo: Repositorio): Promise<void> {
   });
 }
 
-/** Ao sair da conta: este aparelho deixa de receber os lembretes dela. */
+/**
+ * Ao sair da conta: este aparelho deixa de receber os lembretes dela. Apaga a
+ * inscrição no servidor e cancela a inscrição aqui: mesmo sem internet (a
+ * exclusão no servidor falha), o endereço deixa de valer no serviço de push, o
+ * servidor o apaga no próximo envio recusado e a próxima conta se inscreve com
+ * um endereço novo.
+ */
 export async function esquecerAparelho(repo: Repositorio): Promise<void> {
   if (!('serviceWorker' in navigator)) return;
   const reg = await navigator.serviceWorker.getRegistration();
   const sub = await reg?.pushManager?.getSubscription();
-  if (sub) await repo.removerInscricaoPush(sub.endpoint);
+  if (!sub) return;
+  await repo.removerInscricaoPush(sub.endpoint).catch(() => undefined);
+  await sub.unsubscribe().catch(() => undefined);
 }
 
 /**

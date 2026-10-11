@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { TextoRca } from '../componentes/composicao';
-import { AvisoRapido, FimDeFase, ForaDoPlano } from '../componentes/dose';
+import { AvisoRapido, FaseConfirmada, FimDeFase, ForaDoPlano } from '../componentes/dose';
 import { FormAplicacao, FormDiario, FormMedida } from '../componentes/formularios';
 import {
   AlertasSeguranca,
@@ -107,6 +107,7 @@ function CartaoDose({ aoRegistrar, aoRecolher, aoDecidir }: { aoRegistrar: () =>
       )}
       <FimDeFase aoDecidir={aoDecidir} />
       <ForaDoPlano />
+      <FaseConfirmada />
       <button className="botao primario bloco-largo" style={{ marginTop: 14 }} onClick={aoRegistrar}>
         <Icone nome="mais" /> Registrar aplicação
       </button>

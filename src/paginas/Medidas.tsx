@@ -63,12 +63,18 @@ export function Medidas() {
         </div>
         {atual ? (
           <>
-            {ultimaDeTodas.atipica && (
-              <p className="texto-2" style={{ marginBottom: 8 }}>
-                <span className="etiqueta aviso">atípica</span> A medição de {formatarData(ultimaDeTodas.data)} foi marcada como atípica: fica no histórico,
-                fora destes números, das tendências e das projeções.
-              </p>
-            )}
+            {ultimaDeTodas.atipica &&
+              (atual === ultimaDeTodas ? (
+                <p className="texto-2" style={{ marginBottom: 8 }}>
+                  <span className="etiqueta aviso">atípica</span> A medição de {formatarData(ultimaDeTodas.data)} foi marcada como atípica, mas é a única:
+                  os números abaixo vêm dela até você registrar uma medição normal.
+                </p>
+              ) : (
+                <p className="texto-2" style={{ marginBottom: 8 }}>
+                  <span className="etiqueta aviso">atípica</span> A medição de {formatarData(ultimaDeTodas.data)} foi marcada como atípica: fica no histórico,
+                  fora destes números, das tendências e das projeções.
+                </p>
+              ))}
             <div className="grade grade-4">
               {tiles.map((t) => (
                 <div className="bloco" key={t.rotulo}>

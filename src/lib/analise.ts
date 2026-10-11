@@ -184,8 +184,9 @@ export function analisarGeral(inicio_ciclo: string, serie: PontoPeso[], todas: C
   const mAtual = composicoes.length ? composicoes[composicoes.length - 1] : null;
   const pelaMedida = composicoes.length >= 2;
   const ponto = (c: Composicao): PontoPeso => ({ data: c.data, peso_kg: c.peso_kg, origem: 'medida' });
-  // Pesagens atípicas também ficam fora de início e agora
-  const serieOk = serie.filter((p) => !p.atipica);
+  // Pesagens atípicas também ficam fora de início e agora (sem nenhuma normal, valem as atípicas, como nas medições)
+  const semAtipicas = serie.filter((p) => !p.atipica);
+  const serieOk = semAtipicas.length ? semAtipicas : serie;
   const peso_inicial = pelaMedida ? ponto(mIni!) : pesoReferencia(serieOk, inicio_ciclo);
   const peso_atual = pelaMedida ? ponto(mAtual!) : serieOk.length ? serieOk[serieOk.length - 1] : null;
   const temVariacao = peso_inicial && peso_atual && peso_atual.data > peso_inicial.data;

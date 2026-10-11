@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { analisarFases, analisarGeral, serieDePeso } from '../lib/analise';
 import { calcularCiclo } from '../lib/ciclo';
-import { ajusteDoPerfil, historicoComposicao } from '../lib/gordura';
+import { ajusteVigente, historicoComposicao } from '../lib/gordura';
 import { decisaoPosRemedio } from '../lib/projeto';
 import { periodoProjeto } from '../lib/treino';
 import { useDados } from './contexto';
@@ -14,7 +14,7 @@ export function useCalculos() {
     const resumo = d.ciclo ? calcularCiclo(d.ciclo, d.aplicacoes, d.diario, hoje, d.medidas) : null;
     const serie = serieDePeso(d.diario, d.medidas);
     // Altura do perfil (fonte única) e ajuste de calibração do % de gordura
-    const composicoes = historicoComposicao(d.medidas, sexo, { altura_cm: d.perfil?.altura_cm, ajuste: ajusteDoPerfil(d.perfil) });
+    const composicoes = historicoComposicao(d.medidas, sexo, { altura_cm: d.perfil?.altura_cm, ajuste: ajusteVigente(d.perfil, d.medidas) });
     const inicio = resumo?.linhas[0]?.aplicacao.data ?? d.ciclo?.data_inicio ?? hoje;
     // Remédio acabou (frasco sem próxima dose ou fase pós-remédio iniciada): as fases terminam no fim do
     // período do remédio (última dose + intervalo), e as semanas sem remédio ficam fora da análise por fase

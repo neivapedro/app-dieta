@@ -58,4 +58,14 @@ describe('Conteúdo da retatrutida', () => {
     ]);
     expect(partesTexto('sem citação')).toEqual([{ tipo: 'texto', texto: 'sem citação' }]);
   });
+
+  it('todo texto com "preliminar" recebe a marca (maiúscula, singular ou plural)', () => {
+    for (const t of todosOsTextos()) {
+      if (!/preliminar/i.test(t)) continue;
+      const marcados = partesTexto(t).filter((p) => p.tipo === 'preliminar').length;
+      const ocorrencias = (t.match(/preliminar/gi) ?? []).length;
+      expect(marcados, t).toBe(ocorrencias);
+    }
+    expect(partesTexto('Dado preliminar: x. TRIUMPH-2/3, dados preliminares [47].').filter((p) => p.tipo === 'preliminar')).toHaveLength(2);
+  });
 });

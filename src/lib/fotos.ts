@@ -60,14 +60,19 @@ export function dataDaSessao(fotos: FotoInfo[], sessao: Sessao): string | null {
   return null;
 }
 
-/** Depois antes do Antes (ou Antes depois do Depois) inverteria a variação: devolve o motivo do erro. */
+/**
+ * Depois antes do Antes (ou Antes depois do Depois) inverteria a variação: devolve
+ * o motivo do erro. Confere com todas as fotos da outra sessão (a variação é
+ * montada pose a pose): o Depois não pode ser anterior a nenhuma foto do Antes,
+ * e o Antes não pode ser posterior a nenhuma foto do Depois.
+ */
 export function conflitoDataSessao(fotos: FotoInfo[], sessao: Sessao, data: string): string | null {
   const br = (d: string) => d.split('-').reverse().join('/');
   if (sessao === 'depois') {
-    const antes = dataDaSessao(fotos, 'antes');
+    const antes = fotos.filter((f) => f.sessao === 'antes').map((f) => f.data).sort().at(-1);
     if (antes && data < antes) return `A data do Depois não pode ser anterior à do Antes (${br(antes)}).`;
   } else {
-    const depois = dataDaSessao(fotos, 'depois');
+    const depois = fotos.filter((f) => f.sessao === 'depois').map((f) => f.data).sort()[0];
     if (depois && data > depois) return `A data do Antes não pode ser posterior à do Depois (${br(depois)}).`;
   }
   return null;
@@ -204,7 +209,32 @@ export function fotoBackupValida(f: unknown): f is FotoBackup {
  * Fotos do backup que entram no aparelho: só as dos lugares (sessão + pose)
  * ainda vazios. Importar de novo não troca nem duplica nenhuma foto.
  */
-export function fotosParaImportar(doBackup: unknown[] | undefined, existentes: { sessao: Sessao; pose: Pose }[]): FotoBackup[] {
+export function fotosParaImportar(doBackup: unknown[] | undefined, existentes: { sessao: Sessao; pose: Pose; data?: string }[]): FotoBackup[] {
+  return separarFotosImportar(doBackup, existentes).fotos;
+}
+
+/**
+ * Como fotosParaImportar, separando também as que inverteriam a ordem das datas
+ * com as fotos do aparelho (e as já aceitas): um Depois anterior ao Antes deste
+ * aparelho fica de fora e é contado em `conflito`, para a prévia explicar.
+ */
+export function separarFotosImportar(
+  doBackup: unknown[] | undefined,
+  existentes: { sessao: Sessao; pose: Pose; data?: string }[],
+): { fotos: FotoBackup[]; conflito: number } {
   const ocupados = new Set(existentes.map(chaveSlot));
-  return (doBackup ?? []).filter(fotoBackupValida).filter((f) => (ocupados.has(chaveSlot(f)) ? false : (ocupados.add(chaveSlot(f)), true)));
+  const comData: FotoInfo[] = existentes.filter((f): f is FotoInfo => typeof f.data === 'string');
+  const fotos: FotoBackup[] = [];
+  let conflito = 0;
+  for (const f of (doBackup ?? []).filter(fotoBackupValida)) {
+    if (ocupados.has(chaveSlot(f))) continue;
+    if (conflitoDataSessao(comData, f.sessao, f.data)) {
+      conflito++;
+      continue;
+    }
+    ocupados.add(chaveSlot(f));
+    comData.push(f);
+    fotos.push(f);
+  }
+  return { fotos, conflito };
 }

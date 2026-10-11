@@ -3,7 +3,7 @@ import { useDados } from '../dados/contexto';
 import { useTreino } from '../dados/useTreino';
 import { diaDaSemana, formatarData, hojeLocal } from '../lib/datas';
 import { cm, kg, lerFaixa, num, paraNumero, paraTexto, pp } from '../lib/formato';
-import { ajusteDoPerfil, cenariosPesoMeta, cinturaAlvoRca, cinturaNecessaria, percentualGordura, type Composicao } from '../lib/gordura';
+import { ajusteVigente, cenariosPesoMeta, cinturaAlvoRca, cinturaNecessaria, percentualGordura, type Composicao } from '../lib/gordura';
 import { compararMetas } from '../lib/registroDecisoes';
 import {
   digitosParaTempo,
@@ -158,7 +158,7 @@ export function FormDiaTreino({ data, marcarCardio, aoFechar }: { data: string; 
       <form className="pilha" onSubmit={salvar}>
         <div className="linha" style={{ flexWrap: 'nowrap' }}>
           <Marcador rotulo="Treino" detalhe="musculação" feito={treino} aoTocar={() => setTreino(!treino)} />
-          <Marcador rotulo="Cardio" detalhe={rotuloTipoCardio(tipo)} feito={cardio} aoTocar={() => setCardio(!cardio)} />
+          <Marcador rotulo="Cardio" detalhe={rotuloTipoCardio(tipo, kmN)} feito={cardio} aoTocar={() => setCardio(!cardio)} />
         </div>
         {cardio && (
           <Campo rotulo={data === hoje ? 'Cardio de hoje' : 'Cardio do dia'} grupo dica="A corrida pode ser em qualquer dia; a meta continua 2 corridas e 5 bikes por semana.">
@@ -228,7 +228,7 @@ export function FormMetas({
   // Altura do perfil (fonte única); sem ela, a da última medição
   const altura = perfil?.altura_cm ?? [...medidas].sort((a, b) => b.data.localeCompare(a.data))[0]?.altura_cm ?? null;
   const feminino = perfil?.sexo === 'Feminino';
-  const ajuste = ajusteDoPerfil(perfil);
+  const ajuste = ajusteVigente(perfil, medidas);
   const cinturaRca = cinturaAlvoRca(altura);
   const [pescoco, setPescoco] = useState(paraTexto(m?.pescoco_cm));
   const [cintura, setCintura] = useState(paraTexto(m?.cintura_cm));

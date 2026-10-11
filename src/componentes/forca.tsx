@@ -153,15 +153,19 @@ export function FormForca({ exercicios, aoFechar }: { exercicios: string[]; aoFe
     });
   const [linhas, setLinhas] = useState<LinhaForca[]>(() => preencher(data));
   const [erro, setErro] = useState<string | null>(null);
+  // Exercícios que você já mexeu: trocar a data não apaga o que foi digitado (como no Registro do dia)
+  const [mexidos, setMexidos] = useState<ReadonlySet<number>>(new Set());
 
   function trocarData(nova: string) {
     setData(nova);
-    setLinhas(preencher(nova));
+    const salvas = preencher(nova);
+    setLinhas(linhas.map((l, i) => (mexidos.has(i) ? l : salvas[i])));
     setErro(null);
   }
 
   const mudar = (i: number, campo: keyof LinhaForca, v: string) => {
     setLinhas(linhas.map((l, j) => (j === i ? { ...l, [campo]: v } : l)));
+    setMexidos((m) => (m.has(i) ? m : new Set(m).add(i)));
     setErro(null);
   };
 

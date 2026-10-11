@@ -23,9 +23,16 @@ alter table public.diario add column if not exists cor_urina text check (cor_uri
 --    percebido da sessão (escala CR-10), separado para musculação e cardio.
 --    Sem cardio_tipo, o app infere: distância preenchida = corrida, senão a regra
 --    do dia (quarta e domingo = corrida).
-alter table public.treino_dias add column if not exists cardio_tipo text check (cardio_tipo is null or cardio_tipo in ('corrida', 'bike'));
-alter table public.treino_dias add column if not exists esforco_treino smallint check (esforco_treino is null or esforco_treino between 0 and 10);
-alter table public.treino_dias add column if not exists esforco_cardio smallint check (esforco_cardio is null or esforco_cardio between 0 and 10);
+--    A aba Treino é opcional: num banco sem treino_dias este bloco é pulado (rode
+--    este arquivo de novo depois do SQL do Treino para criar estes campos).
+do $$
+begin
+  if to_regclass('public.treino_dias') is not null then
+    execute $q$alter table public.treino_dias add column if not exists cardio_tipo text check (cardio_tipo is null or cardio_tipo in ('corrida', 'bike'))$q$;
+    execute $q$alter table public.treino_dias add column if not exists esforco_treino smallint check (esforco_treino is null or esforco_treino between 0 and 10)$q$;
+    execute $q$alter table public.treino_dias add column if not exists esforco_cardio smallint check (esforco_cardio is null or esforco_cardio between 0 and 10)$q$;
+  end if;
+end $$;
 
 -- 5) Força nos exercícios-âncora: 1x por semana, a primeira série válida
 --    (carga, repetições e repetições na reserva). A lista de exercícios fica no perfil.

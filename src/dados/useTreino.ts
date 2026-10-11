@@ -27,10 +27,12 @@ export function useTreino() {
     const placar = placarPos ? calcularPlacar(treinos, inicio, fim, hoje) : placarProjeto;
     const semanas = semanasDoProjeto(treinos, inicio, fim, hoje, composicoes);
     const corridas = listarCorridas(treinos);
-    const inicial = medidaInicial(composicoes.filter((c) => !c.atipica), periodoProj.inicio);
+    // Medição atípica fica só no histórico: não vira o "início" nem o "agora". Sem nenhuma
+    // normal, vale a atípica (o mesmo critério de Medidas, das Metas e do Início)
+    const semAtipicas = composicoes.filter((c) => !c.atipica);
+    const normais = semAtipicas.length ? semAtipicas : composicoes;
+    const inicial = medidaInicial(normais, periodoProj.inicio);
     // Projeto encerrado: o resultado é a última medição até o fim, não uma posterior
-    // Medição atípica fica só no histórico: não vira o "agora"
-    const normais = composicoes.filter((c) => !c.atipica);
     const ate = placarProjeto.encerrado ? normais.filter((c) => c.data <= periodoProj.fim) : normais;
     const atual = ate.length ? ate[ate.length - 1] : null;
     const doDia = (data: string) => treinos.find((t) => t.data === data);

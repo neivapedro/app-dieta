@@ -7,6 +7,7 @@ import { diferencaDias, formatarData, somarDias } from '../lib/datas';
 import { cm, corVariacao, kg, mg, num, pp, sinal } from '../lib/formato';
 import { MDC, type ChaveMdc } from '../lib/gordura';
 import { diasCurtos, dietaNoPeriodo, efeitosNoPeriodo, faltasNoPeriodo, sugestaoSemana, textoDietaSemana, type TipoSugestao } from '../lib/semana';
+import { segundaDaSemana } from '../lib/treino';
 import { LinhaQualidade, useQualidade } from './composicao';
 import { Folha } from './ui';
 
@@ -30,7 +31,8 @@ export function ResumoSemana({ data, aoFechar }: { data?: string; aoFechar: () =
   const tend = tendenciaMedidas(composicoes.slice(0, idx + 1), 42);
   const inicio = resumo?.linhas[0]?.aplicacao.data ?? ciclo?.data_inicio ?? composicoes[0].data;
   const antesDoCiclo = atual.data < inicio;
-  const semana = Math.max(Math.floor(diferencaDias(inicio, atual.data) / 7) + 1, 1);
+  // Numerada pela semana que a medição fecha, como o gráfico do Treino: a medição de segunda é o resultado da semana anterior (S1, S2…)
+  const semana = Math.max(Math.floor(diferencaDias(segundaDaSemana(inicio), atual.data) / 7), 1);
   // Semana que esta medição fecha: os 7 dias antes dela
   const de = somarDias(atual.data, -7);
   const ate = somarDias(atual.data, -1);

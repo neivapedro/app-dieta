@@ -100,14 +100,20 @@ export function useGravarTreino() {
   };
 }
 
+/** Início do ciclo: a 1ª aplicação ou a data planejada, o que vier antes. */
+function inicioDoCiclo(planejado: string | undefined, primeira: string | undefined): string | null {
+  const datas = [planejado, primeira].filter((d): d is string => !!d).sort();
+  return datas[0] ?? null;
+}
+
 function temPlano(dieta: { refeicoes: { itens: unknown[] }[] } | null): boolean {
   return !!dieta?.refeicoes.some((r) => r.itens.length);
 }
 
 /** Das 05h às 12h: o que ficou sem marcar ontem, com 1 toque para gravar no dia de ontem. */
 export function FaixaOntem() {
-  const { treinos, diario, dieta } = useDados();
-  const { hoje } = useCalculos();
+  const { treinos, diario, dieta, ciclo } = useDados();
+  const { hoje, resumo } = useCalculos();
   const t = useTreino();
   const gravarDia = useGravarDia();
   const gravarTreino = useGravarTreino();
@@ -115,7 +121,7 @@ export function FaixaOntem() {
   const ontem = somarDias(hoje, -1);
   // Na virada para a fase pós-remédio, ontem ainda pode ser do placar do projeto
   const periodo = t ? (ontem <= t.projeto.fim ? t.projeto : { inicio: t.inicio, fim: t.fim }) : null;
-  const p = pendenciasDeOntem({ hoje, treinos, diario, periodoTreino: periodo, comDieta: temPlano(dieta) });
+  const p = pendenciasDeOntem({ hoje, treinos, diario, periodoTreino: periodo, comDieta: temPlano(dieta), inicioCiclo: inicioDoCiclo(ciclo?.data_inicio, resumo?.linhas[0]?.aplicacao.data) });
   if (!p) return null;
   return (
     <section className="cartao faixa-ontem pilha" style={{ gap: 10 }} aria-label="Pendências de ontem">

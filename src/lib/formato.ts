@@ -39,8 +39,11 @@ export function sinal(n: number | null | undefined, casas = 1, sufixo = ''): str
  * `limiar` (mínima mudança detectável, ver MDC em gordura.ts) fica neutra.
  */
 export function corVariacao(n: number | null | undefined, menorMelhor: boolean, limiar = 0): string {
-  // Tolerância de ponto flutuante: 79,4 − 81,6 = −2,1999999… conta como −2,2 (o limite exato colore)
-  if (n === null || n === undefined || Math.abs(n) < Math.max(limiar - 1e-6, 0.00001)) return '';
+  if (n === null || n === undefined || !Number.isFinite(n)) return '';
+  // Com limiar, a cor segue o número exibido (1 casa): "− 1,5 kg" tem sempre a mesma cor,
+  // seja −1,496 ou −1,513. Tolerância de ponto flutuante: 79,4 − 81,6 = −2,1999999… conta como −2,2.
+  const v = limiar > 0 ? Math.round(Math.abs(n) * 10) / 10 : Math.abs(n);
+  if (v < Math.max(limiar - 1e-6, 0.00001)) return '';
   return (n < 0) === menorMelhor ? 'bom' : 'ruim';
 }
 
@@ -87,9 +90,10 @@ export function lerPeso(texto: string): { valor: number | null; erro?: string } 
  * Número opcional com faixa: vazio vale null; texto inválido ou fora da faixa vira
  * erro com o nome do campo (ex.: sono de 0 a 24 h).
  */
-export function lerFaixa(texto: string, min: number, max: number, nome: string, unidade: string): { valor: number | null; erro?: string } {
+export function lerFaixa(texto: string, min: number, max: number, nome: string, unidade: string, exemplo?: string): { valor: number | null; erro?: string } {
   if (!texto.trim()) return { valor: null };
   const v = paraNumero(texto);
-  if (v === null || v < min || v > max) return { valor: null, erro: `${nome} fora da faixa (${num(min, 0)} a ${num(max, 0)} ${unidade}). Confira o número.` };
+  if (v === null) return { valor: null, erro: `${nome}: número inválido. Use só um separador decimal, ex.: ${exemplo ?? num((min + max) / 4, 1)}.` };
+  if (v < min || v > max) return { valor: null, erro: `${nome} fora da faixa (${num(min, 0)} a ${num(max, 0)} ${unidade}). Confira o número.` };
   return { valor: v };
 }

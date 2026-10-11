@@ -15,7 +15,7 @@ export interface TabelaRelatorio {
 
 export interface GraficoRelatorio {
   /** Dia (número de dias desde 1970) e valor */
-  pesos: { dia: number; kg: number }[];
+  pesos: { dia: number; kg: number; atipica?: boolean }[];
   /** Doses aplicadas, em degraus */
   doses: { dia: number; mg: number }[];
   diaFinal: number;
@@ -263,9 +263,12 @@ function desenharGrafico(doc: jsPDF, y: number, g: GraficoRelatorio): number {
     doc.setDrawColor(...ESCURO);
     doc.setFillColor(...ESCURO);
     doc.setLineWidth(0.6);
-    const pts = [...g.pesos].sort((a, b) => a.dia - b.dia);
+    // A medição atípica fica fora da linha, como ponto vazio (como no gráfico da tela)
+    const pts = [...g.pesos].filter((p) => !p.atipica).sort((a, b) => a.dia - b.dia);
     for (let i = 1; i < pts.length; i++) doc.line(px(pts[i - 1].dia), pyKg(pts[i - 1].kg), px(pts[i].dia), pyKg(pts[i].kg));
     for (const p of pts) doc.circle(px(p.dia), pyKg(p.kg), 0.7, 'F');
+    doc.setLineWidth(0.35);
+    for (const p of g.pesos.filter((x) => x.atipica)) doc.circle(px(p.dia), pyKg(p.kg), 0.9, 'S');
   }
   // Legenda
   doc.setTextColor(...ESCURO);
@@ -280,11 +283,15 @@ function desenharGrafico(doc: jsPDF, y: number, g: GraficoRelatorio): number {
   doc.line(MARGEM + LARGURA / 2 + 8, yl - 1, MARGEM + LARGURA / 2 + 14, yl - 1);
   doc.setLineDashPattern([], 0);
   doc.text('Dose (mg, direita)', MARGEM + LARGURA / 2 + 15, yl);
-  if (g.marcos?.some((d) => d >= dMin && d <= dMax)) {
+  const notas = [
+    ...(g.pesos.some((p) => p.atipica) ? ['Ponto vazio: medição atípica (fora da linha do peso).'] : []),
+    ...(g.marcos?.some((d) => d >= dMin && d <= dMax) ? ['Linhas pontilhadas verticais: decisões registradas (tabela Decisões).'] : []),
+  ];
+  if (notas.length) {
     doc.setFontSize(7);
     doc.setTextColor(...CINZA);
-    doc.text(textoPdf('Linhas pontilhadas verticais: decisões registradas (tabela Decisões).'), MARGEM + LARGURA / 2, yl + 4, { align: 'center' });
-    return y + altura + 6;
+    notas.forEach((n, i) => doc.text(textoPdf(n), MARGEM + LARGURA / 2, yl + 4 + i * 3.5, { align: 'center' }));
+    return y + altura + 2.5 + notas.length * 3.5;
   }
   return y + altura + 2;
 }

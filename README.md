@@ -61,7 +61,7 @@ Mesmo método do Diário de Carga:
 2. **Publique a função `enviar-lembretes` pela linha de comando** (veja "Publicar as Edge Functions" abaixo). A função valida o próprio CRON_SECRET, por isso fica sem a verificação de JWT.
 3. **SQL Editor:** abra `supabase/configurar_tudo.sql`, troque o CRON_SECRET marcado no topo e clique em **Run**. O script cria as tabelas com Row Level Security, guarda os segredos no Vault e agenda os lembretes de hora em hora.
 4. **Authentication → URL Configuration → Redirect URLs:** adicione `https://neivapedro.github.io/app-dieta/**`. Isso é usado nos links de confirmação e de troca de senha. O *Site URL* do Diário de Carga continua como está.
-5. **Evolução (rodar uma vez):** no **SQL Editor**, rode `supabase/migrations/20261015000000_evolucao_a.sql` e depois `supabase/migrations/20261015000001_evolucao_b.sql`, nessa ordem. Eles criam os campos novos: seringa, decisões do fim da fase, concentração de cada aplicação, registro de decisões, calibração do % de gordura, medição atípica, sono/água/urina, tipo de cardio, esforço e força. Os dois podem ser rodados de novo sem problema (são idempotentes). Sem eles o app funciona, mas avisa "… não foi salvo: falta rodar o SQL de evolução no Supabase." quando você preenche um desses campos.
+5. **Evolução (rodar uma vez):** no **SQL Editor**, rode `supabase/migrations/20261015000000_evolucao_a.sql`, depois `supabase/migrations/20261015000001_evolucao_b.sql` e por fim `supabase/migrations/20261020000000_inscricao_push.sql` (deixa outra conta assumir os lembretes de um aparelho), nessa ordem. Eles criam os campos novos: seringa, decisões do fim da fase, concentração de cada aplicação, registro de decisões, calibração do % de gordura, medição atípica, sono/água/urina, tipo de cardio, esforço e força. Os dois podem ser rodados de novo sem problema (são idempotentes) e funcionam também sem a aba Treino: se você usa a aba Treino, rode antes o SQL dela (seção "Aba Treino"), ou rode o `evolucao_b` de novo depois dele. Sem eles o app funciona, mas avisa "… não foi salvo: falta rodar o SQL de evolução no Supabase." quando você preenche um desses campos.
 
 #### Publicar as Edge Functions
 
@@ -117,11 +117,12 @@ Acompanhamento do treino durante o ciclo:
 - **Aderência semanal × medidas:** comparada com a medição de toda segunda.
 - **Pace das corridas.**
 
-O período vai da 1ª aplicação até 7 dias depois da última.
+O período vai da 1ª aplicação até um intervalo entre doses depois da última (7 dias no plano semanal).
 
 Para ativar:
 1. No **SQL Editor**, rode `supabase/migrations/20261010000000_treino.sql`.
-2. Rode `supabase/ativar_treino_pedro.sql`, trocando o e-mail. O e-mail fica só no banco, nunca no código.
+2. Se o SQL de evolução (seção 2, passo 5) já foi rodado antes, rode de novo `supabase/migrations/20261015000001_evolucao_b.sql`: sem a aba Treino ele pula os campos do treino (tipo de cardio e esforço), que só são criados com `treino_dias` existindo.
+3. Rode `supabase/ativar_treino_pedro.sql`, trocando o e-mail. O e-mail fica só no banco, nunca no código.
 
 ### Como os lembretes funcionam
 

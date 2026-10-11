@@ -120,7 +120,9 @@ export function Analise() {
     fotosPdf.current = incluirFotos && fotos.length ? prepararFotosPdf(fotos) : null;
     fotosPdf.current?.catch(() => undefined);
   }, [incluirFotos, fotos]);
-  const qualidade = useQualidade();
+  // Remédio concluído: a qualidade da perda do Resumo é a do período do remédio (como o peso e as massas)
+  const remedioConcluido = !!fimRemedio && fimRemedio < hoje;
+  const qualidade = useQualidade(remedioConcluido ? fimRemedio! : undefined);
   const metaAguaDe = useMetaAgua();
   if (!resumo) return null;
 
@@ -174,6 +176,9 @@ export function Analise() {
   // "Segui o plano?" na janela da tendência das medidas, com o mesmo conselho da Conferência da Dieta
   const tendMedidas = tendenciaMedidas(composicoes);
   const seguido = tendMedidas ? dietaNaTendencia(diario, tendMedidas) : null;
+  // No Resumo, com o remédio concluído, "Dieta seguida" usa a janela do período do remédio
+  const tendResumo = remedioConcluido ? tendenciaMedidas(composicoes.filter((c) => c.data <= fimRemedio!)) : tendMedidas;
+  const seguidoResumo = tendResumo ? dietaNaTendencia(diario, tendResumo) : null;
   const kcalPlano = refeicoes.reduce((s, x) => s + x.m.kcal, 0);
   const deficitPlano = metasDieta && dieta ? (kcalPlano > 0 ? metasDieta.gasto_total - kcalPlano : -dieta.config.ajuste_kcal) : null;
   const conselho =
@@ -332,7 +337,7 @@ export function Analise() {
         nota: 'D0 = dia da dose. Náusea média (0 a 3). Sintomas: % dos dias registrados no Diário na fase.',
       });
     }
-    const listaOcorrencias = ocorrencias(diario, aplicacoes);
+    const listaOcorrencias = ocorrencias(diario, aplicacoes, remedioConcluido ? fimRemedio : null);
     if (listaOcorrencias.length) tabelas.push(tabelaOcorrencias(listaOcorrencias));
     tabelas.push({
       titulo: 'Aplicações',
@@ -401,13 +406,15 @@ export function Analise() {
         ['Massa magra', dif('massa_magra_kg') === null ? kg(ini?.massa_magra_kg) : sinal(dif('massa_magra_kg'), 1, ' kg')],
         ['Peso', `${sinal(geral.variacao_kg, 1, ' kg')}${geral.variacao_percentual !== null ? ` (${sinal(geral.variacao_percentual * 100, 1, '%')})` : ''}`],
         ...(qualidade ? [['Qualidade da perda', `${textoQualidade(qualidade)} (últimas ${qualidade.medicoes} medições)`] as [string, string]] : []),
-        ...(seguido && seguido.respondidos ? [['Dieta seguida', `${textoPlanoSeguido(seguido).replace('Plano seguido: ', '')} · ${textoDietaSemana(seguido)}`] as [string, string]] : []),
+        ...(seguidoResumo && seguidoResumo.respondidos
+          ? [['Dieta seguida', `${textoPlanoSeguido(seguidoResumo).replace('Plano seguido: ', '')} · ${textoDietaSemana(seguidoResumo)}`] as [string, string]]
+          : []),
       ],
       ritmo: ritmo
         ? `Ritmo atual: ${ritmo.faixa === 'ganho' ? 'peso subindo' : `${num(ritmo.pct, 2)}% do peso por semana`} (${sinal(tend!.kg_semana, 2, ' kg')}/sem, tendência de ${tend!.pontos} ${pesagens} nas últimas 4 semanas). Para quem treina, 0,5 a 1% por semana preserva melhor a massa magra.`
         : 'Ritmo de perda: aparece com 3 pesagens em 2 semanas.',
       grafico: {
-        pesos: serie.map((p) => ({ dia: dia(p.data), kg: p.peso_kg })),
+        pesos: serie.map((p) => ({ dia: dia(p.data), kg: p.peso_kg, ...(p.atipica ? { atipica: true } : {}) })),
         doses: resumo!.linhas.map((l) => ({ dia: dia(l.aplicacao.data), mg: l.aplicacao.dose_mg })),
         diaFinal: dia(hoje),
         // Remédio concluído: o degrau da última dose termina no fim do período do remédio

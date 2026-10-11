@@ -1,6 +1,6 @@
 import type { PlanoDieta } from './dieta';
 import { chaveExercicio } from './forca';
-import { fotoBackupValida, fotosParaImportar, type FotoBackup, type Pose, type Sessao } from './fotos';
+import { fotoBackupValida, separarFotosImportar, type FotoBackup, type Pose, type Sessao } from './fotos';
 import type { Aplicacao, Ciclo, Medida, Perfil, RegistroDecisao, RegistroDiario, RegistroForca, TreinoDia } from './tipos';
 
 /**
@@ -31,7 +31,7 @@ export interface DadosAtuais {
   registro_decisoes?: RegistroDecisao[];
   forca?: RegistroForca[];
   /** Fotos já guardadas neste aparelho (sessão + pose) */
-  fotos?: { sessao: Sessao; pose: Pose }[];
+  fotos?: { sessao: Sessao; pose: Pose; data?: string }[];
 }
 
 export function montarBackup(d: Omit<Backup, 'versao' | 'exportado_em'>, agora: string): Backup {
@@ -74,7 +74,8 @@ export interface PlanoImportacao {
   forca: RegistroForca[];
   /** Fotos: só as dos lugares (sessão + pose) ainda vazios neste aparelho */
   fotos: FotoBackup[];
-  ignoradas: { aplicacoes: number; medidas: number; fotos: number };
+  /** fotos_conflito: fotos do arquivo que inverteriam a ordem Antes/Depois com as do aparelho */
+  ignoradas: { aplicacoes: number; medidas: number; fotos: number; fotos_conflito: number };
 }
 
 /** Mesma data, campo e valores: é a mesma linha (importar duas vezes não duplica). */
@@ -97,7 +98,7 @@ export function planejarImportacao(b: Backup, atuais: DadosAtuais): PlanoImporta
   const chaveForca = (f: RegistroForca) => `${f.data}|${chaveExercicio(f.exercicio)}`;
   const vistasForca = new Set((atuais.forca ?? []).map(chaveForca));
   const forca = (b.forca ?? []).filter((f) => (vistasForca.has(chaveForca(f)) ? false : (vistasForca.add(chaveForca(f)), true)));
-  const fotos = fotosParaImportar(b.fotos, atuais.fotos ?? []);
+  const { fotos, conflito: fotosConflito } = separarFotosImportar(b.fotos, atuais.fotos ?? []);
   return {
     aplicacoes,
     medidas,
@@ -110,7 +111,8 @@ export function planejarImportacao(b: Backup, atuais: DadosAtuais): PlanoImporta
       aplicacoes: b.aplicacoes.length - aplicacoes.length,
       medidas: (b.medidas ?? []).length - medidas.length,
       // Só as fotos válidas que já têm lugar ocupado (as estragadas são ignoradas em silêncio)
-      fotos: (b.fotos ?? []).filter(fotoBackupValida).length - fotos.length,
+      fotos: (b.fotos ?? []).filter(fotoBackupValida).length - fotos.length - fotosConflito,
+      fotos_conflito: fotosConflito,
     },
   };
 }

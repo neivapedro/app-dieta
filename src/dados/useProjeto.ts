@@ -15,7 +15,7 @@ export function useProjeto() {
     if (!ciclo || !resumo) return null;
     const decisao = decisaoPosRemedio(ciclo, aplicacoes.filter((a) => a.ciclo_id === ciclo.id));
     const pos = decisao ? fasePos(decisao.bloco_inicio!, hoje) : null;
-    const periodo = periodoProjeto(ciclo, resumo, pos?.inicio);
+    const periodo = periodoProjeto(ciclo, resumo, pos?.inicio, hoje);
     // Fim do remédio: frasco acabou, plano concluído (só sobra) ou fase pós-remédio iniciada
     const concluido = !resumo.proxima || resumo.degrau.estado === 'fim_plano' || !!pos;
     const ultimaDose = resumo.linhas.at(-1)?.aplicacao.data ?? null;

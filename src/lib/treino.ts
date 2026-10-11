@@ -35,23 +35,36 @@ export function tipoCardioEfetivo(data: string, reg?: Pick<TreinoDia, 'cardio_ti
   return tipoCardio(data);
 }
 
-export function rotuloTipoCardio(tipo: TipoCardio): string {
-  return tipo === 'corrida' ? `Corrida ${KM_CORRIDA_PADRAO} km` : `Bike ${MIN_BIKE} min`;
+/** "Corrida 8 km" (com a distância feita, quando houver; senão a padrão) ou "Bike 40 min". */
+export function rotuloTipoCardio(tipo: TipoCardio, km?: number | null): string {
+  const d = km != null && km > 0 ? km : KM_CORRIDA_PADRAO;
+  return tipo === 'corrida' ? `Corrida ${d.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} km` : `Bike ${MIN_BIKE} min`;
 }
 
 export function rotuloCardio(data: string, reg?: Pick<TreinoDia, 'cardio_tipo' | 'corrida_km'> | null): string {
-  return rotuloTipoCardio(tipoCardioEfetivo(data, reg));
+  return rotuloTipoCardio(tipoCardioEfetivo(data, reg), reg?.corrida_km);
 }
 
 /**
- * Período do remédio: do dia da 1ª aplicação até 7 dias depois da última (real
- * ou prevista). Com a fase pós-remédio iniciada, a última é a da decisão (data
- * da última dose) e o treino segue num placar separado (periodoTreinoPos).
+ * Período do remédio: do dia da 1ª aplicação até um intervalo depois da última
+ * (real ou prevista; a última dose cobre o intervalo do ciclo, ex.: 14 dias).
+ * Com a fase pós-remédio iniciada, a última é a da decisão (data da última
+ * dose) e o treino segue num placar separado (periodoTreinoPos). Sem nenhuma
+ * aplicação registrada o projeto ainda não começou: o início fica na data
+ * planejada ou, se ela já passou, amanhã (até a 1ª dose, nada é cobrado nem
+ * contado, e nenhum check some do placar quando a dose chega noutra data).
  */
-export function periodoProjeto(ciclo: Ciclo, resumo: ResumoCiclo, inicioPos?: string | null): { inicio: string; fim: string } {
-  const inicio = resumo.linhas[0]?.aplicacao.data ?? ciclo.data_inicio;
+export function periodoProjeto(ciclo: Ciclo, resumo: ResumoCiclo, inicioPos?: string | null, hoje?: string): { inicio: string; fim: string } {
+  const primeira = resumo.linhas[0]?.aplicacao.data;
+  const amanha = hoje ? somarDias(hoje, 1) : null;
+  const inicio = primeira ?? (amanha && ciclo.data_inicio < amanha ? amanha : ciclo.data_inicio);
   const ultima = inicioPos ?? resumo.data_fim_prevista ?? inicio;
-  return { inicio, fim: somarDias(ultima, 7) };
+  const intervalo = ciclo.intervalo_dias > 0 ? ciclo.intervalo_dias : 7;
+  return { inicio, fim: somarDias(maiorData(ultima, inicio), intervalo) };
+}
+
+function maiorData(a: string, b: string): string {
+  return a > b ? a : b;
 }
 
 function datasEntre(de: string, ate: string): string[] {
@@ -189,7 +202,8 @@ export function listarCorridas(dias: TreinoDia[]): Corrida[] {
       const km = d.corrida_km && d.corrida_km > 0 ? d.corrida_km : KM_CORRIDA_PADRAO;
       return { data: d.data, km, segundos: d.corrida_seg!, pace: d.corrida_seg! / km, delta: null as number | null };
     });
-  lista.forEach((c, i) => (c.delta = i > 0 ? c.pace - lista[i - 1].pace : null));
+  // Diferença entre os paces como aparecem na tela (arredondados ao segundo): 5:13 e 5:13 = igual
+  lista.forEach((c, i) => (c.delta = i > 0 ? Math.round(c.pace) - Math.round(lista[i - 1].pace) : null));
   return lista;
 }
 

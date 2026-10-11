@@ -6,7 +6,7 @@ import { CORES_URINA, diaDeSintoma, diaVazio, TEXTO_SINTOMA_AGUA } from '../lib/
 import { calcularCiclo, capacidadeSeringa, concentracaoDe, guiaSeringa, marcacao, marcasVizinhas, seringaDo, situacaoDoDegrau } from '../lib/ciclo';
 import { diaDaSemana, diferencaDias, formatarData, hojeLocal, somarDias } from '../lib/datas';
 import { cm, kg, lerFaixa, lerPeso, num, paraNumero, paraTexto, pp, ui } from '../lib/formato';
-import { ajusteDoPerfil, composicao, motivoSemGordura } from '../lib/gordura';
+import { ajusteVigente, composicao, motivoSemGordura } from '../lib/gordura';
 import { LOCAIS_APLICACAO, NIVEIS_NAUSEA, type Aplicacao, type CorUrina, type Medida, type RegistroDiario } from '../lib/tipos';
 import { AlertasSeguranca } from './inicio';
 import { BotaoExcluir, Campo, CampoNumero, Escolhas, Folha } from './ui';
@@ -262,12 +262,19 @@ const SINTOMAS: [ChaveSintoma, string][] = [
   ['intestino_preso', 'Intestino preso'],
 ];
 
+type DietaSeguida = NonNullable<RegistroDiario['dieta_seguida']>;
+const OPCOES_PLANO: { valor: DietaSeguida; rotulo: string }[] = [
+  { valor: 'sim', rotulo: 'Sim' },
+  { valor: 'parcial', rotulo: 'Em parte' },
+  { valor: 'nao', rotulo: 'Não' },
+];
+
 function sintomasDe(r?: RegistroDiario): Record<ChaveSintoma, boolean | null> {
   return { vomito: r?.vomito ?? null, diarreia: r?.diarreia ?? null, intestino_preso: r?.intestino_preso ?? null };
 }
 
 export function FormDiario({ registro, dataInicial, aoFechar }: { registro?: RegistroDiario; dataInicial?: string; aoFechar: () => void }) {
-  const { diario, medidas, gravar } = useDados();
+  const { diario, medidas, gravar, dieta } = useDados();
   const metaAguaDe = useMetaAgua();
   const [data, setData] = useState(registro?.data ?? dataInicial ?? hojeLocal());
   // Dia com medição: o peso do dia é o da medição (um segundo peso aqui seria ignorado)
@@ -280,6 +287,9 @@ export function FormDiario({ registro, dataInicial, aoFechar }: { registro?: Reg
   const [sono, setSono] = useState(paraTexto(existente?.sono_h));
   const [agua, setAgua] = useState(paraTexto(existente?.agua_l));
   const [urina, setUrina] = useState<CorUrina | null>(existente?.cor_urina ?? null);
+  const [plano, setPlano] = useState<DietaSeguida | null>(existente?.dieta_seguida ?? null);
+  // "Segui o plano?" de qualquer dia: com plano montado ou com resposta já gravada
+  const comPlano = !!dieta?.refeicoes.some((r) => r.itens.length) || !!plano || diario.some((r) => r.data === data && r.dieta_seguida);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const { meta: metaAgua, horas } = metaAguaDe(data || hojeLocal());
@@ -303,6 +313,7 @@ export function FormDiario({ registro, dataInicial, aoFechar }: { registro?: Reg
     if (livre('sono')) setSono(paraTexto(r?.sono_h));
     if (livre('agua')) setAgua(paraTexto(r?.agua_l));
     if (livre('urina')) setUrina(r?.cor_urina ?? null);
+    if (livre('plano')) setPlano(r?.dieta_seguida ?? null);
   }
 
   async function salvar(e: FormEvent) {
@@ -310,16 +321,14 @@ export function FormDiario({ registro, dataInicial, aoFechar }: { registro?: Reg
     if (!data) return setErro('Informe a data.');
     const p = medicaoDia ? { valor: null, erro: null } : lerPeso(peso);
     if (p.erro) return setErro(p.erro);
-    const s = lerFaixa(sono, 0, 24, 'Sono', 'h');
+    const s = lerFaixa(sono, 0, 24, 'Sono', 'h', '6,5');
     if (s.erro) return setErro(s.erro);
-    const a = lerFaixa(agua, 0, 15, 'Água', 'L');
+    const a = lerFaixa(agua, 0, 15, 'Água', 'L', '1,5');
     if (a.erro) return setErro(a.erro);
     const atualDia = diario.find((x) => x.data === data);
     const pesoNum = medicaoDia ? (atualDia?.peso_kg ?? null) : p.valor;
     const algumSintoma = Object.values(sintomas).some((v) => v !== null);
-    const atual = diario.find((x) => x.data === data);
-    // O "segui o plano?" (respondido no Início) não aparece aqui, mas conta como campo do dia
-    if (pesoNum === null && nausea === null && !obs.trim() && !algumSintoma && s.valor === null && a.valor === null && urina === null && !atual?.dieta_seguida)
+    if (pesoNum === null && nausea === null && !obs.trim() && !algumSintoma && s.valor === null && a.valor === null && urina === null && !plano)
       return setErro('Preencha ao menos um campo.');
     if (salvando) return;
     setSalvando(true);
@@ -332,7 +341,7 @@ export function FormDiario({ registro, dataInicial, aoFechar }: { registro?: Reg
         nausea,
         observacoes: obs.trim() || null,
         ...sintomas,
-        dieta_seguida: atual?.dieta_seguida ?? null,
+        dieta_seguida: plano,
         sono_h: s.valor,
         agua_l: a.valor,
         cor_urina: urina,
@@ -394,6 +403,11 @@ export function FormDiario({ registro, dataInicial, aoFechar }: { registro?: Reg
         <Campo rotulo="Cor da urina (opcional)" grupo dica={urina === 'escura' ? 'Urina escura costuma indicar pouca água: beba mais.' : undefined}>
           <Escolhas opcoes={CORES_URINA} valor={urina} aoMudar={mexer('urina', setUrina)} permitirVazio />
         </Campo>
+        {comPlano && (
+          <Campo rotulo="Segui o plano?" grupo dica="Plano alimentar do dia. Toque de novo na opção marcada para limpar.">
+            <Escolhas opcoes={OPCOES_PLANO} valor={plano} aoMudar={mexer('plano', setPlano)} permitirVazio />
+          </Campo>
+        )}
         <Campo rotulo="Observações / efeitos">
           <textarea value={obs} onChange={(e) => mexer('obs', setObs)(e.target.value)} />
         </Campo>
@@ -516,14 +530,28 @@ export function FormMedida({ medida, aoFechar, aoSalvar }: { medida?: Medida; ao
     const ruim = campos.find(([, v]) => invalido(v));
     return ruim ? `${ruim[0]}: número inválido. Use só um separador decimal, ex.: 93,2.` : null;
   };
-  const previa = completo ? composicao({ id: '', data, ...(valores as Omit<Medida, 'id' | 'data'>) }, sexo, { ajuste: ajusteDoPerfil(perfil) }) : null;
+  const previa = completo ? composicao({ id: '', data, ...(valores as Omit<Medida, 'id' | 'data'>) }, sexo, {
+        // Com calibração por exame, a prévia já usa o ajuste refeito com esta medição (ex.: editar a do dia do exame)
+        ajuste: ajusteVigente(perfil, [...medidas.filter((m) => m.id !== medida?.id), { id: medida?.id ?? '', data, ...(valores as Omit<Medida, 'id' | 'data'>) }]),
+      })
+    : null;
 
   async function salvar(e: FormEvent) {
     e.preventDefault();
     if (!data) return setErro('Informe a data.');
     const textoRuim = erroDeTexto();
     if (textoRuim) return setErro(textoRuim);
-    if (!completo) return setErro(sexo === 'Feminino' ? 'Preencha altura, pescoço, cintura, quadril e peso.' : 'Preencha altura, pescoço, cintura e peso.');
+    if (!completo) {
+      // Só os campos que faltam e que aparecem no formulário (a altura do Perfil não é editável aqui)
+      const faltam = [
+        ...(alturaPerfil ? [] : positivo(valores.altura_cm) ? [] : ['altura']),
+        ...(positivo(valores.pescoco_cm) ? [] : ['pescoço']),
+        ...(positivo(valores.cintura_cm) ? [] : ['cintura']),
+        ...(sexo === 'Feminino' && !positivo(valores.quadril_cm) ? ['quadril'] : []),
+        ...(positivo(valores.peso_kg) ? [] : ['peso']),
+      ];
+      return setErro(`Preencha ${faltam.length > 1 ? `${faltam.slice(0, -1).join(', ')} e ${faltam.at(-1)}` : faltam[0]}.`);
+    }
     if (valores.altura_cm! < 100 || valores.altura_cm! > 250) return setErro('A altura é em centímetros (ex.: 182).');
     if (valores.peso_kg! < 30 || valores.peso_kg! > 300) return setErro('Peso fora da faixa (30 a 300 kg). Confira o número.');
     const forDaFaixa = [valores.pescoco_cm!, valores.cintura_cm!, ...(sexo === 'Feminino' ? [valores.quadril_cm!] : [])].some((v) => v < 20 || v > 250);

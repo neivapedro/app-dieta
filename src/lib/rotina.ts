@@ -67,6 +67,7 @@ export function pendenciasDeOntem({
   diario,
   periodoTreino,
   comDieta,
+  inicioCiclo = null,
 }: {
   hoje: string;
   treinos: TreinoDia[];
@@ -74,13 +75,15 @@ export function pendenciasDeOntem({
   /** null = conta sem Treino */
   periodoTreino: { inicio: string; fim: string } | null;
   comDieta: boolean;
+  /** Início do ciclo (1ª aplicação ou a planejada): antes dele não há "segui o plano?" a cobrar */
+  inicioCiclo?: string | null;
 }): PendenciasOntem | null {
   const ontem = somarDias(hoje, -1);
   const noPlacar = !!periodoTreino && ontem >= periodoTreino.inicio && ontem <= periodoTreino.fim;
   const t = treinos.find((x) => x.data === ontem);
   const treino = noPlacar && !t?.treino;
   const cardio = noPlacar && !t?.cardio;
-  const dieta = comDieta && !diario.find((r) => r.data === ontem)?.dieta_seguida;
+  const dieta = comDieta && (!inicioCiclo || ontem >= inicioCiclo) && !diario.find((r) => r.data === ontem)?.dieta_seguida;
   if (!treino && !cardio && !dieta) return null;
   // Com ontem incompleto, a sequência do placar visto de ontem é a que vem até anteontem
   const sequencia = noPlacar && (treino || cardio) ? calcularPlacar(treinos, periodoTreino!.inicio, periodoTreino!.fim, ontem).sequenciaAtual : 0;

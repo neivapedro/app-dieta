@@ -35,7 +35,7 @@ export const conteudo = bruto as ConteudoRetatrutida;
 export type Parte = { tipo: 'texto'; texto: string } | { tipo: 'cita'; numeros: number[] } | { tipo: 'preliminar'; texto: string };
 
 // Citações no formato [1], [5, 34] ou [27, 35, 36, 45]
-const CITACAO = /\[(\d+(?:\s*,\s*\d+)*)\]|(dado preliminar)/g;
+const CITACAO = /\[(\d+(?:\s*,\s*\d+)*)\]|([Dd]ados? preliminar(?:es)?)/g;
 
 export function partesTexto(texto: string): Parte[] {
   const partes: Parte[] = [];

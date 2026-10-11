@@ -94,8 +94,16 @@ export function semanasDoCiclo(e: {
       diasTreino.push(d);
     }
     const treinos = e.treinos && diasTreino.length ? diasTreino.map((d) => marcados.get(d)).filter((t): t is TreinoDia => !!t) : null;
-    const peso = pesos.find((p) => p.data === seg) ?? pesos[0];
-    const composicao = na(e.composicoes)[0] ?? null;
+    // A semana usa a 1ª medição normal; a atípica só entra (com *) quando a semana não tem outra
+    const comps = na(e.composicoes);
+    const composicao = comps.find((c) => !c.atipica) ?? comps[0] ?? null;
+    const pesosNormais = pesos.filter((p) => !p.atipica);
+    const peso =
+      pesosNormais.find((p) => p.data === seg) ??
+      (composicao && !composicao.atipica ? pesosNormais.find((p) => p.data === composicao.data) : undefined) ??
+      pesosNormais[0] ??
+      pesos.find((p) => p.data === seg) ??
+      pesos[0];
     linhas.push({
       segunda: seg,
       dose_mg: aplic.length ? aplic[aplic.length - 1].dose_mg : null,
@@ -298,10 +306,12 @@ export interface Ocorrencia {
   d: number | null;
   dose_mg: number | null;
   texto: string;
+  /** Depois do fim do período do remédio: sem dose nem D+ */
+  pos_remedio?: boolean;
 }
 
 /** Dias com observação, vômito, diarreia ou náusea forte (3), e observações das aplicações. */
-export function ocorrencias(diario: RegistroDiario[], aplicacoes: Aplicacao[]): Ocorrencia[] {
+export function ocorrencias(diario: RegistroDiario[], aplicacoes: Aplicacao[], fimRemedio: string | null = null): Ocorrencia[] {
   const ordenadas = [...aplicacoes].sort((a, b) => a.data.localeCompare(b.data));
   const datas = ordenadas.map((a) => a.data);
   const doseEm = (data: string) => [...ordenadas].reverse().find((a) => a.data <= data)?.dose_mg ?? null;
@@ -312,7 +322,9 @@ export function ocorrencias(diario: RegistroDiario[], aplicacoes: Aplicacao[]): 
     if (!obs && !marcas.length) continue;
     if (r.intestino_preso === true) marcas.push('intestino preso');
     const partes = [marcas.length ? marcas.join(', ').replace(/^./, (c) => c.toUpperCase()) : '', obs].filter(Boolean);
-    lista.push({ data: r.data, d: diaAposDose(r.data, datas), dose_mg: doseEm(r.data), texto: partes.join(' — ') });
+    // Depois do fim do remédio, o evento não fica na conta da última dose
+    if (fimRemedio && r.data > fimRemedio) lista.push({ data: r.data, d: null, dose_mg: null, texto: partes.join(' — '), pos_remedio: true });
+    else lista.push({ data: r.data, d: diaAposDose(r.data, datas), dose_mg: doseEm(r.data), texto: partes.join(' — ') });
   }
   for (const a of ordenadas) {
     const obs = a.observacoes?.trim();
@@ -325,7 +337,7 @@ export function tabelaOcorrencias(lista: Ocorrencia[]): TabelaRelatorio {
   return {
     titulo: 'Ocorrências',
     cabecalho: ['Data', 'Dia', 'Dose', 'O que houve'],
-    linhas: lista.map((o) => [formatarData(o.data, true), o.d === null ? '–' : `D+${o.d}`, o.dose_mg === null ? '–' : `${num(o.dose_mg, 2)} mg`, o.texto]),
+    linhas: lista.map((o) => [formatarData(o.data, true), o.pos_remedio ? 'pós-remédio' : o.d === null ? '–' : `D+${o.d}`, o.dose_mg === null ? '–' : `${num(o.dose_mg, 2)} mg`, o.texto]),
     nota: 'Dias do Diário com observação, vômito, diarreia ou náusea forte (3), e observações das aplicações. D+0 = dia da dose.',
   };
 }

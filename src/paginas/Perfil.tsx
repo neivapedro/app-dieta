@@ -8,9 +8,10 @@ import { useDados } from '../dados/contexto';
 import { CicloSalvoEmParte, SalvoEmParte } from '../dados/repositorio';
 import { lerBackup, montarBackup, planejarImportacao, type Backup, type PlanoImportacao } from '../lib/backup';
 import { formatarData, hojeLocal } from '../lib/datas';
+import { ehErroDeRede, traduzirErro } from '../lib/erros';
 import { num, paraNumero, paraTexto, pp, sinal } from '../lib/formato';
 import { textoTamanho } from '../lib/fotos';
-import { AJUSTE_PADRAO, calibrarPorExame, percentualGorduraBruto } from '../lib/gordura';
+import { AJUSTE_PADRAO, ajusteVigente, calibracaoAtual, calibrarPorExame, percentualGorduraBruto } from '../lib/gordura';
 import {
   ativarNotificacoes,
   desativarNotificacoes,
@@ -44,17 +45,19 @@ function brutaDaMedida(m: Medida, perfil: TipoPerfil): number | null {
 function CartaoCalibracao({ perfil }: { perfil: TipoPerfil }) {
   const { medidas, executar, limparErro } = useDados();
   const sexo = perfil.sexo ?? 'Masculino';
-  const [ajuste, setAjuste] = useState(paraTexto(perfil.ajuste_gordura));
+  // Com exame salvo, o ajuste é o refeito com a altura e a medição atuais (o mesmo das contas)
+  const ajusteSalvo = perfil.exame_gordura_data && perfil.exame_gordura_bf != null ? ajusteVigente(perfil, medidas) : perfil.ajuste_gordura;
+  const [ajuste, setAjuste] = useState(paraTexto(ajusteSalvo));
   const [exameData, setExameData] = useState(perfil.exame_gordura_data ?? '');
   const [exameBf, setExameBf] = useState(paraTexto(perfil.exame_gordura_bf));
   const [msg, setMsg] = useState<{ tipo: string; texto: string } | null>(null);
   const [salvando, setSalvando] = useState(false);
   // Só quando os campos salvos mudam de fato: salvar outro cartão (que recarrega o perfil) não apaga o que foi digitado aqui
   useEffect(() => {
-    setAjuste(paraTexto(perfil.ajuste_gordura));
+    setAjuste(paraTexto(ajusteSalvo));
     setExameData(perfil.exame_gordura_data ?? '');
     setExameBf(paraTexto(perfil.exame_gordura_bf));
-  }, [perfil.ajuste_gordura, perfil.exame_gordura_data, perfil.exame_gordura_bf]);
+  }, [ajusteSalvo, perfil.exame_gordura_data, perfil.exame_gordura_bf]);
 
   const ordenadas = [...medidas].sort((a, b) => a.data.localeCompare(b.data));
   // "Agora" = última medição normal (o mesmo critério de Medidas: a atípica fica fora)
@@ -205,6 +208,8 @@ export function Perfil() {
   }, [!!perfil, perfil?.nome, perfil?.sexo, perfil?.altura_cm, perfil?.data_nascimento, perfil?.lembretes_ativos, perfil?.hora_lembrete]);
   const [estado, setEstado] = useState<EstadoNotificacao | null>(null);
   const [msgCal, setMsgCal] = useState<string | null>(null);
+  // Mensagens do cartão de Notificações ficam nele, perto dos botões
+  const [msgNotif, setMsgNotif] = useState<{ tipo: string; texto: string } | null>(null);
   const arquivo = useRef<HTMLInputElement>(null);
   const [importacao, setImportacao] = useState<{ backup: Backup; plano: PlanoImportacao } | null>(null);
   // Trava contra dois toques em "Importar agora"
@@ -226,6 +231,8 @@ export function Perfil() {
     if (alt === null || alt < 100 || alt > 250) return setMsg({ tipo: 'erro', texto: 'Altura em centímetros, entre 100 e 250 (ex.: 181).' });
     if (nascimento && (nascimento > hojeLocal() || nascimento < '1900-01-01')) return setMsg({ tipo: 'erro', texto: 'Data de nascimento inválida.' });
     if (ativos && !/^\d{2}:\d{2}/.test(hora)) return setMsg({ tipo: 'erro', texto: 'Informe o horário do lembrete.' });
+    // Calibrado por exame: altura (ou sexo) nova refaz o ajuste pelo exame, para a medição do exame continuar dando o % dele
+    const recalibrado = perfil ? calibracaoAtual({ ...perfil, sexo, altura_cm: alt }, medidas) : null;
     try {
       await executar((r) =>
         r.salvarPerfil({
@@ -236,8 +243,8 @@ export function Perfil() {
           lembretes_ativos: ativos,
           hora_lembrete: hora,
           fuso_horario: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Sao_Paulo',
-          // A calibração tem cartão próprio: aqui fica como está
-          ajuste_gordura: perfil?.ajuste_gordura ?? null,
+          // A calibração tem cartão próprio: aqui fica como está (com exame, refeita com a altura nova)
+          ajuste_gordura: recalibrado?.ok ? recalibrado.ajuste : (perfil?.ajuste_gordura ?? null),
           exame_gordura_data: perfil?.exame_gordura_data ?? null,
           exame_gordura_bf: perfil?.exame_gordura_bf ?? null,
         }),
@@ -251,16 +258,24 @@ export function Perfil() {
   }
 
   async function ativar() {
+    setMsgNotif(null);
     try {
       setEstado(await ativarNotificacoes(repo));
     } catch (e) {
-      setMsg({ tipo: 'erro', texto: `Não foi possível ativar: ${(e as Error).message}` });
+      setMsgNotif({ tipo: 'erro', texto: ehErroDeRede(e) ? traduzirErro(e) : `Não foi possível ativar: ${traduzirErro(e)}` });
     }
   }
 
   async function desativar() {
-    await desativarNotificacoes(repo);
-    setEstado(await estadoNotificacao());
+    setMsgNotif(null);
+    try {
+      const noServidor = await desativarNotificacoes(repo);
+      if (!noServidor)
+        setMsgNotif({ tipo: 'info', texto: 'Lembretes desativados neste aparelho. Sem conexão com o servidor: o cadastro antigo some sozinho no próximo envio.' });
+    } catch (e) {
+      setMsgNotif({ tipo: 'erro', texto: ehErroDeRede(e) ? traduzirErro(e) : `Não foi possível desativar: ${traduzirErro(e)}` });
+    }
+    setEstado(await estadoNotificacao().catch(() => 'sem-suporte' as const));
   }
 
   async function exportar() {
@@ -449,15 +464,16 @@ export function Perfil() {
         {estado && <div className={`alerta ${estado === 'ativo' ? 'info' : ''}`}>{TEXTO_ESTADO[estado]}</div>}
         <div className="linha">
           {(estado === 'pendente' || estado === 'ativo-sem-servidor') && (
-            <button className="botao primario" onClick={ativar}>Ativar notificações</button>
+            <button className="botao primario" onClick={() => void ativar()}>Ativar notificações</button>
           )}
           {(estado === 'ativo' || estado === 'ativo-sem-servidor') && (
-            <button className="botao" onClick={() => notificacaoTeste().catch((e) => setMsg({ tipo: 'erro', texto: String(e) }))}>
+            <button className="botao" onClick={() => notificacaoTeste().catch((e) => setMsgNotif({ tipo: 'erro', texto: traduzirErro(e) }))}>
               Enviar teste
             </button>
           )}
-          {estado === 'ativo' && <button className="botao perigo" onClick={desativar}>Desativar</button>}
+          {estado === 'ativo' && <button className="botao perigo" onClick={() => void desativar()}>Desativar</button>}
         </div>
+        {msgNotif && <div className={`alerta ${msgNotif.tipo}`}>{msgNotif.texto}</div>}
         {!ehIOS() && <p className="mudo">Ative em cada celular que você usar. Funciona melhor com o app instalado (menu do navegador → "Instalar app" / "Adicionar à tela inicial").</p>}
       </section>
 
@@ -558,6 +574,8 @@ export function Perfil() {
               {importacao.plano.ignoradas.aplicacoes + importacao.plano.ignoradas.medidas > 0 &&
                 ` ${importacao.plano.ignoradas.aplicacoes + importacao.plano.ignoradas.medidas} registro(s) já existentes serão pulados.`}
               {importacao.plano.ignoradas.fotos > 0 && ` ${importacao.plano.ignoradas.fotos} foto(s) já existem neste aparelho e ficam como estão.`}
+              {importacao.plano.ignoradas.fotos_conflito > 0 &&
+                ` ${importacao.plano.ignoradas.fotos_conflito} foto(s) ficam de fora: a data inverteria a ordem com as fotos deste aparelho (Depois anterior ao Antes, ou Antes posterior ao Depois).`}
             </div>
             <div className="linha">
               <button className="botao primario pequeno" disabled={importando} onClick={() => void importar()}>

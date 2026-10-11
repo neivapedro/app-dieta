@@ -195,14 +195,18 @@ export interface BlocoDose {
   aplicacoes: number;
   dose_mg: number;
   data_inicio: string;
+  /** Data da última aplicação do bloco */
+  data_fim: string;
 }
 
 export function blocosDeDose(ordenadas: Aplicacao[]): BlocoDose[] {
   const blocos: BlocoDose[] = [];
   ordenadas.forEach((a, i) => {
     const ultimo = blocos[blocos.length - 1];
-    if (ultimo && mesmaDose(ultimo.dose_mg, a.dose_mg)) ultimo.aplicacoes++;
-    else blocos.push({ indice: blocos.length, primeira: i, aplicacoes: 1, dose_mg: a.dose_mg, data_inicio: a.data });
+    if (ultimo && mesmaDose(ultimo.dose_mg, a.dose_mg)) {
+      ultimo.aplicacoes++;
+      ultimo.data_fim = a.data;
+    } else blocos.push({ indice: blocos.length, primeira: i, aplicacoes: 1, dose_mg: a.dose_mg, data_inicio: a.data, data_fim: a.data });
   });
   return blocos;
 }
@@ -236,13 +240,23 @@ function ultimaDecisao(decisoes: DecisaoFase[], filtro: (d: DecisaoFase) => bool
  */
 export function localizarDegraus(fases: Fase[], blocos: BlocoDose[], decisoes: DecisaoFase[] = []): DegrauBloco[] {
   let busca = 0;
-  return blocos.map((bloco) => {
+  return blocos.map((bloco, k) => {
     let i = acharFase(fases, bloco.dose_mg, busca) ?? acharFase(fases, bloco.dose_mg, 0, busca);
     let confirmada = false;
     if (i === null) {
+      // A confirmação vale para o bloco que contém o seu início: depois do bloco
+      // anterior e até a última dose deste. Assim, uma dose esquecida registrada
+      // no começo do bloco (ou a 1ª dose editada/excluída) não a invalida.
+      const fimAnterior = k > 0 ? blocos[k - 1].data_fim : '';
+      const fim = bloco.data_fim ?? bloco.data_inicio;
       const c = ultimaDecisao(
         decisoes,
-        (d) => d.escolha === 'confirmar_fase' && d.bloco_inicio === bloco.data_inicio && mesmaDose(d.dose_mg, bloco.dose_mg),
+        (d) =>
+          d.escolha === 'confirmar_fase' &&
+          !!d.bloco_inicio &&
+          d.bloco_inicio > fimAnterior &&
+          d.bloco_inicio <= fim &&
+          mesmaDose(d.dose_mg, bloco.dose_mg),
       );
       if (c && c.fase_indice !== null && c.fase_indice >= 0 && c.fase_indice < fases.length) {
         i = c.fase_indice;

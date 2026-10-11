@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { useDados } from '../dados/contexto';
 import { useCalculos } from '../dados/useCalculos';
 import { composicaoPorFase, numerosDaFase } from '../lib/analise';
-import { REGRAS_FASE, decisaoDoBloco, faseSugeridaForaDoPlano, marcacao, repetirFase } from '../lib/ciclo';
+import { REGRAS_FASE, blocosDeDose, decisaoDoBloco, faseSugeridaForaDoPlano, marcacao, mesmaDose, repetirFase } from '../lib/ciclo';
 import { formatarData } from '../lib/datas';
+import { MDC } from '../lib/gordura';
 import { corVariacao, num, sinal, ui } from '../lib/formato';
 import type { DecisaoFase, Fase } from '../lib/tipos';
 import { Bloco, Campo } from './ui';
@@ -104,8 +105,8 @@ export function FimDeFase({ aoDecidir }: { aoDecidir?: () => void } = {}) {
           valor={!bloco || bloco.poucos_dados ? 'poucos dados' : sinal(bloco.kg_por_semana, 2, ' kg/sem')}
           classe={bloco && !bloco.poucos_dados ? corVariacao(bloco.kg_por_semana, true) : ''}
         />
-        <Bloco rotulo="Cintura" valor={sinal(comp?.cintura ?? null, 1, ' cm')} classe={corVariacao(comp?.cintura ?? null, true)} />
-        <Bloco rotulo="Massa magra" valor={sinal(comp?.magra ?? null, 1, ' kg')} classe={corVariacao(comp?.magra ?? null, false)} />
+        <Bloco rotulo="Cintura" valor={sinal(comp?.cintura ?? null, 1, ' cm')} classe={corVariacao(comp?.cintura ?? null, true, MDC.cintura_cm)} />
+        <Bloco rotulo="Massa magra" valor={sinal(comp?.magra ?? null, 1, ' kg')} classe={corVariacao(comp?.magra ?? null, false, MDC.massa_magra_kg)} />
       </div>
       {regs === 0 && <p className="mudo">Sem registros no Diário nesta fase: os sintomas aparecem quando você anota o dia.</p>}
       <details className="ajuda" open>
@@ -206,7 +207,12 @@ export function ForaDoPlano() {
   const { decisoes, salvar, nova } = useDecisoes();
   const s = resumo?.degrau;
   const sugerida = faseSugeridaForaDoPlano(ciclo?.fases ?? [], s?.ultima_fase_conhecida ?? null, s?.degrau?.bloco.dose_mg ?? null);
-  const [fase, setFase] = useState(Math.max(sugerida, 0));
+  // A escolha vale só para o bloco em que foi feita: quando a última dose vira
+  // outra (ex.: o cartão estava montado com a dose anterior), volta à sugestão.
+  const chave = `${s?.degrau?.bloco.data_inicio ?? ''}|${s?.degrau?.bloco.dose_mg ?? ''}|${sugerida}`;
+  const [escolha, setEscolha] = useState<{ chave: string; fase: number }>({ chave, fase: Math.max(sugerida, 0) });
+  const fase = escolha.chave === chave ? escolha.fase : Math.max(sugerida, 0);
+  const setFase = (f: number) => setEscolha({ chave, fase: f });
   if (!ciclo || !resumo?.proxima || s?.estado !== 'fora_do_plano' || !s.degrau) return null;
   const bloco = s.degrau.bloco;
 
@@ -240,6 +246,35 @@ export function ForaDoPlano() {
         Confirmar fase
       </button>
       <p className="mudo">Se a dose foi digitada errado, corrija a aplicação na Agenda (Ciclo).</p>
+    </div>
+  );
+}
+
+/** Fase escolhida para uma dose fora do plano: mostra a escolha e deixa trocar (desfaz a confirmação). */
+export function FaseConfirmada() {
+  const { ciclo } = useDados();
+  const { resumo } = useCalculos();
+  const { decisoes, salvar } = useDecisoes();
+  const d = resumo?.degrau?.degrau;
+  if (!ciclo || !resumo?.proxima || !d?.confirmada || d.primeira_fase === null) return null;
+  const bloco = d.bloco;
+  const f = ciclo.fases[d.primeira_fase];
+  function trocar() {
+    // Tira as confirmações deste bloco (depois do bloco anterior, até a última dose): o cartão volta a perguntar a fase
+    const blocos = blocosDeDose(resumo!.linhas.map((l) => l.aplicacao));
+    const fimAnterior = bloco.indice > 0 ? (blocos[bloco.indice - 1]?.data_fim ?? '') : '';
+    const deste = (x: DecisaoFase) =>
+      x.escolha === 'confirmar_fase' && mesmaDose(x.dose_mg, bloco.dose_mg) && !!x.bloco_inicio && x.bloco_inicio > fimAnterior && x.bloco_inicio <= bloco.data_fim;
+    salvar(decisoes.filter((x) => !deste(x)));
+  }
+  return (
+    <div className="alerta info" style={{ marginTop: 10, alignItems: 'center' }}>
+      <span className="cresce">
+        As doses de {num(bloco.dose_mg)} mg seguem a Fase {d.primeira_fase + 1} · {f.nome} (escolhida por você).
+      </span>
+      <button className="botao pequeno" onClick={trocar}>
+        Trocar fase
+      </button>
     </div>
   );
 }

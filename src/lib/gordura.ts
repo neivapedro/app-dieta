@@ -293,5 +293,41 @@ export function calibrarPorExame(
   const m = normal.m;
   const bruta = percentualGorduraBruto(perfil.sexo ?? 'Masculino', perfil.altura_cm ?? m.altura_cm, m.pescoco_cm, m.cintura_cm, m.quadril_cm);
   if (bruta === null) return { ok: false, erro: 'A medição desse dia não permite calcular a US Navy.' };
-  return { ok: true, ajuste: Math.round((exameBf - bruta) * 10) / 10, bruta, medida: m };
+  const ajuste = Math.round((exameBf - bruta) * 10) / 10;
+  if (Math.abs(ajuste) > LIMITE_AJUSTE)
+    return {
+      ok: false,
+      erro: `O exame (${fmt1(exameBf)}%) fica ${fmt1(Math.abs(ajuste))} p.p. ${ajuste > 0 ? 'acima' : 'abaixo'} da US Navy da medição de ${m.data.split('-').reverse().join('/')} (${fmt1(bruta)}%): passa do limite de ±${LIMITE_AJUSTE} p.p. Confira o % do exame e as medidas desse dia.`,
+    };
+  return { ok: true, ajuste, bruta, medida: m };
+}
+
+/** Ajuste máximo aceito (o mesmo da coluna perfis.ajuste_gordura no banco). */
+export const LIMITE_AJUSTE = 15;
+
+function fmt1(n: number): string {
+  return n.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+}
+
+/**
+ * Ajuste vigente com as medições: calibrado por exame → recalculado na hora pelo
+ * exame (% do exame − US Navy bruta com a altura e a medição atuais), para que
+ * corrigir a altura ou a medição do dia do exame não deixe o ajuste velho. Sem
+ * medição que permita recalcular, vale o último ajuste salvo.
+ */
+export function ajusteVigente(
+  perfil: Pick<Perfil, 'sexo' | 'ajuste_gordura' | 'altura_cm' | 'exame_gordura_data' | 'exame_gordura_bf'> | null | undefined,
+  medidas: Medida[],
+): number {
+  const c = calibracaoAtual(perfil, medidas);
+  return c?.ok ? c.ajuste : ajusteDoPerfil(perfil);
+}
+
+/** Calibração por exame refeita com os dados atuais (null = sem exame salvo). */
+export function calibracaoAtual(
+  perfil: Pick<Perfil, 'sexo' | 'altura_cm' | 'exame_gordura_data' | 'exame_gordura_bf'> | null | undefined,
+  medidas: Medida[],
+): CalibracaoExame | null {
+  if (!perfil?.exame_gordura_data || perfil.exame_gordura_bf === null || perfil.exame_gordura_bf === undefined) return null;
+  return calibrarPorExame(medidas, perfil, perfil.exame_gordura_data, perfil.exame_gordura_bf, perfil.exame_gordura_data);
 }
