@@ -3,7 +3,7 @@ import { useDados } from '../dados/contexto';
 import { useCalculos } from '../dados/useCalculos';
 import { useMetaAgua } from '../dados/useTreino';
 import { CORES_URINA, diaDeSintoma, diaVazio, TEXTO_SINTOMA_AGUA } from '../lib/bemestar';
-import { calcularCiclo, capacidadeSeringa, concentracaoDe, guiaSeringa, intervaloNaData, marcacao, marcasVizinhas, seringaDo, situacaoDoDegrau } from '../lib/ciclo';
+import { calcularCiclo, capacidadeSeringa, concentracaoDe, guiaSeringa, intervaloNaData, marcacao, marcasVizinhas, mesmaDose, seringaDo, situacaoDoDegrau } from '../lib/ciclo';
 import { diaDaSemana, diferencaDias, formatarData, hojeLocal, somarDias } from '../lib/datas';
 import { cm, kg, lerFaixa, lerPeso, num, paraNumero, paraTexto, pp, ui } from '../lib/formato';
 import { ajusteVigente, composicao, motivoSemGordura } from '../lib/gordura';
@@ -129,6 +129,13 @@ export function FormAplicacao({ aplicacao, aoFechar, aoSalvar }: { aplicacao?: A
     };
     // Pela fila: aparece na hora e, sem sinal, é enviada quando a internet voltar
     gravar({ tipo: 'aplicacao', dado: nova });
+    // Dose antiga aplicada no dia do "Subir" ou depois: a subida não aconteceu e sai do registro
+    // (uma dose esquecida, de data anterior à decisão, não mexe nela)
+    const agora = situacaoDoDegrau(ciclo!.fases, resumo!.linhas.map((l) => l.aplicacao), ciclo!.decisoes ?? []);
+    const subir = agora.estado === 'subir' ? agora.decisao : null;
+    if (subir && !aplicacao && data >= subir.data && mesmaDose(doseNum, subir.dose_mg)) {
+      gravar({ tipo: 'decisoes', dado: { ciclo_id: ciclo!.id, decisoes: (ciclo!.decisoes ?? []).filter((x) => x.id !== subir.id) } });
+    }
     const mudouPeso = mexeuPeso && !medicaoDia;
     if (mudouPeso || mexeuNausea) {
       const { id: _id, ...resto } = regDia ?? ({} as Partial<RegistroDiario>);
