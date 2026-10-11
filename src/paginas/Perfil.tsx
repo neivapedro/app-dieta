@@ -241,7 +241,8 @@ export function Perfil() {
           altura_cm: paraNumero(altura),
           data_nascimento: nascimento || null,
           lembretes_ativos: ativos,
-          hora_lembrete: hora,
+          // Horário vazio com o lembrete desligado: guarda o último válido (a coluna é obrigatória)
+          hora_lembrete: /^\d{2}:\d{2}/.test(hora) ? hora : perfil?.hora_lembrete || '08:00',
           fuso_horario: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Sao_Paulo',
           // A calibração tem cartão próprio: aqui fica como está (com exame, refeita com a altura nova)
           ajuste_gordura: recalibrado?.ok ? recalibrado.ajuste : (perfil?.ajuste_gordura ?? null),
@@ -394,7 +395,8 @@ export function Perfil() {
           // Id novo: o do arquivo pode ser de outra conta
           for (const f of plano.forca) await tolerar(r.salvarForca({ ...f, id: crypto.randomUUID() }));
         }
-        if (b.dieta) await r.salvarDieta(b.dieta);
+        // Conta sem a aba Treino não tem "Pelo que fiz" (o backup pode vir de uma conta com Treino)
+        if (b.dieta) await r.salvarDieta(comTreino ? b.dieta : { ...b.dieta, config: { ...b.dieta.config, usar_aderencia: false } });
         // Id novo: o banco é compartilhado entre contas e o id do backup pode já existir em outra
         if (plano.registro_decisoes.length && registroIndisponivel) {
           // Banco sem a tabela do registro: o resto já foi importado; avisa o que ficou de fora

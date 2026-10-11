@@ -189,7 +189,8 @@ export class RepositorioSupabase implements Repositorio {
     // O token do calendário é gerado pelo banco; aqui ele não é sobrescrito
     // Token, liberação da aba Treino, metas e exercícios da força têm gravação própria
     const { token_calendario: _token, modulo_treino: _modulo, metas_projeto: _metas, exercicios_forca: _forca, data_nascimento, ajuste_gordura, exame_gordura_data, exame_gordura_bf, ...dados } = p;
-    const base = { user_id: await this.uid(), ...dados };
+    // hora_lembrete é obrigatória (time not null): vazio (ex.: backup antigo) vira o padrão
+    const base = { user_id: await this.uid(), ...dados, hora_lembrete: dados.hora_lembrete || '08:00' };
     // undefined = não mexer (ex.: backup antigo); null = apagar a data
     const nascimento: Record<string, unknown> = data_nascimento === undefined ? {} : { data_nascimento };
     const calibracao: Record<string, unknown> = Object.fromEntries(
@@ -209,7 +210,11 @@ export class RepositorioSupabase implements Repositorio {
       }
     }
     const calibrou = [ajuste_gordura, exame_gordura_data, exame_gordura_bf].some((v) => v !== null && v !== undefined);
-    if (semCalibracao && calibrou) throw new SalvoEmParte(`Ajuste de calibração do % de gordura não foi salvo: ${AVISO_EVOLUCAO}`);
+    const faltou = [
+      semNascimento && data_nascimento ? 'Data de nascimento não foi salva: falta rodar o SQL da Dieta no Supabase.' : null,
+      semCalibracao && calibrou ? `Ajuste de calibração do % de gordura não foi salvo: ${AVISO_EVOLUCAO}` : null,
+    ].filter(Boolean);
+    if (faltou.length) throw new SalvoEmParte(faltou.join(' '));
   }
 
   async novoTokenCalendario(): Promise<string> {

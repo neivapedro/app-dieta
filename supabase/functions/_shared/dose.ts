@@ -108,6 +108,8 @@ export function decisaoDoBloco(x: Decisao, d: Pick<Degrau, 'dose' | 'inicio'>, a
   if (!mesma(Number(x.dose_mg), d.dose)) return false;
   if (x.apos_aplicacao === aplicacoes.length) return true;
   if (!x.data || x.data < d.inicio) return false;
+  // Aplicação no mesmo dia, registrada depois da decisão (além da posição dela): não vale mais
+  if (aplicacoes.length > x.apos_aplicacao && aplicacoes.some((a, i) => i >= x.apos_aplicacao && a.data === x.data)) return false;
   return !aplicacoes.some((a) => a.data > x.data!);
 }
 

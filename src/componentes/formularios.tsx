@@ -3,7 +3,7 @@ import { useDados } from '../dados/contexto';
 import { useCalculos } from '../dados/useCalculos';
 import { useMetaAgua } from '../dados/useTreino';
 import { CORES_URINA, diaDeSintoma, diaVazio, TEXTO_SINTOMA_AGUA } from '../lib/bemestar';
-import { calcularCiclo, capacidadeSeringa, concentracaoDe, guiaSeringa, marcacao, marcasVizinhas, seringaDo, situacaoDoDegrau } from '../lib/ciclo';
+import { calcularCiclo, capacidadeSeringa, concentracaoDe, guiaSeringa, intervaloNaData, marcacao, marcasVizinhas, seringaDo, situacaoDoDegrau } from '../lib/ciclo';
 import { diaDaSemana, diferencaDias, formatarData, hojeLocal, somarDias } from '../lib/datas';
 import { cm, kg, lerFaixa, lerPeso, num, paraNumero, paraTexto, pp, ui } from '../lib/formato';
 import { ajusteVigente, composicao, motivoSemGordura } from '../lib/gordura';
@@ -31,18 +31,23 @@ export function FormAplicacao({ aplicacao, aoFechar, aoSalvar }: { aplicacao?: A
   // Dose indicada pela dose realmente aplicada antes (o app não sobe sem decisão)
   const situacaoEm = (d: string) => situacaoDoDegrau(ciclo!.fases, antesDe(d), ciclo!.decisoes ?? []);
   const sit = situacaoEm(data);
-  const renumera = !!data && outras.some((l) => l.aplicacao.data > data);
-  // Depois do fim do plano, a dose extra é a sobra do frasco (nunca mais que o saldo)
+  // Fica antes de aplicações já registradas (não é a última)
+  const antesDeOutras = !!data && outras.some((l) => l.aplicacao.data > data);
+  // A numeração das seguintes só muda se a posição muda (editar sem trocar a data não renumera)
+  const renumera = aplicacao ? !!data && data !== aplicacao.data && numero !== numeroDe(aplicacao.data) : antesDeOutras;
+  // A dose extra (depois do plano) e a última dose do frasco são a sobra: nunca mais que o saldo
   const doseSugerida = (d: string) => {
     const x = situacaoEm(d);
     // Sobra antes desta posição (editar a dose extra não desconta a própria aplicação)
-    const sobra = ciclo!.quantidade_total_mg - antesDe(d).reduce((s, a) => s + a.dose_mg, 0);
-    return x.estado === 'fim_plano' ? Math.max(0, Math.min(x.dose_mg, Math.round(sobra * 100) / 100)) : x.dose_mg;
+    const sobra = Math.round((ciclo!.quantidade_total_mg - antesDe(d).reduce((s, a) => s + a.dose_mg, 0)) * 100) / 100;
+    if (x.estado === 'fim_plano') return Math.max(0, Math.min(x.dose_mg, sobra));
+    return sobra > 0.005 && sobra < x.dose_mg ? sobra : x.dose_mg;
   };
   const prevista = doseSugerida(data);
   const [dose, setDose] = useState(paraTexto(aplicacao?.dose_mg ?? prevista));
   const [mexeuDose, setMexeuDose] = useState(false);
-  const [local, setLocal] = useState(aplicacao?.local ?? resumo!.sugestao_local);
+  // A sugestão do rodízio é só para uma aplicação nova: editar mostra o que está gravado
+  const [local, setLocal] = useState(aplicacao ? (aplicacao.local ?? '') : resumo!.sugestao_local);
   const [obs, setObs] = useState(aplicacao?.observacoes ?? '');
   const regDia = diario.find((r) => r.data === data);
   // Dia com medição: o peso do dia é o da medição (não oferece um segundo peso)
@@ -75,9 +80,13 @@ export function FormAplicacao({ aplicacao, aoFechar, aoSalvar }: { aplicacao?: A
   const vizinhas = m ? marcasVizinhas(m.ui_pratica, marca, conc) : null;
   // Data prevista para esta posição: anterior + intervalo (a 1ª, a data de início)
   const anterior = antesDe(data).at(-1);
-  const dataPrevista = anterior ? somarDias(anterior.data, ciclo!.intervalo_dias > 0 ? ciclo!.intervalo_dias : 7) : ciclo!.data_inicio;
+  // Intervalo que valia depois da anterior (uma troca nos Ajustes não reavalia as doses antigas)
+  const dataPrevista = anterior ? somarDias(anterior.data, intervaloNaData(ciclo!, anterior.data)) : ciclo!.data_inicio;
   const desvio = data ? diferencaDias(dataPrevista, data) : 0;
-  const desviaAgenda = Math.abs(desvio) >= 2 && aplicacao?.data !== data && !renumera;
+  const desviaAgenda = Math.abs(desvio) >= 2 && aplicacao?.data !== data && !antesDeOutras;
+  // Depois desta dose ainda sobra frasco para outra? Senão, não há "próximas datas" para mudar
+  const sobraDepois = resumo!.saldo_mg + (aplicacao?.dose_mg ?? 0) - (doseNum ?? 0);
+  const temProxima = sobraDepois > 0.005;
 
   async function salvar(e: FormEvent) {
     e.preventDefault();
@@ -97,7 +106,9 @@ export function FormAplicacao({ aplicacao, aoFechar, aoSalvar }: { aplicacao?: A
     // Data 2 dias ou mais fora da prevista desloca a agenda inteira (só se for a última: antes de outras, a agenda segue a mais recente)
     if (desviaAgenda) {
       avisos.push(
-        `a data fica ${Math.abs(desvio)} dias ${desvio > 0 ? 'depois' : 'antes'} da prevista (${diaDaSemana(dataPrevista).slice(0, 3).toLowerCase()}, ${formatarData(dataPrevista)}): isso muda todas as próximas datas`,
+        `a data fica ${Math.abs(desvio)} dias ${desvio > 0 ? 'depois' : 'antes'} da prevista (${diaDaSemana(dataPrevista).slice(0, 3).toLowerCase()}, ${formatarData(dataPrevista)})${
+          temProxima ? ': isso muda todas as próximas datas' : ''
+        }`,
       );
     }
     const chave = `${data}|${doseNum}`;

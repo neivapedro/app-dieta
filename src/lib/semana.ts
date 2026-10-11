@@ -33,25 +33,29 @@ export function fracaoSeguida(d: DietaSemana): number | null {
 }
 
 export interface EfeitosSemana {
-  /** Dias com registro no Diário */
+  /** Dias com algum efeito respondido no Diário (náusea ou sintoma) */
   registros: number;
   nausea_media: number | null;
   nausea_max: number | null;
-  vomito: number;
-  intestino_preso: number;
-  diarreia: number;
+  /** Dias com o sintoma; null = nenhum dia respondeu (sim ou não) a ele */
+  vomito: number | null;
+  intestino_preso: number | null;
+  diarreia: number | null;
 }
 
+/** Efeitos entre `de` e `ate`: só contam os dias que responderam (um registro só com o peso ou o "segui o plano?" não diz nada dos sintomas). */
 export function efeitosNoPeriodo(diario: RegistroDiario[], de: string, ate: string): EfeitosSemana {
-  const regs = diario.filter((r) => r.data >= de && r.data <= ate);
-  const nauseas = regs.filter((r) => r.nausea !== null).map((r) => r.nausea as number);
+  const sintomas = ['vomito', 'intestino_preso', 'diarreia'] as const;
+  const regs = diario.filter((r) => r.data >= de && r.data <= ate && (r.nausea != null || sintomas.some((k) => r[k] != null)));
+  const nauseas = regs.filter((r) => r.nausea != null).map((r) => r.nausea as number);
+  const contar = (k: (typeof sintomas)[number]) => (regs.some((r) => r[k] != null) ? regs.filter((r) => r[k] === true).length : null);
   return {
     registros: regs.length,
     nausea_media: nauseas.length ? nauseas.reduce((a, b) => a + b, 0) / nauseas.length : null,
     nausea_max: nauseas.length ? Math.max(...nauseas) : null,
-    vomito: regs.filter((r) => r.vomito).length,
-    intestino_preso: regs.filter((r) => r.intestino_preso).length,
-    diarreia: regs.filter((r) => r.diarreia).length,
+    vomito: contar('vomito'),
+    intestino_preso: contar('intestino_preso'),
+    diarreia: contar('diarreia'),
   };
 }
 
@@ -74,6 +78,17 @@ export function faltasNoPeriodo(treinos: TreinoDia[], de: string, ate: string, i
   const treino = datas.filter((d) => !porData.get(d)?.treino);
   const cardio = datas.filter((d) => !porData.get(d)?.cardio);
   return { treino, cardio, dias: datas.length, treinos_feitos: datas.length - treino.length, cardios_feitos: datas.length - cardio.length };
+}
+
+/** Faltas do período somando vários placares (ex.: projeto e fase pós-remédio na mesma semana). */
+export function faltasNosPeriodos(treinos: TreinoDia[], de: string, ate: string, periodos: { inicio: string; fim: string }[]): FaltasTreino {
+  const porData = new Map(treinos.map((t) => [t.data, t]));
+  const datas = new Set<string>();
+  for (const p of periodos) for (let d = de > p.inicio ? de : p.inicio; d <= ate && d <= p.fim; d = somarDias(d, 1)) datas.add(d);
+  const lista = [...datas].sort();
+  const treino = lista.filter((d) => !porData.get(d)?.treino);
+  const cardio = lista.filter((d) => !porData.get(d)?.cardio);
+  return { treino, cardio, dias: lista.length, treinos_feitos: lista.length - treino.length, cardios_feitos: lista.length - cardio.length };
 }
 
 /** "Qua e Sáb" */
@@ -117,12 +132,19 @@ export const LIMITE_SUGESTAO = { respondidos: 0.8, seguido: 0.8 } as const;
  * Plano sem déficit (`ajusteKcal` ≥ 0: manutenção ou superávit, escolha do
  * usuário) não recebe as regras do déficit. É só texto: nada muda sozinho.
  */
-export function sugestaoSemana(tendencia: Tendencia | null, peso: number, diario: RegistroDiario[], ajusteKcal: number | null = null): Sugestao {
+export function sugestaoSemana(
+  tendencia: Tendencia | null,
+  peso: number,
+  diario: RegistroDiario[],
+  ajusteKcal: number | null = null,
+  /** Início do ciclo: dias antes dele não contam como "segui o plano?" sem resposta */
+  inicio: string | null = null,
+): Sugestao {
   if (!tendencia) {
     return { tipo: 'sem_dados', texto: 'Sem sugestão por enquanto.', motivo: 'A regra precisa da tendência das medidas (4 medições cobrindo 3 semanas).' };
   }
   // Dias da janela da tendência; o dia da última medição já é da semana seguinte
-  const dieta = dietaNoPeriodo(diario, tendencia.de, somarDias(tendencia.ate, -1));
+  const dieta = dietaNaTendencia(diario, tendencia, inicio);
   const respondidos = dieta.dias ? dieta.respondidos / dieta.dias : 0;
   const pctTxt = (f: number) => `${Math.round(f * 100)}%`;
   if (respondidos < LIMITE_SUGESTAO.respondidos) {
@@ -147,8 +169,9 @@ export function sugestaoSemana(tendencia: Tendencia | null, peso: number, diario
 // ---------- "Segui o plano?" na Conferência da Dieta e na Análise ----------
 
 /** "Segui o plano?" na janela da tendência das medidas (o dia da última medição já é da semana seguinte). */
-export function dietaNaTendencia(diario: RegistroDiario[], tendencia: Tendencia): DietaSemana {
-  return dietaNoPeriodo(diario, tendencia.de, somarDias(tendencia.ate, -1));
+export function dietaNaTendencia(diario: RegistroDiario[], tendencia: Tendencia, inicio: string | null = null): DietaSemana {
+  // Os dias antes do início do ciclo (medição inicial feita antes da 1ª dose) não entram na conta
+  return dietaNoPeriodo(diario, inicio && inicio > tendencia.de ? inicio : tendencia.de, somarDias(tendencia.ate, -1));
 }
 
 /** "Plano seguido: 18 de 28 dias (64%)": "em parte" vale meio dia; conta só os dias respondidos. */

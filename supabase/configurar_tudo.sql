@@ -61,6 +61,11 @@ create table public.diario (
   peso_kg numeric(5,1),
   nausea smallint check (nausea between 0 and 3),
   observacoes text,
+  -- Sintomas do remédio e "segui o plano?" (o mesmo de migrations/20261012000000_melhorias.sql)
+  vomito boolean,
+  diarreia boolean,
+  intestino_preso boolean,
+  dieta_seguida text check (dieta_seguida in ('sim', 'parcial', 'nao')),
   unique (user_id, data)
 );
 
@@ -122,13 +127,13 @@ create trigger aplicacoes_ciclo_do_dono
   before insert or update on public.aplicacoes
   for each row execute function public.validar_ciclo_aplicacao();
 
--- ---------- Agendamento dos lembretes (a cada hora) ----------
+-- ---------- Agendamento dos lembretes (a cada 15 minutos; a função não repete o aviso do dia) ----------
 create extension if not exists pg_cron;
 create extension if not exists pg_net;
 
 select cron.schedule(
   'enviar-lembretes-retatrutida',
-  '5 * * * *',
+  '*/15 * * * *',
   $$
   select net.http_post(
     url := (select decrypted_secret from vault.decrypted_secrets where name = 'app_dieta_projeto_url') || '/functions/v1/enviar-lembretes',

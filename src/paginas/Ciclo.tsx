@@ -8,6 +8,7 @@ import { useDados } from '../dados/contexto';
 import { CicloSalvoEmParte } from '../dados/repositorio';
 import { useCalculos } from '../dados/useCalculos';
 import {
+  CAPACIDADE_PADRAO_UI,
   CAPACIDADES_SERINGA,
   MARCAS_SERINGA,
   REGRAS_FASE,
@@ -18,6 +19,7 @@ import {
   marcacao,
   mgParaMl,
   passoDaMarca,
+  semanasDoDegrau,
   semanasFeitasNaFase,
   verificarPlano,
 } from '../lib/ciclo';
@@ -267,14 +269,21 @@ function Plano() {
     if (semanasInvalidas) return setErro('Toda fase precisa de um número inteiro de semanas (1 ou mais).');
     setErro(null);
     const antes = ciclo!.fases;
+    // Estender o degrau atual (Repetir pelo Plano) desfaz um "Subir" já decidido, como o Repetir do Início
+    const s = resumo?.degrau;
+    const desfazSubir =
+      s?.estado === 'subir' && s.decisao && s.degrau?.primeira_fase != null && semanasDoDegrau(fasesValidas, s.degrau.primeira_fase) > s.feitas
+        ? s.decisao
+        : null;
+    const decisoes = desfazSubir ? (ciclo!.decisoes ?? []).filter((x) => x.id !== desfazSubir.id) : ciclo!.decisoes;
     try {
-      await executar((r) => r.salvarCiclo({ ...ciclo!, fases: fasesValidas }));
+      await executar((r) => r.salvarCiclo({ ...ciclo!, fases: fasesValidas, ...(desfazSubir ? { decisoes } : {}) }));
     } catch {
       // O aviso do topo (sem conexão, etc.) já foi mostrado por executar
       return;
     }
     // Dose e semanas de cada fase entram no registro de decisões
-    registrarAlteracoes(compararFases(antes, fasesValidas));
+    registrarAlteracoes(compararFases(antes, fasesValidas), desfazSubir ? [desfazSubir.id] : []);
     setSalvo(true);
   }
 
@@ -495,10 +504,12 @@ function Ajustes() {
         <CampoNumero rotulo="Intervalo entre doses" sufixo="dias" valor={intervalo} aoMudar={setIntervalo} />
       </div>
       {previa && (
-        <div className="alerta info">
+        <div className={`alerta ${previa.ui_pratica > (capacidade ?? CAPACIDADE_PADRAO_UI) + 1e-9 ? 'erro' : 'info'}`}>
           <span>
-            {resumo?.aplicacoes_realizadas ? 'Próxima dose' : '1ª dose'}: <b>{mg(dosePrevia)} = {ui(previa.ui_pratica)}</b> na seringa U-100 — confira com quem
-            preparou o frasco.
+            {resumo?.aplicacoes_realizadas ? 'Próxima dose' : '1ª dose'}: <b>{mg(dosePrevia)} = {ui(previa.ui_pratica)}</b> na seringa U-100
+            {previa.ui_pratica > (capacidade ?? CAPACIDADE_PADRAO_UI) + 1e-9
+              ? `: passa da capacidade da seringa (${capacidade ?? CAPACIDADE_PADRAO_UI} UI). Confira a dose, a concentração ou a seringa.`
+              : ' — confira com quem preparou o frasco.'}
           </span>
         </div>
       )}
@@ -520,7 +531,10 @@ function Ajustes() {
       <Campo
         rotulo="Intervalo entre as marcas"
         grupo
-        dica={`Leitura de ${paraTexto(passo)} em ${paraTexto(passo)} UI (um quarto da marca). Ex.: ${guiaSeringa(previa?.ui_pratica ?? 6.25, marca)}.`}
+        dica={`Leitura de ${paraTexto(passo)} em ${paraTexto(passo)} UI (um quarto da marca). Ex.: ${guiaSeringa(
+          previa && previa.ui_pratica <= (capacidade ?? CAPACIDADE_PADRAO_UI) + 1e-9 ? previa.ui_pratica : 6.25,
+          marca,
+        )}.`}
       >
         <Escolhas opcoes={OPCOES_MARCA} valor={marca} aoMudar={(v) => v !== null && setMarca(v)} />
       </Campo>

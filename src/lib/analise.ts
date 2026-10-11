@@ -265,8 +265,10 @@ export function composicaoPorFase(
     let treino: number | null = null;
     let cardio: number | null = null;
     if (treinos) {
-      // Hoje ainda pode ser marcado (fica fora); um limite já passado entra inteiro
-      const fimAderencia = prox ? somarDias(prox, -1) : hoje < diaReal ? hoje : somarDias(hoje, -1);
+      // Hoje entra depois de marcado (como a Semana a semana); sem marcação ainda pode ser
+      // marcado e fica fora. Um limite já passado entra inteiro
+      const hojeMarcado = treinos.some((t) => t.data === hoje);
+      const fimAderencia = prox ? somarDias(prox, -1) : hoje < diaReal || hojeMarcado ? hoje : somarDias(hoje, -1);
       const n = Math.max(diferencaDias(f.inicio, fimAderencia) + 1, 0);
       if (n > 0) {
         const doPeriodo = treinos.filter((t) => t.data >= f.inicio && t.data <= fimAderencia);
@@ -312,19 +314,34 @@ export function diaAposDose(data: string, datasAplicacoes: string[]): number | n
   return ultima ? diferencaDias(ultima, data) : null;
 }
 
-export function sintomasPorFase(fases: AnaliseFase[], datasAplicacoes: string[], diario: RegistroDiario[], hoje: string): SintomasFase[] {
+/** Colunas da tabela "Náusea por dia depois da dose": um dia por coluna até 7 dias; com intervalo maior, faixas (D3–6, D7–13). */
+export function colunasNausea(intervalo = 7): { rotulo: string; de: number; ate: number }[] {
+  const n = intervalo > 0 ? Math.round(intervalo) : 7;
+  if (n <= 7) return Array.from({ length: 7 }, (_, d) => ({ rotulo: `D${d}`, de: d, ate: d }));
+  return [
+    { rotulo: 'D0', de: 0, ate: 0 },
+    { rotulo: 'D1', de: 1, ate: 1 },
+    { rotulo: 'D2', de: 2, ate: 2 },
+    { rotulo: 'D3–6', de: 3, ate: 6 },
+    { rotulo: `D7–${n - 1}`, de: 7, ate: n - 1 },
+  ];
+}
+
+export function sintomasPorFase(fases: AnaliseFase[], datasAplicacoes: string[], diario: RegistroDiario[], hoje: string, intervalo = 7): SintomasFase[] {
   const ordenadas = [...datasAplicacoes].sort();
+  const colunas = colunasNausea(intervalo);
   return fases.map((f, i) => {
     const prox = fases[i + 1]?.inicio ?? null;
     const regs = diario.filter((r) => r.data >= f.inicio && (prox ? r.data < prox : r.data <= hoje));
-    const soma = Array(7).fill(0);
-    const qtd = Array(7).fill(0);
+    const soma = Array(colunas.length).fill(0);
+    const qtd = Array(colunas.length).fill(0);
     for (const r of regs) {
       if (r.nausea === null) continue;
       const d = diaAposDose(r.data, ordenadas);
-      if (d === null || d > 6) continue;
-      soma[d] += r.nausea;
-      qtd[d]++;
+      const c = d === null ? -1 : colunas.findIndex((x) => d >= x.de && d <= x.ate);
+      if (c < 0) continue;
+      soma[c] += r.nausea;
+      qtd[c]++;
     }
     // Dia registrado sem o sintoma marcado conta como "não teve": só marcar
     // quando acontece não pode virar 100%.

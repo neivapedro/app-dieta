@@ -8,7 +8,7 @@ import { montarQuadro, ritmoDoBloco, semanasDoCiclo, type ColunaQuadro } from '.
 import { somarDias } from './datas';
 import { conflitoDataSessao, type FotoInfo } from './fotos';
 import { corVariacao } from './formato';
-import { calibrarPorExame, faixaRca, type Composicao } from './gordura';
+import { calibrarPorExame, faixaRca, rcaExibida, type Composicao } from './gordura';
 import { avisoReganho } from './projeto';
 import { alteracoesDasDecisoesFase, compararDieta } from './registroDecisoes';
 import { textoPdf } from './relatorioPdf';
@@ -131,10 +131,14 @@ describe('Medidas', () => {
     expect(corVariacao(-2.1, true, 2.2)).toBe('');
   });
 
-  it('faixa da cintura/altura sobre o valor exibido (2 casas)', () => {
-    expect(faixaRca(90.4 / 181)).toBe('aumentada');
+  it('faixa da cintura/altura pelo valor real (a tela trunca: 0,4994 → 0,49 · saudável)', () => {
+    // Rodada 4: cintura abaixo de metade da altura é saudável, e a tela mostra 0,49
+    expect(faixaRca(90.4 / 181)).toBe('saudavel');
+    expect(faixaRca(90.5 / 181)).toBe('aumentada');
     expect(faixaRca(0.4949)).toBe('saudavel');
-    expect(faixaRca(0.5961)).toBe('alta');
+    expect(faixaRca(0.5961)).toBe('aumentada');
+    expect(rcaExibida(0.5961)).toBe(0.59);
+    expect(rcaExibida(90.4 / 181)).toBe(0.49);
   });
 
   it('calibração por exame: ignora a medição atípica, recusa data futura', () => {
@@ -213,9 +217,11 @@ describe('Treino e PDF', () => {
     const dias: TreinoDia[] = [{ id: 'a', data: '2026-07-30', treino: true, cardio: true, corrida_km: null, corrida_seg: null }];
     const [c] = composicaoPorFase([fase], [], dias, '2026-07-30', '2026-09-02');
     expect(c.cardio).toBeCloseTo(1 / 57);
-    // Com hoje de verdade, o dia de hoje fica fora
+    // Com hoje de verdade: hoje entra depois de marcado (rodada 4) e fica fora sem marcação
     const [h] = composicaoPorFase([fase], [], dias, '2026-07-30');
-    expect(h.cardio).toBeCloseTo(0);
+    expect(h.cardio).toBeCloseTo(1 / 57);
+    const [semMarca] = composicaoPorFase([fase], [], [{ ...dias[0], data: '2026-07-29' }], '2026-07-30');
+    expect(semMarca.cardio).toBeCloseTo(1 / 56);
   });
 
   it('projeção no ritmo inclui o quadril quando as medições têm quadril', () => {

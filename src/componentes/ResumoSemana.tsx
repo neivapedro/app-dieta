@@ -6,7 +6,7 @@ import { ritmoPercentual, tendenciaMedidas } from '../lib/conferencia';
 import { diferencaDias, formatarData, somarDias } from '../lib/datas';
 import { cm, corVariacao, kg, mg, num, pp, sinal } from '../lib/formato';
 import { MDC, type ChaveMdc } from '../lib/gordura';
-import { diasCurtos, dietaNoPeriodo, efeitosNoPeriodo, faltasNoPeriodo, sugestaoSemana, textoDietaSemana, type TipoSugestao } from '../lib/semana';
+import { diasCurtos, dietaNoPeriodo, efeitosNoPeriodo, faltasNosPeriodos, sugestaoSemana, textoDietaSemana, type TipoSugestao } from '../lib/semana';
 import { segundaDaSemana } from '../lib/treino';
 import { LinhaQualidade, useQualidade } from './composicao';
 import { Folha } from './ui';
@@ -30,7 +30,8 @@ export function ResumoSemana({ data, aoFechar }: { data?: string; aoFechar: () =
   if (!atual) return null;
   const tend = tendenciaMedidas(composicoes.slice(0, idx + 1), 42);
   const inicio = resumo?.linhas[0]?.aplicacao.data ?? ciclo?.data_inicio ?? composicoes[0].data;
-  const antesDoCiclo = atual.data < inicio;
+  // A medição do dia da 1ª dose é a referência inicial (como no Início e na Análise)
+  const antesDoCiclo = atual.data <= inicio;
   // Numerada pela semana que a medição fecha, como o gráfico do Treino: a medição de segunda é o resultado da semana anterior (S1, S2…)
   const semana = Math.max(Math.floor(diferencaDias(segundaDaSemana(inicio), atual.data) / 7), 1);
   // Semana que esta medição fecha: os 7 dias antes dela
@@ -39,12 +40,19 @@ export function ResumoSemana({ data, aoFechar }: { data?: string; aoFechar: () =
   const naSemana = <T extends { data: string }>(l: T[]) => l.filter((x) => x.data >= de && x.data <= ate);
   const doses = naSemana(aplicacoes);
   // Só os dias da semana dentro do placar (antes do início e depois do fim não contam)
-  const faltas = treino ? faltasNoPeriodo(treinos, de, ate, treino.inicio, treino.fim) : null;
+  // Na virada para a fase pós-remédio, a semana tem dias dos dois placares
+  const faltas = treino
+    ? faltasNosPeriodos(treinos, de, ate, treino.placarPos ? [treino.projeto, { inicio: treino.inicio, fim: treino.fim }] : [{ inicio: treino.inicio, fim: treino.fim }])
+    : null;
   const diasProjeto = faltas?.dias ?? 0;
-  const planoDieta = dietaNoPeriodo(diario, de, ate);
+  // Dias antes do início do ciclo não contam (nem como "segui o plano?" sem resposta)
+  const deCiclo = de > inicio ? de : inicio;
+  const planoDieta = dietaNoPeriodo(diario, deCiclo, ate);
   const usaDieta = planoDieta.respondidos > 0 || !!dieta?.refeicoes.some((r) => r.itens.length);
-  const efeitos = efeitosNoPeriodo(diario, de, ate);
-  const sugestao = sugestaoSemana(tend, atual.peso_kg, diario, dieta?.config.ajuste_kcal ?? null);
+  const efeitos = efeitosNoPeriodo(diario, deCiclo, ate);
+  const diasSemana = Math.max(diferencaDias(deCiclo, ate) + 1, 0);
+  const sugestao = sugestaoSemana(tend, atual.peso_kg, diario, dieta?.config.ajuste_kcal ?? null, inicio);
+  const contagem = (n: number | null, dias = false) => (n === null ? '–' : dias ? `${n} ${n === 1 ? 'dia' : 'dias'}` : String(n));
 
   const linhas: [string, number | null, number | null, (n: number | null | undefined) => string, string, boolean, ChaveMdc][] = [
     ['Cintura', ant?.cintura_cm ?? null, atual.cintura_cm, cm, ' cm', true, 'cintura_cm'],
@@ -145,7 +153,9 @@ export function ResumoSemana({ data, aoFechar }: { data?: string; aoFechar: () =
         <div>
           <h3 style={{ fontSize: '0.95rem', marginBottom: 6 }}>Efeitos na semana</h3>
           {efeitos.registros === 0 ? (
-            <p className="texto-2">Sem registros no Diário nestes 7 dias.</p>
+            <p className="texto-2">
+              {diasSemana === 0 ? 'Medição antes do início do ciclo: ainda não há dias de remédio para resumir.' : `Sem registro de efeitos no Diário nestes ${diasSemana} ${diasSemana === 1 ? 'dia' : 'dias'}.`}
+            </p>
           ) : (
             <div className="grade">
               <div className="bloco">
@@ -156,21 +166,22 @@ export function ResumoSemana({ data, aoFechar }: { data?: string; aoFechar: () =
               </div>
               <div className="bloco">
                 <div className="rotulo">Dias com vômito</div>
-                <div className={`valor ${efeitos.vomito ? 'aviso-txt' : ''}`}>{efeitos.vomito}</div>
+                <div className={`valor ${efeitos.vomito ? 'aviso-txt' : ''}`}>{contagem(efeitos.vomito)}</div>
               </div>
               <div className="bloco">
                 <div className="rotulo">Intestino preso</div>
-                <div className="valor">{efeitos.intestino_preso} {efeitos.intestino_preso === 1 ? 'dia' : 'dias'}</div>
+                <div className="valor">{contagem(efeitos.intestino_preso, true)}</div>
               </div>
               <div className="bloco">
                 <div className="rotulo">Diarreia</div>
-                <div className="valor">{efeitos.diarreia} {efeitos.diarreia === 1 ? 'dia' : 'dias'}</div>
+                <div className="valor">{contagem(efeitos.diarreia, true)}</div>
               </div>
             </div>
           )}
           {efeitos.registros > 0 && (
             <p className="mudo" style={{ marginTop: 6 }}>
-              {efeitos.registros} de 7 dias com registro no Diário. Náusea de 0 (nenhuma) a 3 (forte).
+              {efeitos.registros} de {diasSemana} dias com efeitos registrados no Diário. Náusea de 0 (nenhuma) a 3 (forte).{' '}
+              {efeitos.vomito === null || efeitos.diarreia === null || efeitos.intestino_preso === null ? '“–” = sintoma não respondido nestes dias.' : ''}
             </p>
           )}
         </div>

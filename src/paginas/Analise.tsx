@@ -8,10 +8,10 @@ import { useDados } from '../dados/contexto';
 import { useAlimentos } from '../dados/useAlimentos';
 import { useCalculos } from '../dados/useCalculos';
 import { useMetaAgua, useTreino } from '../dados/useTreino';
-import { analisarGeral, composicaoPorFase, rotuloBloco, sintomasPorFase } from '../lib/analise';
+import { analisarGeral, colunasNausea, composicaoPorFase, rotuloBloco, sintomasPorFase } from '../lib/analise';
 import { fasePos } from '../lib/projeto';
 import { aguaSemana, mediaSono7, SONO_MINIMO_H, sonoPorFase, TEXTO_SONO_BAIXO } from '../lib/bemestar';
-import { descreverFaseAtual } from '../lib/ciclo';
+import { descreverFaseAtual, textoProximaDoseRelatorio } from '../lib/ciclo';
 import { ritmoPercentual, tendenciaMedidas, tendenciaPeso, textoQualidade } from '../lib/conferencia';
 import {
   colunasQuadro,
@@ -36,7 +36,7 @@ import { calcularMetas, corpoParaMetas, idade, macrosDaRefeicao, textoBaseMetas 
 import { cm, corVariacao, kg, mg, num, pct, pp, sinal } from '../lib/formato';
 import { MDC, ultimaNormal, type ChaveMdc, type Composicao } from '../lib/gordura';
 import { conselhoConferencia, dietaNaTendencia, textoDietaSemana, textoPlanoSeguido } from '../lib/semana';
-import { aderenciaRecente, formatarTempo } from '../lib/treino';
+import { aderenciaDoTreino, formatarTempo } from '../lib/treino';
 
 const GraficoPesoDose = lazy(() => import('../componentes/graficos').then((m) => ({ default: m.GraficoPesoDose })).catch(() => ({ default: SemGrafico })));
 
@@ -129,7 +129,9 @@ export function Analise() {
   const datasAplic = resumo.linhas.map((l) => l.aplicacao.data);
   // Com o remédio concluído, as fases vão até o fim do período do remédio (fimFases), não até hoje
   const compFases = composicaoPorFase(fases, composicoes, treino ? treinos : null, fimFases, hoje);
-  const sintomas = sintomasPorFase(fases, datasAplic, diario, fimFases);
+  // Colunas pelo intervalo entre doses (a cada 14 dias: D7–13 entra na tabela)
+  const colNausea = colunasNausea(ciclo?.intervalo_dias);
+  const sintomas = sintomasPorFase(fases, datasAplic, diario, fimFases, ciclo?.intervalo_dias);
   // Sono por fase ao lado da massa magra e da cintura (associação, não causa)
   const sonoFases = sonoPorFase(fases, diario, fimFases);
   const temSono = sonoFases.some((v) => v !== null);
@@ -170,17 +172,21 @@ export function Analise() {
   const ultimaComp = ultimaNormal(composicoes);
   // Metas pela média das últimas medições válidas (a mesma da aba Dieta)
   const corpoMetas = corpoParaMetas(composicoes);
-  const metasDieta = dieta && corpoMetas ? calcularMetas(dieta.config, corpoMetas, treino ? aderenciaRecente(treinos, treino.inicio, hoje, 28, treino.fim) : null) : null;
+  const metasDieta = dieta && corpoMetas ? calcularMetas(dieta.config, corpoMetas, treino ? aderenciaDoTreino(treinos, treino, hoje) : null) : null;
   const baseMetas = corpoMetas ? ` Peso e massa magra ${textoBaseMetas(corpoMetas)}.` : '';
   const refeicoes = dieta && banco ? dieta.refeicoes.filter((r) => r.itens.length).map((r) => ({ r, m: macrosDaRefeicao(r, banco.mapa) })) : [];
+  // Plano com refeições, mas a lista de alimentos não carregou: as refeições ficam de fora (com aviso)
+  const refeicoesSemBanco = !banco && !!dieta?.refeicoes.some((r) => r.itens.length);
+  const avisoSemBanco = 'As refeições do plano ficaram de fora: a lista de alimentos não carregou (sem sinal?). Gere de novo com internet para incluí-las.';
   // "Segui o plano?" na janela da tendência das medidas, com o mesmo conselho da Conferência da Dieta
   const tendMedidas = tendenciaMedidas(composicoes);
-  const seguido = tendMedidas ? dietaNaTendencia(diario, tendMedidas) : null;
+  // Só os dias desde o início do ciclo (a medição inicial pode ser anterior à 1ª dose)
+  const seguido = tendMedidas ? dietaNaTendencia(diario, tendMedidas, datasAplic[0] ?? ciclo?.data_inicio ?? null) : null;
   // No Resumo, com o remédio concluído, "Dieta seguida" usa a janela do período do remédio
   const tendResumo = remedioConcluido ? tendenciaMedidas(composicoes.filter((c) => c.data <= fimRemedio!)) : tendMedidas;
-  const seguidoResumo = tendResumo ? dietaNaTendencia(diario, tendResumo) : null;
+  const seguidoResumo = tendResumo ? dietaNaTendencia(diario, tendResumo, datasAplic[0] ?? ciclo?.data_inicio ?? null) : null;
   const kcalPlano = refeicoes.reduce((s, x) => s + x.m.kcal, 0);
-  const deficitPlano = metasDieta && dieta ? (kcalPlano > 0 ? metasDieta.gasto_total - kcalPlano : -dieta.config.ajuste_kcal) : null;
+  const deficitPlano = metasDieta && dieta && !refeicoesSemBanco ? (kcalPlano > 0 ? metasDieta.gasto_total - kcalPlano : -dieta.config.ajuste_kcal) : null;
   const conselho =
     tendMedidas && seguido && ultimaComp && dieta && (banco || !dieta.refeicoes.some((r) => r.itens.length))
       ? conselhoConferencia(tendMedidas, ultimaComp.peso_kg, seguido, deficitPlano, dieta.config.ajuste_kcal)
@@ -234,19 +240,10 @@ export function Analise() {
 
     // Quadro de decisão: fase atual (ou que termina) × anterior, e a próxima dose
     const p = resumo!.proxima;
-    const s = resumo!.degrau;
     const proxima = faseDepois
       ? `Próxima dose prevista: nenhuma (remédio concluído; fase pós-remédio desde ${formatarData(faseDepois.inicio)}).`
       : p
-      ? `Próxima dose prevista: ${formatarData(p.data)} · ${mg(p.dose_mg)}${
-          p.estado === 'pendente' && s.fase_seguinte
-            ? ` (a dose continua até a decisão; a fase seguinte do Plano é ${mg(s.fase_seguinte.fase.dose_mg)})`
-            : p.estado === 'subir'
-              ? ' (decidido subir)'
-              : p.extra
-                ? ' (dose extra com a sobra do frasco)'
-                : ''
-        }`
+      ? textoProximaDoseRelatorio(resumo!)!
       : 'Próxima dose prevista: nenhuma (plano ou frasco concluído).';
     const colunas = colunasQuadro(fases, compFases, diario, datasAplic, fimFases);
     const quadro = colunas.atual ? montarQuadro({ atual: colunas.atual, anterior: colunas.anterior }, !!treino, proxima, !!fimRemedio) : null;
@@ -326,7 +323,7 @@ export function Analise() {
     if (!sintomas.every((x) => x.nausea_por_dia.every((n) => n === null)) || temSintomas) {
       tabelas.push({
         titulo: 'Náusea por dia depois da dose',
-        cabecalho: ['Fase', 'D0', 'D1', 'D2', 'D3', 'D4', 'D5', 'D6', ...(temSintomas ? ['Vômito', 'Diarreia', 'Intest. preso'] : [])],
+        cabecalho: ['Fase', ...colNausea.map((c) => c.rotulo), ...(temSintomas ? ['Vômito', 'Diarreia', 'Intest. preso'] : [])],
         linhas: sintomas.map((x, i) => [
           rotuloBloco(fases[i]),
           ...x.nausea_por_dia.map((n) => (n === null ? '–' : num(n, 1))),
@@ -334,7 +331,7 @@ export function Analise() {
             ? [x.vomito, x.diarreia, x.intestino_preso].map((t) => (t === null ? '–' : pct(t, 0)))
             : []),
         ]),
-        nota: 'D0 = dia da dose. Náusea média (0 a 3). Sintomas: % dos dias registrados no Diário na fase.',
+        nota: `D0 = dia da dose.${colNausea.length < 7 ? ` Doses a cada ${ciclo?.intervalo_dias} dias: as faixas mostram a média dos dias.` : ''} Náusea média (0 a 3). Sintomas: % dos dias registrados no Diário na fase.`,
       });
     }
     const listaOcorrencias = ocorrencias(diario, aplicacoes, remedioConcluido ? fimRemedio : null);
@@ -380,7 +377,9 @@ export function Analise() {
         nota: `Meta ${num(metasDieta.meta_kcal, 0)} kcal/dia (gasto estimado ${num(metasDieta.gasto_total, 0)} kcal; basal Katch-McArdle ${num(
           metasDieta.tmb,
           0,
-        )} kcal) · proteína animal ${curto(dieta.config.ptn_gkg)} g/kg de massa magra (${num(metasDieta.ptn_animal_g, 0)} g) · gordura ${curto(dieta.config.gord_gkg)} g/kg (${num(metasDieta.gord_g, 0)} g) · carboidrato fecha a conta.${baseMetas}`,
+        )} kcal) · proteína animal ${curto(dieta.config.ptn_gkg)} g/kg de massa magra (${num(metasDieta.ptn_animal_g, 0)} g) · gordura ${curto(dieta.config.gord_gkg)} g/kg (${num(metasDieta.gord_g, 0)} g) · carboidrato fecha a conta.${baseMetas}${
+          refeicoesSemBanco ? ` ${avisoSemBanco}` : ''
+        }`,
       });
     }
     if (blocosTreino.length) {
@@ -763,7 +762,7 @@ export function Analise() {
               <thead>
                 <tr>
                   <th>Fase</th>
-                  {['D0', 'D1', 'D2', 'D3', 'D4', 'D5', 'D6'].map((d) => (
+                  {colNausea.map((c) => c.rotulo).map((d) => (
                     <th key={d}>{d}</th>
                   ))}
                   {temSintomas && <th>Vômito</th>}
@@ -790,7 +789,7 @@ export function Analise() {
           </div>
         )}
         <p className="mudo" style={{ marginTop: 8 }}>
-          D0 = dia da dose. Náusea média (0 a 3). Vômito, diarreia e intestino preso: % dos dias registrados no Diário naquela fase (dia sem marcar conta como "não teve"). Use para decidir, com seu médico, se sobe de dose ou repete
+          D0 = dia da dose.{colNausea.length < 7 ? ` Doses a cada ${ciclo?.intervalo_dias} dias: as faixas mostram a média dos dias.` : ''} Náusea média (0 a 3). Vômito, diarreia e intestino preso: % dos dias registrados no Diário naquela fase (dia sem marcar conta como "não teve"). Use para decidir, com seu médico, se sobe de dose ou repete
           a fase.
         </p>
       </section>
@@ -874,6 +873,7 @@ export function Analise() {
               )}
             </div>
           )}
+          {refeicoesSemBanco && <div className="alerta" style={{ marginTop: 8 }}>{avisoSemBanco}</div>}
           {refeicoes.length > 0 && (
             <div className="tabela-rolagem" style={{ marginTop: 8 }}>
               <table>

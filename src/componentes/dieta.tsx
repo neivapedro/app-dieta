@@ -22,6 +22,7 @@ import {
   type Refeicao,
 } from '../lib/dieta';
 import { fracaoMagraDaPerda, ritmoEstimado } from '../lib/conferencia';
+import { formatarData } from '../lib/datas';
 import { num, paraKcal, paraNumero, paraTexto } from '../lib/formato';
 import { BotaoExcluir, Campo, CampoNumero, Escolhas, Folha } from './ui';
 
@@ -298,7 +299,7 @@ export function FormRefeicao({
   ultima: boolean;
   aoSalvar: (r: Refeicao) => void;
   aoMover: (passo: -1 | 1) => void;
-  aoDuplicar: () => void;
+  aoDuplicar: (editada: Refeicao) => void;
   aoExcluir: () => void;
   aoFechar: () => void;
 }) {
@@ -335,7 +336,9 @@ export function FormRefeicao({
           type="button"
           className="botao"
           onClick={() => {
-            aoDuplicar();
+            // O nome e o horário digitados valem antes de duplicar (a cópia sai da versão editada)
+            const editada = { ...refeicao, nome: nome.trim() || refeicao.nome, horario: horario || null };
+            aoDuplicar(editada);
             aoFechar();
           }}
         >
@@ -357,6 +360,7 @@ export function FormConfigDieta({
   fracaoMagra,
   ritmoMedido,
   ptnVegetalPlano,
+  comTreino = true,
   aoSalvar,
   aoFechar,
 }: {
@@ -370,6 +374,8 @@ export function FormConfigDieta({
   ritmoMedido?: number | null;
   /** Proteína vegetal do plano atual (g): mostra o total em g/kg junto da meta animal */
   ptnVegetalPlano?: number;
+  /** Conta com a aba Treino: só ela tem "Exercício na meta" */
+  comTreino?: boolean;
   aoSalvar: (c: ConfigDieta) => void;
   aoFechar: () => void;
 }) {
@@ -394,7 +400,8 @@ export function FormConfigDieta({
     ajuste_kcal: sentido === 'manter' ? 0 : (sentido === 'deficit' ? -1 : 1) * Math.abs(paraKcal(ajuste) ?? 0),
     ptn_gkg: paraNumero(ptn) ?? config.ptn_gkg,
     gord_gkg: paraNumero(gord) ?? config.gord_gkg,
-    usar_aderencia: usarAderencia,
+    // Sem a aba Treino não há "Pelo que fiz" (ex.: veio de um backup de outra conta)
+    usar_aderencia: comTreino ? usarAderencia : false,
   });
   const previa = corpo ? calcularMetas(montar(), corpo, aderencia) : null;
 
@@ -465,13 +472,19 @@ export function FormConfigDieta({
           <button type="button" className="botao pequeno" onClick={() => setAtividades([...atividades, { nome: '', kcal: '', vezes: '' }])}>
             + Atividade
           </button>
-          {(aderencia || config.usar_aderencia) && (
+          {comTreino && (aderencia || config.usar_aderencia) && (
             <Campo
               rotulo="Exercício na meta"
               grupo
               dica={
                 aderencia
-                  ? `${Math.round(aderencia.dias / 7) <= 1 ? 'Na última semana' : `Nas últimas ${Math.round(aderencia.dias / 7)} semanas`} você fez ${num(aderencia.treino * 100, 0)}% dos treinos e ${num(
+                  ? `${
+                      aderencia.congelada_ate
+                        ? `Nas ${Math.round(aderencia.dias / 7) <= 1 ? 'última semana' : `${Math.round(aderencia.dias / 7)} últimas semanas`} do projeto (até ${formatarData(aderencia.congelada_ate)})`
+                        : Math.round(aderencia.dias / 7) <= 1
+                          ? 'Na última semana'
+                          : `Nas últimas ${Math.round(aderencia.dias / 7)} semanas`
+                    } você fez ${num(aderencia.treino * 100, 0)}% dos treinos e ${num(
                       aderencia.cardio * 100,
                       0,
                     )}% dos cardios: ≈ ${num(exercicioReal(montar().atividades, aderencia), 0)} kcal/dia de exercício real.`

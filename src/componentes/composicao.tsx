@@ -7,9 +7,9 @@ import { qualidadePerda, textoQualidade, type QualidadePerda } from '../lib/conf
 import { alvoProteinaRefeicao, calcularMetas, corpoParaMetas, macrosDaRefeicao, somar } from '../lib/dieta';
 import { formatarData } from '../lib/datas';
 import { num, pp } from '../lib/formato';
-import { ajusteVigente, AJUSTE_PADRAO, calibracaoAtual, COR_RCA, faixaRca, percentualGorduraBruto, rca, rfm, TEXTO_RCA, type Composicao } from '../lib/gordura';
+import { ajusteVigente, AJUSTE_PADRAO, calibracaoAtual, COR_RCA, faixaRca, percentualGorduraBruto, rca, rcaExibida, rfm, TEXTO_RCA, type Composicao } from '../lib/gordura';
 import { acaoQualidade } from '../lib/semana';
-import { aderenciaRecente } from '../lib/treino';
+import { aderenciaDoTreino } from '../lib/treino';
 import type { Perfil } from '../lib/tipos';
 
 /** "US Navy 22,0% + ajuste 2,0 p.p. = 24,0%" */
@@ -58,7 +58,7 @@ function AcaoQualidadeLink({ q }: { q: QualidadePerda }) {
   const { banco } = useAlimentos();
   // O mesmo corpo que a aba Dieta usa nas metas (média das últimas medições), para os números baterem ao abrir a Dieta
   const corpo = corpoParaMetas(composicoes);
-  const aderencia = treino ? aderenciaRecente(treinos, treino.inicio, hoje, 28, treino.fim) : null;
+  const aderencia = treino ? aderenciaDoTreino(treinos, treino, hoje) : null;
   const refeicoes = dieta && banco ? dieta.refeicoes.filter((r) => r.itens.length).map((r) => ({ r, m: macrosDaRefeicao(r, banco.mapa) })) : [];
   const alvo = corpo ? alvoProteinaRefeicao(corpo.massa_magra_kg) : null;
   const metas = dieta && corpo ? calcularMetas(dieta.config, corpo, aderencia) : null;
@@ -87,7 +87,7 @@ export function TextoRca({ cintura, altura }: { cintura: number | null | undefin
   const f = faixaRca(r);
   return (
     <>
-      <span className={COR_RCA[f]}>{num(r, 2)}</span> · {TEXTO_RCA[f]}
+      <span className={COR_RCA[f]}>{num(rcaExibida(r), 2)}</span> · {TEXTO_RCA[f]}
     </>
   );
 }

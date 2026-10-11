@@ -193,7 +193,8 @@ export function Inicio() {
   };
 
   const registroDoDia = fecharDia ? (
-    <CartaoFecharDia etiqueta={etiquetaDose} aoEditar={() => setDiarioAberto(true)} />
+    // Remonta a cada dia: um peso digitado e não salvo ontem não vira o peso de hoje
+    <CartaoFecharDia key={hoje} etiqueta={etiquetaDose} aoEditar={() => setDiarioAberto(true)} />
   ) : (
     <CartaoRegistroDia aoEditar={() => setDiarioAberto(true)} etiqueta={etiquetaDose} />
   );
@@ -215,6 +216,12 @@ export function Inicio() {
           <button type="button" className="linha-dose" onClick={() => setDoseAberta(true)} aria-expanded="false">
             <span className="cresce">
               <b>Próxima dose:</b> {diaCurto(p.data)} · {mg(p.dose_mg)} · {ui(p.ui_pratica)}
+              {ciclo && p.ui_pratica > capacidadeSeringa(ciclo) + 1e-9 && (
+                <>
+                  {' '}
+                  <span className="etiqueta aviso">passa da seringa de {capacidadeSeringa(ciclo)} UI</span>
+                </>
+              )}
               <span className="mudo"> · em {p.dias} dias</span>
             </span>
             <span className="seta" aria-hidden="true">

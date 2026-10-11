@@ -336,6 +336,9 @@ export function decisaoDoBloco(x: Pick<DecisaoFase, 'data' | 'apos_aplicacao' | 
   if (!mesmaDose(x.dose_mg, bloco.dose_mg)) return false;
   if (x.apos_aplicacao === ordenadas.length) return true;
   if (x.data < bloco.data_inicio) return false;
+  // Aplicação no mesmo dia da decisão, registrada depois dela (está além da posição
+  // em que a decisão foi tomada): a dose antiga foi aplicada, a decisão não vale mais.
+  if (ordenadas.length > x.apos_aplicacao && ordenadas.some((a, i) => i >= x.apos_aplicacao && a.data === x.data)) return false;
   return !ordenadas.some((a) => a.data > x.data);
 }
 
@@ -572,7 +575,10 @@ export function calcularCiclo(
     const { degrau, posicao } = posicoes[i];
     const fase = faseNoDegrau(ciclo.fases, numeradas, degrau, posicao);
     // O que o app indicava com as aplicações anteriores (mesma regra da próxima dose)
-    const prevista = ciclo.fases.length ? situacaoDoDegrau(ciclo.fases, ordenadas.slice(0, i), decisoes).dose_mg : ap.dose_mg;
+    const indicada = ciclo.fases.length ? situacaoDoDegrau(ciclo.fases, ordenadas.slice(0, i), decisoes).dose_mg : ap.dose_mg;
+    // Saldo que não cobre a dose: o app indicava a sobra do frasco
+    const sobraAntes = Math.round((ciclo.quantidade_total_mg - acumulado) * 100) / 100;
+    const prevista = sobraAntes > 0.005 && sobraAntes < indicada ? sobraAntes : indicada;
     // Intervalo que valia depois da aplicação anterior (uma troca nos Ajustes vale daí em diante)
     const intervaloPar = i === 0 ? intervalo : intervaloNaData(ciclo, ordenadas[i - 1].data);
     const data_prevista = i === 0 ? ciclo.data_inicio : somarDias(ordenadas[i - 1].data, intervaloPar);
@@ -605,6 +611,16 @@ export function calcularCiclo(
       ...janela(diario, pesosDia, ap.data, seguinte),
     };
   });
+
+  // A última dose do frasco (a sobra, menor que a dose do degrau, que zera o saldo)
+  // continua no degrau em que estava: não volta a uma fase anterior de dose igual.
+  if (linhas.length >= 2) {
+    const u = linhas[linhas.length - 1];
+    const a = linhas[linhas.length - 2];
+    if (u.bloco !== a.bloco && u.aplicacao.dose_mg < a.aplicacao.dose_mg - TOLERANCIA_DOSE_MG && a.saldo_mg + EPS < a.aplicacao.dose_mg && u.saldo_mg <= TOLERANCIA_DOSE_MG) {
+      linhas[linhas.length - 1] = { ...u, bloco: a.bloco, fase: a.fase };
+    }
+  }
 
   const saldo = ciclo.quantidade_total_mg - acumulado;
   const ultima = ordenadas[ordenadas.length - 1];
@@ -684,7 +700,8 @@ export function calcularCiclo(
   }
 
   const plano = verificarPlano(ciclo);
-  if (plano.situacao === 'excesso') alertas.push(plano.mensagem);
+  // Frasco usado (sem próxima dose): não há mais plano a conferir
+  if (plano.situacao === 'excesso' && proxima) alertas.push(plano.mensagem);
 
   const doseManutencao = ciclo.fases[ciclo.fases.length - 1]?.dose_mg ?? 0;
   const sobraMg = Math.max(projecao.length ? projecao[projecao.length - 1].saldo_apos_mg : saldo, 0);
@@ -711,6 +728,34 @@ export function calcularCiclo(
     sugestao_local: sugerirLocal(ultima?.local),
     alertas,
   };
+}
+
+/**
+ * "Próxima dose prevista" do PDF (com a próxima dose existente): diz quando a dose
+ * está atrasada e leva o aviso de pausa longa, como o Início.
+ */
+export function textoProximaDoseRelatorio(r: Pick<ResumoCiclo, 'proxima' | 'degrau' | 'pausa_dias' | 'linhas'>): string | null {
+  const p = r.proxima;
+  if (!p) return null;
+  const s = r.degrau;
+  const quando =
+    p.situacao === 'atrasada'
+      ? `Próxima dose: atrasada ${p.dias} ${p.dias === 1 ? 'dia' : 'dias'} (prevista para ${formatarData(p.data)}) · ${fmt(p.dose_mg)} mg`
+      : `Próxima dose prevista: ${formatarData(p.data)} · ${fmt(p.dose_mg)} mg`;
+  const extra =
+    p.estado === 'pendente' && s.fase_seguinte
+      ? ` (a dose continua até a decisão; a fase seguinte do Plano é ${fmt(s.fase_seguinte.fase.dose_mg)} mg)`
+      : p.estado === 'subir'
+        ? ' (decidido subir)'
+        : p.extra
+          ? ' (dose extra com a sobra do frasco)'
+          : '';
+  const ultima = r.linhas[r.linhas.length - 1]?.aplicacao.data;
+  const pausa =
+    r.pausa_dias !== null && ultima
+      ? ` Pausa de ${Math.floor(r.pausa_dias / 7)} semanas desde a última dose (${formatarData(ultima)}): confirmar a dose com o médico antes de aplicar.`
+      : '';
+  return `${quando}${extra}.${pausa}`;
 }
 
 /** "Fase atual" da Análise e do PDF: a troca de fase só aparece como fato depois da decisão. */

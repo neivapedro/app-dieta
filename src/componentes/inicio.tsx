@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useDados } from '../dados/contexto';
 import { useAlimentos } from '../dados/useAlimentos';
@@ -12,7 +12,7 @@ import { ultimaNormal } from '../lib/gordura';
 import { diaCurto, horaDaFaixaOntem, pendenciasDeOntem, textoPendencias } from '../lib/rotina';
 import { alertasSeguranca, AVISO_SEGURANCA } from '../lib/seguranca';
 import { NIVEIS_NAUSEA, type RegistroDiario } from '../lib/tipos';
-import { aderenciaRecente, formatarTempo, rotuloCardio, segundaDaSemana, tipoCardioEfetivo } from '../lib/treino';
+import { aderenciaDoTreino, formatarTempo, rotuloCardio, segundaDaSemana, tipoCardioEfetivo } from '../lib/treino';
 import { kcal } from './dieta';
 import { FormDiaTreino, Marcador } from './treino';
 import { Bloco, Campo, Escolhas } from './ui';
@@ -180,6 +180,8 @@ export function CartaoFecharDia({ etiqueta, aoEditar }: { etiqueta?: string; aoE
   }, [pesoGravado, hoje, mexeuPeso]);
   const [erroPeso, setErroPeso] = useState<string | null>(null);
   const [corridaAberta, setCorridaAberta] = useState(false);
+  // Sintomas que estavam "não" antes de ligar: desligar volta para "não"
+  const naoAntes = useRef(new Set<string>());
   const comTreino = !!t && t.placar.iniciado && !t.placar.encerrado;
   const tr = t?.doDia(hoje);
   const corrida = tipoCardioEfetivo(hoje, tr) === 'corrida';
@@ -217,18 +219,26 @@ export function CartaoFecharDia({ etiqueta, aoEditar }: { etiqueta?: string; aoE
       </Campo>
       <Campo rotulo="Sintomas (toque para ligar ou desligar)" grupo>
         <div className="sintomas">
-          {SINTOMAS.map(([k, rotulo]) => (
-            <button
-              type="button"
-              key={k}
-              aria-pressed={reg?.[k] === true}
-              className={`sintoma ${reg?.[k] === true ? 'sim' : ''}`}
-              onClick={() => gravarDia(hoje, { [k]: reg?.[k] === true ? null : true })}
-            >
-              {rotulo}
-              {reg?.[k] === true ? ': sim' : ''}
-            </button>
-          ))}
+          {SINTOMAS.map(([k, rotulo]) => {
+            const v = reg?.[k];
+            // Desligar volta para "não" quando o dia já tem resposta de sintoma (não apaga um "não" respondido)
+            const respondido = SINTOMAS.some(([j]) => j !== k && reg?.[j] != null) || naoAntes.current.has(k);
+            return (
+              <button
+                type="button"
+                key={k}
+                aria-pressed={v === true}
+                className={`sintoma ${v === true ? 'sim' : v === false ? 'nao' : ''}`}
+                onClick={() => {
+                  if (v === false) naoAntes.current.add(k);
+                  gravarDia(hoje, { [k]: v === true ? (respondido ? false : null) : true });
+                }}
+              >
+                {rotulo}
+                {v === true ? ': sim' : v === false ? ': não' : ''}
+              </button>
+            );
+          })}
         </div>
       </Campo>
       {diaDeSintoma(reg) && <div className="alerta info">{TEXTO_SINTOMA_AGUA}</div>}
@@ -374,7 +384,7 @@ export function CartaoDietaHoje({ semPergunta }: { semPergunta?: boolean }) {
   // Aviso de medição antiga pela última medição; metas pela média das últimas (a mesma da aba Dieta)
   const ultima = ultimaNormal(composicoes);
   const corpo = corpoParaMetas(composicoes);
-  const aderencia = treino ? aderenciaRecente(treinos, treino.inicio, hoje, 28, treino.fim) : null;
+  const aderencia = treino ? aderenciaDoTreino(treinos, treino, hoje) : null;
   const metas = corpo ? calcularMetas(dieta.config, corpo, aderencia) : null;
   const total = banco ? somar(dieta.refeicoes.map((r) => macrosDaRefeicao(r, banco.mapa))) : null;
   const saldo = metas && total ? calcularSaldo(metas, total) : null;

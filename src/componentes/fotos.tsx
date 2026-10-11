@@ -79,7 +79,7 @@ function NumerosSessao({ c, base, data, feminino }: { c: Composicao | null; base
     <div className="fotos-numeros">
       <div className="mudo">
         {c.data === data ? 'Medição do dia' : `Medição de ${formatarData(c.data, true)}`}
-        {comparar ? ' · variação desde o Antes' : ''}
+        {comparar ? ` · variação desde o Antes (medição de ${formatarData(comparar.data, true)})` : ''}
       </div>
       <div className="fotos-numeros-grade">
         {numerosDaMedicao(c, feminino, comparar).map((n) => (
@@ -249,7 +249,15 @@ export function CartaoFotos() {
             </Campo>
             <NumerosSessao
               c={medicaoProxima(composicoes, vista.data)}
-              base={vista.sessao === 'depois' ? (medicoes[0].c ?? null) : null}
+              // Mesma pose do Antes (como no PDF); sem ela, a medição da sessão Antes
+              base={
+                vista.sessao === 'depois'
+                  ? (() => {
+                      const antes = achar(fotos, 'antes', vista.pose);
+                      return antes ? medicaoProxima(composicoes, antes.data) : (medicoes[0].c ?? null);
+                    })()
+                  : null
+              }
               data={vista.data}
               feminino={feminino}
             />

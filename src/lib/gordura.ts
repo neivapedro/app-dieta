@@ -189,9 +189,13 @@ export type FaixaRca = 'saudavel' | 'aumentada' | 'alta';
 
 /** NICE (cintura abaixo de metade da altura): <0,50 saudável · 0,50–0,59 aumentada · ≥0,60 alta. */
 export function faixaRca(r: number): FaixaRca {
-  // Sobre o valor exibido (2 casas): 0,4994 aparece "0,50" e fica na faixa de 0,50
-  const x = Math.round(r * 100) / 100;
-  return x < 0.5 ? 'saudavel' : x < 0.6 ? 'aumentada' : 'alta';
+  // Pelo valor real (cintura abaixo de metade da altura = saudável); a tela mostra rcaExibida
+  return r < 0.5 ? 'saudavel' : r < 0.6 ? 'aumentada' : 'alta';
+}
+
+/** RCA como aparece na tela: truncada a 2 casas (0,4994 → 0,49), para bater com a faixa e com "cintura abaixo de altura/2". */
+export function rcaExibida(r: number): number {
+  return Math.floor(r * 100 + 1e-9) / 100;
 }
 
 export const TEXTO_RCA: Record<FaixaRca, string> = {

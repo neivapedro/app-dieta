@@ -9,7 +9,7 @@ import { useDados } from '../dados/contexto';
 import { useCalculos } from '../dados/useCalculos';
 import { formatarData } from '../lib/datas';
 import { cm, corVariacao, kg, num, pp, sinal } from '../lib/formato';
-import { COR_RCA, faixaRca, ganhos, MDC, rca, TEXTO_RCA, type ChaveMdc } from '../lib/gordura';
+import { COR_RCA, faixaRca, ganhos, MDC, rca, rcaExibida, TEXTO_RCA, type ChaveMdc } from '../lib/gordura';
 import { marcosDasDecisoes } from '../lib/registroDecisoes';
 import type { Medida } from '../lib/tipos';
 
@@ -98,7 +98,7 @@ export function Medidas() {
               {rcaAtual !== null && medAtual && (
                 <div className="bloco">
                   <div className="rotulo">Cintura/altura</div>
-                  <div className={`valor ${COR_RCA[faixaRca(rcaAtual)]}`}>{num(rcaAtual, 2)}</div>
+                  <div className={`valor ${COR_RCA[faixaRca(rcaAtual)]}`}>{num(rcaExibida(rcaAtual), 2)}</div>
                   <div className="texto-2" style={{ fontSize: '0.72rem' }}>{TEXTO_RCA[faixaRca(rcaAtual)]}</div>
                 </div>
               )}
@@ -172,7 +172,7 @@ export function Medidas() {
                       <td>{pp(c.bf)}</td>
                       <td>{kg(c.massa_magra_kg)}</td>
                       <td>{kg(c.massa_gorda_kg)}</td>
-                      <td className={r === null ? undefined : COR_RCA[faixaRca(r)]}>{num(r, 2)}</td>
+                      <td className={r === null ? undefined : COR_RCA[faixaRca(r)]}>{r === null ? num(r, 2) : num(rcaExibida(r), 2)}</td>
                       <td className={corVariacao(dc, true, MDC.cintura_cm)}>{dc === null ? '–' : sinal(dc, 1)}</td>
                     </tr>
                   );

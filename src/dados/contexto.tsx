@@ -6,9 +6,9 @@ import { esquecerAparelho, sincronizarInscricao } from '../lib/notificacoes';
 import { alteracoesDasDecisoesFase, compararDieta, mesclarAlteracoes, type Alteracao } from '../lib/registroDecisoes';
 import type { Aplicacao, Ciclo, Medida, Perfil, RegistroDecisao, RegistroDiario, RegistroForca, TreinoDia } from '../lib/tipos';
 import { SUPABASE_KEY, SUPABASE_URL } from '../config';
-import { apagarDadosLocais, aplicarFila, enfileirar, executarOperacao, gravarCache, gravarFila, lerCache, lerFila, type ItemFila, type Operacao } from './fila';
+import { apagarDadosLocais, aplicarFila, enfileirar, executarOperacao, gravarCache, gravarFila, lerCache, lerFila, reconciliarDecisoes, type ItemFila, type Operacao } from './fila';
 import { RepositorioLocal } from './local';
-import type { Repositorio, Usuario } from './repositorio';
+import { CicloSalvoEmParte, SalvoEmParte, type Repositorio, type Usuario } from './repositorio';
 import { RepositorioSupabase } from './supabase';
 
 export const repositorio: Repositorio =
@@ -78,7 +78,7 @@ interface Contexto extends Dados {
   salvarDieta: (p: PlanoDieta) => void;
   estadoDieta: EstadoGravacao;
   /** Guarda mudanças no registro de decisões (Plano e metas, que não passam pela fila) */
-  registrarAlteracoes: (alteracoes: Alteracao[]) => void;
+  registrarAlteracoes: (alteracoes: Alteracao[], refsRemovidas?: string[]) => void;
   /** Data de hoje (vira à meia-noite mesmo com o app aberto ou em segundo plano) */
   hoje: string;
   /** Muda a cada minuto e ao voltar ao app: para o que depende da hora (próxima refeição) */
@@ -305,8 +305,8 @@ export function ProvedorDados({ children }: { children: ReactNode }) {
   );
 
   const registrarAlteracoes = useCallback(
-    (alteracoes: Alteracao[]) => {
-      const ops = opsDoRegistro(alteracoes);
+    (alteracoes: Alteracao[], refsRemovidas: string[] = []) => {
+      const ops = opsDoRegistro(alteracoes, refsRemovidas);
       if (ops.length) enfileirarVarias(ops);
     },
     [enfileirarVarias, opsDoRegistro],
@@ -389,15 +389,40 @@ export function ProvedorDados({ children }: { children: ReactNode }) {
   const executar = useCallback(
     async (fn: (repo: Repositorio) => Promise<unknown>) => {
       setErro(null);
+      // Gravar o ciclo inteiro refaz a decisão do fim de fase que ainda está na fila sobre o estado gravado
+      const reconciliar = (c: Ciclo) => {
+        const nova = reconciliarDecisoes(fila.current, c, () => ++versao.current);
+        if (nova !== fila.current) atualizarFila(nova);
+      };
+      const repo = new Proxy(repositorio, {
+        get(alvo, chave, rec) {
+          if (chave === 'salvarCiclo') {
+            return async (c: Parameters<Repositorio['salvarCiclo']>[0]) => {
+              try {
+                const salvo = await alvo.salvarCiclo(c);
+                reconciliar({ ...c, id: salvo.id } as Ciclo);
+                return salvo;
+              } catch (e) {
+                if (e instanceof CicloSalvoEmParte) reconciliar({ ...c, id: e.ciclo.id } as Ciclo);
+                throw e;
+              }
+            };
+          }
+          const v = Reflect.get(alvo, chave, rec);
+          return typeof v === 'function' ? v.bind(alvo) : v;
+        },
+      });
       try {
-        await fn(repositorio);
+        await fn(repo);
         await carregar();
       } catch (e) {
+        // Gravado em parte: o resto já está no servidor (a tela recarrega e o aviso diz o que faltou)
+        if (e instanceof SalvoEmParte) await carregar().catch(() => undefined);
         setErro(traduzirErro(e));
         throw new Error(traduzirErro(e));
       }
     },
-    [carregar, setErro],
+    [carregar, setErro, atualizarFila],
   );
 
   const recarregar = useCallback(async () => {

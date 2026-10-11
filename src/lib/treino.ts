@@ -58,7 +58,11 @@ export function periodoProjeto(ciclo: Ciclo, resumo: ResumoCiclo, inicioPos?: st
   const primeira = resumo.linhas[0]?.aplicacao.data;
   const amanha = hoje ? somarDias(hoje, 1) : null;
   const inicio = primeira ?? (amanha && ciclo.data_inicio < amanha ? amanha : ciclo.data_inicio);
-  const ultima = inicioPos ?? resumo.data_fim_prevista ?? inicio;
+  // Plano sem projeção mas com uma dose ainda pedida (dose extra, saldo que não cobre a
+  // dose): o projeto fica aberto, com o check do dia, até essa dose ou a fase pós-remédio.
+  // Assim, registrá-la com atraso não cobra como falta dias em que não havia onde marcar.
+  const pendente = !inicioPos && resumo.proxima && !resumo.projecao.length ? maiorData(resumo.proxima.data, hoje ?? resumo.proxima.data) : null;
+  const ultima = inicioPos ?? pendente ?? resumo.data_fim_prevista ?? inicio;
   const intervalo = ciclo.intervalo_dias > 0 ? ciclo.intervalo_dias : 7;
   return { inicio, fim: somarDias(maiorData(ultima, inicio), intervalo) };
 }
@@ -323,14 +327,37 @@ export function aderenciaRecente(dias: TreinoDia[], inicio: string, hoje: string
   const de = diferencaDias(inicio, somarDias(ref, -janela)) > 0 ? somarDias(ref, -janela) : inicio;
   const porData = new Map(dias.map((d) => [d.data, d]));
   const datas = datasEntre(de, somarDias(ref, -1));
-  if (!encerrado && porData.has(hoje)) datas.push(hoje);
-  if (datas.length < 7) return null;
-  const n = datas.length;
+  // Hoje entra por campo, só depois de marcado: marcar o treino não conta o cardio
+  // ainda por fazer como falta, e um registro desmarcado (vazio) não conta como dia perdido
+  const h = !encerrado && de <= hoje ? porData.get(hoje) : undefined;
+  const hTreino = h?.treino ? 1 : 0;
+  const hCardio = h?.cardio ? 1 : 0;
+  const n = datas.length + (hTreino || hCardio ? 1 : 0);
+  if (n < 7) return null;
   return {
-    treino: datas.filter((d) => porData.get(d)?.treino).length / n,
-    cardio: datas.filter((d) => porData.get(d)?.cardio).length / n,
+    treino: (datas.filter((d) => porData.get(d)?.treino).length + hTreino) / (datas.length + hTreino),
+    cardio: (datas.filter((d) => porData.get(d)?.cardio).length + hCardio) / (datas.length + hCardio),
     dias: n,
   };
+}
+
+export type AderenciaTreino = { treino: number; cardio: number; dias: number; congelada_ate: string | null };
+
+/**
+ * Aderência usada na meta "Pelo que fiz" (Dieta, Início, Análise e PDF). Enquanto o
+ * placar da fase pós-remédio tiver menos de 7 dias, segue a do projeto, congelada
+ * no fim dele: a meta não muda sozinha na virada de placar. `congelada_ate` = último
+ * dia do período usado, quando ele já acabou (o texto diz "do projeto, até dd/mm").
+ */
+export function aderenciaDoTreino(
+  dias: TreinoDia[],
+  t: { inicio: string; fim: string; placarPos?: boolean; projeto: { inicio: string; fim: string } },
+  hoje: string,
+): AderenciaTreino | null {
+  const com = (a: ReturnType<typeof aderenciaRecente>, fim: string): AderenciaTreino | null => (a ? { ...a, congelada_ate: hoje > fim ? fim : null } : null);
+  const atual = com(aderenciaRecente(dias, t.inicio, hoje, 28, t.fim), t.fim);
+  if (atual || !t.placarPos) return atual;
+  return com(aderenciaRecente(dias, t.projeto.inicio, hoje, 28, t.projeto.fim), t.projeto.fim);
 }
 
 // ---------- Esforço percebido (escala CR-10) ----------

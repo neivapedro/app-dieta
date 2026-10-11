@@ -63,6 +63,22 @@ export function enfileirar(fila: ItemFila[], op: Operacao, versao: number): Item
   return [...fila.filter((i) => i.chave !== chave), { ...op, chave, versao }];
 }
 
+/**
+ * O ciclo acabou de ser gravado inteiro (Plano, Ajustes): uma decisão do fim de fase
+ * ainda na fila levaria as fases e a lista de decisões de antes e desfaria essa
+ * gravação ao ser enviada. Ela passa a levar o estado gravado (com versão nova, para
+ * ser reenviada mesmo que a cópia velha esteja saindo agora).
+ */
+export function reconciliarDecisoes(fila: ItemFila[], ciclo: Pick<Ciclo, 'id' | 'fases' | 'decisoes'>, versao: () => number): ItemFila[] {
+  const chave = `decisoes:${ciclo.id}`;
+  if (!fila.some((i) => i.chave === chave)) return fila;
+  return fila.map((i) =>
+    i.chave === chave && i.tipo === 'decisoes'
+      ? { ...i, dado: { ciclo_id: ciclo.id, decisoes: ciclo.decisoes ?? i.dado.decisoes, fases: ciclo.fases }, versao: versao() }
+      : i,
+  );
+}
+
 export async function executarOperacao(repo: Repositorio, op: Operacao) {
   if (op.tipo === 'treino') return repo.salvarTreino(op.dado);
   if (op.tipo === 'diario') return repo.salvarDiario(op.dado);

@@ -11,6 +11,7 @@ import { diferencaDias, formatarData } from '../lib/datas';
 import { ultimaNormal } from '../lib/gordura';
 import {
   alvoProteinaRefeicao,
+  atingeCorteProteina,
   calcularMetas,
   calcularSaldo,
   corpoParaMetas,
@@ -38,7 +39,7 @@ import {
 } from '../lib/dieta';
 import { kg, num, pp } from '../lib/formato';
 import { conselhoConferencia, dietaNaTendencia, juntar, textoDietaSemana, textoPlanoSeguido } from '../lib/semana';
-import { aderenciaRecente } from '../lib/treino';
+import { aderenciaDoTreino } from '../lib/treino';
 
 type Seletor = { refeicao: string; indice: number | null } | null;
 type Removido = { refeicao: string; indice: number; item: ItemRefeicao; nome: string } | null;
@@ -62,8 +63,8 @@ function proximoNomeRefeicao(refeicoes: Refeicao[]): string {
 }
 
 export function Dieta() {
-  const { dieta, salvarDieta, estadoDieta, dietaIndisponivel, perfil, medidas, treinos, diario } = useDados();
-  const { composicoes, hoje, sexo } = useCalculos();
+  const { dieta, salvarDieta, estadoDieta, dietaIndisponivel, perfil, medidas, treinos, diario, ciclo } = useDados();
+  const { composicoes, hoje, sexo, resumo } = useCalculos();
   const treino = useTreino();
   const { banco, falhou: falhouAlimentos, tentarDeNovo } = useAlimentos();
   const [config, setConfig] = useState(false);
@@ -84,9 +85,10 @@ export function Dieta() {
   const ultima = ultimaNormal(composicoes);
   // Metas pela média das 3 últimas medições válidas (peso e massa magra)
   const corpo = useMemo(() => corpoParaMetas(composicoes), [composicoes]);
-  const altura = medidas.find((m) => m.data === ultima?.data)?.altura_cm ?? perfil?.altura_cm ?? null;
+  // Altura do Perfil (fonte única: corrigir lá corrige o histórico); sem ela, a gravada na medição
+  const altura = perfil?.altura_cm || medidas.find((m) => m.data === ultima?.data)?.altura_cm || null;
   const anos = idade(perfil?.data_nascimento, hoje);
-  const aderencia = treino ? aderenciaRecente(treinos, treino.inicio, hoje, 28, treino.fim) : null;
+  const aderencia = treino ? aderenciaDoTreino(treinos, treino, hoje) : null;
   const tendencia = useMemo(() => tendenciaMedidas(composicoes), [composicoes]);
   const impreciso = tendencia !== null && faixaImprecisa(tendencia);
 
@@ -109,27 +111,31 @@ export function Dieta() {
   }
   if (!plano) return null;
 
+  // Lista de alimentos não baixou: os totais do plano não são conhecidos (não é um plano vazio)
+  const semBanco = !banco && plano.refeicoes.some((r) => r.itens.length > 0);
   const metas = corpo ? calcularMetas(plano.config, corpo, aderencia) : null;
-  const saldo = metas ? calcularSaldo(metas, total) : null;
+  const saldo = metas && !semBanco ? calcularSaldo(metas, total) : null;
   const alvoRefeicao = corpo ? alvoProteinaRefeicao(corpo.massa_magra_kg) : null;
-  const distribuicao = corpo
+  const distribuicao = corpo && !semBanco
     ? distribuicaoProteina(
         plano.refeicoes.map((r, i) => ({ nome: r.nome, ptn_animal: porRefeicao[i]?.ptn_animal ?? 0, itens: r.itens.length })),
         corpo.massa_magra_kg,
       )
     : null;
-  const ptnTotal = corpo ? proteinaTotal(total, corpo, colageno) : null;
+  const ptnTotal = corpo && !semBanco ? proteinaTotal(total, corpo, colageno) : null;
   const diasMedicao = ultima ? diferencaDias(ultima.data, hoje) : 0;
 
   // Conferência com as medidas: déficit do plano × o que as medidas mostram × o necessário para a meta
-  const deficitPlano = metas && total.kcal > 0 ? metas.gasto_total - total.kcal : metas ? -plano.config.ajuste_kcal : null;
+  const deficitPlano = !metas || semBanco ? null : total.kcal > 0 ? metas.gasto_total - total.kcal : -plano.config.ajuste_kcal;
   const metaProjeto = perfil?.metas_projeto;
   const gordaMeta = metaProjeto?.peso_kg && metaProjeto?.bf ? (metaProjeto.peso_kg * metaProjeto.bf) / 100 : null;
   // Na fase pós-remédio não há mais prazo de meta do projeto: "Para a meta" some
   const necessario = gordaMeta !== null && ultima?.massa_gorda_kg != null && treino && !treino.pos ? paraAMeta(ultima.massa_gorda_kg, gordaMeta, hoje, treino.fim) : null;
   // "Segui o plano?" na janela da tendência: muda o conselho (só texto)
-  const seguido = tendencia ? dietaNaTendencia(diario, tendencia) : null;
-  const conselho = tendencia && seguido && ultima ? conselhoConferencia(tendencia, ultima.peso_kg, seguido, deficitPlano, plano.config.ajuste_kcal) : null;
+  // Só os dias desde o início do ciclo (a medição inicial pode ser anterior à 1ª dose)
+  const seguido = tendencia ? dietaNaTendencia(diario, tendencia, resumo?.linhas[0]?.aplicacao.data ?? ciclo?.data_inicio ?? null) : null;
+  // Sem a lista de alimentos, o déficit do plano não é conhecido: sem conselho (como na Análise)
+  const conselho = tendencia && seguido && ultima && !semBanco ? conselhoConferencia(tendencia, ultima.peso_kg, seguido, deficitPlano, plano.config.ajuste_kcal) : null;
   // Ritmo previsto pelo déficit (ρ pela fração de massa magra da perda) × o medido pela tendência
   const fracaoMagra = corpo ? fracaoMagraDaPerda(tendencia, corpo.peso_kg - corpo.massa_magra_kg) : null;
   const ritmoMedido = tendencia && ultima ? ritmoPercentual(tendencia.peso_semana, ultima.peso_kg) : null;
@@ -186,11 +192,12 @@ export function Dieta() {
     atualizar({ refeicoes: lista });
   };
 
-  const duplicar = (id: string) => {
+  // Duplica a versão editada na folha (nome e horário digitados também valem para a original), numa gravação só
+  const duplicar = (id: string, editada?: Refeicao) => {
     const i = plano.refeicoes.findIndex((r) => r.id === id);
-    const r = plano.refeicoes[i];
+    const r = editada ?? plano.refeicoes[i];
     const copia: Refeicao = { ...r, id: novoId(), nome: `${r.nome} (cópia)`, itens: r.itens.map((x) => ({ ...x })) };
-    atualizar({ refeicoes: [...plano.refeicoes.slice(0, i + 1), copia, ...plano.refeicoes.slice(i + 1)] });
+    atualizar({ refeicoes: [...plano.refeicoes.slice(0, i), r, copia, ...plano.refeicoes.slice(i + 1)] });
   };
 
   const refeicaoEditando = plano.refeicoes.find((r) => r.id === editando);
@@ -305,7 +312,9 @@ export function Dieta() {
                 )}
                 {aderencia && (
                   <p className="texto-2">
-                    Pelo que você marcou no Treino ({num(aderencia.treino * 100, 0)}% dos treinos, {num(aderencia.cardio * 100, 0)}% dos cardios), o
+                    Pelo que você marcou no Treino
+                    {aderencia.congelada_ate ? ` nas 4 últimas semanas do projeto (até ${formatarData(aderencia.congelada_ate)}; o valor fica congelado)` : ''} (
+                    {num(aderencia.treino * 100, 0)}% dos treinos, {num(aderencia.cardio * 100, 0)}% dos cardios), o
                     exercício real é ≈ {kcal(exercicioReal(plano.config.atividades, aderencia))}
                     {metas.pela_aderencia
                       ? ` (planejado: ${kcal(metas.exercicio_planejado)}). A meta já usa o real.`
@@ -327,7 +336,7 @@ export function Dieta() {
               {tendencia ? (
                 <div className="pilha" style={{ gap: 8 }}>
                   <div className="grade grade-3">
-                    <Bloco rotulo="O plano prevê" valor={deficitPlano !== null ? `${num(deficitPlano, 0)}/dia` : '–'} />
+                    <Bloco rotulo="O plano prevê" valor={deficitPlano !== null ? `${num(deficitPlano, 0)}/dia` : semBanco ? 'carregando' : '–'} />
                     <Bloco rotulo="As medidas mostram" valor={`≈ ${num(tendencia.deficit_dia, 0)}/dia`} />
                     <Bloco
                       rotulo="Para a meta"
@@ -392,7 +401,7 @@ export function Dieta() {
       {banco &&
         plano.refeicoes.map((r, ri) => {
           const m = porRefeicao[ri];
-          const ptnOk = alvoRefeicao !== null && m && m.ptn_animal >= alvoRefeicao * 0.9;
+          const ptnOk = alvoRefeicao !== null && m && atingeCorteProteina(m.ptn_animal, alvoRefeicao * 0.9);
           return (
             <section key={r.id} className="cartao refeicao">
               <div className="cartao-cab">
@@ -593,6 +602,7 @@ export function Dieta() {
           fracaoMagra={fracaoMagra?.p ?? null}
           ritmoMedido={ritmoMedido && ritmoMedido.faixa !== 'ganho' ? ritmoMedido.pct : null}
           ptnVegetalPlano={ptnVegetal}
+          comTreino={!!perfil?.modulo_treino}
           aoSalvar={(c) => atualizar({ config: c })}
           aoFechar={() => setConfig(false)}
         />
@@ -615,7 +625,7 @@ export function Dieta() {
           ultima={plano.refeicoes[plano.refeicoes.length - 1]?.id === refeicaoEditando.id}
           aoSalvar={(nova) => mudarRefeicao(nova.id, () => nova)}
           aoMover={(passo) => mover(refeicaoEditando.id, passo)}
-          aoDuplicar={() => duplicar(refeicaoEditando.id)}
+          aoDuplicar={(editada) => duplicar(refeicaoEditando.id, editada)}
           aoExcluir={() => {
             atualizar({ refeicoes: plano.refeicoes.filter((r) => r.id !== refeicaoEditando.id) });
             setEditando(null);

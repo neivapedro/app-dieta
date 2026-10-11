@@ -218,6 +218,8 @@ export interface Aderencia {
   treino: number;
   cardio: number;
   dias: number;
+  /** Último dia do período usado, quando ele já acabou (aderência congelada no fim do projeto) */
+  congelada_ate?: string | null;
 }
 
 const FORCA = /muscula|força|forca|treino|academia|peso/i;
@@ -570,18 +572,28 @@ export interface DistribuicaoProteina {
  * passar para as refeições abaixo do corte. Cada uma recebe até chegar ao alvo,
  * começando pela que mais falta. Só sugere: o plano não muda sozinho.
  */
+/** Arredondamento da tela (1 casa abaixo de 10 g; inteiro a partir daí). */
+function comoNaTela(g: number): number {
+  return Math.abs(g) < 10 ? Math.round(g * 10) / 10 : Math.round(g);
+}
+
+/** Refeição no alvo de proteína animal pelos números mostrados ("25 de ~28 g" conta com corte "25 g ou mais"). */
+export function atingeCorteProteina(g: number, corte: number): boolean {
+  return comoNaTela(g) >= comoNaTela(corte);
+}
+
 export function distribuicaoProteina(refeicoes: RefeicaoProteina[], massaMagra: number): DistribuicaoProteina {
   const alvo = alvoProteinaRefeicao(massaMagra);
   const corte = alvo * 0.9;
   const teto = TETO_REFEICAO_GKG * massaMagra;
   const comItens = refeicoes.filter((r) => r.itens > 0);
   const totalDia = comItens.reduce((s, r) => s + r.ptn_animal, 0);
-  const no_alvo = comItens.filter((r) => r.ptn_animal >= corte).length;
+  const no_alvo = comItens.filter((r) => atingeCorteProteina(r.ptn_animal, corte)).length;
   const base = { alvo, corte, teto, no_alvo, com_itens: comItens.length, concentracao: null };
   const maior = comItens.reduce<RefeicaoProteina | null>((m, r) => (r.ptn_animal > (m?.ptn_animal ?? 0) ? r : m), null);
   if (!maior || maior.ptn_animal <= teto) return base;
   let sobra = maior.ptn_animal - teto;
-  const abaixo = comItens.filter((r) => r !== maior && r.ptn_animal < corte);
+  const abaixo = comItens.filter((r) => r !== maior && !atingeCorteProteina(r.ptn_animal, corte));
   const recebe = new Set<RefeicaoProteina>();
   let movido = 0;
   for (const r of [...abaixo].sort((a, b) => a.ptn_animal - b.ptn_animal)) {
