@@ -253,7 +253,7 @@ export class RepositorioSupabase implements Repositorio {
         c.frasco_aberto_em ? '"frasco aberto em"' : null,
         // Descreve pelo tipo: a troca do intervalo é gravada como decisão (para não reavaliar as doses antigas)
         (c.decisoes ?? []).some((x) => x.escolha === 'intervalo')
-          ? 'o registro da troca do intervalo (até rodar o SQL, o intervalo novo vale também para conferir as doses antigas, que podem aparecer com atraso)'
+          ? 'o registro da troca do intervalo (até rodar o SQL, o intervalo novo vale também para conferir as doses antigas, que podem aparecer como adiantadas ou atrasadas)'
           : null,
         (c.decisoes ?? []).some((x) => x.escolha !== 'intervalo') ? 'as decisões do fim de fase (subir, repetir e anotações para o médico)' : null,
       ].filter(Boolean);
