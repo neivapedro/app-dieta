@@ -231,6 +231,7 @@ extras = [
     ('x63', 'Batata, doce, assada', 'Verduras, legumes e tubérculos', 2.0, 20.7, 0.2, 3.3, 0, [], 'USDA'),
     ('x65', 'Grão-de-bico, cozido', 'Leguminosas', 8.9, 27.4, 2.6, 7.6, 0, [('concha', 140)], 'USDA'),
     ('x66', 'Guandu, cozido', 'Leguminosas', 6.8, 23.3, 0.4, 6.7, 0, [('concha', 140)], 'USDA'),
+    ('x67', 'Iogurte líquido zero lactose, desnatado, morango (Itambé Zero)', LEITE, 3.0, 3.4, 0, 0, 1, [('copo', 200)], 'Rótulo Itambé (por 100 g)'),
     ('x64', 'Inhame, cozido', 'Verduras, legumes e tubérculos', 0.5, 34.6, 0.1, 5.1, 0, [], 'USDA (taro cozido)'),
 ]
 for e in extras:

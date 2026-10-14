@@ -49,8 +49,8 @@ describe('Colágeno e gelatina fora da proteína animal', () => {
     expect(m.ptn_vegetal).toBeCloseTo(9, 6);
   });
   it('carnes, ovos, leite e whey continuam animais', () => {
-    for (const id of ['x01', 'x02']) expect(mapa.get(id)!.animal).toBe(true);
-    expect(alimentos.filter((a) => a.animal).length).toBe(276);
+    for (const id of ['x01', 'x02', 'x67']) expect(mapa.get(id)!.animal).toBe(true);
+    expect(alimentos.filter((a) => a.animal).length).toBe(277);
   });
 });
 
