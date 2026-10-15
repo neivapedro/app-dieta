@@ -1,4 +1,8 @@
-// Edge Function (Deno) chamada a cada hora pelo pg_cron.
+// Edge Function (Deno) chamada a cada 15 minutos pelo pg_cron. Faz dois
+// lembretes independentes: o da dose (lembretes_ativos, abaixo) e o das
+// refeições (lembrete_refeicoes, em lembrarRefeicoes()).
+//
+// Lembrete da dose:
 // Para cada usuário com lembretes ativos, calcula a próxima aplicação com a
 // mesma regra do app (última aplicação real + intervalo; a 1ª é a data de
 // início) e envia um push quando:
@@ -9,9 +13,11 @@
 // A dose segue a regra do app (../_shared/dose.ts, cópia de src/lib/ciclo.ts):
 // pela dose realmente aplicada, e só sobe com a decisão registrada no app.
 
-import { createClient } from 'npm:@supabase/supabase-js@2';
+import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import webpush from 'npm:web-push@3.6.7';
 import { emFasePosRemedio, limiarPausaLonga, planoDeDoses, type Decisao, type Fase } from '../_shared/dose.ts';
+import { ALIMENTOS } from '../_shared/alimentos.ts';
+import { avisosDaJanela, corpoDoAviso, JANELA_MIN, tituloDoAviso } from '../_shared/refeicoes.ts';
 
 const MAX_DIAS_ATRASO = 14;
 
@@ -162,5 +168,111 @@ Deno.serve(async (req) => {
     }
   }
 
-  return Response.json(resultado);
+  // Falha no lembrete das refeições (ex.: migração ainda não aplicada) não derruba o da dose
+  const refeicoes = await lembrarRefeicoes(db, agora.getTime()).catch((e) => {
+    console.error('Lembrete das refeições', e);
+    return { erro: String((e as Error).message ?? e) };
+  });
+  return Response.json({ ...resultado, refeicoes });
 });
+
+type Db = SupabaseClient;
+type Inscricao = { id: string; endpoint: string; p256dh: string; auth: string };
+
+/** Envia a todas as inscrições do usuário; remove as que o serviço de push diz que não existem mais. */
+async function enviarPush(db: Db, inscricoes: Inscricao[], payload: unknown, ttl: number): Promise<{ entregue: boolean; removidas: number }> {
+  let entregue = false;
+  let removidas = 0;
+  for (const i of [...inscricoes]) {
+    try {
+      await webpush.sendNotification({ endpoint: i.endpoint, keys: { p256dh: i.p256dh, auth: i.auth } }, JSON.stringify(payload), { TTL: ttl });
+      entregue = true;
+    } catch (e) {
+      const status = (e as { statusCode?: number }).statusCode;
+      if (status === 404 || status === 410) {
+        await db.from('inscricoes_push').delete().eq('id', i.id);
+        inscricoes.splice(inscricoes.indexOf(i), 1);
+        removidas++;
+      } else {
+        console.error('Falha ao enviar push', status, e);
+      }
+    }
+  }
+  return { entregue, removidas };
+}
+
+/**
+ * Lembrete das refeições. Independente do lembrete da dose: vale para quem ligou
+ * lembrete_refeicoes no Perfil, mesmo com o da dose desligado. Para cada
+ * refeição do plano com horário e alimentos, avisa em horário − antes (no fuso
+ * do perfil), na janela desta execução (regra em ../_shared/refeicoes.ts).
+ * Cada (dia, refeição) é reservado em lembretes_refeicao_enviados antes do envio:
+ * duas execuções ao mesmo tempo não repetem o aviso; se nenhum aparelho recebeu,
+ * a reserva é desfeita e a próxima execução tenta de novo (enquanto estiver na janela).
+ */
+async function lembrarRefeicoes(db: Db, agora: number) {
+  const res = { avaliados: 0, enviados: 0, inscricoes_removidas: 0, controle_limpo: false };
+  const { data: perfis, error } = await db.from('perfis').select('user_id, fuso_horario, lembrete_refeicoes_antes').eq('lembrete_refeicoes', true);
+  // Sem as colunas (migração 20261025000000 não aplicada): não há quem avisar
+  if (error) throw new Error(error.message);
+  const ids = (perfis ?? []).map((p) => p.user_id as string);
+  const hojeUtc = new Date(agora).toISOString().slice(0, 10);
+  const diaUtc = (n: number) => new Date(Date.parse(hojeUtc) + n * 86_400_000).toISOString().slice(0, 10);
+
+  if (ids.length) {
+    const { data: planos, error: erroPlanos } = await db.from('dieta_planos').select('user_id, refeicoes').in('user_id', ids);
+    if (erroPlanos) throw new Error(erroPlanos.message);
+    const planoDe = new Map((planos ?? []).map((p) => [p.user_id as string, p.refeicoes as unknown]));
+    // O que já foi avisado nos últimos dias (a janela nunca passa de ontem/amanhã no fuso de ninguém)
+    const { data: enviados, error: erroEnviados } = await db
+      .from('lembretes_refeicao_enviados')
+      .select('user_id, dia, refeicao_id')
+      .in('user_id', ids)
+      .gte('dia', diaUtc(-2));
+    // Sem a tabela de controle não envia: sem ela, o mesmo aviso poderia sair duas vezes
+    if (erroEnviados) throw new Error(erroEnviados.message);
+
+    for (const perfil of perfis ?? []) {
+      res.avaliados++;
+      const jaEnviados = new Set((enviados ?? []).filter((e) => e.user_id === perfil.user_id).map((e) => `${e.dia}|${e.refeicao_id}`));
+      const avisos = avisosDaJanela({
+        refeicoes: planoDe.get(perfil.user_id),
+        agora,
+        fuso: perfil.fuso_horario,
+        antes: perfil.lembrete_refeicoes_antes,
+        jaEnviados,
+      });
+      if (!avisos.length) continue;
+      const { data: inscricoes } = await db.from('inscricoes_push').select('id, endpoint, p256dh, auth').eq('user_id', perfil.user_id);
+      const lista = (inscricoes ?? []) as Inscricao[];
+      for (const aviso of avisos) {
+        if (!lista.length) break;
+        const chave = { user_id: perfil.user_id, dia: aviso.dia, refeicao_id: aviso.refeicao_id };
+        const { data: reservado, error: erroReserva } = await db
+          .from('lembretes_refeicao_enviados')
+          .upsert(chave, { onConflict: 'user_id,dia,refeicao_id', ignoreDuplicates: true })
+          .select('dia');
+        // Outra execução já reservou (ou falhou ao reservar): não envia
+        if (erroReserva || !reservado?.length) continue;
+        const { entregue, removidas } = await enviarPush(
+          db,
+          lista,
+          // Tocar abre a aba Dieta; a tag por refeição não junta avisos de refeições diferentes
+          { titulo: tituloDoAviso(aviso, agora), corpo: corpoDoAviso(aviso.itens, ALIMENTOS), url: './dieta', tag: `refeicao-${aviso.refeicao_id}` },
+          // Aviso de refeição velho não serve: descarta se o aparelho ficar 1 h sem receber
+          60 * 60,
+        );
+        res.inscricoes_removidas += removidas;
+        if (entregue) res.enviados++;
+        else await db.from('lembretes_refeicao_enviados').delete().match(chave);
+      }
+    }
+  }
+
+  // Limpeza: uma vez por hora (na 1ª execução da hora), apaga o controle com mais de 7 dias
+  if (new Date(agora).getUTCMinutes() < JANELA_MIN) {
+    const { error: erroLimpeza } = await db.from('lembretes_refeicao_enviados').delete().lt('dia', diaUtc(-7));
+    res.controle_limpo = !erroLimpeza;
+  }
+  return res;
+}

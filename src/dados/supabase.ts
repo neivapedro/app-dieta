@@ -47,6 +47,8 @@ export function faltaNoBanco(e: { message?: string; code?: string } | null | und
 }
 
 const AVISO_EVOLUCAO = 'falta rodar o SQL de evolução no Supabase.';
+export const AVISO_SEM_LEMBRETE_REFEICOES =
+  'O lembrete das refeições ainda não está disponível no servidor (falta aplicar supabase/migrations/20261025000000_lembrete_refeicoes.sql no Supabase): a opção não foi salva.';
 
 function sem<T extends Record<string, unknown>>(linha: T, chaves: readonly string[]): Partial<T> {
   return Object.fromEntries(Object.entries(linha).filter(([k]) => !chaves.includes(k))) as Partial<T>;
@@ -174,6 +176,9 @@ export class RepositorioSupabase implements Repositorio {
       lembretes_ativos: d.lembretes_ativos,
       hora_lembrete: String(d.hora_lembrete).slice(0, 5),
       fuso_horario: d.fuso_horario,
+      // Colunas do lembrete das refeições: ausentes no banco antigo = desligado
+      lembrete_refeicoes: d.lembrete_refeicoes === true,
+      lembrete_refeicoes_antes: num(d.lembrete_refeicoes_antes ?? 0) || 0,
       token_calendario: d.token_calendario ?? null,
       modulo_treino: d.modulo_treino === true,
       metas_projeto: d.metas_projeto ?? null,
@@ -188,7 +193,19 @@ export class RepositorioSupabase implements Repositorio {
   async salvarPerfil(p: Perfil) {
     // O token do calendário é gerado pelo banco; aqui ele não é sobrescrito
     // Token, liberação da aba Treino, metas e exercícios da força têm gravação própria
-    const { token_calendario: _token, modulo_treino: _modulo, metas_projeto: _metas, exercicios_forca: _forca, data_nascimento, ajuste_gordura, exame_gordura_data, exame_gordura_bf, ...dados } = p;
+    const {
+      token_calendario: _token,
+      modulo_treino: _modulo,
+      metas_projeto: _metas,
+      exercicios_forca: _forca,
+      data_nascimento,
+      ajuste_gordura,
+      exame_gordura_data,
+      exame_gordura_bf,
+      lembrete_refeicoes,
+      lembrete_refeicoes_antes,
+      ...dados
+    } = p;
     // hora_lembrete é obrigatória (time not null): vazio (ex.: backup antigo) vira o padrão
     const base = { user_id: await this.uid(), ...dados, hora_lembrete: dados.hora_lembrete || '08:00' };
     // undefined = não mexer (ex.: backup antigo); null = apagar a data
@@ -196,14 +213,23 @@ export class RepositorioSupabase implements Repositorio {
     const calibracao: Record<string, unknown> = Object.fromEntries(
       Object.entries({ ajuste_gordura, exame_gordura_data, exame_gordura_bf }).filter(([, v]) => v !== undefined),
     );
+    // undefined = não mexer (o formulário de dados pessoais não leva o lembrete das refeições)
+    const refeicoes: Record<string, unknown> = Object.fromEntries(
+      Object.entries({ lembrete_refeicoes, lembrete_refeicoes_antes }).filter(([, v]) => v !== undefined),
+    );
     let semNascimento = false;
     let semCalibracao = false;
+    let semRefeicoes = false;
     for (;;) {
-      const r = await this.sb.from('perfis').upsert({ ...base, ...(semNascimento ? {} : nascimento), ...(semCalibracao ? {} : calibracao) });
+      const r = await this.sb
+        .from('perfis')
+        .upsert({ ...base, ...(semNascimento ? {} : nascimento), ...(semCalibracao ? {} : calibracao), ...(semRefeicoes ? {} : refeicoes) });
       // Banco sem a coluna (migração da Dieta ainda não rodou): salva o resto
       if (!semNascimento && r.error && /data_nascimento/.test(r.error.message)) semNascimento = true;
       // Banco sem as colunas de calibração (SQL de evolução ainda não rodou): salva o resto
       else if (!semCalibracao && faltaNoBanco(r.error, /ajuste_gordura|exame_gordura/)) semCalibracao = true;
+      // Banco sem as colunas do lembrete das refeições (migração 20261025000000 ainda não rodou): salva o resto
+      else if (!semRefeicoes && Object.keys(refeicoes).length && faltaNoBanco(r.error, /lembrete_refeicoes/)) semRefeicoes = true;
       else {
         erro(r);
         break;
@@ -213,6 +239,7 @@ export class RepositorioSupabase implements Repositorio {
     const faltou = [
       semNascimento && data_nascimento ? 'Data de nascimento não foi salva: falta rodar o SQL da Dieta no Supabase.' : null,
       semCalibracao && calibrou ? `Ajuste de calibração do % de gordura não foi salvo: ${AVISO_EVOLUCAO}` : null,
+      semRefeicoes && lembrete_refeicoes ? AVISO_SEM_LEMBRETE_REFEICOES : null,
     ].filter(Boolean);
     if (faltou.length) throw new SalvoEmParte(faltou.join(' '));
   }

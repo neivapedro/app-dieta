@@ -123,6 +123,8 @@ export class RepositorioLocal implements Repositorio {
         ajuste_gordura: manter('ajuste_gordura') as number | null,
         exame_gordura_data: manter('exame_gordura_data') as string | null,
         exame_gordura_bf: manter('exame_gordura_bf') as number | null,
+        lembrete_refeicoes: (p.lembrete_refeicoes ?? b.perfil?.lembrete_refeicoes ?? false) === true,
+        lembrete_refeicoes_antes: p.lembrete_refeicoes_antes ?? b.perfil?.lembrete_refeicoes_antes ?? 0,
       };
     });
   }

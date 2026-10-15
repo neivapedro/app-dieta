@@ -5,7 +5,6 @@ import { AvisoRapido, FaseConfirmada, FimDeFase, ForaDoPlano } from '../componen
 import { FormAplicacao, FormDiario, FormMedida } from '../componentes/formularios';
 import {
   AlertasSeguranca,
-  CartaoDietaHoje,
   CartaoFecharDia,
   CartaoMedicaoSegunda,
   CartaoRegistroDia,
@@ -254,8 +253,6 @@ export function Inicio() {
       )}
 
       {!fecharDia && <CartaoTreinoHoje />}
-
-      <CartaoDietaHoje semPergunta={fecharDia} />
 
       {resumo.alertas.map((a) => (
         <div className="alerta" key={a}>{a}</div>

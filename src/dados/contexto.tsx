@@ -81,7 +81,7 @@ interface Contexto extends Dados {
   registrarAlteracoes: (alteracoes: Alteracao[], refsRemovidas?: string[]) => void;
   /** Data de hoje (vira à meia-noite mesmo com o app aberto ou em segundo plano) */
   hoje: string;
-  /** Muda a cada minuto e ao voltar ao app: para o que depende da hora (próxima refeição) */
+  /** Muda a cada minuto e ao voltar ao app: para o que depende da hora (Fechar o dia, faixa de ontem) */
   tique: number;
 }
 

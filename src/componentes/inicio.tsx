@@ -1,26 +1,16 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
 import { useDados } from '../dados/contexto';
-import { useAlimentos } from '../dados/useAlimentos';
 import { useCalculos } from '../dados/useCalculos';
 import { useMetaAgua, useTreino } from '../dados/useTreino';
 import { diaDeSintoma, diaVazio, mediaSono7, resumoSintomas, TEXTO_SINTOMA_AGUA, TEXTO_SONO_BAIXO } from '../lib/bemestar';
-import { diferencaDias, formatarData, hojeLocal, somarDias } from '../lib/datas';
-import { calcularMetas, calcularSaldo, corpoParaMetas, macrosDaRefeicao, proximaRefeicao, resumoPlano, somar, textoBaseMetas, textoItemPlano } from '../lib/dieta';
+import { hojeLocal, somarDias } from '../lib/datas';
 import { kg, lerPeso, num, paraTexto } from '../lib/formato';
-import { ultimaNormal } from '../lib/gordura';
 import { diaCurto, horaDaFaixaOntem, pendenciasDeOntem, textoPendencias } from '../lib/rotina';
 import { alertasSeguranca, AVISO_SEGURANCA } from '../lib/seguranca';
 import { NIVEIS_NAUSEA, type RegistroDiario } from '../lib/tipos';
-import { aderenciaDoTreino, formatarTempo, rotuloCardio, segundaDaSemana, tipoCardioEfetivo } from '../lib/treino';
-import { kcal } from './dieta';
+import { formatarTempo, rotuloCardio, segundaDaSemana, tipoCardioEfetivo } from '../lib/treino';
 import { FormDiaTreino, Marcador } from './treino';
 import { Bloco, Campo, Escolhas } from './ui';
-
-function minutosAgora(): number {
-  const d = new Date();
-  return d.getHours() * 60 + d.getMinutes();
-}
 
 const OPCOES_PLANO = [
   { valor: 'sim' as const, rotulo: 'Sim' },
@@ -369,91 +359,6 @@ export function AlertasSeguranca({ compacto }: { compacto?: boolean }) {
       <p className="mudo" style={{ fontSize: '0.78rem' }}>
         {AVISO_SEGURANCA}
       </p>
-    </section>
-  );
-}
-
-/** Cartão do Início: o plano do dia × a meta, a próxima refeição e "segui o plano?". */
-export function CartaoDietaHoje({ semPergunta }: { semPergunta?: boolean }) {
-  const { dieta, diario, treinos } = useDados();
-  const { composicoes, hoje } = useCalculos();
-  const treino = useTreino();
-  const { banco } = useAlimentos();
-  const gravarDia = useGravarDia();
-  if (!dieta || !temPlano(dieta)) return null;
-  // Aviso de medição antiga pela última medição; metas pela média das últimas (a mesma da aba Dieta)
-  const ultima = ultimaNormal(composicoes);
-  const corpo = corpoParaMetas(composicoes);
-  const aderencia = treino ? aderenciaDoTreino(treinos, treino, hoje) : null;
-  const metas = corpo ? calcularMetas(dieta.config, corpo, aderencia) : null;
-  const total = banco ? somar(dieta.refeicoes.map((r) => macrosDaRefeicao(r, banco.mapa))) : null;
-  const saldo = metas && total ? calcularSaldo(metas, total) : null;
-  const plano = saldo ? resumoPlano(saldo) : null;
-  const prox = proximaRefeicao(dieta.refeicoes, minutosAgora());
-  const regHoje = diario.find((r) => r.data === hoje);
-
-  return (
-    <section className="cartao">
-      <div className="cartao-cab">
-        <h2>Dieta de hoje</h2>
-        <Link to="/dieta" className="botao pequeno">
-          Abrir
-        </Link>
-      </div>
-      {plano && saldo ? (
-        <Link to="/dieta" className="resumo-plano" aria-label="Ver o plano na Dieta">
-          {plano.fechado ? (
-            <span>
-              <b className="bom">Plano fechado ✓</b> {kcal(plano.kcal_meta)}
-            </span>
-          ) : (
-            <span>
-              Plano <b>{num(plano.kcal_plano, 0)}</b> de {kcal(plano.kcal_meta)}
-              {plano.faltam.length > 0 && <> · falta {plano.faltam.map((f) => `${f.nome} ${num(f.g, 0)} g`).join(', ')}</>}
-              {plano.passam.length > 0 && (
-                <>
-                  {' '}
-                  · <span className="ruim">passou {plano.passam.map((f) => `${f.nome} ${num(f.g, 0)} g`).join(', ')}</span>
-                </>
-              )}
-            </span>
-          )}
-        </Link>
-      ) : null}
-      {metas && saldo && saldo.meta.carb < 0 && (
-        <div className="alerta" style={{ display: 'block', marginBottom: 8 }}>
-          A proteína e a gordura já passam da meta de kcal. Reduza o g/kg delas ou o déficit em Ajustar, na aba Dieta.
-        </div>
-      )}
-      {metas ? null : (
-        <p className="texto-2" style={{ marginBottom: 8 }}>
-          Registre uma medição para calcular a meta.
-        </p>
-      )}
-      {ultima && corpo && diferencaDias(ultima.data, hoje) > 10 && (
-        <p className="texto-2" style={{ marginBottom: 8 }}>
-          {corpo.medicoes > 1 ? `Última medição em ${formatarData(ultima.data)}: meta calculada` : 'Meta calculada'} {textoBaseMetas(corpo)}.
-        </p>
-      )}
-      {prox && banco && (
-        <div className="texto-2" style={{ marginBottom: semPergunta ? 0 : 10 }}>
-          <b>
-            {prox.nome}
-            {prox.horario ? ` · ${prox.horario}` : ''}
-          </b>
-          <ul className="itens-plano">
-            {prox.itens.map((i, k) => (
-              <li key={`${k}-${i.alimento_id}`}>{textoItemPlano(i, banco.mapa.get(i.alimento_id))}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-      {!semPergunta && (
-        <div className="linha entre">
-          <span className="rotulo">Segui o plano hoje?</span>
-          <Escolhas opcoes={OPCOES_PLANO} valor={regHoje?.dieta_seguida ?? null} aoMudar={(v) => gravarDia(hoje, { dieta_seguida: v })} permitirVazio />
-        </div>
-      )}
     </section>
   );
 }

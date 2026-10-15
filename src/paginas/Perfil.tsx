@@ -21,6 +21,8 @@ import {
   type EstadoNotificacao,
 } from '../lib/notificacoes';
 import type { Medida, Perfil as TipoPerfil, Sexo } from '../lib/tipos';
+// Mesma regra da função que envia (quais refeições têm aviso)
+import { ANTES_PERMITIDOS, lerAntes, lerRefeicoes, minutosDoHorario } from '../../supabase/functions/_shared/refeicoes';
 
 const TEXTO_ESTADO: Record<EstadoNotificacao, string> = {
   'sem-suporte': 'Este navegador não suporta notificações.',
@@ -31,6 +33,116 @@ const TEXTO_ESTADO: Record<EstadoNotificacao, string> = {
   'ativo-sem-servidor': 'Permissão concedida, mas o envio automático exige a nuvem configurada (Supabase + chaves VAPID).',
 };
 
+
+const OPCOES_ANTES = ANTES_PERMITIDOS.map((v) => ({ valor: v as number, rotulo: v === 0 ? 'No horário' : `${v} min antes` }));
+
+function hhmm(minutos: number): string {
+  const m = (minutos + 24 * 60) % (24 * 60);
+  return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+}
+
+/**
+ * Lembrete das refeições (dentro do cartão de notificações): liga/desliga e a
+ * antecedência. Grava na hora no perfil; o envio é feito pelo servidor a cada
+ * 15 min, para todos os aparelhos com as notificações ativas. Independente do
+ * lembrete de aplicação.
+ */
+function LembreteRefeicoes({ perfil, estado }: { perfil: TipoPerfil; estado: EstadoNotificacao | null }) {
+  const { dieta, executar, limparErro } = useDados();
+  const salvoLigado = perfil.lembrete_refeicoes === true;
+  const salvoAntes = lerAntes(perfil.lembrete_refeicoes_antes);
+  const [ligado, setLigado] = useState(salvoLigado);
+  const [antes, setAntes] = useState(salvoAntes);
+  const [salvando, setSalvando] = useState(false);
+  const [msg, setMsg] = useState<{ tipo: string; texto: string } | null>(null);
+  useEffect(() => {
+    setLigado(salvoLigado);
+    setAntes(salvoAntes);
+  }, [salvoLigado, salvoAntes]);
+
+  async function salvar(novoLigado: boolean, novoAntes: number) {
+    setMsg(null);
+    setLigado(novoLigado);
+    setAntes(novoAntes);
+    setSalvando(true);
+    try {
+      await executar((r) =>
+        r.salvarPerfil({
+          ...perfil,
+          lembrete_refeicoes: novoLigado,
+          lembrete_refeicoes_antes: novoAntes,
+          // O horário do aviso é o do relógio deste aparelho
+          fuso_horario: Intl.DateTimeFormat().resolvedOptions().timeZone || perfil.fuso_horario || 'America/Sao_Paulo',
+        }),
+      );
+      setMsg({ tipo: 'info', texto: novoLigado ? 'Lembrete das refeições ligado.' : 'Lembrete das refeições desligado.' });
+    } catch (e) {
+      // Não salvou: volta ao que está no servidor
+      limparErro();
+      setLigado(salvoLigado);
+      setAntes(salvoAntes);
+      setMsg({ tipo: 'erro', texto: (e as Error).message });
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  // Refeições do plano com alimentos: as com horário recebem aviso
+  const refeicoes = lerRefeicoes(dieta?.refeicoes ?? []).filter((r) => r.itens.length);
+  const comHorario = refeicoes
+    .map((r) => ({ nome: r.nome, min: minutosDoHorario(r.horario) }))
+    .filter((r): r is { nome: string; min: number } => r.min !== null)
+    .sort((a, b) => a.min - b.min);
+  const semHorario = refeicoes.filter((r) => minutosDoHorario(r.horario) === null);
+
+  return (
+    <div className="pilha" style={{ gap: 10, borderTop: '1px solid var(--borda)', paddingTop: 12 }} aria-label="Lembrete das refeições" role="group">
+      <h3>Lembrete das refeições</h3>
+      <p className="mudo">
+        Avisa no horário de cada refeição do plano da aba Dieta, com o que comer. Refeição sem horário não é avisada. É separado do lembrete de
+        aplicação.
+      </p>
+      <div className="linha entre">
+        <span>Avisar as refeições</span>
+        <Escolhas
+          opcoes={[
+            { valor: 'sim', rotulo: 'Sim' },
+            { valor: 'nao', rotulo: 'Não' },
+          ]}
+          valor={ligado ? 'sim' : 'nao'}
+          aoMudar={(v) => v && !salvando && (v === 'sim') !== ligado && void salvar(v === 'sim', antes)}
+        />
+      </div>
+      {ligado && (
+        <Campo rotulo="Avisar" grupo dica="O servidor confere a cada 15 minutos: o aviso chega em até 15 minutos depois do momento escolhido.">
+          <Escolhas opcoes={OPCOES_ANTES} valor={antes} aoMudar={(v) => v !== null && !salvando && v !== antes && void salvar(true, v)} />
+        </Campo>
+      )}
+      {estado && estado !== 'ativo' && (
+        <div className="alerta">
+          {estado === 'ativo-sem-servidor'
+            ? 'Os avisos das refeições são enviados pelo servidor: sem a nuvem configurada, eles não chegam.'
+            : estado === 'pendente'
+              ? 'As notificações deste aparelho estão desligadas: toque em Ativar notificações acima para receber os avisos das refeições aqui.'
+              : 'As notificações deste aparelho não estão ativas (veja o aviso acima): os avisos das refeições não chegam aqui.'}{' '}
+          {ligado && estado !== 'ativo-sem-servidor' ? 'Outro celular seu com as notificações ativas continua recebendo.' : ''}
+        </div>
+      )}
+      {ligado &&
+        (!refeicoes.length ? (
+          <p className="texto-2">Monte o plano na aba Dieta para receber os avisos.</p>
+        ) : !comHorario.length ? (
+          <div className="alerta">Nenhuma refeição do plano tem horário: defina os horários na aba Dieta.</div>
+        ) : (
+          <p className="texto-2">
+            Avisos: {comHorario.map((r) => `${hhmm(r.min - antes)} ${r.nome}`).join(' · ')}.
+            {semHorario.length > 0 && ` Sem horário (sem aviso): ${semHorario.map((r) => r.nome).join(', ')}.`}
+          </p>
+        ))}
+      {msg && <div className={`alerta ${msg.tipo}`}>{msg.texto}</div>}
+    </div>
+  );
+}
 
 /** US Navy bruta (sem ajuste) de uma medição, com a altura do perfil. */
 function brutaDaMedida(m: Medida, perfil: TipoPerfil): number | null {
@@ -477,6 +589,7 @@ export function Perfil() {
         </div>
         {msgNotif && <div className={`alerta ${msgNotif.tipo}`}>{msgNotif.texto}</div>}
         {!ehIOS() && <p className="mudo">Ative em cada celular que você usar. Funciona melhor com o app instalado (menu do navegador → "Instalar app" / "Adicionar à tela inicial").</p>}
+        {perfil && <LembreteRefeicoes perfil={perfil} estado={estado} />}
       </section>
 
       <section className="cartao pilha">

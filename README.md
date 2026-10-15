@@ -6,7 +6,7 @@ App (PWA) de acompanhamento do ciclo de retatrutida e da composição corporal. 
 
 | Tela | Equivale a | Conteúdo |
 |---|---|---|
-| **Início** | Painel | Próxima dose (data, mg, UI, marcação prática, fase, local sugerido), medição de segunda, treino de hoje, dieta de hoje ("segui o plano?"), saldo do frasco e sobra depois do plano, registro do dia e antes × agora (medidas primeiro, com a meta) |
+| **Início** | Painel | Próxima dose (data, mg, UI, marcação prática, fase, local sugerido), medição de segunda, treino de hoje, "Fechar o dia" à noite (com "segui o plano?") e pendências de ontem pela manhã, saldo do frasco e sobra depois do plano, registro do dia e antes × agora (medidas primeiro, com a meta) |
 | **Ciclo → Agenda** | Diário + Semanal | Próximas aplicações projetadas e histórico (prevista × aplicada, atraso, saldo, peso médio e náusea máxima por semana) |
 | **Ciclo → Plano** | Plano | Fases editáveis, "Repetir fase (+4 semanas)", conferência do consumo × quantidade disponível e regras para subir de fase |
 | **Ciclo → Ajustes** | Painel (parâmetros) | Data da 1ª aplicação, quantidade (mg), concentração (mg/ml), intervalo e menor marcação da seringa |
@@ -103,7 +103,7 @@ Detalhes:
 - **Meta do dia** = gasto total ± déficit/superávit em kcal.
 - **Macros:** proteína animal em g/kg de **massa magra** (padrão 2), gordura em g/kg de **peso** (padrão 1). O **carboidrato fecha a conta**: `(meta − ptn animal × 4 − gordura × 9 − ptn vegetal do plano × 4) ÷ 4`. A proteína vegetal (arroz, feijão, pão…) aparece separada, sem meta, e consome kcal do carbo.
 - **Plano:** refeições com alimento, quantidade (g ou porção caseira: fatia, unidade, dose…) e Ptn A, Ptn V, Carb, Gord e kcal de cada item, por refeição e no total. A barra "Falta", fixa no rodapé, mostra quanto ainda falta de cada macro enquanto você monta e simula. As kcal sempre vêm dos macros (4/4/9).
-- **Banco de alimentos** (`src/dados/alimentos.json`, sem tela própria): 665 itens. São 590 da TACO (Unicamp, 4ª ed.), os da planilha Gorgonoidiana revisados, marcas, suplementos e carnes prontas comuns que a TACO não tem. **O alimento é sempre pesado pronto:** as versões cruas de carnes, peixes, ovos, feijões, arroz, massas e tubérculos não aparecem na busca. Saladas, frutas e o peixe de sashimi continuam crus. O de-para está em `docs/alimentos-depara.md`. Para regenerar: `python3 scripts/gerar_alimentos.py <pasta csv da TACO> src/dados/alimentos.json`.
+- **Banco de alimentos** (`src/dados/alimentos.json`, sem tela própria): 665 itens. São 590 da TACO (Unicamp, 4ª ed.), os da planilha Gorgonoidiana revisados, marcas, suplementos e carnes prontas comuns que a TACO não tem. **O alimento é sempre pesado pronto:** as versões cruas de carnes, peixes, ovos, feijões, arroz, massas e tubérculos não aparecem na busca. Saladas, frutas e o peixe de sashimi continuam crus. O de-para está em `docs/alimentos-depara.md`. Para regenerar: `python3 scripts/gerar_alimentos.py <pasta csv da TACO> src/dados/alimentos.json` e, em seguida, `node scripts/gerar_alimentos_funcao.mjs` (banco enxuto do lembrete das refeições).
 
 Para ativar: no **SQL Editor**, rode `supabase/ativar_dieta.sql`. A parte 2 é opcional e já monta o plano da planilha numa conta; antes, troque o e-mail.
 
@@ -131,6 +131,8 @@ O `pg_cron` chama a função `enviar-lembretes` a cada 15 minutos (migração `2
 - O lembrete é enviado a partir do horário escolhido no Perfil (padrão 08:00), no fuso do usuário, uma vez por dia.
 - Se a dose atrasar, o lembrete se repete diariamente, por até 14 dias, até a aplicação ser registrada.
 - Quando a sua parte do frasco acaba, os lembretes param.
+
+**Lembrete das refeições** (Perfil → Notificações neste aparelho, desligado por padrão): a mesma função avisa cada refeição do plano da aba Dieta que tem horário e alimentos, no horário ou 10, 15 ou 30 min antes, no fuso do perfil, com os itens na unidade do plano; tocar abre a aba Dieta. É independente do lembrete da dose (chave própria, `perfis.lembrete_refeicoes`): dá para ter um sem o outro. Cada refeição é avisada uma vez por dia (controle em `lembretes_refeicao_enviados`, migração `20261025000000_lembrete_refeicoes.sql`), e o aviso chega em até 15 min depois do momento escolhido. Os nomes dos alimentos vêm de `supabase/functions/_shared/alimentos.ts`, um banco enxuto (só nome e porções) gerado por `node scripts/gerar_alimentos_funcao.mjs` a partir de `src/dados/alimentos.json`; um teste falha se os dois saírem de sincronia.
 
 ### Funcionar sem sinal e atualizações
 

@@ -10,6 +10,10 @@ export interface Perfil {
   /** Horário local do lembrete, formato HH:MM */
   hora_lembrete: string;
   fuso_horario: string;
+  /** Lembrete das refeições por push (independente do lembrete da dose); ausente = desligado */
+  lembrete_refeicoes?: boolean;
+  /** Minutos antes do horário da refeição: 0 (no horário), 10, 15 ou 30 */
+  lembrete_refeicoes_antes?: number;
   /** Endereço secreto do calendário assinado (só na nuvem) */
   token_calendario?: string | null;
   /** Aba Treino liberada para esta conta (definido no banco) */
