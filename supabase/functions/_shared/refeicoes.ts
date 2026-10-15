@@ -152,11 +152,18 @@ export function avisosDaJanela(opcoes: {
   antes: unknown;
   janelaMin?: number;
   folgaMin?: number;
+  /** Quanto antes do momento escolhido o aviso pode sair (padrão: meia janela) */
+  adiantamentoMin?: number;
   jaEnviados?: ReadonlySet<string>;
 }): AvisoRefeicao[] {
   const fuso = fusoValido(opcoes.fuso);
   const antes = lerAntes(opcoes.antes);
   const de = opcoes.agora - ((opcoes.janelaMin ?? JANELA_MIN) + (opcoes.folgaMin ?? FOLGA_MIN)) * 60_000;
+  // O servidor confere a cada 15 min: o aviso sai na conferência mais próxima do
+  // momento escolhido (até meia janela antes), e não na seguinte. Assim "10 min
+  // antes" de 10:30 sai às 10:15, e não às 10:30. A folga para trás continua
+  // cobrindo conferências atrasadas ou perdidas; o controle de enviados evita repetir.
+  const ate = opcoes.agora + (opcoes.adiantamentoMin ?? (opcoes.janelaMin ?? JANELA_MIN) / 2) * 60_000;
   const hoje = diaNoFuso(opcoes.agora, fuso).dia;
   const avisos: AvisoRefeicao[] = [];
   const vistos = new Set(opcoes.jaEnviados ?? []);
@@ -168,7 +175,7 @@ export function avisosDaJanela(opcoes: {
       if (minutos === null || !r.itens.length) continue;
       const instanteRefeicao = instanteNoFuso(dia, minutos, fuso);
       const instanteAviso = instanteRefeicao - antes * 60_000;
-      if (instanteAviso <= de || instanteAviso > opcoes.agora) continue;
+      if (instanteAviso <= de || instanteAviso > ate) continue;
       const chave = `${dia}|${r.id}`;
       if (vistos.has(chave)) continue;
       vistos.add(chave);

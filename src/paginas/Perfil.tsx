@@ -115,7 +115,7 @@ function LembreteRefeicoes({ perfil, estado }: { perfil: TipoPerfil; estado: Est
         />
       </div>
       {ligado && (
-        <Campo rotulo="Avisar" grupo dica="O servidor confere a cada 15 minutos: o aviso chega em até 15 minutos depois do momento escolhido.">
+        <Campo rotulo="Avisar" grupo dica="O servidor confere a cada 15 minutos: o aviso chega na conferência mais próxima, até uns 7 minutos antes ou depois do momento escolhido.">
           <Escolhas opcoes={OPCOES_ANTES} valor={antes} aoMudar={(v) => v !== null && !salvando && v !== antes && void salvar(true, v)} />
         </Campo>
       )}

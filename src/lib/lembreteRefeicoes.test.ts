@@ -32,8 +32,14 @@ describe('Qual refeição avisar nesta execução', () => {
     expect(quais('2026-10-15T10:30:00-03:00')).toEqual(['2026-10-15 Refeição 2']);
     expect(quais('2026-10-15T10:30:40-03:00')).toEqual(['2026-10-15 Refeição 2']);
     expect(quais('2026-10-15T10:44:59-03:00')).toEqual(['2026-10-15 Refeição 2']);
-    // Antes do horário, ainda não
-    expect(quais('2026-10-15T10:29:00-03:00')).toEqual([]);
+    // A conferência mais próxima do horário pode avisar até meia janela (7,5 min) antes; antes disso, ainda não
+    expect(quais('2026-10-15T10:23:00-03:00')).toEqual(['2026-10-15 Refeição 2']);
+    expect(quais('2026-10-15T10:22:00-03:00')).toEqual([]);
+  });
+
+  it('"10 min antes" de 10:30 sai na conferência das 10:15 (a mais próxima), não só às 10:30', () => {
+    expect(quais('2026-10-15T10:15:00-03:00', { antes: 10 })).toEqual(['2026-10-15 Refeição 2']);
+    expect(quais('2026-10-15T10:00:00-03:00', { antes: 10 })).toEqual([]);
   });
 
   it('janela de 15 min + 5 de folga: a execução atrasada ainda avisa; depois disso, não', () => {
@@ -114,7 +120,8 @@ describe('Execuções seguidas do agendador (atrasadas e repetidas)', () => {
       for (let v = 0; v < (k % 13 === 0 ? 2 : 1); v++) {
         const agora = inicio + k * 15 * 60_000 + ((k * 7919) % 240) * 1000 + v * 1000;
         for (const a of avisosDaJanela({ refeicoes: plano, agora, fuso, antes, jaEnviados: new Set(enviados.keys()) })) {
-          expect(agora).toBeGreaterThanOrEqual(a.instante_aviso);
+          // Nunca mais de meia janela adiantado nem mais de 20 min atrasado
+          expect(a.instante_aviso - agora).toBeLessThanOrEqual(7.5 * 60_000);
           expect(agora - a.instante_aviso).toBeLessThanOrEqual(20 * 60_000);
           enviados.set(`${a.dia}|${a.refeicao_id}`, (enviados.get(`${a.dia}|${a.refeicao_id}`) ?? 0) + 1);
         }
