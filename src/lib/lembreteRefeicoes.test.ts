@@ -103,6 +103,41 @@ describe('Qual refeição avisar nesta execução', () => {
   });
 });
 
+describe('Execuções seguidas do agendador (atrasadas e repetidas)', () => {
+  // Simula o pg_cron a cada 15 min por 2 dias, com atraso de até 4 min e algumas
+  // execuções em dobro, guardando o que foi enviado como a tabela de controle
+  function simular(fuso: string, antes: number, inicioIso: string) {
+    const plano = ['00:00', '00:05', '01:30', '07:30', '10:20', '23:55'].map((h) => ref(h, h));
+    const enviados = new Map<string, number>();
+    const inicio = em(inicioIso);
+    for (let k = 0; k < 2 * 96; k++) {
+      for (let v = 0; v < (k % 13 === 0 ? 2 : 1); v++) {
+        const agora = inicio + k * 15 * 60_000 + ((k * 7919) % 240) * 1000 + v * 1000;
+        for (const a of avisosDaJanela({ refeicoes: plano, agora, fuso, antes, jaEnviados: new Set(enviados.keys()) })) {
+          expect(agora).toBeGreaterThanOrEqual(a.instante_aviso);
+          expect(agora - a.instante_aviso).toBeLessThanOrEqual(20 * 60_000);
+          enviados.set(`${a.dia}|${a.refeicao_id}`, (enviados.get(`${a.dia}|${a.refeicao_id}`) ?? 0) + 1);
+        }
+      }
+    }
+    return { plano, enviados };
+  }
+
+  it('São Paulo, 30 min antes: cada refeição do dia inteiro uma vez só, inclusive na virada', () => {
+    const { plano, enviados } = simular(SP, 30, '2026-10-14T23:00:00-03:00');
+    expect([...enviados.values()].every((n) => n === 1)).toBe(true);
+    for (const r of plano) expect(enviados.has(`2026-10-15|${r.id}`), r.id).toBe(true);
+    // 00:00 e 00:05 do dia 16 saem na noite do dia 15 (23:30 e 23:35)
+    expect(enviados.has('2026-10-16|00:05')).toBe(true);
+  });
+
+  it('Nova York na volta do horário de verão (01:30 acontece duas vezes): um aviso só', () => {
+    const { plano, enviados } = simular('America/New_York', 10, '2026-10-31T12:00:00Z');
+    expect([...enviados.values()].every((n) => n === 1)).toBe(true);
+    for (const r of plano) expect(enviados.has(`2026-11-01|${r.id}`), r.id).toBe(true);
+  });
+});
+
 describe('Texto da notificação', () => {
   const mapa: MapaAlimentos = {
     uva: ['Uva, Rubi', []],

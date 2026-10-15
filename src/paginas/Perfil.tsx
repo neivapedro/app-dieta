@@ -92,7 +92,8 @@ function LembreteRefeicoes({ perfil, estado }: { perfil: TipoPerfil; estado: Est
   const comHorario = refeicoes
     .map((r) => ({ nome: r.nome, min: minutosDoHorario(r.horario) }))
     .filter((r): r is { nome: string; min: number } => r.min !== null)
-    .sort((a, b) => a.min - b.min);
+    // Na ordem dos avisos ao longo do dia (o de uma refeição de 00:05 com 30 min antes sai às 23:35, na véspera)
+    .sort((a, b) => ((a.min - antes + 1440) % 1440) - ((b.min - antes + 1440) % 1440));
   const semHorario = refeicoes.filter((r) => minutosDoHorario(r.horario) === null);
 
   return (
