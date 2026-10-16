@@ -667,4 +667,5 @@ export const ALIMENTOS: Record<string, readonly [string, readonly (readonly [str
   "t437p": ["Porco, rabo, cozido (estimado)", []],
   "t19p": ["Canjica, branca, cozida (estimado)", []],
   "x67": ["Iogurte líquido zero lactose, desnatado, morango (Itambé Zero)", [["copo",200]]],
+  "x68": ["Whey Isolate Protein Fuse, chocolate (Dark Lab)", [["porção de 1,5 dosador",40],["dosador",26.7]]],
 };

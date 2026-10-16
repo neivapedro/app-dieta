@@ -232,6 +232,8 @@ extras = [
     ('x65', 'Grão-de-bico, cozido', 'Leguminosas', 8.9, 27.4, 2.6, 7.6, 0, [('concha', 140)], 'USDA'),
     ('x66', 'Guandu, cozido', 'Leguminosas', 6.8, 23.3, 0.4, 6.7, 0, [('concha', 140)], 'USDA'),
     ('x67', 'Iogurte líquido zero lactose, desnatado, morango (Itambé Zero)', LEITE, 3.0, 3.4, 0, 0, 1, [('copo', 200)], 'Rótulo Itambé (por 100 g)'),
+    # Blend (soro de leite, caseinato, albumina e proteína isolada de soja): conta como animal, que é a maior parte
+    ('x68', 'Whey Isolate Protein Fuse, chocolate (Dark Lab)', SUP, *POR30(19.5, 6.375, 0.75), 0, 1, [('porção de 1,5 dosador', 40), ('dosador', 26.7)], 'Rótulo Dark Lab (40 g = 147 kcal)'),
     ('x64', 'Inhame, cozido', 'Verduras, legumes e tubérculos', 0.5, 34.6, 0.1, 5.1, 0, [], 'USDA (taro cozido)'),
 ]
 for e in extras:
