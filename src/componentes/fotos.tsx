@@ -46,6 +46,18 @@ import {
   reduzirImagem,
 } from '../lib/imagem';
 import type { ImagemPdf } from '../lib/relatorioPdf';
+import {
+  alternarZoom,
+  ampliada,
+  areaConteudo,
+  assentarVista,
+  limitarVista,
+  textoEscala,
+  VISTA_INICIAL,
+  vistaDaPinca,
+  type Ponto,
+  type Vista,
+} from '../lib/zoom';
 import { BotaoExcluir, Campo, Escolhas, Folha } from './ui';
 
 export interface FotoTela extends FotoGuardada {
@@ -586,6 +598,7 @@ function Visualizador({
           alt={`${ROTULO_SESSAO[vista.sessao]}, ${vista.rotulo === 'outra' ? 'sem rótulo' : ROTULO_FOTO[vista.rotulo]}, ${formatarData(vista.data, true)}`}
           aoIr={ir}
         />
+        <p className="mudo dica foto-dica">Dois dedos ou toque duplo para dar zoom.</p>
         {lista.length > 1 && (
           <div className="foto-navegar">
             <button type="button" className="botao pequeno" disabled={!anterior} onClick={() => ir(anterior)} aria-label="Foto anterior">
@@ -686,6 +699,11 @@ export async function prepararFotosPdf(fotos: FotoGuardada[]): Promise<Map<strin
  * Foto que acompanha o dedo, como num feed: só ela anda para o lado (a página
  * fica parada). A vizinha aparece na borda e, ao soltar depois de um terço da
  * largura (ou num gesto rápido), a troca termina com animação.
+ *
+ * Zoom só na foto atual: pinça (1× a 4×, no meio dos dedos) ou toque duplo
+ * (2,5× no ponto tocado / volta ao normal). Ampliada, um dedo arrasta a foto e
+ * a troca de foto e a rolagem da folha ficam desligadas. Trocar de foto volta
+ * ao normal (o componente é recriado a cada foto).
  */
 function CarrosselFoto({
   atual,
@@ -701,9 +719,47 @@ function CarrosselFoto({
   aoIr: (f: FotoTela | null) => void;
 }) {
   const caixa = useRef<HTMLDivElement>(null);
+  const foto = useRef<HTMLImageElement>(null);
   const gesto = useRef<{ x: number; y: number; t: number; horizontal: boolean | null } | null>(null);
   const [dx, setDx] = useState(0);
+  // Deslocamento da faixa também num ref (a pinça que começa no meio de um deslize precisa do valor mais novo)
+  const dxAtual = useRef(0);
   const [indo, setIndo] = useState<'anterior' | 'proxima' | null>(null);
+
+  // Zoom: a vista fica também num ref para os eventos lerem o valor mais novo
+  const [vista, setVista] = useState<Vista>(VISTA_INICIAL);
+  const [animar, setAnimar] = useState(false);
+  const vistaAtual = useRef<Vista>(VISTA_INICIAL);
+  const animando = useRef(false);
+  // Dedos (ou mouse) do gesto da foto, na posição da tela (inclui dedo que caiu fora dela durante a pinça)
+  const dedos = useRef(new Map<number, Ponto>());
+  // Todos os dedos na tela agora (um dedo pode cair fora da foto, na dica logo abaixo, e ainda fazer parte da pinça)
+  const naTela = useRef(new Map<number, Ponto>());
+  // Toques (TouchEvent) que começaram na foto: só eles fazem a página ficar parada
+  const nossos = useRef(new Set<number>());
+  // Arraste da foto ampliada (livre: o que sobrou de uma pinça, sem limite até soltar) ou pinça em andamento
+  const mao = useRef<
+    | { tipo: 'arraste'; id: number; p0: Ponto; v0: Vista; livre: boolean; ancora0?: Ponto }
+    | { tipo: 'pinca'; meio0: Ponto; dist0: number; v0: Vista; meio: Ponto }
+    | null
+  >(null);
+  // Depois de uma pinça, segura a folha até soltar todos os dedos
+  const segurar = useRef(false);
+  // Para reconhecer o toque duplo
+  const toque = useRef<{ x: number; y: number; t: number; mexeu: boolean; varios: boolean } | null>(null);
+  const ultimoToque = useRef<{ x: number; y: number; t: number } | null>(null);
+  const duploEm = useRef(-Infinity);
+
+  const mudarVista = (v: Vista, comAnimacao = false) => {
+    vistaAtual.current = v;
+    animando.current = comAnimacao;
+    setVista(v);
+    setAnimar(comAnimacao);
+  };
+  const mudarDx = (v: number) => {
+    dxAtual.current = v;
+    setDx(v);
+  };
 
   // Garantia: se o navegador não avisar o fim da animação, troca assim mesmo
   useEffect(() => {
@@ -712,50 +768,352 @@ function CarrosselFoto({
     return () => clearTimeout(t);
   }, [indo, aoIr, proxima, anterior]);
 
+  // Fim da animação do zoom (0,25 s): desliga a transição
+  useEffect(() => {
+    if (!animar) return;
+    const t = setTimeout(() => {
+      animando.current = false;
+      setAnimar(false);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [animar, vista]);
+
   const largura = () => caixa.current?.clientWidth ?? 1;
   const terminar = (x: number, t: number) => {
     const g = gesto.current;
     gesto.current = null;
-    if (!g || !g.horizontal) return setDx(0);
+    if (!g || !g.horizontal) return mudarDx(0);
     const desloc = x - g.x;
     const rapido = Math.abs(desloc) / Math.max(t - g.t, 1) > 0.5;
     const passou = Math.abs(desloc) > largura() / 3 || (rapido && Math.abs(desloc) > 30);
     if (passou && desloc < 0 && proxima) return setIndo('proxima');
     if (passou && desloc > 0 && anterior) return setIndo('anterior');
-    setDx(0);
+    mudarDx(0);
   };
+
+  // Ponto da tela → px relativos à foto sem transformação (ela fica no canto da caixa)
+  const local = (p: Ponto): Ponto => {
+    const r = caixa.current?.getBoundingClientRect();
+    return r ? { x: p.x - r.left, y: p.y - r.top } : p;
+  };
+  // Janela (a própria foto, sem zoom) e o desenho dentro dela (object-fit: contain deixa faixas)
+  const medidas = () => {
+    const img = foto.current;
+    const janela = { w: img?.offsetWidth || 1, h: img?.offsetHeight || 1 };
+    return { janela, conteudo: areaConteudo(janela, { w: img?.naturalWidth ?? 0, h: img?.naturalHeight ?? 0 }) };
+  };
+  // Animação do zoom em andamento: para onde a foto está agora (o gesto novo continua dali, sem pulo)
+  const congelar = () => {
+    if (!animando.current) return;
+    const img = foto.current;
+    const t = img ? getComputedStyle(img).transform : 'none';
+    let v = vistaAtual.current;
+    if (t && t !== 'none' && typeof DOMMatrixReadOnly !== 'undefined') {
+      try {
+        const m = new DOMMatrixReadOnly(t);
+        v = { x: m.e, y: m.f, s: m.a };
+      } catch {
+        // fica com o alvo da animação
+      }
+    }
+    mudarVista(v);
+  };
+  const doisDedos = () => {
+    const [a, b] = [...dedos.current.values()];
+    return { meio: local({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }), dist: Math.hypot(a.x - b.x, a.y - b.y) };
+  };
+  const comecarPinca = () => {
+    congelar();
+    const { meio, dist } = doisDedos();
+    mao.current = { tipo: 'pinca', meio0: meio, dist0: dist, v0: vistaAtual.current, meio };
+    segurar.current = true;
+  };
+  const comecarArraste = (id: number, livre: boolean, ancora0?: Ponto) => {
+    congelar();
+    const p = dedos.current.get(id);
+    if (!p) return;
+    mao.current = { tipo: 'arraste', id, p0: p, v0: vistaAtual.current, livre, ancora0 };
+    try {
+      caixa.current?.setPointerCapture?.(id);
+    } catch {
+      // o ponteiro já não está ativo
+    }
+  };
+  // Fim do gesto: volta para 1×–4× e para dentro das bordas, com animação (se estiver fora)
+  const assentar = (p?: Ponto) => {
+    const { janela, conteudo } = medidas();
+    const v = vistaAtual.current;
+    const alvo = assentarVista(v, janela, conteudo, p);
+    if (Math.abs(alvo.x - v.x) > 0.5 || Math.abs(alvo.y - v.y) > 0.5 || Math.abs(alvo.s - v.s) > 0.001) mudarVista(alvo, true);
+  };
+
+  type EventoDedo = Pick<PointerEvent, 'pointerId' | 'clientX' | 'clientY' | 'timeStamp' | 'isPrimary' | 'pointerType' | 'button'>;
+
+  const baixar = (e: EventoDedo) => {
+    if (indo) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    // Primeiro dedo de um toque novo: esquece restos de um gesto perdido
+    if (e.isPrimary) {
+      dedos.current.clear();
+      mao.current = null;
+      gesto.current = null;
+    }
+    // Dedo que já estava na tela fora da foto (ex.: na dica): entra no gesto, para a pinça valer
+    if (e.pointerType !== 'mouse') {
+      for (const [id, p] of naTela.current) if (id !== e.pointerId && !dedos.current.has(id)) dedos.current.set(id, p);
+    }
+    dedos.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (dedos.current.size === 1) {
+      toque.current = { x: e.clientX, y: e.clientY, t: e.timeStamp, mexeu: false, varios: false };
+      // Ampliada: o dedo arrasta a foto (sem trocar de foto)
+      if (ampliada(vistaAtual.current)) comecarArraste(e.pointerId, false);
+      else gesto.current = { x: e.clientX, y: e.clientY, t: e.timeStamp, horizontal: null };
+    } else if (dedos.current.size === 2) {
+      if (toque.current) toque.current.varios = true;
+      // Segundo dedo: a troca de foto para e começa a pinça. A foto fica onde está
+      // (o deslocamento da faixa passa para a própria foto, que depois assenta).
+      if (gesto.current) {
+        gesto.current = null;
+        if (dxAtual.current) {
+          const v = vistaAtual.current;
+          mudarVista({ ...v, x: v.x + dxAtual.current });
+          mudarDx(0);
+        }
+      }
+      comecarPinca();
+    }
+  };
+
+  const mover = (e: EventoDedo) => {
+    if (!dedos.current.has(e.pointerId)) return;
+    const p = { x: e.clientX, y: e.clientY };
+    dedos.current.set(e.pointerId, p);
+    const tq = toque.current;
+    if (tq && Math.hypot(p.x - tq.x, p.y - tq.y) > 10) tq.mexeu = true;
+
+    const m = mao.current;
+    if (m?.tipo === 'pinca') {
+      if (dedos.current.size < 2) return;
+      const { meio, dist } = doisDedos();
+      m.meio = meio;
+      mudarVista(vistaDaPinca(m.v0, m.meio0, m.dist0, meio, dist));
+      return;
+    }
+    if (m?.tipo === 'arraste') {
+      if (m.id !== e.pointerId) return;
+      const v = { x: m.v0.x + p.x - m.p0.x, y: m.v0.y + p.y - m.p0.y, s: m.v0.s };
+      if (m.livre) return mudarVista(v);
+      const { janela, conteudo } = medidas();
+      mudarVista(limitarVista(v, janela, conteudo));
+      return;
+    }
+
+    const g = gesto.current;
+    if (!g) return;
+    const ddx = e.clientX - g.x;
+    const ddy = e.clientY - g.y;
+    // Decide no começo se o gesto é para o lado (troca de foto) ou para cima/baixo (rolar a folha)
+    if (g.horizontal === null && (Math.abs(ddx) > 8 || Math.abs(ddy) > 8)) {
+      g.horizontal = Math.abs(ddx) > Math.abs(ddy);
+      if (g.horizontal) {
+        try {
+          caixa.current?.setPointerCapture?.(e.pointerId);
+        } catch {
+          // sem captura: segue assim mesmo
+        }
+      }
+    }
+    if (!g.horizontal) return;
+    // Na primeira ou na última foto, o arraste resiste (não há vizinha)
+    const semVizinha = (ddx > 0 && !anterior) || (ddx < 0 && !proxima);
+    mudarDx(semVizinha ? ddx * 0.25 : ddx);
+  };
+
+  // A pinça perdeu um dedo: o que sobrou continua arrastando de onde a foto está (sem pulo); assenta ao soltar
+  const sobrouUm = (meio: Ponto) => {
+    mao.current = null;
+    const [resto] = [...dedos.current.keys()];
+    if (resto !== undefined) comecarArraste(resto, true, meio);
+  };
+
+  const soltar = (e: EventoDedo) => {
+    if (!dedos.current.has(e.pointerId)) return;
+    dedos.current.delete(e.pointerId);
+    const m = mao.current;
+    let ancora: Ponto | undefined;
+    if (m?.tipo === 'pinca') {
+      ancora = m.meio;
+      if (dedos.current.size >= 2) comecarPinca();
+      else sobrouUm(m.meio);
+    } else if (m?.tipo === 'arraste') {
+      if (m.id === e.pointerId) {
+        mao.current = null;
+        // O meio da pinça (andou junto com o dedo que sobrou) ou o próprio dedo
+        ancora = m.ancora0 ? { x: m.ancora0.x + e.clientX - m.p0.x, y: m.ancora0.y + e.clientY - m.p0.y } : local({ x: e.clientX, y: e.clientY });
+      }
+    } else if (gesto.current) terminar(e.clientX, e.timeStamp);
+
+    if (dedos.current.size > 0) return;
+    // Soltou todos os dedos
+    mao.current = null;
+    segurar.current = false;
+    const tq = toque.current;
+    toque.current = null;
+    // Toque duplo: dois toques curtos, parados e perto um do outro
+    if (tq && !tq.mexeu && !tq.varios && e.timeStamp - tq.t < 350) {
+      const ult = ultimoToque.current;
+      if (ult && e.timeStamp - ult.t < 400 && Math.hypot(e.clientX - ult.x, e.clientY - ult.y) < 40) {
+        ultimoToque.current = null;
+        duploEm.current = e.timeStamp;
+        const { janela, conteudo } = medidas();
+        mudarVista(alternarZoom(vistaAtual.current, local({ x: e.clientX, y: e.clientY }), janela, conteudo), true);
+        return;
+      }
+      ultimoToque.current = { x: e.clientX, y: e.clientY, t: e.timeStamp };
+    } else ultimoToque.current = null;
+    assentar(ancora);
+  };
+
+  const cancelar = (e: EventoDedo) => {
+    dedos.current.delete(e.pointerId);
+    gesto.current = null;
+    toque.current = null;
+    ultimoToque.current = null;
+    mudarDx(0);
+    const m = mao.current;
+    if (dedos.current.size === 0) {
+      segurar.current = false;
+      mao.current = null;
+      if (m) assentar(m.tipo === 'pinca' ? m.meio : undefined);
+    } else if (m?.tipo === 'pinca' && dedos.current.size < 2) sobrouUm(m.meio);
+    else if (m?.tipo === 'arraste' && m.id === e.pointerId) mao.current = null;
+  };
+
+  // Os ouvintes do documento chamam sempre as funções do último render
+  const manip = useRef({ baixar, mover, soltar, cancelar });
+  manip.current = { baixar, mover, soltar, cancelar };
+
+  // Ouvintes nativos no documento, enquanto a foto está aberta:
+  // - dedos que caem fora da foto (ex.: na dica logo abaixo) também contam na pinça;
+  // - o navegador não pode tomar a pinça nem o arraste da foto ampliada (rolar a
+  //   folha ou dar zoom na página). O touch-action é decidido no começo do toque
+  //   (e o Safari do iPhone ignora parte dele), então cancela à mão; precisa de
+  //   ouvintes não passivos. Um dedo com a foto normal segue livre (rolar a folha).
+  useEffect(() => {
+    const el = caixa.current;
+    if (!el) return;
+    const dentro = (t: EventTarget | null) => t instanceof Node && el.contains(t);
+
+    const pDown = (e: PointerEvent) => {
+      if (e.pointerType === 'mouse') return;
+      if (e.isPrimary) naTela.current.clear();
+      naTela.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (!dentro(e.target) && dedos.current.size > 0) manip.current.baixar(e);
+    };
+    const pMove = (e: PointerEvent) => {
+      if (naTela.current.has(e.pointerId)) naTela.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (!dentro(e.target) && dedos.current.has(e.pointerId)) manip.current.mover(e);
+    };
+    const pUp = (e: PointerEvent) => {
+      naTela.current.delete(e.pointerId);
+      if (!dentro(e.target) && dedos.current.has(e.pointerId)) manip.current.soltar(e);
+    };
+    const pCancel = (e: PointerEvent) => {
+      naTela.current.delete(e.pointerId);
+      if (!dentro(e.target) && dedos.current.has(e.pointerId)) manip.current.cancelar(e);
+    };
+
+    const bloquear = (e: TouchEvent) => {
+      if (e.cancelable && nossos.current.size > 0 && (e.touches.length >= 2 || segurar.current || ampliada(vistaAtual.current)))
+        e.preventDefault();
+    };
+    const tStart = (e: TouchEvent) => {
+      const ativos = new Set(Array.from(e.touches, (t) => t.identifier));
+      for (const id of nossos.current) if (!ativos.has(id)) nossos.current.delete(id);
+      for (const t of Array.from(e.changedTouches)) if (dentro(t.target)) nossos.current.add(t.identifier);
+      bloquear(e);
+    };
+    const tEnd = (e: TouchEvent) => {
+      const eraNosso = Array.from(e.changedTouches).some((t) => nossos.current.has(t.identifier));
+      // Toque duplo reconhecido: sem clique nem zoom do navegador
+      if (eraNosso && e.cancelable && e.timeStamp - duploEm.current < 300) e.preventDefault();
+      for (const t of Array.from(e.changedTouches)) nossos.current.delete(t.identifier);
+    };
+    // Safari: gestos de pinça da página que envolvem a foto
+    const gestoSafari = (e: Event) => {
+      if (nossos.current.size > 0 || dentro(e.target)) e.preventDefault();
+    };
+
+    const nao = { passive: false, capture: true } as const;
+    const cap = { capture: true } as const;
+    const ponteiro: [string, (e: PointerEvent) => void][] = [
+      ['pointerdown', pDown],
+      ['pointermove', pMove],
+      ['pointerup', pUp],
+      ['pointercancel', pCancel],
+    ];
+    const toques: [string, (e: TouchEvent) => void][] = [
+      ['touchstart', tStart],
+      ['touchmove', bloquear],
+      ['touchend', tEnd],
+      ['touchcancel', tEnd],
+    ];
+    const gestos = ['gesturestart', 'gesturechange', 'gestureend'];
+    for (const [n, f] of ponteiro) document.addEventListener(n, f as EventListener, cap);
+    for (const [n, f] of toques) document.addEventListener(n, f as EventListener, nao);
+    for (const g of gestos) document.addEventListener(g, gestoSafari, nao);
+    return () => {
+      for (const [n, f] of ponteiro) document.removeEventListener(n, f as EventListener, cap);
+      for (const [n, f] of toques) document.removeEventListener(n, f as EventListener, nao);
+      for (const g of gestos) document.removeEventListener(g, gestoSafari, nao);
+    };
+  }, []);
+
+  // A foto mudou de tamanho (girou o celular, janela mudou): a vista ampliada acompanha e volta para dentro das bordas
+  const tamanho = useRef({ w: 0, h: 0 });
+  const relimitar = () => {
+    const img = foto.current;
+    if (!img) return;
+    const novo = { w: img.offsetWidth, h: img.offsetHeight };
+    const ant = tamanho.current;
+    tamanho.current = novo;
+    if (mao.current || !ampliada(vistaAtual.current)) return;
+    const v = vistaAtual.current;
+    const kx = ant.w > 0 ? novo.w / ant.w : 1;
+    const ky = ant.h > 0 ? novo.h / ant.h : 1;
+    const { janela, conteudo } = medidas();
+    mudarVista(limitarVista({ x: v.x * kx, y: v.y * ky, s: v.s }, janela, conteudo));
+  };
+  const relimitarAtual = useRef(relimitar);
+  relimitarAtual.current = relimitar;
+  useEffect(() => {
+    const img = foto.current;
+    if (!img) return;
+    tamanho.current = { w: img.offsetWidth, h: img.offsetHeight };
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => {
+      const t = tamanho.current;
+      if (img.offsetWidth !== t.w || img.offsetHeight !== t.h) relimitarAtual.current();
+    });
+    ro.observe(img);
+    return () => ro.disconnect();
+  }, []);
 
   // Posição da faixa [anterior | atual | próxima]: a atual fica no meio
   const base = indo === 'proxima' ? -200 : indo === 'anterior' ? 0 : -100;
-  const arrastando = gesto.current?.horizontal && !indo;
+  const arrastando = (gesto.current?.horizontal && !indo) || mao.current?.tipo === 'pinca';
+  const zoom = ampliada(vista);
+  // Camada própria para a foto só durante o gesto ou a animação (pintura leve; parada, ela volta nítida)
+  const camada = mao.current !== null || animar;
   return (
     <div
       ref={caixa}
-      className="foto-carrossel"
-      onPointerDown={(e) => {
-        if (indo) return;
-        gesto.current = { x: e.clientX, y: e.clientY, t: e.timeStamp, horizontal: null };
-      }}
-      onPointerMove={(e) => {
-        const g = gesto.current;
-        if (!g) return;
-        const ddx = e.clientX - g.x;
-        const ddy = e.clientY - g.y;
-        // Decide no começo se o gesto é para o lado (troca de foto) ou para cima/baixo (rolar a folha)
-        if (g.horizontal === null && (Math.abs(ddx) > 8 || Math.abs(ddy) > 8)) {
-          g.horizontal = Math.abs(ddx) > Math.abs(ddy);
-          if (g.horizontal) (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
-        }
-        if (!g.horizontal) return;
-        // Na primeira ou na última foto, o arraste resiste (não há vizinha)
-        const semVizinha = (ddx > 0 && !anterior) || (ddx < 0 && !proxima);
-        setDx(semVizinha ? ddx * 0.25 : ddx);
-      }}
-      onPointerUp={(e) => terminar(e.clientX, e.timeStamp)}
-      onPointerCancel={() => {
-        gesto.current = null;
-        setDx(0);
-      }}
+      className={`foto-carrossel${zoom ? ' ampliada' : ''}${camada ? ' gesto-zoom' : ''}`}
+      data-zoom={textoEscala(vista.s)}
+      onPointerDown={(e) => baixar(e)}
+      onPointerMove={(e) => mover(e)}
+      onPointerUp={(e) => soltar(e)}
+      onPointerCancel={(e) => cancelar(e)}
     >
       <div
         className="foto-faixa"
@@ -769,7 +1127,21 @@ function CarrosselFoto({
       >
         <div className="foto-slide">{anterior && <img className="foto-grande" src={anterior.url} alt="" draggable={false} />}</div>
         <div className="foto-slide">
-          <img className="foto-grande" src={atual.url} alt={alt} draggable={false} />
+          <img
+            ref={foto}
+            className="foto-grande"
+            src={atual.url}
+            alt={alt}
+            draggable={false}
+            onLoad={() => relimitar()}
+            style={{
+              transform: `translate(${vista.x}px, ${vista.y}px) scale(${vista.s})`,
+              transformOrigin: '0 0',
+              transition: animar ? 'transform 0.25s ease-out' : 'none',
+              // O canto arredondado não cresce com o zoom
+              borderRadius: zoom ? `${12 / vista.s}px` : undefined,
+            }}
+          />
         </div>
         <div className="foto-slide">{proxima && <img className="foto-grande" src={proxima.url} alt="" draggable={false} />}</div>
       </div>
