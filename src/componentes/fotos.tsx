@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Link } from 'react-router-dom';
 import { useDados } from '../dados/contexto';
 import {
@@ -177,6 +177,9 @@ function NumerosSessao({
 
 /** Fotos escolhidas de uma vez para uma sessão, salvas uma a uma. */
 interface Lote {
+  /** Identifica o lote (as atualizações de um lote antigo não mexem num novo) */
+  id: number;
+  usuario: string;
   sessao: Sessao;
   arquivos: File[];
   fase: 'escolher' | 'salvando' | 'fim';
@@ -186,6 +189,29 @@ interface Lote {
   erros: { nome: string; motivo: string }[];
   /** Folha visível (dá para fechar enquanto salva: o card mostra o progresso) */
   aberta: boolean;
+  /** A pessoa tocou em Parar: termina a foto atual e não salva as seguintes */
+  parar?: boolean;
+  /** Quantas ficaram sem salvar por causa do Parar */
+  paradas: number;
+}
+
+// O lote em andamento fica fora do cartão: sair da aba Medidas no meio do
+// salvamento não perde o progresso nem a lista das fotos com problema.
+let loteAtual: Lote | null = null;
+let proximoLote = 1;
+const ouvintesLote = new Set<() => void>();
+function mudarLote(mudanca: Lote | null | ((l: Lote | null) => Lote | null)) {
+  loteAtual = typeof mudanca === 'function' ? mudanca(loteAtual) : mudanca;
+  for (const cb of ouvintesLote) cb();
+}
+function useLote(): Lote | null {
+  return useSyncExternalStore(
+    (cb) => {
+      ouvintesLote.add(cb);
+      return () => ouvintesLote.delete(cb);
+    },
+    () => loteAtual,
+  );
 }
 
 const OPCOES_ROTULO = ROTULOS.map((r) => ({ valor: r, rotulo: r === 'outra' ? 'Sem rótulo / Outra' : ROTULO_FOTO[r] }));
@@ -204,7 +230,9 @@ export function CartaoFotos() {
   const feminino = perfil?.sexo === 'Feminino';
   const entrada = useRef<HTMLInputElement>(null);
   const alvo = useRef<Sessao | null>(null);
-  const [lote, setLote] = useState<Lote | null>(null);
+  const loteGlobal = useLote();
+  // Lote de outra conta (trocou de conta no meio) não aparece aqui
+  const lote = loteGlobal && loteGlobal.usuario === usuario?.id ? loteGlobal : null;
   const [msg, setMsg] = useState<{ tipo: 'info' | 'erro'; texto: string } | null>(null);
   const [vendo, setVendo] = useState<string | null>(null);
   if (!usuario) return null;
@@ -221,15 +249,22 @@ export function CartaoFotos() {
     const arquivos = lista ? Array.from(lista) : [];
     if (entrada.current) entrada.current.value = '';
     if (!sessao || !arquivos.length) return;
-    setLote({ sessao, arquivos, fase: 'escolher', atual: 0, salvas: 0, erros: [], aberta: true });
+    mudarLote({ id: proximoLote++, usuario: usuarioId, sessao, arquivos, fase: 'escolher', atual: 0, salvas: 0, erros: [], aberta: true, paradas: 0 });
   }
 
   async function salvarLote(l: Lote, data: string, rotulo: Rotulo) {
     const erros: Lote['erros'] = [];
     let salvas = 0;
+    let paradas = 0;
+    // Só mexe neste lote (um lote novo, de outra conta, fica como está)
+    const mudar = (fn: (x: Lote) => Lote) => mudarLote((x) => (x && x.id === l.id ? fn(x) : x));
     for (let i = 0; i < l.arquivos.length; i++) {
+      if (loteAtual?.id === l.id && loteAtual.parar) {
+        paradas = l.arquivos.length - i;
+        break;
+      }
       const arquivo = l.arquivos[i];
-      setLote((x) => x && { ...x, fase: 'salvando', atual: i + 1 });
+      mudar((x) => ({ ...x, fase: 'salvando', atual: i + 1 }));
       try {
         const imagem = await prepararFoto(arquivo);
         // Miniatura para a galeria (sem ela, a galeria usa a foto inteira)
@@ -240,15 +275,15 @@ export function CartaoFotos() {
         // Uma foto com problema não perde as outras
         erros.push({ nome: arquivo.name || `Foto ${i + 1}`, motivo: (e as Error).message });
       }
-      setLote((x) => x && { ...x, salvas, erros: [...erros] });
+      mudar((x) => ({ ...x, salvas, erros: [...erros] }));
       // Deixa a tela respirar entre uma foto e outra
       await new Promise((ok) => setTimeout(ok, 0));
     }
     const onde = ROTULO_SESSAO[l.sessao];
-    if (!erros.length) {
-      setLote(null);
+    if (!erros.length && !paradas) {
+      mudarLote((x) => (x && x.id === l.id ? null : x));
       setMsg({ tipo: 'info', texto: salvas === 1 ? `Foto salva no ${onde}.` : `${salvas} fotos salvas no ${onde}.` });
-    } else setLote((x) => x && { ...x, fase: 'fim', aberta: true });
+    } else mudar((x) => ({ ...x, fase: 'fim', aberta: true, paradas }));
   }
 
   const depoisFeitas = fotos.filter((f) => f.sessao === 'depois').length;
@@ -358,9 +393,10 @@ export function CartaoFotos() {
           hoje={hoje}
           conferir={(data) => conflitoDataSessao(fotos, lote.sessao, data)}
           aoFechar={() => {
-            if (lote.fase === 'salvando') setLote((x) => x && { ...x, aberta: false });
-            else setLote(null);
+            if (lote.fase === 'salvando') mudarLote((x) => x && { ...x, aberta: false });
+            else mudarLote(null);
           }}
+          aoParar={() => mudarLote((x) => x && { ...x, parar: true })}
           aoSalvar={(data, rotulo) => void salvarLote(lote, data, rotulo)}
         />
       )}
@@ -387,6 +423,7 @@ function FolhaLote({
   conferir,
   aoFechar,
   aoSalvar,
+  aoParar,
 }: {
   lote: Lote;
   hoje: string;
@@ -394,6 +431,7 @@ function FolhaLote({
   conferir: (data: string) => string | null;
   aoFechar: () => void;
   aoSalvar: (data: string, rotulo: Rotulo) => void;
+  aoParar: () => void;
 }) {
   const [data, setData] = useState(hoje);
   const [rotulo, setRotulo] = useState<Rotulo>('outra');
@@ -447,6 +485,9 @@ function FolhaLote({
           </div>
           {lote.erros.length > 0 && <p className="mudo">{lote.erros.length} com problema até agora (as outras continuam).</p>}
           <p className="mudo">Pode fechar esta janela: as fotos continuam sendo salvas.</p>
+          <button type="button" className="botao" disabled={lote.parar} onClick={aoParar}>
+            {lote.parar ? 'Parando depois desta foto…' : 'Parar'}
+          </button>
         </div>
       )}
       {lote.fase === 'fim' && (
@@ -456,18 +497,25 @@ function FolhaLote({
               ? `${lote.salvas} de ${n} ${n === 1 ? 'foto salva' : 'fotos salvas'} no ${onde}.`
               : `Nenhuma foto foi salva no ${onde}.`}
           </p>
-          <div className="alerta erro">
-            <div>
-              <b>{lote.erros.length === 1 ? 'Esta não entrou:' : `Estas ${lote.erros.length} não entraram:`}</b>
-              <ul className="fotos-erros">
-                {lote.erros.map((e, i) => (
-                  <li key={i}>
-                    <b>{e.nome}</b>: {e.motivo}
-                  </li>
-                ))}
-              </ul>
+          {lote.paradas > 0 && (
+            <p className="mudo" style={{ margin: 0 }}>
+              Você parou: {lote.paradas === 1 ? 'a última não foi salva' : `as ${lote.paradas} últimas não foram salvas`}. As já salvas ficam no {onde}.
+            </p>
+          )}
+          {lote.erros.length > 0 && (
+            <div className="alerta erro">
+              <div>
+                <b>{lote.erros.length === 1 ? 'Esta não entrou:' : `Estas ${lote.erros.length} não entraram:`}</b>
+                <ul className="fotos-erros">
+                  {lote.erros.map((e, i) => (
+                    <li key={i}>
+                      <b>{e.nome}</b>: {e.motivo}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
-          </div>
+          )}
           <button type="button" className="botao" onClick={aoFechar}>
             Fechar
           </button>
