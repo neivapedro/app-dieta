@@ -112,7 +112,7 @@ export function Analise() {
   const [gerando, setGerando] = useState(false);
   // Fotos no PDF: desmarcado por padrão e sem lembrar a escolha (o PDF pode ser compartilhado)
   const [incluirFotos, setIncluirFotos] = useState(false);
-  const { fotos } = useFotos();
+  const { fotos, carregando: carregandoFotos } = useFotos();
   const semFotos = fotos.length === 0;
   // Muitas fotos: avisa o tamanho aproximado do PDF (o compartilhamento pode ficar pesado)
   const tamanhoPdf = fotos.length > 6 ? estimarTamanhoPdf(fotos.map((f) => ({ ...f, bytes: f.dados.byteLength }))) : null;
@@ -502,7 +502,9 @@ export function Analise() {
           <span>
             Incluir fotos de antes e depois
             <small className="texto-2" style={{ display: 'block' }}>
-              {semFotos ? (
+              {carregandoFotos ? (
+                'Carregando as fotos…'
+              ) : semFotos ? (
                 <>
                   Adicione as fotos em <Link to="/medidas">Medidas</Link>.
                 </>
