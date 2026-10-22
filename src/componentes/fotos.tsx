@@ -550,7 +550,6 @@ function Visualizador({
   const i = lista.findIndex((f) => f.id === vista.id);
   const anterior = i > 0 ? lista[i - 1] : null;
   const proxima = i < lista.length - 1 ? lista[i + 1] : null;
-  const toque = useRef<number | null>(null);
   const ir = (f: FotoTela | null) => {
     if (!f) return;
     setMsg(null);
@@ -579,18 +578,13 @@ function Visualizador({
   return (
     <Folha titulo={`${ROTULO_SESSAO[vista.sessao]} · foto ${i + 1} de ${lista.length}`} aoFechar={aoFechar}>
       <div className="pilha" style={{ gap: 10 }}>
-        <img
-          className="foto-grande"
-          src={vista.url}
+        <CarrosselFoto
+          key={vista.id}
+          atual={vista}
+          anterior={anterior}
+          proxima={proxima}
           alt={`${ROTULO_SESSAO[vista.sessao]}, ${vista.rotulo === 'outra' ? 'sem rótulo' : ROTULO_FOTO[vista.rotulo]}, ${formatarData(vista.data, true)}`}
-          onTouchStart={(e) => (toque.current = e.touches[0]?.clientX ?? null)}
-          onTouchEnd={(e) => {
-            const x0 = toque.current;
-            const x1 = e.changedTouches[0]?.clientX;
-            toque.current = null;
-            if (x0 === null || x1 === undefined || Math.abs(x1 - x0) < 50) return;
-            ir(x1 < x0 ? proxima : anterior);
-          }}
+          aoIr={ir}
         />
         {lista.length > 1 && (
           <div className="foto-navegar">
@@ -686,4 +680,99 @@ export async function prepararFotosPdf(fotos: FotoGuardada[]): Promise<Map<strin
     mapa.set(f.id, { dados: new Uint8Array(await r.blob.arrayBuffer()), largura: r.largura, altura: r.altura });
   }
   return mapa;
+}
+
+/**
+ * Foto que acompanha o dedo, como num feed: só ela anda para o lado (a página
+ * fica parada). A vizinha aparece na borda e, ao soltar depois de um terço da
+ * largura (ou num gesto rápido), a troca termina com animação.
+ */
+function CarrosselFoto({
+  atual,
+  anterior,
+  proxima,
+  alt,
+  aoIr,
+}: {
+  atual: FotoTela;
+  anterior: FotoTela | null;
+  proxima: FotoTela | null;
+  alt: string;
+  aoIr: (f: FotoTela | null) => void;
+}) {
+  const caixa = useRef<HTMLDivElement>(null);
+  const gesto = useRef<{ x: number; y: number; t: number; horizontal: boolean | null } | null>(null);
+  const [dx, setDx] = useState(0);
+  const [indo, setIndo] = useState<'anterior' | 'proxima' | null>(null);
+
+  // Garantia: se o navegador não avisar o fim da animação, troca assim mesmo
+  useEffect(() => {
+    if (!indo) return;
+    const t = setTimeout(() => aoIr(indo === 'proxima' ? proxima : anterior), 400);
+    return () => clearTimeout(t);
+  }, [indo, aoIr, proxima, anterior]);
+
+  const largura = () => caixa.current?.clientWidth ?? 1;
+  const terminar = (x: number, t: number) => {
+    const g = gesto.current;
+    gesto.current = null;
+    if (!g || !g.horizontal) return setDx(0);
+    const desloc = x - g.x;
+    const rapido = Math.abs(desloc) / Math.max(t - g.t, 1) > 0.5;
+    const passou = Math.abs(desloc) > largura() / 3 || (rapido && Math.abs(desloc) > 30);
+    if (passou && desloc < 0 && proxima) return setIndo('proxima');
+    if (passou && desloc > 0 && anterior) return setIndo('anterior');
+    setDx(0);
+  };
+
+  // Posição da faixa [anterior | atual | próxima]: a atual fica no meio
+  const base = indo === 'proxima' ? -200 : indo === 'anterior' ? 0 : -100;
+  const arrastando = gesto.current?.horizontal && !indo;
+  return (
+    <div
+      ref={caixa}
+      className="foto-carrossel"
+      onPointerDown={(e) => {
+        if (indo) return;
+        gesto.current = { x: e.clientX, y: e.clientY, t: e.timeStamp, horizontal: null };
+      }}
+      onPointerMove={(e) => {
+        const g = gesto.current;
+        if (!g) return;
+        const ddx = e.clientX - g.x;
+        const ddy = e.clientY - g.y;
+        // Decide no começo se o gesto é para o lado (troca de foto) ou para cima/baixo (rolar a folha)
+        if (g.horizontal === null && (Math.abs(ddx) > 8 || Math.abs(ddy) > 8)) {
+          g.horizontal = Math.abs(ddx) > Math.abs(ddy);
+          if (g.horizontal) (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+        }
+        if (!g.horizontal) return;
+        // Na primeira ou na última foto, o arraste resiste (não há vizinha)
+        const semVizinha = (ddx > 0 && !anterior) || (ddx < 0 && !proxima);
+        setDx(semVizinha ? ddx * 0.25 : ddx);
+      }}
+      onPointerUp={(e) => terminar(e.clientX, e.timeStamp)}
+      onPointerCancel={() => {
+        gesto.current = null;
+        setDx(0);
+      }}
+    >
+      <div
+        className="foto-faixa"
+        style={{
+          transform: `translateX(calc(${base}% + ${indo ? 0 : dx}px))`,
+          transition: arrastando ? 'none' : 'transform 0.25s ease-out',
+        }}
+        onTransitionEnd={(e) => {
+          if (indo && e.target === e.currentTarget) aoIr(indo === 'proxima' ? proxima : anterior);
+        }}
+      >
+        <div className="foto-slide">{anterior && <img className="foto-grande" src={anterior.url} alt="" draggable={false} />}</div>
+        <div className="foto-slide">
+          <img className="foto-grande" src={atual.url} alt={alt} draggable={false} />
+        </div>
+        <div className="foto-slide">{proxima && <img className="foto-grande" src={proxima.url} alt="" draggable={false} />}</div>
+      </div>
+    </div>
+  );
 }
