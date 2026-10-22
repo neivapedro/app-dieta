@@ -1,6 +1,6 @@
 import type { PlanoDieta } from './dieta';
 import { chaveExercicio } from './forca';
-import { fotoBackupValida, separarFotosImportar, type FotoBackup, type Pose, type Sessao } from './fotos';
+import { fotoBackupValida, separarFotosImportar, type FotoBackup, type FotoExistente } from './fotos';
 import type { Aplicacao, Ciclo, Medida, Perfil, RegistroDecisao, RegistroDiario, RegistroForca, TreinoDia } from './tipos';
 
 /**
@@ -30,8 +30,8 @@ export interface DadosAtuais {
   treinos: TreinoDia[];
   registro_decisoes?: RegistroDecisao[];
   forca?: RegistroForca[];
-  /** Fotos já guardadas neste aparelho (sessão + pose) */
-  fotos?: { sessao: Sessao; pose: Pose; data?: string }[];
+  /** Fotos já guardadas neste aparelho (id, sessão e data) */
+  fotos?: FotoExistente[];
 }
 
 export function montarBackup(d: Omit<Backup, 'versao' | 'exportado_em'>, agora: string): Backup {
@@ -72,7 +72,7 @@ export interface PlanoImportacao {
   registro_decisoes: RegistroDecisao[];
   /** Força: só os pares data + exercício que ainda não existem */
   forca: RegistroForca[];
-  /** Fotos: só as dos lugares (sessão + pose) ainda vazios neste aparelho */
+  /** Fotos: só as que ainda não existem neste aparelho (pelo id; as do formato antigo, pelo id estável) */
   fotos: FotoBackup[];
   /** fotos_conflito: fotos do arquivo que inverteriam a ordem Antes/Depois com as do aparelho */
   ignoradas: { aplicacoes: number; medidas: number; fotos: number; fotos_conflito: number };
@@ -110,7 +110,7 @@ export function planejarImportacao(b: Backup, atuais: DadosAtuais): PlanoImporta
     ignoradas: {
       aplicacoes: b.aplicacoes.length - aplicacoes.length,
       medidas: (b.medidas ?? []).length - medidas.length,
-      // Só as fotos válidas que já têm lugar ocupado (as estragadas são ignoradas em silêncio)
+      // Só as fotos válidas que já existem no aparelho (as estragadas são ignoradas em silêncio)
       fotos: (b.fotos ?? []).filter(fotoBackupValida).length - fotos.length - fotosConflito,
       fotos_conflito: fotosConflito,
     },

@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf';
 import { autoTable, type RowInput } from 'jspdf-autotable';
-import type { LadoFotoPdf, SecaoFotoPdf } from './fotos';
+import type { FotosPdf, LadoFotoPdf, Sessao } from './fotos';
 
 // Relatório da Análise em PDF de verdade, gerado no próprio aparelho.
 // No iPhone com o app instalado, window.print() não funciona; o PDF vai para o
@@ -46,9 +46,13 @@ export interface ImagemPdf {
   altura: number;
 }
 
-/** Página "Antes e depois": por pose, Antes × Depois com a data e os números de cada foto. */
-export interface FotosRelatorio {
-  secoes: (SecaoFotoPdf & { imgAntes: ImagemPdf | null; imgDepois: ImagemPdf | null })[];
+/**
+ * Páginas "Antes e depois": os pares por pose (Antes × Depois, com a data e os
+ * números de cada foto) e as outras fotos de cada sessão em grade. As imagens
+ * vêm por id da foto.
+ */
+export interface FotosRelatorio extends FotosPdf {
+  imagens: Map<string, ImagemPdf>;
   nota?: string;
 }
 
@@ -296,30 +300,94 @@ function desenharGrafico(doc: jsPDF, y: number, g: GraficoRelatorio): number {
   return y + altura + 2;
 }
 
-/** Um lado (Antes ou Depois) de uma pose: foto à esquerda, data e números à direita. */
-function desenharLadoFoto(doc: jsPDF, x: number, y: number, largura: number, alturaImg: number, rotulo: string, lado: LadoFotoPdf | null, img: ImagemPdf | null, variacao: string[]) {
+// ---------- Páginas "Antes e depois" ----------
+
+/** Topo e limite de baixo das páginas (o número da página fica abaixo) */
+const TOPO_PAGINA = 18;
+const FIM_PAGINA = 297 - 16;
+/** Par por pose: título, rótulo, foto 3:4 e respiro */
+export const ALTURA_IMG_PAR_PDF = 64;
+export const ALTURA_PAR_PDF = ALTURA_IMG_PAR_PDF + 16;
+/** Subtítulo "Outras fotos do Antes" */
+export const ALTURA_SUBTITULO_PDF = 9;
+/** Linha da grade: 3 fotos 3:4 com a data embaixo */
+export const ALTURA_IMG_GRADE_PDF = 52;
+export const ALTURA_LINHA_GRADE_PDF = ALTURA_IMG_GRADE_PDF + 10;
+export const FOTOS_POR_LINHA_PDF = 3;
+
+export type ItemPaginaFotos = { pagina: number; y: number } & (
+  | { tipo: 'par'; indice: number }
+  | { tipo: 'subtitulo'; sessao: Sessao }
+  /** Fotos [inicio, fim) da grade da sessão */
+  | { tipo: 'linha'; sessao: Sessao; inicio: number; fim: number }
+);
+
+/**
+ * Onde vai cada bloco das páginas de fotos (página 0 = a primeira delas, que
+ * começa abaixo do título). Os pares vêm primeiro; depois as outras fotos do
+ * Antes e do Depois, 3 por linha. O subtítulo nunca fica sozinho no pé da
+ * página: vai junto com a primeira linha.
+ */
+export function paginarFotosPdf(n: { pares: number; antes: number; depois: number }, yInicio: number): ItemPaginaFotos[] {
+  const itens: ItemPaginaFotos[] = [];
+  let pagina = 0;
+  let y = yInicio;
+  const caber = (altura: number) => {
+    if (y + altura > FIM_PAGINA) {
+      pagina++;
+      y = TOPO_PAGINA;
+    }
+  };
+  for (let i = 0; i < n.pares; i++) {
+    caber(ALTURA_PAR_PDF);
+    itens.push({ tipo: 'par', indice: i, pagina, y });
+    y += ALTURA_PAR_PDF;
+  }
+  for (const [sessao, total] of [
+    ['antes', n.antes],
+    ['depois', n.depois],
+  ] as const) {
+    if (!total) continue;
+    caber(ALTURA_SUBTITULO_PDF + ALTURA_LINHA_GRADE_PDF);
+    itens.push({ tipo: 'subtitulo', sessao, pagina, y });
+    y += ALTURA_SUBTITULO_PDF;
+    for (let inicio = 0; inicio < total; inicio += FOTOS_POR_LINHA_PDF) {
+      caber(ALTURA_LINHA_GRADE_PDF);
+      itens.push({ tipo: 'linha', sessao, inicio, fim: Math.min(total, inicio + FOTOS_POR_LINHA_PDF), pagina, y });
+      y += ALTURA_LINHA_GRADE_PDF;
+    }
+  }
+  return itens;
+}
+
+/** Imagem inteira dentro da caixa (foto deitada fica menor, sem cortar); sem imagem, a caixa vazia. */
+function desenharImagem(doc: jsPDF, img: ImagemPdf | null | undefined, x: number, y: number, w: number, h: number) {
+  if (img && img.largura > 0 && img.altura > 0) {
+    const escala = Math.min(w / img.largura, h / img.altura);
+    const iw = img.largura * escala;
+    const ih = img.altura * escala;
+    doc.addImage(img.dados, 'JPEG', x + (w - iw) / 2, y + (h - ih) / 2, iw, ih, undefined, 'NONE');
+    return;
+  }
+  doc.setDrawColor(225, 225, 228);
+  doc.setFillColor(247, 247, 248);
+  doc.setLineWidth(0.2);
+  doc.rect(x, y, w, h, 'FD');
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(...CINZA);
+  doc.text('Sem foto', x + w / 2, y + h / 2, { align: 'center' });
+}
+
+/** Um lado (Antes ou Depois) de um par: foto à esquerda, data e números à direita. */
+function desenharLadoFoto(doc: jsPDF, x: number, y: number, largura: number, alturaImg: number, rotulo: string, lado: LadoFotoPdf, img: ImagemPdf | null | undefined, variacao: string[]) {
   const larguraImg = (alturaImg * 3) / 4;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8.5);
   doc.setTextColor(...ESCURO);
-  doc.text(textoPdf(lado ? `${rotulo} · ${lado.data}` : rotulo), x, y + 3);
+  doc.text(textoPdf(`${rotulo} · ${lado.data}`), x, y + 3);
   const yImg = y + 5;
-  if (img && img.largura > 0 && img.altura > 0) {
-    // Cabe inteira na caixa 3:4 (foto deitada fica menor, sem cortar)
-    const escala = Math.min(larguraImg / img.largura, alturaImg / img.altura);
-    const w = img.largura * escala;
-    const h = img.altura * escala;
-    doc.addImage(img.dados, 'JPEG', x + (larguraImg - w) / 2, yImg + (alturaImg - h) / 2, w, h, undefined, 'NONE');
-  } else {
-    doc.setDrawColor(225, 225, 228);
-    doc.setFillColor(247, 247, 248);
-    doc.setLineWidth(0.2);
-    doc.rect(x, yImg, larguraImg, alturaImg, 'FD');
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
-    doc.setTextColor(...CINZA);
-    doc.text('Sem foto', x + larguraImg / 2, yImg + alturaImg / 2, { align: 'center' });
-  }
+  desenharImagem(doc, img, x, yImg, larguraImg, alturaImg);
   // Números ao lado da foto
   const xt = x + larguraImg + 3;
   const lt = largura - larguraImg - 3;
@@ -327,7 +395,7 @@ function desenharLadoFoto(doc: jsPDF, x: number, y: number, largura: number, alt
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
   doc.setTextColor(...ESCURO);
-  for (const l of lado?.linhas ?? []) {
+  for (const l of lado.linhas) {
     const linhas = doc.splitTextToSize(textoPdf(l), lt);
     doc.text(linhas, xt, yt);
     yt += linhas.length * 3.4 + 0.6;
@@ -346,29 +414,59 @@ function desenharLadoFoto(doc: jsPDF, x: number, y: number, largura: number, alt
   }
 }
 
-/** Página "Antes e depois": uma linha por pose, Antes × Depois lado a lado. */
+/**
+ * Páginas "Antes e depois": primeiro um par por pose (a primeira foto do Antes
+ * × a mais recente do Depois), depois as outras fotos de cada sessão em grade
+ * com a data embaixo, quebrando a página quando precisa.
+ */
 function desenharFotos(doc: jsPDF, f: FotosRelatorio): number {
   doc.addPage();
-  let y = titulo(doc, 18, 'Antes e depois');
-  const n = Math.max(f.secoes.length, 1);
-  // 3 poses cabem numa página; a altura da foto se ajusta ao número de poses
-  // (reserva o espaço da nota e do rodapé no fim da página)
-  const bloco = Math.min(92, (297 - 16 - y - 26) / n);
-  const alturaImg = Math.min(80, bloco - 12);
+  const primeira = doc.getNumberOfPages();
+  const yInicio = titulo(doc, TOPO_PAGINA, 'Antes e depois') + 1;
   const coluna = (LARGURA - 6) / 2;
-  for (const s of f.secoes) {
-    y = garantirEspaco(doc, y + 2, bloco);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9.5);
-    doc.setTextColor(...ESCURO);
-    doc.text(textoPdf(s.titulo), MARGEM, y + 3);
-    doc.setDrawColor(225, 225, 228);
-    doc.setLineWidth(0.2);
-    doc.line(MARGEM + 16, y + 2, MARGEM + LARGURA, y + 2);
-    desenharLadoFoto(doc, MARGEM, y + 4, coluna, alturaImg, 'Antes', s.antes, s.imgAntes, []);
-    desenharLadoFoto(doc, MARGEM + coluna + 6, y + 4, coluna, alturaImg, 'Depois', s.depois, s.imgDepois, s.variacao);
-    y += bloco;
+  const colunaGrade = (LARGURA - 6 * (FOTOS_POR_LINHA_PDF - 1)) / FOTOS_POR_LINHA_PDF;
+  const larguraImgGrade = (ALTURA_IMG_GRADE_PDF * 3) / 4;
+  let y = yInicio;
+  for (const item of paginarFotosPdf({ pares: f.pares.length, antes: f.outrasAntes.length, depois: f.outrasDepois.length }, yInicio)) {
+    while (doc.getNumberOfPages() < primeira + item.pagina) doc.addPage();
+    doc.setPage(primeira + item.pagina);
+    if (item.tipo === 'par') {
+      const p = f.pares[item.indice];
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9.5);
+      doc.setTextColor(...ESCURO);
+      doc.text(textoPdf(p.titulo), MARGEM, item.y + 3);
+      doc.setDrawColor(225, 225, 228);
+      doc.setLineWidth(0.2);
+      doc.line(MARGEM + 16, item.y + 2, MARGEM + LARGURA, item.y + 2);
+      desenharLadoFoto(doc, MARGEM, item.y + 5, coluna, ALTURA_IMG_PAR_PDF, 'Antes', p.antes, f.imagens.get(p.idAntes), []);
+      desenharLadoFoto(doc, MARGEM + coluna + 6, item.y + 5, coluna, ALTURA_IMG_PAR_PDF, 'Depois', p.depois, f.imagens.get(p.idDepois), p.variacao);
+      y = item.y + ALTURA_PAR_PDF;
+    } else if (item.tipo === 'subtitulo') {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9.5);
+      doc.setTextColor(...ESCURO);
+      const texto = item.sessao === 'antes' ? 'Outras fotos do Antes' : 'Outras fotos do Depois';
+      doc.text(textoPdf(texto), MARGEM, item.y + 4);
+      doc.setDrawColor(225, 225, 228);
+      doc.setLineWidth(0.2);
+      doc.line(MARGEM + doc.getTextWidth(textoPdf(texto)) + 3, item.y + 3, MARGEM + LARGURA, item.y + 3);
+      y = item.y + ALTURA_SUBTITULO_PDF;
+    } else {
+      const lista = item.sessao === 'antes' ? f.outrasAntes : f.outrasDepois;
+      for (let i = item.inicio; i < item.fim; i++) {
+        const foto = lista[i];
+        const x = MARGEM + (i - item.inicio) * (colunaGrade + 6);
+        desenharImagem(doc, f.imagens.get(foto.id), x + (colunaGrade - larguraImgGrade) / 2, item.y, larguraImgGrade, ALTURA_IMG_GRADE_PDF);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.5);
+        doc.setTextColor(...ESCURO);
+        doc.text(textoPdf(foto.legenda), x + colunaGrade / 2, item.y + ALTURA_IMG_GRADE_PDF + 4, { align: 'center' });
+      }
+      y = item.y + ALTURA_LINHA_GRADE_PDF;
+    }
   }
+  doc.setPage(doc.getNumberOfPages());
   if (f.nota) y = nota(doc, y + 1, f.nota);
   return y;
 }
@@ -423,7 +521,7 @@ export function gerarRelatorioPdf(m: ModeloRelatorio): Blob {
 
   for (const t of m.tabelas) y = tabela(doc, y, t);
 
-  if (m.fotos?.secoes.length) y = desenharFotos(doc, m.fotos);
+  if (m.fotos && (m.fotos.pares.length || m.fotos.outrasAntes.length || m.fotos.outrasDepois.length)) y = desenharFotos(doc, m.fotos);
 
   y = nota(doc, y + 6, m.rodape);
 

@@ -3,7 +3,7 @@ import { planejarImportacao, type Backup } from './backup';
 import { blocosDeDose, calcularCiclo, cicloPadrao, localizarDegraus } from './ciclo';
 import { ocorrencias, semanasDoCiclo } from './consulta';
 import { somarDias } from './datas';
-import { conflitoDataSessao, separarFotosImportar, type FotoBackup, type FotoInfo } from './fotos';
+import { conflitoDataSessao, separarFotosImportar, type FotoBackup } from './fotos';
 import { corVariacao, lerFaixa } from './formato';
 import { ajusteVigente, calibrarPorExame, MDC, percentualGorduraBruto, type Composicao } from './gordura';
 import { pendenciasDeOntem } from './rotina';
@@ -200,16 +200,17 @@ describe('Fotos: ordem Antes/Depois em todas as poses', () => {
   const fotos = [
     { sessao: 'antes', pose: 'frente', data: '2026-09-07' },
     { sessao: 'antes', pose: 'lado', data: '2026-10-19' },
-  ] as FotoInfo[];
+  ] as unknown as Parameters<typeof conflitoDataSessao>[0];
 
   it('o Depois não pode ser anterior a nenhuma foto do Antes (nem o Antes posterior a alguma do Depois)', () => {
     expect(conflitoDataSessao(fotos, 'depois', '2026-10-05')).toMatch(/19\/10\/2026/);
     expect(conflitoDataSessao(fotos, 'depois', '2026-10-19')).toBeNull();
-    const comDepois = [...fotos, { sessao: 'depois', pose: 'costas', data: '2026-11-02' }] as FotoInfo[];
-    expect(conflitoDataSessao(comDepois, 'antes', '2026-11-05')).toMatch(/posterior à do Depois/);
+    const comDepois = [...fotos, { sessao: 'depois', pose: 'costas', data: '2026-11-02' }] as Parameters<typeof conflitoDataSessao>[0];
+    expect(conflitoDataSessao(comDepois, 'antes', '2026-11-05')).toMatch(/posterior à foto mais antiga do Depois/);
   });
 
   it('importar backup deixa de fora a foto que inverteria a ordem com as do aparelho', () => {
+    // Backup no formato antigo (sessão + pose, sem id)
     const f = (sessao: 'antes' | 'depois', pose: 'frente' | 'lado', data: string): FotoBackup => ({
       sessao,
       pose,
@@ -219,18 +220,19 @@ describe('Fotos: ordem Antes/Depois em todas as poses', () => {
       altura: 10,
       salva_em: '2026-11-02T10:00:00Z',
       base64: 'AAAA',
-    });
+    }) as unknown as FotoBackup;
     const r = separarFotosImportar([f('antes', 'frente', '2026-09-07'), f('depois', 'frente', '2026-10-05'), f('depois', 'lado', '2026-10-05')], [
-      { sessao: 'antes', pose: 'frente', data: '2026-10-26' },
+      { id: 'x1', sessao: 'antes', data: '2026-10-26' },
     ]);
-    expect(r.fotos).toHaveLength(0);
+    // Galeria: o Antes de 07/09 é mais uma foto (entra); os dois Depois de 05/10 inverteriam a ordem
+    expect(r.fotos.map((x) => x.id)).toEqual(['antiga-antes-frente-2026-09-07']);
     expect(r.conflito).toBe(2);
     const plano = planejarImportacao({ versao: 3, exportado_em: '2026-11-02', aplicacoes: [], fotos: [f('depois', 'lado', '2026-10-05')] } as unknown as Backup, {
       aplicacoes: [],
       medidas: [],
       diario: [],
       treinos: [],
-      fotos: [{ sessao: 'antes', pose: 'frente', data: '2026-10-26' }],
+      fotos: [{ id: 'x1', sessao: 'antes', data: '2026-10-26' }],
     });
     expect(plano.ignoradas).toMatchObject({ fotos: 0, fotos_conflito: 1 });
   });

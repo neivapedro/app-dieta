@@ -30,7 +30,7 @@ import {
 import { dataPorExtenso, diferencaDias, formatarData, somarDias } from '../lib/datas';
 import { curto, decisoesPorDia, marcosDasDecisoes } from '../lib/registroDecisoes';
 import { historicoAlertas } from '../lib/seguranca';
-import { chaveSlot, montarSecoesFotos } from '../lib/fotos';
+import { estimarTamanhoPdf, montarFotosPdf, textoTamanho } from '../lib/fotos';
 import type { ImagemPdf, ModeloRelatorio } from '../lib/relatorioPdf';
 import { calcularMetas, corpoParaMetas, idade, macrosDaRefeicao, textoBaseMetas } from '../lib/dieta';
 import { cm, corVariacao, kg, mg, num, pct, pp, sinal } from '../lib/formato';
@@ -114,6 +114,8 @@ export function Analise() {
   const [incluirFotos, setIncluirFotos] = useState(false);
   const { fotos } = useFotos();
   const semFotos = fotos.length === 0;
+  // Muitas fotos: avisa o tamanho aproximado do PDF (o compartilhamento pode ficar pesado)
+  const tamanhoPdf = fotos.length > 6 ? estimarTamanhoPdf(fotos.map((f) => ({ ...f, bytes: f.dados.byteLength }))) : null;
   // Com a opção marcada, as fotos já são reduzidas antes do toque: o PDF sai na hora
   const fotosPdf = useRef<Promise<Map<string, ImagemPdf>> | null>(null);
   useEffect(() => {
@@ -424,12 +426,9 @@ export function Analise() {
       tabelas,
       fotos: imagens
         ? {
-            secoes: montarSecoesFotos(fotos, composicoes, perfil?.sexo === 'Feminino').map((sec) => ({
-              ...sec,
-              imgAntes: imagens.get(chaveSlot({ sessao: 'antes', pose: sec.pose })) ?? null,
-              imgDepois: imagens.get(chaveSlot({ sessao: 'depois', pose: sec.pose })) ?? null,
-            })),
-            nota: `Números da medição mais próxima da data de cada foto (até 7 dias). Variação: Depois menos Antes. Fotos registradas pelo próprio paciente.`,
+            ...montarFotosPdf(fotos, composicoes, perfil?.sexo === 'Feminino'),
+            imagens,
+            nota: `Pares por pose: a primeira foto do Antes e a mais recente do Depois. Números da medição mais próxima da data de cada foto (até 7 dias). Variação: Depois menos Antes. Fotos registradas pelo próprio paciente.`,
           }
         : null,
       rodape: 'Este relatório registra e calcula; as decisões de dose são tomadas com acompanhamento médico.',
@@ -508,7 +507,10 @@ export function Analise() {
                   Adicione as fotos em <Link to="/medidas">Medidas</Link>.
                 </>
               ) : (
-                'Uma página com as fotos e os números de cada uma. Desmarque para compartilhar sem as fotos.'
+                <>
+                  Os pares Antes × Depois por pose e as outras fotos em grade, com a data e os números. Desmarque para compartilhar sem as fotos.
+                  {tamanhoPdf !== null && ` Com as ${fotos.length} fotos, o PDF fica com ~${textoTamanho(tamanhoPdf)}.`}
+                </>
               )}
             </small>
           </span>

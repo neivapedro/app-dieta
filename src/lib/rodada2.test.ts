@@ -6,7 +6,7 @@ import { calcularCiclo, cicloPadrao, faseSugeridaForaDoPlano, intervaloNaData } 
 import { paraAMeta, projecaoNoRitmo } from './conferencia';
 import { montarQuadro, ritmoDoBloco, semanasDoCiclo, type ColunaQuadro } from './consulta';
 import { somarDias } from './datas';
-import { conflitoDataSessao, type FotoInfo } from './fotos';
+import { conflitoDataSessao } from './fotos';
 import { corVariacao } from './formato';
 import { calibrarPorExame, faixaRca, rcaExibida, type Composicao } from './gordura';
 import { avisoReganho } from './projeto';
@@ -282,9 +282,9 @@ describe('Fotos', () => {
     const fotos = [
       { sessao: 'antes', pose: 'frente', data: '2026-09-07' },
       { sessao: 'depois', pose: 'lado', data: '2026-11-02' },
-    ] as FotoInfo[];
-    expect(conflitoDataSessao(fotos, 'depois', '2026-09-01')).toMatch(/anterior à do Antes/);
-    expect(conflitoDataSessao(fotos, 'antes', '2026-11-05')).toMatch(/posterior à do Depois/);
+    ] as unknown as Parameters<typeof conflitoDataSessao>[0];
+    expect(conflitoDataSessao(fotos, 'depois', '2026-09-01')).toMatch(/anterior à foto mais recente do Antes/);
+    expect(conflitoDataSessao(fotos, 'antes', '2026-11-05')).toMatch(/posterior à foto mais antiga do Depois/);
     expect(conflitoDataSessao(fotos, 'depois', '2026-10-01')).toBeNull();
   });
 });

@@ -1,15 +1,23 @@
-import { chaveSlot, deBase64, paraBase64, type FotoBackup, type FotoInfo, type Pose, type Sessao } from '../lib/fotos';
+import { converterFotoAntiga, deBase64, ordenarFotos, paraBase64, proximaOrdem, type FotoBackup, type FotoInfo, type Pose, type Rotulo, type Sessao } from '../lib/fotos';
 
 // Fotos de antes e depois: guardadas SÓ NESTE APARELHO, no IndexedDB, separadas
 // por usuário. Nunca vão para a nuvem nem passam pela fila. Sair da conta não
-// apaga as fotos (são do aparelho), mas cada conta só vê as suas.
+// apaga as fotos (são do aparelho), mas cada conta só vê as suas. Cada sessão
+// (Antes e Depois) tem quantas fotos a pessoa quiser.
+//
+// Versão 1 do banco: uma foto por sessão + pose (chave usuario|sessao|pose).
+// Versão 2: uma linha por foto (chave usuario|id), com rótulo e ordem. A
+// atualização converte as antigas (rótulo = a pose, id estável) sem perder nada;
+// a leitura também converte, por garantia.
 
 export interface FotoGuardada extends FotoInfo {
-  /** usuario|sessao|pose: uma foto por pose em cada sessão */
+  /** usuario|id */
   chave: string;
   usuario: string;
   /** JPEG já comprimido (ArrayBuffer: o Safari antigo falhava com Blob no IndexedDB) */
   dados: ArrayBuffer;
+  /** Miniatura (~320 px) para a galeria: muitas fotos grandes abertas pesam no iPhone. Não vai no backup. */
+  miniatura?: ArrayBuffer;
   tipo: string;
   largura: number;
   altura: number;
@@ -21,14 +29,42 @@ const LOJA = 'fotos';
 
 let conexao: Promise<IDBDatabase> | null = null;
 
+/** Registro como pode estar no banco (versão 1: sem id, rótulo e ordem; com a pose). */
+type RegistroBruto = Omit<FotoGuardada, 'id' | 'rotulo' | 'ordem'> & { id?: string; rotulo?: Rotulo; ordem?: number; pose?: Pose };
+
+/** Registro do banco no formato novo (os da versão 1 viram o rótulo da pose, com id estável). */
+export function converterRegistro(r: RegistroBruto): FotoGuardada {
+  const n = converterFotoAntiga(r);
+  return { ...n, chave: `${r.usuario}|${n.id}` };
+}
+
 function abrir(): Promise<IDBDatabase> {
   if (conexao) return conexao;
   conexao = new Promise<IDBDatabase>((ok, falha) => {
     if (typeof indexedDB === 'undefined') return falha(new Error('Este navegador não permite guardar fotos no aparelho.'));
-    const req = indexedDB.open(BANCO, 1);
-    req.onupgradeneeded = () => {
+    const req = indexedDB.open(BANCO, 2);
+    req.onupgradeneeded = (ev) => {
       const db = req.result;
-      if (!db.objectStoreNames.contains(LOJA)) db.createObjectStore(LOJA, { keyPath: 'chave' }).createIndex('usuario', 'usuario');
+      if (!db.objectStoreNames.contains(LOJA)) {
+        db.createObjectStore(LOJA, { keyPath: 'chave' }).createIndex('usuario', 'usuario');
+        return;
+      }
+      // Da versão 1: cada foto (sessão + pose) vira uma linha com id, rótulo e ordem
+      if (ev.oldVersion < 2) {
+        const loja = req.transaction!.objectStore(LOJA);
+        loja.openCursor().onsuccess = (e) => {
+          const cursor = (e.target as IDBRequest<IDBCursorWithValue | null>).result;
+          if (!cursor) return;
+          const antigo = cursor.value as RegistroBruto;
+          const novo = converterRegistro(antigo);
+          if (novo.chave !== antigo.chave || antigo.pose !== undefined) {
+            // A chave muda: apaga a linha antiga e grava a nova na mesma transação
+            cursor.delete();
+            loja.put(novo);
+          }
+          cursor.continue();
+        };
+      }
     };
     req.onsuccess = () => {
       const db = req.result;
@@ -93,22 +129,38 @@ async function pedirPersistencia() {
 // ---------- Funções ----------
 
 export async function listarFotos(usuario: string): Promise<FotoGuardada[]> {
-  const lista = await operacao<FotoGuardada[]>('readonly', (l) => l.index('usuario').getAll(usuario));
-  return lista ?? [];
+  const lista = await operacao<RegistroBruto[]>('readonly', (l) => l.index('usuario').getAll(usuario));
+  return ordenarFotos((lista ?? []).map(converterRegistro));
 }
 
+/** Id novo de foto (randomUUID não existe fora de https nos navegadores antigos). */
+export function novoIdFoto(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  return `f${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+}
+
+let ultimaOrdem = 0;
+
+/** Guarda uma foto nova na sessão (vai para o fim da ordem de adição). */
 export async function salvarFoto(
   usuario: string,
-  f: { sessao: Sessao; pose: Pose; data: string; blob: Blob; largura: number; altura: number },
-): Promise<void> {
+  f: { sessao: Sessao; rotulo: Rotulo; data: string; blob: Blob; largura: number; altura: number; miniatura?: Blob | null },
+): Promise<FotoGuardada> {
   const dados = await f.blob.arrayBuffer();
+  const miniatura = f.miniatura ? await f.miniatura.arrayBuffer() : undefined;
+  // Ordem de adição pelo relógio (sempre crescente): não precisa ler as outras fotos
+  const ordem = (ultimaOrdem = Math.max(Date.now(), ultimaOrdem + 1));
+  const id = novoIdFoto();
   const registro: FotoGuardada = {
-    chave: `${usuario}|${chaveSlot(f)}`,
+    chave: `${usuario}|${id}`,
     usuario,
+    id,
     sessao: f.sessao,
-    pose: f.pose,
+    rotulo: f.rotulo,
     data: f.data,
+    ordem,
     dados,
+    ...(miniatura ? { miniatura } : {}),
     tipo: f.blob.type || 'image/jpeg',
     largura: f.largura,
     altura: f.altura,
@@ -117,19 +169,36 @@ export async function salvarFoto(
   await operacao('readwrite', (l) => l.put(registro));
   avisar();
   void pedirPersistencia();
+  return registro;
 }
 
-/** Muda só a data de uma foto já guardada. */
-export async function mudarDataFoto(usuario: string, sessao: Sessao, pose: Pose, data: string): Promise<void> {
-  const chave = `${usuario}|${chaveSlot({ sessao, pose })}`;
-  const atual = await operacao<FotoGuardada | undefined>('readonly', (l) => l.get(chave));
-  if (!atual) return;
-  await operacao('readwrite', (l) => l.put({ ...atual, data }));
+/** Muda a data e/ou o rótulo de uma foto já guardada. */
+export async function atualizarFoto(usuario: string, id: string, mudanca: { data?: string; rotulo?: Rotulo }): Promise<void> {
+  await mudarRegistro(usuario, id, mudanca);
   avisar();
 }
 
-export async function apagarFoto(usuario: string, sessao: Sessao, pose: Pose): Promise<void> {
-  await operacao('readwrite', (l) => l.delete(`${usuario}|${chaveSlot({ sessao, pose })}`));
+/** Lê e regrava a foto na mesma transação (uma foto apagada no meio não volta). */
+function mudarRegistro(usuario: string, id: string, mudanca: Partial<FotoGuardada>): Promise<void> {
+  return operacao<void>('readwrite', (l) => {
+    const req = l.get(`${usuario}|${id}`);
+    req.onsuccess = () => {
+      const atual = req.result as RegistroBruto | undefined;
+      if (atual) l.put({ ...converterRegistro(atual), ...mudanca });
+    };
+  });
+}
+
+/** Guarda a miniatura de uma foto que não tinha (migrada ou importada), sem avisar as telas. */
+export async function guardarMiniatura(usuario: string, id: string, miniatura: Blob): Promise<void> {
+  await mudarRegistro(usuario, id, { miniatura: await miniatura.arrayBuffer() });
+}
+
+/** Bytes que a foto ocupa no aparelho (imagem + miniatura). */
+export const bytesDaFoto = (f: FotoGuardada) => f.dados.byteLength + (f.miniatura?.byteLength ?? 0);
+
+export async function apagarFoto(usuario: string, id: string): Promise<void> {
+  await operacao('readwrite', (l) => l.delete(`${usuario}|${id}`));
   avisar();
 }
 
@@ -141,9 +210,13 @@ export async function exportarFotos(usuario: string): Promise<FotoBackup[]> {
 /** Uma foto já lida do aparelho → item do arquivo de backup (síncrono: o Compartilhar do iPhone pede o toque recente). */
 export function fotoParaBackup(f: FotoGuardada): FotoBackup {
   return {
+    id: f.id,
     sessao: f.sessao,
-    pose: f.pose,
+    rotulo: f.rotulo,
+    // Versões antigas do app leem a pose (uma foto por pose)
+    ...(f.rotulo !== 'outra' ? { pose: f.rotulo } : {}),
     data: f.data,
+    ordem: f.ordem,
     tipo: f.tipo,
     largura: f.largura,
     altura: f.altura,
@@ -155,23 +228,29 @@ export function fotoParaBackup(f: FotoGuardada): FotoBackup {
 /** Restaura fotos do backup neste aparelho (a lista já vem sem as que existem: fotosParaImportar). */
 export async function importarFotos(usuario: string, fotos: FotoBackup[]): Promise<number> {
   if (!fotos.length) return 0;
-  // Confere de novo: uma foto tirada depois de abrir o backup não é trocada
-  const ocupados = new Set((await listarFotos(usuario)).map(chaveSlot));
-  const registros: FotoGuardada[] = fotos.filter((f) => !ocupados.has(chaveSlot(f))).map((f) => {
-    const bytes = deBase64(f.base64);
-    return {
-      chave: `${usuario}|${chaveSlot(f)}`,
-      usuario,
-      sessao: f.sessao,
-      pose: f.pose,
-      data: f.data,
-      dados: bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer,
-      tipo: f.tipo || 'image/jpeg',
-      largura: f.largura || 0,
-      altura: f.altura || 0,
-      salva_em: f.salva_em || new Date().toISOString(),
-    };
-  });
+  // Confere de novo pelo id: uma foto que entrou depois de abrir o backup não é duplicada
+  const atuais = await listarFotos(usuario);
+  const ids = new Set(atuais.map((f) => f.id));
+  let ordem = proximaOrdem(atuais);
+  const registros: FotoGuardada[] = fotos
+    .filter((f) => !ids.has(f.id))
+    .map((f) => {
+      const bytes = deBase64(f.base64);
+      return {
+        chave: `${usuario}|${f.id}`,
+        usuario,
+        id: f.id,
+        sessao: f.sessao,
+        rotulo: f.rotulo,
+        data: f.data,
+        ordem: ordem++,
+        dados: bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer,
+        tipo: f.tipo || 'image/jpeg',
+        largura: f.largura || 0,
+        altura: f.altura || 0,
+        salva_em: f.salva_em || new Date().toISOString(),
+      };
+    });
   if (!registros.length) return 0;
   await operacao('readwrite', (l) => {
     for (const r of registros) l.put(r);
@@ -183,4 +262,9 @@ export async function importarFotos(usuario: string, fotos: FotoBackup[]): Promi
 
 export function blobDaFoto(f: FotoGuardada): Blob {
   return new Blob([f.dados], { type: f.tipo });
+}
+
+/** Miniatura da galeria (sem ela, a própria foto). */
+export function blobDaMiniatura(f: FotoGuardada): Blob {
+  return f.miniatura ? new Blob([f.miniatura], { type: 'image/jpeg' }) : blobDaFoto(f);
 }

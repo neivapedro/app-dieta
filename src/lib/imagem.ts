@@ -4,9 +4,15 @@
 /** Lado maior das fotos guardadas no aparelho */
 export const LADO_FOTO = 1280;
 export const QUALIDADE_FOTO = 0.8;
-/** Lado maior e qualidade das fotos embutidas no PDF (arquivo leve para compartilhar) */
+/** Lado maior e qualidade das fotos embutidas no PDF (arquivo leve para compartilhar): pares Antes × Depois */
 export const LADO_PDF = 900;
 export const QUALIDADE_PDF = 0.72;
+/** Fotos da grade "Outras fotos" do PDF: menores */
+export const LADO_GRADE_PDF = 600;
+export const QUALIDADE_GRADE_PDF = 0.7;
+/** Miniatura da galeria (aba Medidas) */
+export const LADO_MINIATURA = 360;
+export const QUALIDADE_MINIATURA = 0.72;
 
 export interface ImagemPronta {
   blob: Blob;
