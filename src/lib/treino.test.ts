@@ -66,11 +66,21 @@ describe('Placar', () => {
     const p = calcularPlacar(dias, inicio, fim, '2026-10-20');
     expect(p.totalDias).toBe(14);
     expect(p.diasDecorridos).toBe(5);
+    expect(p.diaAtual).toBe(6);
+    expect(p.diasRestantes).toBe(8);
     expect(p.treino).toMatchObject({ meta: 5, feito: 4 });
     expect(p.cardio).toMatchObject({ meta: 5, feito: 3 });
     expect(p.treino.aderencia).toBeCloseTo(0.8);
     expect(p.corrida).toMatchObject({ meta: 1, feito: 1, km: 5 });
     expect(p.bike).toMatchObject({ meta: 4, feito: 2, minutos: 60 });
+  });
+
+  it('dia do projeto: hoje conta como o dia em curso e a soma com o que falta dá o total', () => {
+    expect(calcularPlacar([], inicio, fim, '2026-10-14')).toMatchObject({ diaAtual: 0, diasRestantes: 14, iniciado: false });
+    expect(calcularPlacar([], inicio, fim, '2026-10-15')).toMatchObject({ diaAtual: 1, diasRestantes: 13 });
+    expect(calcularPlacar([], inicio, fim, '2026-10-16')).toMatchObject({ diaAtual: 2, diasRestantes: 12 });
+    expect(calcularPlacar([], inicio, fim, '2026-10-28')).toMatchObject({ diaAtual: 14, diasRestantes: 0, encerrado: false });
+    expect(calcularPlacar([], inicio, fim, '2026-10-29')).toMatchObject({ diaAtual: 14, diasRestantes: 0, encerrado: true });
   });
 
   it('hoje marcado entra na meta', () => {

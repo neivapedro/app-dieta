@@ -92,6 +92,9 @@ export interface Placar {
   totalDias: number;
   /** Dias completos já passados (até ontem) dentro do projeto */
   diasDecorridos: number;
+  /** Dia do projeto em que hoje cai (1 no primeiro dia; 0 antes de começar; o total depois do fim) */
+  diaAtual: number;
+  /** Dias depois de hoje até o fim (diaAtual + diasRestantes = totalDias) */
   diasRestantes: number;
   iniciado: boolean;
   encerrado: boolean;
@@ -169,12 +172,15 @@ export function calcularPlacar(dias: TreinoDia[], inicio: string, fim: string, h
     } else if (d !== hoje) corrente = 0;
   }
 
+  const diasDecorridos = ateHoje.filter((d) => d < hoje).length;
+  const diaAtual = hoje > fim ? todas.length : hoje >= inicio ? diasDecorridos + 1 : 0;
   return {
     inicio,
     fim,
     totalDias: todas.length,
-    diasDecorridos: ateHoje.filter((d) => d < hoje).length,
-    diasRestantes: futuras.length + (hoje >= inicio && hoje <= fim ? 1 : 0),
+    diasDecorridos,
+    diaAtual,
+    diasRestantes: todas.length - diaAtual,
     iniciado: hoje >= inicio,
     encerrado: hoje > fim,
     treino,

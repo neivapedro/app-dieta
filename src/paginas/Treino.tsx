@@ -55,7 +55,7 @@ export function Treino() {
   const [todasSemanas, setTodasSemanas] = useState(false);
   if (!t) return null;
   const { placar: p, hoje, inicial, atual, metas } = t;
-  const progresso = p.totalDias ? Math.min(p.diasDecorridos / p.totalDias, 1) : 0;
+  const progresso = p.totalDias ? Math.min(p.diaAtual / p.totalDias, 1) : 0;
   // Medidas do projeto: na fase pós-remédio o placar é outro, mas o "final" é o do período do remédio
   const final = t.projeto.placar.encerrado;
   const temAtual = atual && inicial && atual.data !== inicial.data;
@@ -109,8 +109,11 @@ export function Treino() {
           <div style={{ width: `${progresso * 100}%` }} />
         </div>
         <div className="grade grade-4" style={{ marginTop: 14 }}>
-          <Bloco rotulo="Dias decorridos" valor={`${p.diasDecorridos} de ${p.totalDias}`} />
-          <Bloco rotulo="Faltam" valor={`${p.diasRestantes} ${p.diasRestantes === 1 ? 'dia' : 'dias'}`} />
+          <Bloco rotulo={t.placarPos ? 'Dia da fase' : 'Dia do projeto'} valor={`${p.diaAtual} de ${p.totalDias}`} />
+          <Bloco
+            rotulo="Faltam"
+            valor={p.diasRestantes === 0 && p.iniciado && !p.encerrado ? 'Hoje é o último' : `${p.diasRestantes} ${p.diasRestantes === 1 ? 'dia' : 'dias'}`}
+          />
           <Bloco rotulo="Sequência atual" valor={`🔥 ${p.sequenciaAtual} ${p.sequenciaAtual === 1 ? 'dia' : 'dias'}`} />
           <Bloco rotulo="Recorde" valor={`${p.recorde} ${p.recorde === 1 ? 'dia' : 'dias'}`} />
         </div>

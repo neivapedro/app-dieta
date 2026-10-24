@@ -41,7 +41,7 @@ export function CartaoTreinoHoje() {
   if (!placar.iniciado || placar.encerrado) return null;
   const reg = t.doDia(hoje);
   const corrida = tipoCardioEfetivo(hoje, reg) === 'corrida';
-  const diaNumero = placar.diasDecorridos + 1;
+  const diaNumero = placar.diaAtual;
 
   // Cada toque grava o dia a partir do estado mais recente (a fila aplica na hora),
   // então tocar Treino e logo depois Cardio nunca apaga o primeiro check
