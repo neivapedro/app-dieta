@@ -36,7 +36,7 @@ import { calcularMetas, corpoParaMetas, idade, macrosDaRefeicao, textoBaseMetas 
 import { cm, corVariacao, kg, mg, num, pct, pp, sinal } from '../lib/formato';
 import { MDC, ultimaNormal, type ChaveMdc, type Composicao } from '../lib/gordura';
 import { conselhoConferencia, dietaNaTendencia, textoDietaSemana, textoPlanoSeguido } from '../lib/semana';
-import { aderenciaDoTreino, formatarTempo } from '../lib/treino';
+import { aderenciaDoTreino, formatarTempo, textoCorridasPeriodo } from '../lib/treino';
 
 const GraficoPesoDose = lazy(() => import('../componentes/graficos').then((m) => ({ default: m.GraficoPesoDose })).catch(() => ({ default: SemGrafico })));
 
@@ -208,7 +208,8 @@ export function Analise() {
             valores: [
               `${b.placar.treino.feito} de ${b.placar.treino.meta} · ${pct(b.placar.treino.aderencia, 0)}`,
               `${b.placar.cardio.feito} de ${b.placar.cardio.meta} · ${pct(b.placar.cardio.aderencia, 0)}`,
-              `${b.placar.corrida.feito} · ${num(b.placar.corrida.km, 1)} km`,
+              // Só as distâncias anotadas (corrida sem distância não vira km)
+              textoCorridasPeriodo(b.placar.corrida),
               corridas.length ? `${formatarTempo(Math.min(...corridas.map((c) => c.pace)))} /km` : '–',
             ],
           };

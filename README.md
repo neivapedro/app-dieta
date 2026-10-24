@@ -110,12 +110,12 @@ Para ativar: no **SQL Editor**, rode `supabase/ativar_dieta.sql`. A parte 2 é o
 ### Aba Treino (só para contas liberadas)
 
 Acompanhamento do treino durante o ciclo:
-- **Check diário:** 1 treino e 1 cardio por dia, sem folga. O cardio é corrida de 5 km na quarta e no domingo, e bike de 30 min nos demais dias.
+- **Check diário:** 1 treino e 1 cardio por dia, sem folga. O cardio é corrida na quarta e no domingo, e bike de 30 min nos demais dias. A corrida não tem distância fixa: distância e tempo são registrados depois de concluída.
 - **Placar:** aderência, sequência e projeção.
 - **Grade:** calendário do período com o check de cada dia.
 - **Medidas:** início × agora × meta.
 - **Aderência semanal × medidas:** comparada com a medição de toda segunda.
-- **Pace das corridas.**
+- **Pace das corridas:** das corridas com distância e tempo registrados.
 
 O período vai da 1ª aplicação até um intervalo entre doses depois da última (7 dias no plano semanal).
 

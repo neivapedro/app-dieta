@@ -5,10 +5,10 @@ import type { Ciclo, TreinoDia } from './tipos';
 
 // Regras do projeto de treino (planilha do Pedro):
 // - 1 treino por dia, todos os dias (sem folga: dia sem check conta como não feito);
-// - 1 cardio por dia: corrida de 5 km na quarta e no domingo; bike 30 min nos demais.
+// - 1 cardio por dia: corrida na quarta e no domingo; bike 30 min nos demais.
+// - A corrida não tem distância padrão: distância e tempo são anotados depois de feita.
 // - O dia de hoje só entra na meta quando é marcado (ainda está em aberto).
 
-export const KM_CORRIDA_PADRAO = 5;
 export const MIN_BIKE = 30;
 
 export type TipoCardio = 'corrida' | 'bike';
@@ -35,10 +35,15 @@ export function tipoCardioEfetivo(data: string, reg?: Pick<TreinoDia, 'cardio_ti
   return tipoCardio(data);
 }
 
-/** "Corrida 8 km" (com a distância feita, quando houver; senão a padrão) ou "Bike 40 min". */
+/** Distância de uma corrida: 6.2 → "6,2 km"; 21.08 → "21,08 km". */
+export function formatarKm(km: number): string {
+  return `${km.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} km`;
+}
+
+/** "Corrida 6,2 km" (com a distância anotada), "Corrida" (sem ela) ou "Bike 30 min". */
 export function rotuloTipoCardio(tipo: TipoCardio, km?: number | null): string {
-  const d = km != null && km > 0 ? km : KM_CORRIDA_PADRAO;
-  return tipo === 'corrida' ? `Corrida ${d.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} km` : `Bike ${MIN_BIKE} min`;
+  if (tipo === 'bike') return `Bike ${MIN_BIKE} min`;
+  return km != null && km > 0 ? `Corrida ${formatarKm(km)}` : 'Corrida';
 }
 
 /** Campos do cardio que mudam ao tocar Bike ou Corrida no cartão do dia. */
@@ -60,16 +65,17 @@ export function tocarCardio(data: string, atual: TreinoDia | null | undefined, t
   return {
     cardio: true,
     cardio_tipo: tipo,
-    // Sem distância anotada, a padrão (como no formulário): o tipo não se perde se o banco não guardar cardio_tipo
-    corrida_km: tipo === 'corrida' ? (km ?? KM_CORRIDA_PADRAO) : null,
+    // Marcar a corrida não inventa distância: fica a anotada (ou nenhuma, até registrar)
+    corrida_km: tipo === 'corrida' ? km : null,
     corrida_seg: tipo === 'corrida' ? seg : null,
     esforco_cardio: marcadoAgora ? (atual?.esforco_cardio ?? null) : null,
   };
 }
 
-/** Detalhe do botão: "30 min" (bike) ou "5 km" (corrida, com a distância anotada quando houver). */
+/** Detalhe do botão: "30 min" (bike); corrida: a distância anotada ou "km e pace" (anotados depois). */
 export function detalheTipoCardio(tipo: TipoCardio, km?: number | null): string {
-  return rotuloTipoCardio(tipo, km).replace(/^(Bike|Corrida) /, '');
+  if (tipo === 'bike') return `${MIN_BIKE} min`;
+  return km != null && km > 0 ? formatarKm(km) : 'km e pace';
 }
 
 export function rotuloCardio(data: string, reg?: Pick<TreinoDia, 'cardio_tipo' | 'corrida_km'> | null): string {
@@ -131,7 +137,8 @@ export interface Placar {
   encerrado: boolean;
   treino: Contagem;
   cardio: Contagem;
-  corrida: Contagem & { km: number };
+  /** km = só as distâncias anotadas; semDistancia = corridas feitas sem distância */
+  corrida: Contagem & { km: number; semDistancia: number };
   bike: Contagem & { minutos: number };
   sequenciaAtual: number;
   recorde: number;
@@ -185,12 +192,11 @@ export function calcularPlacar(dias: TreinoDia[], inicio: string, fim: string, h
   const cardio = contar(ateHoje, hoje, (d) => ok(d, 'cardio'), todas.length, futuras.length);
   const corrida = contarTipo(todas, hoje, 'corrida', porData);
   const bike = contarTipo(todas, hoje, 'bike', porData);
-  const km = ateHoje
+  const kmCorridas = ateHoje
     .filter((d) => ok(d, 'cardio') && tipoCardioEfetivo(d, porData.get(d)) === 'corrida')
-    .reduce((s, d) => {
-      const k = porData.get(d)?.corrida_km;
-      return s + (k && k > 0 ? k : KM_CORRIDA_PADRAO);
-    }, 0);
+    .map((d) => porData.get(d)?.corrida_km ?? null);
+  const km = kmCorridas.reduce<number>((s, k) => s + (k && k > 0 ? k : 0), 0);
+  const semDistancia = kmCorridas.filter((k) => !(k && k > 0)).length;
 
   // Sequência: dias seguidos com treino E cardio. Hoje incompleto não quebra a sequência.
   const completo = (d: string) => ok(d, 'treino') && ok(d, 'cardio');
@@ -216,11 +222,27 @@ export function calcularPlacar(dias: TreinoDia[], inicio: string, fim: string, h
     encerrado: hoje > fim,
     treino,
     cardio,
-    corrida: { ...corrida, km },
+    corrida: { ...corrida, km, semDistancia },
     bike: { ...bike, minutos: bike.feito * MIN_BIKE },
     sequenciaAtual: corrente,
     recorde,
   };
+}
+
+/**
+ * Linha do placar: "12,4 km corridos", mais " · 1 sem distância" quando há corrida sem distância anotada.
+ * Nenhuma distância anotada: só "1 sem distância" (e não "0 km corridos", que parece nada corrido).
+ */
+export function textoKmCorridos(c: { km: number; semDistancia: number }): string {
+  if (c.km <= 0 && c.semDistancia > 0) return `${c.semDistancia} sem distância`;
+  const km = `${formatarKm(c.km)} corridos`;
+  return c.semDistancia > 0 ? `${km} · ${c.semDistancia} sem distância` : km;
+}
+
+/** Corridas de um período (Análise): "2 · 6,2 km · 1 sem distância", "1 · sem distância" ou só "0". */
+export function textoCorridasPeriodo(c: { feito: number; km: number; semDistancia: number }): string {
+  if (c.km > 0) return `${c.feito} · ${formatarKm(c.km)}${c.semDistancia > 0 ? ` · ${c.semDistancia} sem distância` : ''}`;
+  return c.semDistancia > 0 ? `${c.feito} · sem distância` : String(c.feito);
 }
 
 // ---------- Corridas ----------
@@ -231,18 +253,16 @@ export interface Corrida {
   segundos: number;
   /** segundos por km */
   pace: number;
-  /** diferença de pace para a corrida anterior com tempo (negativo = mais rápido) */
+  /** diferença de pace para a corrida anterior (negativo = mais rápido) */
   delta: number | null;
 }
 
+/** Corridas com distância E tempo anotados (só elas têm pace), em ordem de data. */
 export function listarCorridas(dias: TreinoDia[]): Corrida[] {
   const lista = dias
-    .filter((d) => d.cardio && d.corrida_seg && tipoCardioEfetivo(d.data, d) === 'corrida')
+    .filter((d) => d.cardio && d.corrida_km && d.corrida_km > 0 && d.corrida_seg && tipoCardioEfetivo(d.data, d) === 'corrida')
     .sort((a, b) => a.data.localeCompare(b.data))
-    .map((d) => {
-      const km = d.corrida_km && d.corrida_km > 0 ? d.corrida_km : KM_CORRIDA_PADRAO;
-      return { data: d.data, km, segundos: d.corrida_seg!, pace: d.corrida_seg! / km, delta: null as number | null };
-    });
+    .map((d) => ({ data: d.data, km: d.corrida_km!, segundos: d.corrida_seg!, pace: d.corrida_seg! / d.corrida_km!, delta: null as number | null }));
   // Diferença entre os paces como aparecem na tela (arredondados ao segundo): 5:13 e 5:13 = igual
   lista.forEach((c, i) => (c.delta = i > 0 ? Math.round(c.pace) - Math.round(lista[i - 1].pace) : null));
   return lista;
@@ -285,6 +305,20 @@ export function digitosParaTempo(digitos: string): string {
 /** Pace plausível para corrida (2:30 a 15:00 por km); fora disso, o tempo foi digitado errado. */
 export function paceValido(segPorKm: number): boolean {
   return segPorKm >= 150 && segPorKm <= 900;
+}
+
+/** Pace (s/km) e velocidade média (km/h); null sem distância ou sem tempo. */
+export function ritmoCorrida(km: number | null | undefined, seg: number | null | undefined): { pace: number; kmh: number } | null {
+  if (!km || km <= 0 || !seg || seg <= 0) return null;
+  return { pace: seg / km, kmh: km / (seg / 3600) };
+}
+
+/** Resumo da corrida anotada: "6,2 km · 32:10 · 5:11 /km" (só o que existe); null sem distância e sem tempo. */
+export function resumoCorrida(km: number | null | undefined, seg: number | null | undefined): string | null {
+  const r = ritmoCorrida(km, seg);
+  const partes = [km && km > 0 ? formatarKm(km) : null, seg && seg > 0 ? formatarTempo(seg) : null, r ? `${formatarTempo(r.pace)} /km` : null];
+  const texto = partes.filter(Boolean).join(' · ');
+  return texto || null;
 }
 
 // ---------- Semanas (segunda a domingo) ----------
@@ -450,7 +484,7 @@ export function resumoEsforco(dias: TreinoDia[], hoje: string): { treino: Compar
 
 /** Duração estimada da musculação (o app só tem o check) */
 export const MIN_MUSCULACAO = 60;
-/** Corrida sem tempo anotado: 5 km a ~6 min/km */
+/** Corrida sem tempo anotado: duração estimada */
 const MIN_CORRIDA_ESTIMADA = 30;
 
 /**

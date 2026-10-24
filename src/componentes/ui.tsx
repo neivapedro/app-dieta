@@ -96,6 +96,7 @@ export function CampoNumero({
   dica,
   obrigatorio,
   permitirNegativo,
+  placeholder,
 }: {
   rotulo: string;
   valor: string;
@@ -105,6 +106,7 @@ export function CampoNumero({
   obrigatorio?: boolean;
   /** Por padrão o sinal de menos não entra (peso, medidas, doses) */
   permitirNegativo?: boolean;
+  placeholder?: string;
 }) {
   return (
     <Campo rotulo={sufixo ? `${rotulo} (${sufixo})` : rotulo} dica={dica}>
@@ -115,6 +117,7 @@ export function CampoNumero({
             inputMode="decimal"
             value={valor}
             required={obrigatorio}
+            placeholder={placeholder}
             style={{ minWidth: 0, flex: 1 }}
             onChange={(e) => aoMudar(e.target.value.replace(/[\u2212\u2013\u2014]/g, '-').replace(/[^\d.,-]/g, ''))}
           />
@@ -129,7 +132,7 @@ export function CampoNumero({
           </button>
         </div>
       ) : (
-        <input inputMode="decimal" value={valor} required={obrigatorio} onChange={(e) => aoMudar(e.target.value.replace(/[^\d.,]/g, ''))} />
+        <input inputMode="decimal" value={valor} required={obrigatorio} placeholder={placeholder} onChange={(e) => aoMudar(e.target.value.replace(/[^\d.,]/g, ''))} />
       )}
     </Campo>
   );

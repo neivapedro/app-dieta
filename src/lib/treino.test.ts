@@ -6,6 +6,12 @@ import {
   aderenciaRecente,
   calcularPlacar,
   detalheTipoCardio,
+  formatarKm,
+  resumoCorrida,
+  ritmoCorrida,
+  rotuloTipoCardio,
+  textoCorridasPeriodo,
+  textoKmCorridos,
   tocarCardio,
   digitosParaTempo,
   horasExercicioDia,
@@ -73,7 +79,7 @@ describe('Placar', () => {
     expect(p.treino).toMatchObject({ meta: 5, feito: 4 });
     expect(p.cardio).toMatchObject({ meta: 5, feito: 3 });
     expect(p.treino.aderencia).toBeCloseTo(0.8);
-    expect(p.corrida).toMatchObject({ meta: 1, feito: 1, km: 5 });
+    expect(p.corrida).toMatchObject({ meta: 1, feito: 1, km: 5, semDistancia: 0 });
     expect(p.bike).toMatchObject({ meta: 4, feito: 2, minutos: 60 });
   });
 
@@ -116,6 +122,16 @@ describe('Corridas e pace', () => {
     expect(c[1].pace).toBe(342);
     expect(c[1].delta).toBe(-18);
     expect(formatarTempo(342)).toBe('5:42');
+  });
+  it('pace só de corridas com distância E tempo (sem distância padrão)', () => {
+    const c = listarCorridas([
+      dia('2026-10-14', true, true, { cardio_tipo: 'corrida', corrida_seg: 1800 }), // só tempo
+      dia('2026-10-18', true, true, { cardio_tipo: 'corrida', corrida_km: 6 }), // só distância
+      dia('2026-10-21', true, true, { cardio_tipo: 'corrida', corrida_km: 6.2, corrida_seg: 1930 }),
+      dia('2026-10-25', true, false, { cardio_tipo: 'corrida', corrida_km: 5, corrida_seg: 1500 }), // desmarcada
+    ]);
+    expect(c.map((x) => x.data)).toEqual(['2026-10-21']);
+    expect(c[0]).toMatchObject({ km: 6.2, segundos: 1930, delta: null });
   });
   it('formata o tempo digitado só com números', () => {
     expect(digitosParaTempo('2830')).toBe('28:30');
@@ -206,6 +222,35 @@ describe('Corrida em qualquer dia', () => {
     expect(listarCorridas(dias).map((c) => c.data)).toEqual(['2026-10-15', '2026-10-18']);
   });
 
+  it('km corridos soma só as distâncias anotadas e conta as corridas sem distância', () => {
+    const dias = [
+      dia('2026-10-14', true, true, { cardio_tipo: 'corrida', corrida_km: 6.2, corrida_seg: 1930 }),
+      dia('2026-10-15', true, true, { cardio_tipo: 'corrida' }), // marcada, sem distância
+      dia('2026-10-18', true, true, { cardio_tipo: 'corrida', corrida_km: 6.2 }),
+      dia('2026-10-19', true, false, { cardio_tipo: 'corrida', corrida_km: 9 }), // desmarcada: fora
+      dia('2026-10-20', true, true, { cardio_tipo: 'bike' }),
+    ];
+    const p = calcularPlacar(dias, '2026-10-12', '2026-10-25', '2026-10-21');
+    expect(p.corrida.km).toBeCloseTo(12.4);
+    expect(p.corrida.semDistancia).toBe(1);
+    expect(textoKmCorridos(p.corrida)).toBe('12,4 km corridos · 1 sem distância');
+    expect(textoKmCorridos({ km: 12.4, semDistancia: 2 })).toBe('12,4 km corridos · 2 sem distância');
+    expect(textoKmCorridos({ km: 0, semDistancia: 0 })).toBe('0 km corridos');
+    expect(textoKmCorridos({ km: 10, semDistancia: 0 })).toBe('10 km corridos');
+    // Mesma precisão do botão e do resumo (até 2 casas)
+    expect(textoKmCorridos({ km: 6.25, semDistancia: 0 })).toBe('6,25 km corridos');
+    // Nenhuma distância anotada: não mostra "0 km corridos"
+    expect(textoKmCorridos({ km: 0, semDistancia: 1 })).toBe('1 sem distância');
+    expect(textoKmCorridos({ km: 0, semDistancia: 2 })).toBe('2 sem distância');
+  });
+
+  it('corridas do período (Análise) dizem quantas estão sem distância', () => {
+    expect(textoCorridasPeriodo({ feito: 2, km: 6.2, semDistancia: 1 })).toBe('2 · 6,2 km · 1 sem distância');
+    expect(textoCorridasPeriodo({ feito: 2, km: 12.45, semDistancia: 0 })).toBe('2 · 12,45 km');
+    expect(textoCorridasPeriodo({ feito: 1, km: 0, semDistancia: 1 })).toBe('1 · sem distância');
+    expect(textoCorridasPeriodo({ feito: 0, km: 0, semDistancia: 0 })).toBe('0');
+  });
+
   it('corrida a mais na semana não passa de 100%', () => {
     const dias = [
       dia('2026-10-14', true, true, { corrida_km: 5 }),
@@ -271,6 +316,10 @@ describe('Horas de exercício do dia (meta de água)', () => {
     expect(horasExercicioDia('2026-10-18', dia('2026-10-18', true, true, { corrida_km: 5, corrida_seg: 1800 }), '2026-10-20')).toBe(1.5);
     expect(horasExercicioDia('2026-10-18', dia('2026-10-18', false, true, { corrida_km: 10, corrida_seg: 3600 }), '2026-10-20')).toBe(1);
   });
+  it('corrida sem tempo conta a duração estimada (30 min)', () => {
+    expect(horasExercicioDia('2026-10-18', dia('2026-10-18', false, true, { cardio_tipo: 'corrida' }), '2026-10-20')).toBe(0.5);
+    expect(horasExercicioDia('2026-10-18', dia('2026-10-18', false, true, { cardio_tipo: 'corrida', corrida_km: 8 }), '2026-10-20')).toBe(0.5);
+  });
   it('hoje em aberto conta o previsto', () => {
     expect(horasExercicioDia('2026-10-20', undefined, '2026-10-20')).toBe(1.5);
     expect(horasExercicioDia('2026-10-20', dia('2026-10-20', true, false), '2026-10-20')).toBe(1.5);
@@ -287,7 +336,8 @@ describe('tocarCardio (Bike e Corrida no cartão do dia)', () => {
   const reg = (c: Partial<TreinoDia>): TreinoDia => ({ id: 'x', data: sexta, treino: false, cardio: false, corrida_km: null, corrida_seg: null, ...c });
 
   it('nada marcado: marca o tipo tocado, em qualquer dia', () => {
-    expect(tocarCardio(sexta, undefined, 'corrida')).toEqual({ cardio: true, cardio_tipo: 'corrida', corrida_km: 5, corrida_seg: null, esforco_cardio: null });
+    // Sem distância padrão: marcar a corrida não grava km
+    expect(tocarCardio(sexta, undefined, 'corrida')).toEqual({ cardio: true, cardio_tipo: 'corrida', corrida_km: null, corrida_seg: null, esforco_cardio: null });
     expect(tocarCardio(quarta, undefined, 'bike')).toMatchObject({ cardio: true, cardio_tipo: 'bike' });
   });
 
@@ -315,7 +365,46 @@ describe('tocarCardio (Bike e Corrida no cartão do dia)', () => {
   it('o cardio marcado conta como o tipo tocado no placar', () => {
     const r = reg({ ...tocarCardio(sexta, undefined, 'corrida') });
     expect(tipoCardioEfetivo(sexta, r)).toBe('corrida');
-    expect(detalheTipoCardio('corrida', r.corrida_km)).toBe('5 km');
+    expect(detalheTipoCardio('corrida', r.corrida_km)).toBe('km e pace');
     expect(detalheTipoCardio('bike')).toBe('30 min');
+  });
+
+  it('trocar Bike → Corrida não inventa distância', () => {
+    expect(tocarCardio(sexta, reg({ cardio: true, cardio_tipo: 'bike' }), 'corrida')).toMatchObject({ cardio_tipo: 'corrida', corrida_km: null, corrida_seg: null });
+  });
+});
+
+describe('Rótulos e resumo da corrida', () => {
+  it('detalhe do botão: a distância anotada ou "km e pace"', () => {
+    expect(detalheTipoCardio('corrida', null)).toBe('km e pace');
+    expect(detalheTipoCardio('corrida', 0)).toBe('km e pace');
+    expect(detalheTipoCardio('corrida', 6.2)).toBe('6,2 km');
+    expect(detalheTipoCardio('corrida', 21.08)).toBe('21,08 km');
+    expect(detalheTipoCardio('corrida', 10)).toBe('10 km');
+    expect(detalheTipoCardio('bike', 6.2)).toBe('30 min');
+    expect(formatarKm(5.255)).toBe('5,26 km');
+  });
+
+  it('rótulo do cardio sem distância padrão', () => {
+    expect(rotuloTipoCardio('corrida')).toBe('Corrida');
+    expect(rotuloTipoCardio('corrida', 6.2)).toBe('Corrida 6,2 km');
+    expect(rotuloTipoCardio('bike', 6.2)).toBe('Bike 30 min');
+  });
+
+  it('pace e velocidade só com distância e tempo', () => {
+    const r = ritmoCorrida(6.2, 1930)!; // 32:10
+    expect(formatarTempo(r.pace)).toBe('5:11');
+    expect(r.kmh).toBeCloseTo(11.565, 2);
+    expect(ritmoCorrida(null, 1930)).toBeNull();
+    expect(ritmoCorrida(6.2, null)).toBeNull();
+    expect(ritmoCorrida(0, 1930)).toBeNull();
+  });
+
+  it('resumo mostra só o que foi anotado; pace só com os dois', () => {
+    expect(resumoCorrida(6.2, 1930)).toBe('6,2 km · 32:10 · 5:11 /km');
+    expect(resumoCorrida(6.2, null)).toBe('6,2 km');
+    expect(resumoCorrida(null, 1930)).toBe('32:10');
+    expect(resumoCorrida(null, null)).toBeNull();
+    expect(resumoCorrida(0, 0)).toBeNull();
   });
 });

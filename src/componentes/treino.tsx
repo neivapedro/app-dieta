@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, type CSSProperties, type FormEvent } from 'react';
 import { useDados } from '../dados/contexto';
 import { useTreino } from '../dados/useTreino';
 import { diaDaSemana, formatarData, hojeLocal } from '../lib/datas';
@@ -9,10 +9,11 @@ import {
   digitosParaTempo,
   ESCALA_ESFORCO,
   formatarTempo,
-  KM_CORRIDA_PADRAO,
   lerTempo,
   paceValido,
   detalheTipoCardio,
+  resumoCorrida,
+  ritmoCorrida,
   rotuloTipoCardio,
   tipoCardio,
   tipoCardioEfetivo,
@@ -20,7 +21,7 @@ import {
   type TipoCardio,
 } from '../lib/treino';
 import type { MetasProjeto, TreinoDia } from '../lib/tipos';
-import { Campo, CampoNumero, Escolhas, Folha } from './ui';
+import { Bloco, Campo, CampoNumero, Escolhas, Folha } from './ui';
 
 export function Marcador({
   rotulo,
@@ -74,6 +75,52 @@ export function MarcadoresDia({
   );
 }
 
+/**
+ * Ação da corrida marcada (Fechar o dia e Treino de hoje): sem nada anotado, chama para
+ * registrar distância e tempo; com algo anotado, mostra o resumo e abre para editar.
+ */
+export function BotaoCorrida({ reg, aoTocar, style }: { reg?: TreinoDia | null; aoTocar: () => void; style?: CSSProperties }) {
+  const resumo = resumoCorrida(reg?.corrida_km, reg?.corrida_seg);
+  if (!resumo)
+    return (
+      <button type="button" className="botao pequeno bloco-largo botao-corrida" style={style} onClick={aoTocar} aria-label="Registrar distância e tempo da corrida">
+        Registrar distância e tempo
+      </button>
+    );
+  // Só o tempo anotado: avisa que falta a distância (sem ela não há pace)
+  const semDistancia = !(reg?.corrida_km && reg.corrida_km > 0);
+  return (
+    <button
+      type="button"
+      className="botao bloco-largo botao-corrida com-resumo"
+      style={style}
+      onClick={aoTocar}
+      aria-label={`Corrida: ${resumo}${semDistancia ? ' · sem distância' : ''} · editar`}
+    >
+      <span className="botao-corrida-texto">
+        {/* "Editar" na linha do rótulo: o resumo usa a largura toda (cabe em 320 px) */}
+        <span className="botao-corrida-topo">
+          <span className="botao-corrida-rotulo">Corrida</span>
+          <span className="botao-corrida-editar">Editar</span>
+        </span>
+        {/* Cada parte (km, tempo, pace) inteira numa linha; o "·" fica no fim da linha ao quebrar */}
+        <span className="botao-corrida-resumo">
+          {resumo.split(' · ').map((parte, i, todas) => (
+            <span key={i}>
+              {i > 0 && ' '}
+              <span className="sem-quebra">
+                <b>{parte}</b>
+                {(i < todas.length - 1 || semDistancia) && '\u00a0·'}
+              </span>
+            </span>
+          ))}
+          {semDistancia && <span className="botao-corrida-falta"> sem distância</span>}
+        </span>
+      </span>
+    </button>
+  );
+}
+
 /** Cartão "Treino de hoje": marca o treino e o cardio com um toque (Início e topo da aba Treino). */
 export function CartaoTreinoHoje() {
   const t = useTreino();
@@ -122,10 +169,15 @@ export function CartaoTreinoHoje() {
         </span>
       </div>
       <MarcadoresDia data={hoje} reg={reg} aoTreino={() => tocar('treino')} aoCardio={tocar} />
-      <button type="button" className="botao pequeno bloco-largo" style={{ marginTop: 8 }} onClick={() => setDetalhes(true)}>
-        {corridaFeita ? (reg?.corrida_seg ? `Corrida: ${formatarTempo(reg.corrida_seg)} · distância, tempo e esforço` : 'Distância, tempo e esforço da corrida') : 'Esforço do treino e do cardio'}
-      </button>
-      {detalhes && <FormDiaTreino data={hoje} aoFechar={() => setDetalhes(false)} />}
+      {/* Corrida marcada: o botão da corrida (a folha dela tem também os esforços); senão, os esforços do dia */}
+      {corridaFeita ? (
+        <BotaoCorrida reg={reg} aoTocar={() => setDetalhes(true)} style={{ marginTop: 8 }} />
+      ) : (
+        <button type="button" className="botao pequeno bloco-largo" style={{ marginTop: 8 }} onClick={() => setDetalhes(true)}>
+          Esforço do treino e do cardio
+        </button>
+      )}
+      {detalhes && <FormDiaTreino data={hoje} foco={corridaFeita ? 'corrida' : undefined} aoFechar={() => setDetalhes(false)} />}
     </section>
   );
 }
@@ -146,17 +198,21 @@ function textoEsforco(v: number | null): string {
   return `${v} · ${texto}. Vale a sessão inteira, não a série mais dura.`;
 }
 
-/** Edição de um dia: treino, cardio (corrida ou bike, em qualquer dia), distância e tempo da corrida e esforço. */
-export function FormDiaTreino({ data, marcarCardio, aoFechar }: { data: string; marcarCardio?: boolean; aoFechar: () => void }) {
+/**
+ * Edição de um dia: treino, cardio (corrida ou bike, em qualquer dia), distância e tempo da corrida e esforço.
+ * foco "corrida" (botão da corrida marcada): só a corrida e os esforços, sem os checks do dia.
+ */
+export function FormDiaTreino({ data, foco, aoFechar }: { data: string; foco?: 'corrida'; aoFechar: () => void }) {
   const t = useTreino();
   const { gravar, hoje } = useDados();
   const reg = t?.doDia(data);
+  const focoCorrida = foco === 'corrida';
   const [treino, setTreino] = useState(!!reg?.treino);
-  // Cardio pré-marcado só quando o formulário vem do botão "Cardio" do dia
-  const [cardio, setCardio] = useState(reg ? reg.cardio || !!marcarCardio : !!marcarCardio);
+  const [cardio, setCardio] = useState(focoCorrida || !!reg?.cardio);
   // Pré-selecionado pelo que foi salvo; sem registro, pela regra (quarta e domingo = corrida)
-  const [tipo, setTipo] = useState<TipoCardio>(tipoCardioEfetivo(data, reg));
-  const [km, setKm] = useState(paraTexto(reg?.corrida_km ?? KM_CORRIDA_PADRAO));
+  const [tipo, setTipo] = useState<TipoCardio>(focoCorrida ? 'corrida' : tipoCardioEfetivo(data, reg));
+  // Sem distância padrão: o campo começa vazio até a corrida ser registrada
+  const [km, setKm] = useState(paraTexto(reg?.corrida_km));
   const [tempo, setTempo] = useState(reg?.corrida_seg ? formatarTempo(reg.corrida_seg) : '');
   const [esforcoTreino, setEsforcoTreino] = useState<number | null>(reg?.esforco_treino ?? null);
   const [esforcoCardio, setEsforcoCardio] = useState<number | null>(reg?.esforco_cardio ?? null);
@@ -164,16 +220,17 @@ export function FormDiaTreino({ data, marcarCardio, aoFechar }: { data: string; 
   const corrida = tipo === 'corrida';
 
   const kmN = paraNumero(km);
+  // Distância é opcional; quando informada, de 0,1 a 60 km (o banco guarda 2 casas)
+  const kmOk = kmN !== null && kmN >= 0.1 && kmN <= 60 ? Math.round(kmN * 100) / 100 : null;
   const seg = tempo.trim() ? lerTempo(tempo) : null;
-  // Distância vazia: as contas usam a padrão (5 km), então o pace é conferido com ela também
-  const kmConta = km.trim() ? kmN : KM_CORRIDA_PADRAO;
-  const pace = seg && kmConta ? seg / kmConta : null;
+  // Pace e velocidade só com distância e tempo válidos
+  const ritmo = ritmoCorrida(kmOk, seg);
 
   function salvar(e: FormEvent) {
     e.preventDefault();
+    if (corrida && cardio && km.trim() && kmOk === null) return setErro('Informe uma distância entre 0,1 e 60 km.');
     if (corrida && cardio && tempo.trim() && !seg) return setErro('Tempo inválido. Digite só os números, ex.: 2830 para 28:30.');
-    if (corrida && cardio && km.trim() && !(kmN !== null && kmN > 0 && kmN <= 60)) return setErro('Informe a distância da corrida (maior que zero), em km.');
-    if (corrida && cardio && pace && !paceValido(pace)) return setErro(`Confira o tempo: deu ${formatarTempo(pace)} por km.`);
+    if (corrida && cardio && ritmo && !paceValido(ritmo.pace)) return setErro(`Confira a distância e o tempo: deu ${formatarTempo(ritmo.pace)}\u00a0/km.`);
     gravar({
       tipo: 'treino',
       dado: {
@@ -181,7 +238,7 @@ export function FormDiaTreino({ data, marcarCardio, aoFechar }: { data: string; 
         treino,
         cardio,
         // Bike não tem distância: escolher Bike numa quarta apaga os km da corrida
-        corrida_km: corrida && cardio ? kmN : null,
+        corrida_km: corrida && cardio ? kmOk : null,
         corrida_seg: corrida && cardio ? seg : null,
         cardio_tipo: cardio ? tipo : null,
         esforco_treino: treino ? esforcoTreino : null,
@@ -192,13 +249,23 @@ export function FormDiaTreino({ data, marcarCardio, aoFechar }: { data: string; 
   }
 
   return (
-    <Folha titulo={`${diaDaSemana(data)}, ${formatarData(data)}`} aoFechar={aoFechar}>
+    <Folha
+      titulo={
+        focoCorrida
+          ? // Com treino marcado, a folha também tem o esforço da musculação
+            `${treino ? 'Corrida e treino' : 'Corrida'}${data === hoje ? ' de hoje' : ` · ${diaDaSemana(data).slice(0, 3).toLowerCase()}, ${formatarData(data).slice(0, 5)}`}`
+          : `${diaDaSemana(data)}, ${formatarData(data)}`
+      }
+      aoFechar={aoFechar}
+    >
       <form className="pilha" onSubmit={salvar}>
-        <div className="linha" style={{ flexWrap: 'nowrap' }}>
-          <Marcador rotulo="Treino" detalhe="musculação" feito={treino} aoTocar={() => setTreino(!treino)} />
-          <Marcador rotulo="Cardio" detalhe={rotuloTipoCardio(tipo, kmN)} feito={cardio} aoTocar={() => setCardio(!cardio)} />
-        </div>
-        {cardio && (
+        {!focoCorrida && (
+          <div className="linha" style={{ flexWrap: 'nowrap' }}>
+            <Marcador rotulo="Treino" detalhe="musculação" feito={treino} aoTocar={() => setTreino(!treino)} />
+            <Marcador rotulo="Cardio" detalhe={rotuloTipoCardio(tipo, kmOk)} feito={cardio} aoTocar={() => setCardio(!cardio)} />
+          </div>
+        )}
+        {cardio && !focoCorrida && (
           <Campo rotulo={data === hoje ? 'Cardio de hoje' : 'Cardio do dia'} grupo dica="A corrida pode ser em qualquer dia; a meta continua 2 corridas e 5 bikes por semana.">
             <Escolhas opcoes={OPCOES_TIPO} valor={tipo} aoMudar={(v) => v && (setTipo(v), setErro(null))} />
           </Campo>
@@ -206,12 +273,22 @@ export function FormDiaTreino({ data, marcarCardio, aoFechar }: { data: string; 
         {corrida && cardio && (
           <>
             <div className="grade">
-              <CampoNumero rotulo="Distância" sufixo="km" valor={km} aoMudar={setKm} />
-              <Campo rotulo="Tempo (opcional)" dica="Só os números: 2830 = 28:30">
+              <CampoNumero
+                rotulo="Distância"
+                sufixo="km"
+                valor={km}
+                placeholder="0,0"
+                aoMudar={(v) => {
+                  setKm(v);
+                  setErro(null);
+                }}
+              />
+              <Campo rotulo="Tempo" dica="Ex.: 3210 = 32:10">
                 <input
                   inputMode="numeric"
+                  enterKeyHint="done"
                   value={tempo}
-                  placeholder="28:30"
+                  placeholder="0:00"
                   onChange={(e) => {
                     setTempo(digitosParaTempo(e.target.value));
                     setErro(null);
@@ -219,12 +296,19 @@ export function FormDiaTreino({ data, marcarCardio, aoFechar }: { data: string; 
                 />
               </Campo>
             </div>
-            {pace && (
-              <div className={`alerta ${paceValido(pace) ? 'info' : 'erro'}`}>
-                Pace: {formatarTempo(pace)} /km{!km.trim() ? ` (com ${KM_CORRIDA_PADRAO} km, a distância padrão)` : ''}
-                {paceValido(pace) ? '' : ' — confira o tempo'}
-              </div>
-            )}
+            {/* Erros (distância, tempo, pace) logo abaixo dos campos */}
+            {erro && <div className="alerta erro">{erro}</div>}
+            {ritmo ? (
+              <>
+                <div className="grade" aria-live="polite">
+                  <Bloco rotulo="Pace" valor={`${formatarTempo(ritmo.pace)} /km`} classe={paceValido(ritmo.pace) ? '' : 'ruim'} />
+                  <Bloco rotulo="Velocidade média" valor={`${num(ritmo.kmh, 1)} km/h`} />
+                </div>
+                {!paceValido(ritmo.pace) && <div className="alerta erro">Pace fora da faixa normal (2:30 a 15:00{'\u00a0'}/km). Confira a distância e o tempo.</div>}
+              </>
+            ) : seg && kmOk === null && !km.trim() ? (
+              <p className="mudo">Informe a distância para calcular o pace.</p>
+            ) : null}
           </>
         )}
         {treino && (
@@ -235,14 +319,14 @@ export function FormDiaTreino({ data, marcarCardio, aoFechar }: { data: string; 
           </Campo>
         )}
         {cardio && (
-          <Campo rotulo="Esforço do cardio (opcional)" grupo dica={textoEsforco(esforcoCardio)}>
+          <Campo rotulo={`Esforço ${corrida ? 'da corrida' : 'do cardio'} (opcional)`} grupo dica={textoEsforco(esforcoCardio)}>
             <div className="escolhas-compactas">
               <Escolhas opcoes={OPCOES_ESFORCO} valor={esforcoCardio} aoMudar={setEsforcoCardio} permitirVazio />
             </div>
           </Campo>
         )}
-        {erro && <div className="alerta erro">{erro}</div>}
-        <button className="botao primario">Salvar</button>
+        {erro && !(corrida && cardio) && <div className="alerta erro">{erro}</div>}
+        <button className="botao primario">{focoCorrida ? 'Salvar corrida' : 'Salvar'}</button>
       </form>
     </Folha>
   );

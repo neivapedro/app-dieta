@@ -214,6 +214,9 @@ th, td { padding: 8px 6px; text-align: right; white-space: nowrap; border-bottom
 @media (max-width: 400px) { table { font-size: 0.78rem; } th, td { padding: 7px 4px; } }
 th { color: var(--texto-2); font-weight: 600; font-size: 0.75rem; }
 th:first-child, td:first-child { text-align: left; }
+/* Linha de apoio do placar (km corridos, min pedalados) quebra em vez de alargar a tabela */
+.placar-extra { font-size: 0.75rem; white-space: normal; }
+.placar-extra .sem-quebra { white-space: nowrap; }
 /* Tabela que continua para o lado: sombra na borda indica que dá para arrastar */
 .tabela-rolagem {
   background:
@@ -299,6 +302,17 @@ details.ajuda[open] summary { margin-bottom: 8px; }
 .marcadores-dia { flex-wrap: nowrap; gap: 8px; }
 .marcadores-dia .check-dia { padding: 10px 4px; }
 .check-dia.previsto:not(.feito) { border-color: var(--texto-3); box-shadow: inset 0 0 0 1px var(--texto-3); }
+/* Ação da corrida marcada: chamada para registrar ou resumo (km · tempo · pace) com "Editar" à direita */
+.botao-corrida { padding: 7px 12px; line-height: 1.35; text-wrap: balance; }
+.botao-corrida.com-resumo { padding: 8px 12px; text-align: left; }
+.botao-corrida-texto { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.botao-corrida-topo { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.botao-corrida-rotulo { font-size: 0.75rem; font-weight: 600; color: var(--texto-2); }
+.botao-corrida-resumo { font-size: 0.92rem; font-variant-numeric: tabular-nums; }
+.botao-corrida-resumo .sem-quebra { white-space: nowrap; }
+.botao-corrida-resumo b { font-weight: 700; }
+.botao-corrida-falta { color: var(--texto-2); white-space: nowrap; }
+.botao-corrida-editar { flex: none; font-size: 0.8rem; color: var(--texto-2); text-decoration: underline; text-underline-offset: 3px; }
 
 .grade-semanas { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
 .grade-semanas-cab { text-align: center; font-size: 0.7rem; font-weight: 700; color: var(--texto-3); padding-bottom: 2px; }

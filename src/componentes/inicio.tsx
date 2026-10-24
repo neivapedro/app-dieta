@@ -8,8 +8,8 @@ import { kg, lerPeso, num, paraTexto } from '../lib/formato';
 import { diaCurto, horaDaFaixaOntem, pendenciasDeOntem, textoPendencias } from '../lib/rotina';
 import { alertasSeguranca, AVISO_SEGURANCA } from '../lib/seguranca';
 import { NIVEIS_NAUSEA, type RegistroDiario } from '../lib/tipos';
-import { formatarTempo, rotuloCardio, segundaDaSemana, tipoCardioEfetivo, tocarCardio, type TipoCardio } from '../lib/treino';
-import { FormDiaTreino, MarcadoresDia } from './treino';
+import { rotuloCardio, segundaDaSemana, tipoCardioEfetivo, tocarCardio, type TipoCardio } from '../lib/treino';
+import { BotaoCorrida, FormDiaTreino, MarcadoresDia } from './treino';
 import { Bloco, Campo, Escolhas } from './ui';
 
 const OPCOES_PLANO = [
@@ -203,11 +203,7 @@ export function CartaoFecharDia({ etiqueta, aoEditar }: { etiqueta?: string; aoE
           aoCardio={(tipo) => gravarTreino(hoje, { cardioTipo: tipo })}
         />
       )}
-      {comTreino && corrida && tr?.cardio && (
-        <button className="botao pequeno" onClick={() => setCorridaAberta(true)}>
-          {tr.corrida_seg ? `Corrida: ${formatarTempo(tr.corrida_seg)} · editar` : 'Anotar o tempo da corrida (opcional)'}
-        </button>
-      )}
+      {comTreino && corrida && tr?.cardio && <BotaoCorrida reg={tr} aoTocar={() => setCorridaAberta(true)} />}
       <Campo rotulo="Náusea (0 a 3)" grupo>
         <Escolhas opcoes={OPCOES_NAUSEA} valor={reg?.nausea ?? null} aoMudar={(v) => gravarDia(hoje, { nausea: v })} permitirVazio />
       </Campo>
@@ -283,7 +279,7 @@ export function CartaoFecharDia({ etiqueta, aoEditar }: { etiqueta?: string; aoE
         )}
       </div>
       {reg?.observacoes && <p className="mudo obs-curta">Obs.: {reg.observacoes}</p>}
-      {corridaAberta && <FormDiaTreino data={hoje} marcarCardio aoFechar={() => setCorridaAberta(false)} />}
+      {corridaAberta && <FormDiaTreino data={hoje} foco="corrida" aoFechar={() => setCorridaAberta(false)} />}
     </section>
   );
 }

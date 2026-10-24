@@ -156,7 +156,10 @@ describe('Período do remédio', () => {
 describe('Cardio e corridas', () => {
   it('o rótulo usa a distância feita', () => {
     expect(rotuloCardio('2026-11-02', { cardio_tipo: 'corrida', corrida_km: 8 })).toBe('Corrida 8 km');
-    expect(rotuloCardio('2026-11-02', { cardio_tipo: 'corrida', corrida_km: null })).toBe('Corrida 5 km');
+    expect(rotuloCardio('2026-11-02', { cardio_tipo: 'corrida', corrida_km: 6.2 })).toBe('Corrida 6,2 km');
+    // Sem distância anotada, sem distância inventada
+    expect(rotuloCardio('2026-11-02', { cardio_tipo: 'corrida', corrida_km: null })).toBe('Corrida');
+    expect(rotuloCardio('2026-11-02', { cardio_tipo: 'bike', corrida_km: null })).toBe('Bike 30 min');
   });
 
   it('paces iguais na tela (5:13 e 5:13) dão diferença zero', () => {

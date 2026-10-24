@@ -11,7 +11,7 @@ import { formatarData, somarDias } from '../lib/datas';
 import { cm, corVariacao, kg, num, pct, pp, sinal } from '../lib/formato';
 import { ajusteVigente, cenariosPesoMeta, cinturaNecessaria, MDC, type ChaveMdc, type Composicao } from '../lib/gordura';
 import { SEMANAS_POS } from '../lib/projeto';
-import { formatarTempo, SUBIDA_ESFORCO, type ComparacaoEsforco, type Contagem } from '../lib/treino';
+import { formatarKm, formatarTempo, SUBIDA_ESFORCO, textoKmCorridos, type ComparacaoEsforco, type Contagem } from '../lib/treino';
 import type { MetricaSemanal } from '../componentes/graficos';
 
 const GraficoAderencia = lazy(() => import('../componentes/graficos').then((m) => ({ default: m.GraficoAderencia })).catch(() => ({ default: SemGrafico })));
@@ -29,7 +29,17 @@ function LinhaPlacar({ nome, c, extra }: { nome: string; c: Contagem; extra?: st
     <tr>
       <td>
         {nome}
-        {extra && <div className="mudo" style={{ fontSize: '0.75rem' }}>{extra}</div>}
+        {extra && (
+          <div className="mudo placar-extra">
+            {/* Cada parte ("6,2 km corridos", "1 sem distância") quebra inteira */}
+            {extra.split(' · ').map((parte, i) => (
+              <span key={i}>
+                {i > 0 && ' · '}
+                <span className="sem-quebra">{parte}</span>
+              </span>
+            ))}
+          </div>
+        )}
       </td>
       <td>{c.meta}</td>
       <td>{c.feito}</td>
@@ -148,7 +158,7 @@ export function Treino() {
             <tbody>
               <LinhaPlacar nome="Treinos" c={p.treino} />
               <LinhaPlacar nome="Cardios" c={p.cardio} />
-              <LinhaPlacar nome="· Corrida (2/sem.)" c={p.corrida} extra={`${num(p.corrida.km, 1)} km corridos`} />
+              <LinhaPlacar nome="· Corrida (2/sem.)" c={p.corrida} extra={textoKmCorridos(p.corrida)} />
               <LinhaPlacar nome="· Bike (5/sem.)" c={p.bike} extra={`${num(p.bike.minutos, 0)} min pedalados`} />
             </tbody>
           </table>
@@ -337,13 +347,13 @@ export function Treino() {
       <section className="cartao">
         <h2>Corridas</h2>
         {t.corridas.length === 0 ? (
-          <Vazio>Ao marcar uma corrida (em qualquer dia), anote o tempo para acompanhar o pace.</Vazio>
+          <Vazio>Depois de cada corrida, registre a distância e o tempo para acompanhar o pace.</Vazio>
         ) : (
           <>
             <div className="grade grade-3">
               <Bloco rotulo="Último pace" valor={`${formatarTempo(t.corridas.at(-1)!.pace)} /km`} />
               <Bloco rotulo="Melhor pace" valor={`${formatarTempo(melhorPace!)} /km`} />
-              <Bloco rotulo="Corridas com tempo" valor={t.corridas.length} />
+              <Bloco rotulo="Corridas registradas" valor={t.corridas.length} />
             </div>
             {t.corridas.length > 1 && (
               <Suspense fallback={<div className="grafico" style={{ height: 200 }} />}>
@@ -365,7 +375,7 @@ export function Treino() {
                   {[...t.corridas].reverse().map((c) => (
                     <tr key={c.data} className="item-acao" onClick={() => setDiaAberto(c.data)}>
                       <td>{formatarData(c.data, true)}</td>
-                      <td>{num(c.km, 1)} km</td>
+                      <td>{formatarKm(c.km)}</td>
                       <td>{formatarTempo(c.segundos)}</td>
                       <td>{formatarTempo(c.pace)}</td>
                       <td className={c.delta === null ? 'mudo' : c.delta < 0 ? 'bom' : c.delta > 0 ? 'ruim' : ''}>
