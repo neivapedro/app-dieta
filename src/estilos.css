@@ -298,7 +298,7 @@ details.ajuda[open] summary { margin-bottom: 8px; }
 /* Treino, Bike e Corrida lado a lado; o cardio previsto pela regra do dia fica com a borda em destaque */
 .marcadores-dia { flex-wrap: nowrap; gap: 8px; }
 .marcadores-dia .check-dia { padding: 10px 4px; }
-.check-dia.previsto:not(.feito) { border-color: var(--texto-3); border-width: 2px; }
+.check-dia.previsto:not(.feito) { border-color: var(--texto-3); box-shadow: inset 0 0 0 1px var(--texto-3); }
 
 .grade-semanas { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
 .grade-semanas-cab { text-align: center; font-size: 0.7rem; font-weight: 700; color: var(--texto-3); padding-bottom: 2px; }

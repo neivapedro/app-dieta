@@ -287,7 +287,7 @@ describe('tocarCardio (Bike e Corrida no cartão do dia)', () => {
   const reg = (c: Partial<TreinoDia>): TreinoDia => ({ id: 'x', data: sexta, treino: false, cardio: false, corrida_km: null, corrida_seg: null, ...c });
 
   it('nada marcado: marca o tipo tocado, em qualquer dia', () => {
-    expect(tocarCardio(sexta, undefined, 'corrida')).toEqual({ cardio: true, cardio_tipo: 'corrida', corrida_km: null, corrida_seg: null, esforco_cardio: null });
+    expect(tocarCardio(sexta, undefined, 'corrida')).toEqual({ cardio: true, cardio_tipo: 'corrida', corrida_km: 5, corrida_seg: null, esforco_cardio: null });
     expect(tocarCardio(quarta, undefined, 'bike')).toMatchObject({ cardio: true, cardio_tipo: 'bike' });
   });
 

@@ -60,7 +60,8 @@ export function tocarCardio(data: string, atual: TreinoDia | null | undefined, t
   return {
     cardio: true,
     cardio_tipo: tipo,
-    corrida_km: tipo === 'corrida' ? km : null,
+    // Sem distância anotada, a padrão (como no formulário): o tipo não se perde se o banco não guardar cardio_tipo
+    corrida_km: tipo === 'corrida' ? (km ?? KM_CORRIDA_PADRAO) : null,
     corrida_seg: tipo === 'corrida' ? seg : null,
     esforco_cardio: marcadoAgora ? (atual?.esforco_cardio ?? null) : null,
   };
