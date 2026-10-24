@@ -12,17 +12,32 @@ import {
   KM_CORRIDA_PADRAO,
   lerTempo,
   paceValido,
-  rotuloCardio,
+  detalheTipoCardio,
   rotuloTipoCardio,
+  tipoCardio,
   tipoCardioEfetivo,
+  tocarCardio,
   type TipoCardio,
 } from '../lib/treino';
-import type { MetasProjeto } from '../lib/tipos';
+import type { MetasProjeto, TreinoDia } from '../lib/tipos';
 import { Campo, CampoNumero, Escolhas, Folha } from './ui';
 
-export function Marcador({ rotulo, detalhe, feito, aoTocar }: { rotulo: string; detalhe: string; feito: boolean; aoTocar: () => void }) {
+export function Marcador({
+  rotulo,
+  detalhe,
+  feito,
+  aoTocar,
+  previsto,
+}: {
+  rotulo: string;
+  detalhe: string;
+  feito: boolean;
+  aoTocar: () => void;
+  /** Cardio previsto pela regra do dia (quarta e domingo = corrida): borda em destaque enquanto nada foi marcado */
+  previsto?: boolean;
+}) {
   return (
-    <button type="button" className={`check-dia ${feito ? 'feito' : ''}`} onClick={aoTocar} aria-pressed={feito}>
+    <button type="button" className={`check-dia ${feito ? 'feito' : ''} ${previsto ? 'previsto' : ''}`} onClick={aoTocar} aria-pressed={feito}>
       <span className="check-dia-icone">{feito ? '✓' : ''}</span>
       <span className="check-dia-rotulo">{rotulo}</span>
       <span className="check-dia-detalhe">{detalhe}</span>
@@ -30,38 +45,70 @@ export function Marcador({ rotulo, detalhe, feito, aoTocar }: { rotulo: string; 
   );
 }
 
+/** Treino, Bike e Corrida do dia: um toque marca ou desmarca; Bike e Corrida são o mesmo cardio (um por dia). */
+export function MarcadoresDia({
+  data,
+  reg,
+  aoTreino,
+  aoCardio,
+}: {
+  data: string;
+  reg?: TreinoDia | null;
+  aoTreino: () => void;
+  aoCardio: (tipo: TipoCardio) => void;
+}) {
+  const feito = reg?.cardio ? tipoCardioEfetivo(data, reg) : null;
+  const previsto = feito ? null : tipoCardio(data);
+  return (
+    <div className="linha marcadores-dia">
+      <Marcador rotulo="Treino" detalhe="musculação" feito={!!reg?.treino} aoTocar={aoTreino} />
+      <Marcador rotulo="Bike" detalhe={detalheTipoCardio('bike')} feito={feito === 'bike'} previsto={previsto === 'bike'} aoTocar={() => aoCardio('bike')} />
+      <Marcador
+        rotulo="Corrida"
+        detalhe={detalheTipoCardio('corrida', reg?.corrida_km)}
+        feito={feito === 'corrida'}
+        previsto={previsto === 'corrida'}
+        aoTocar={() => aoCardio('corrida')}
+      />
+    </div>
+  );
+}
+
 /** Cartão "Treino de hoje": marca o treino e o cardio com um toque (Início e topo da aba Treino). */
 export function CartaoTreinoHoje() {
   const t = useTreino();
   const { gravar } = useDados();
-  const [corridaAberta, setCorridaAberta] = useState(false);
   const [detalhes, setDetalhes] = useState(false);
   if (!t) return null;
   const { hoje, placar } = t;
   if (!placar.iniciado || placar.encerrado) return null;
   const reg = t.doDia(hoje);
-  const corrida = tipoCardioEfetivo(hoje, reg) === 'corrida';
+  const corridaFeita = !!reg?.cardio && tipoCardioEfetivo(hoje, reg) === 'corrida';
   const diaNumero = placar.diaAtual;
 
   // Cada toque grava o dia a partir do estado mais recente (a fila aplica na hora),
-  // então tocar Treino e logo depois Cardio nunca apaga o primeiro check
-  const alternar = (campo: 'treino' | 'cardio') => {
+  // então tocar Treino e logo depois Bike/Corrida nunca apaga o primeiro check
+  const tocar = (campo: 'treino' | TipoCardio) => {
     // O dia virou com o app aberto: só atualiza a tela, não grava no dia de ontem
     if (hojeLocal() !== hoje) return void window.dispatchEvent(new Event('focus'));
     const atual = t.doDia(hoje);
+    const base = {
+      data: hoje,
+      treino: !!atual?.treino,
+      cardio: !!atual?.cardio,
+      corrida_km: atual?.corrida_km ?? null,
+      corrida_seg: atual?.corrida_seg ?? null,
+      cardio_tipo: atual?.cardio_tipo ?? null,
+      esforco_treino: atual?.esforco_treino ?? null,
+      esforco_cardio: atual?.esforco_cardio ?? null,
+    };
     gravar({
       tipo: 'treino',
-      dado: {
-        data: hoje,
-        treino: campo === 'treino' ? !atual?.treino : !!atual?.treino,
-        cardio: campo === 'cardio' ? !atual?.cardio : !!atual?.cardio,
-        corrida_km: atual?.corrida_km ?? null,
-        corrida_seg: atual?.corrida_seg ?? null,
-        // Tipo do cardio e esforço já anotados continuam como estavam (desmarcar apaga o esforço daquela sessão)
-        cardio_tipo: atual?.cardio_tipo ?? null,
-        esforco_treino: campo === 'treino' && atual?.treino ? null : (atual?.esforco_treino ?? null),
-        esforco_cardio: campo === 'cardio' && atual?.cardio ? null : (atual?.esforco_cardio ?? null),
-      },
+      dado:
+        campo === 'treino'
+          ? // Desmarcar o treino apaga o esforço daquela sessão
+            { ...base, treino: !atual?.treino, esforco_treino: atual?.treino ? null : base.esforco_treino }
+          : { ...base, ...tocarCardio(hoje, atual, campo) },
     });
   };
 
@@ -74,19 +121,10 @@ export function CartaoTreinoHoje() {
           {placar.sequenciaAtual > 1 ? ` · 🔥 ${placar.sequenciaAtual} seguidos` : ''}
         </span>
       </div>
-      <div className="linha" style={{ flexWrap: 'nowrap' }}>
-        <Marcador rotulo="Treino" detalhe="musculação" feito={!!reg?.treino} aoTocar={() => alternar('treino')} />
-        <Marcador
-          rotulo="Cardio"
-          detalhe={rotuloCardio(hoje, reg)}
-          feito={!!reg?.cardio}
-          aoTocar={() => (corrida && !reg?.cardio ? setCorridaAberta(true) : alternar('cardio'))}
-        />
-      </div>
+      <MarcadoresDia data={hoje} reg={reg} aoTreino={() => tocar('treino')} aoCardio={tocar} />
       <button type="button" className="botao pequeno bloco-largo" style={{ marginTop: 8 }} onClick={() => setDetalhes(true)}>
-        Esforço e tipo de cardio
+        {corridaFeita ? (reg?.corrida_seg ? `Corrida: ${formatarTempo(reg.corrida_seg)} · distância, tempo e esforço` : 'Distância, tempo e esforço da corrida') : 'Esforço do treino e do cardio'}
       </button>
-      {corridaAberta && <FormDiaTreino data={hoje} marcarCardio aoFechar={() => setCorridaAberta(false)} />}
       {detalhes && <FormDiaTreino data={hoje} aoFechar={() => setDetalhes(false)} />}
     </section>
   );

@@ -5,6 +5,8 @@ import type { Ciclo, TreinoDia } from './tipos';
 import {
   aderenciaRecente,
   calcularPlacar,
+  detalheTipoCardio,
+  tocarCardio,
   digitosParaTempo,
   horasExercicioDia,
   resumoEsforco,
@@ -276,5 +278,44 @@ describe('Horas de exercício do dia (meta de água)', () => {
   it('fora do projeto (hoje = null) nada fica em aberto', () => {
     expect(horasExercicioDia('2026-10-20', undefined, null)).toBe(0);
     expect(horasExercicioDia('2026-10-20', dia('2026-10-20', true, false), null)).toBe(1);
+  });
+});
+
+describe('tocarCardio (Bike e Corrida no cartão do dia)', () => {
+  const sexta = '2026-10-23';
+  const quarta = '2026-10-28';
+  const reg = (c: Partial<TreinoDia>): TreinoDia => ({ id: 'x', data: sexta, treino: false, cardio: false, corrida_km: null, corrida_seg: null, ...c });
+
+  it('nada marcado: marca o tipo tocado, em qualquer dia', () => {
+    expect(tocarCardio(sexta, undefined, 'corrida')).toEqual({ cardio: true, cardio_tipo: 'corrida', corrida_km: null, corrida_seg: null, esforco_cardio: null });
+    expect(tocarCardio(quarta, undefined, 'bike')).toMatchObject({ cardio: true, cardio_tipo: 'bike' });
+  });
+
+  it('o mesmo tipo marcado: desmarca e apaga o esforço, guarda distância e tempo', () => {
+    const r = reg({ cardio: true, cardio_tipo: 'corrida', corrida_km: 6, corrida_seg: 1900, esforco_cardio: 6 });
+    expect(tocarCardio(sexta, r, 'corrida')).toEqual({ cardio: false, cardio_tipo: null, corrida_km: 6, corrida_seg: 1900, esforco_cardio: null });
+    // Bike marcada pela regra do dia (sem tipo salvo): tocar Bike desmarca
+    expect(tocarCardio(sexta, reg({ cardio: true }), 'bike')).toMatchObject({ cardio: false });
+    // Corrida pela regra da quarta (sem tipo salvo): tocar Corrida desmarca
+    expect(tocarCardio(quarta, reg({ data: quarta, cardio: true }), 'corrida')).toMatchObject({ cardio: false });
+  });
+
+  it('o outro tipo marcado: troca, mantém o esforço; Bike apaga distância e tempo', () => {
+    const corrida = reg({ cardio: true, cardio_tipo: 'corrida', corrida_km: 6, corrida_seg: 1900, esforco_cardio: 6 });
+    expect(tocarCardio(sexta, corrida, 'bike')).toEqual({ cardio: true, cardio_tipo: 'bike', corrida_km: null, corrida_seg: null, esforco_cardio: 6 });
+    expect(tocarCardio(quarta, reg({ data: quarta, cardio: true }), 'bike')).toMatchObject({ cardio: true, cardio_tipo: 'bike' });
+    expect(tocarCardio(sexta, reg({ cardio: true, esforco_cardio: 4 }), 'corrida')).toMatchObject({ cardio: true, cardio_tipo: 'corrida', esforco_cardio: 4 });
+  });
+
+  it('remarcar a corrida depois de desmarcar recupera distância e tempo', () => {
+    const desmarcada = reg({ ...tocarCardio(sexta, reg({ cardio: true, cardio_tipo: 'corrida', corrida_km: 7, corrida_seg: 2400 }), 'corrida') });
+    expect(tocarCardio(sexta, desmarcada, 'corrida')).toMatchObject({ cardio: true, cardio_tipo: 'corrida', corrida_km: 7, corrida_seg: 2400 });
+  });
+
+  it('o cardio marcado conta como o tipo tocado no placar', () => {
+    const r = reg({ ...tocarCardio(sexta, undefined, 'corrida') });
+    expect(tipoCardioEfetivo(sexta, r)).toBe('corrida');
+    expect(detalheTipoCardio('corrida', r.corrida_km)).toBe('5 km');
+    expect(detalheTipoCardio('bike')).toBe('30 min');
   });
 });

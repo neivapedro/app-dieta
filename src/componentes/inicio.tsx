@@ -8,8 +8,8 @@ import { kg, lerPeso, num, paraTexto } from '../lib/formato';
 import { diaCurto, horaDaFaixaOntem, pendenciasDeOntem, textoPendencias } from '../lib/rotina';
 import { alertasSeguranca, AVISO_SEGURANCA } from '../lib/seguranca';
 import { NIVEIS_NAUSEA, type RegistroDiario } from '../lib/tipos';
-import { formatarTempo, rotuloCardio, segundaDaSemana, tipoCardioEfetivo } from '../lib/treino';
-import { FormDiaTreino, Marcador } from './treino';
+import { formatarTempo, rotuloCardio, segundaDaSemana, tipoCardioEfetivo, tocarCardio, type TipoCardio } from '../lib/treino';
+import { FormDiaTreino, MarcadoresDia } from './treino';
 import { Bloco, Campo, Escolhas } from './ui';
 
 const OPCOES_PLANO = [
@@ -70,7 +70,8 @@ export function useGravarDia() {
 /** Marca treino e/ou cardio de um dia pela fila, sem apagar o outro check, o tempo da corrida, o tipo do cardio nem o esforço. */
 export function useGravarTreino() {
   const { treinos, gravar, hoje } = useDados();
-  return (data: string, campos: { treino?: boolean; cardio?: boolean }) => {
+  // cardioTipo: toque em Bike ou Corrida (marca, troca o tipo ou desmarca; ver tocarCardio)
+  return (data: string, campos: { treino?: boolean; cardio?: boolean; cardioTipo?: TipoCardio }) => {
     if (diaVirou(hoje)) return;
     const atual = treinos.find((t) => t.data === data);
     gravar({
@@ -85,6 +86,7 @@ export function useGravarTreino() {
         cardio_tipo: atual?.cardio_tipo ?? null,
         esforco_treino: campos.treino === false ? null : (atual?.esforco_treino ?? null),
         esforco_cardio: campos.cardio === false ? null : (atual?.esforco_cardio ?? null),
+        ...(campos.cardioTipo ? tocarCardio(data, atual, campos.cardioTipo) : {}),
       },
     });
   };
@@ -194,10 +196,12 @@ export function CartaoFecharDia({ etiqueta, aoEditar }: { etiqueta?: string; aoE
         <span className="mudo">{etiqueta ?? diaCurto(hoje)}</span>
       </div>
       {comTreino && (
-        <div className="linha" style={{ flexWrap: 'nowrap' }}>
-          <Marcador rotulo="Treino" detalhe="musculação" feito={!!tr?.treino} aoTocar={() => gravarTreino(hoje, { treino: !tr?.treino })} />
-          <Marcador rotulo="Cardio" detalhe={rotuloCardio(hoje, tr)} feito={!!tr?.cardio} aoTocar={() => gravarTreino(hoje, { cardio: !tr?.cardio })} />
-        </div>
+        <MarcadoresDia
+          data={hoje}
+          reg={tr}
+          aoTreino={() => gravarTreino(hoje, { treino: !tr?.treino })}
+          aoCardio={(tipo) => gravarTreino(hoje, { cardioTipo: tipo })}
+        />
       )}
       {comTreino && corrida && tr?.cardio && (
         <button className="botao pequeno" onClick={() => setCorridaAberta(true)}>

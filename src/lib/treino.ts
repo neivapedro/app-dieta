@@ -41,6 +41,36 @@ export function rotuloTipoCardio(tipo: TipoCardio, km?: number | null): string {
   return tipo === 'corrida' ? `Corrida ${d.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} km` : `Bike ${MIN_BIKE} min`;
 }
 
+/** Campos do cardio que mudam ao tocar Bike ou Corrida no cartão do dia. */
+export type CamposCardio = Pick<TreinoDia, 'cardio' | 'cardio_tipo' | 'corrida_km' | 'corrida_seg' | 'esforco_cardio'>;
+
+/**
+ * Toque em Bike ou Corrida: um cardio por dia.
+ * - nada marcado: marca o tipo tocado;
+ * - o outro tipo marcado: troca o tipo (o esforço anotado continua);
+ * - o mesmo tipo marcado: desmarca (apaga o esforço; distância e tempo ficam guardados
+ *   para o caso de marcar a corrida de novo).
+ * Bike não tem distância nem tempo: marcar Bike apaga os da corrida.
+ */
+export function tocarCardio(data: string, atual: TreinoDia | null | undefined, tipo: TipoCardio): CamposCardio {
+  const km = atual?.corrida_km ?? null;
+  const seg = atual?.corrida_seg ?? null;
+  const marcadoAgora = atual?.cardio ? tipoCardioEfetivo(data, atual) : null;
+  if (marcadoAgora === tipo) return { cardio: false, cardio_tipo: null, corrida_km: km, corrida_seg: seg, esforco_cardio: null };
+  return {
+    cardio: true,
+    cardio_tipo: tipo,
+    corrida_km: tipo === 'corrida' ? km : null,
+    corrida_seg: tipo === 'corrida' ? seg : null,
+    esforco_cardio: marcadoAgora ? (atual?.esforco_cardio ?? null) : null,
+  };
+}
+
+/** Detalhe do botão: "30 min" (bike) ou "5 km" (corrida, com a distância anotada quando houver). */
+export function detalheTipoCardio(tipo: TipoCardio, km?: number | null): string {
+  return rotuloTipoCardio(tipo, km).replace(/^(Bike|Corrida) /, '');
+}
+
 export function rotuloCardio(data: string, reg?: Pick<TreinoDia, 'cardio_tipo' | 'corrida_km'> | null): string {
   return rotuloTipoCardio(tipoCardioEfetivo(data, reg), reg?.corrida_km);
 }
