@@ -518,3 +518,23 @@
   white-space: normal;
   line-height: 1.2;
 }
+
+/* ---------- Gráficos (motor SVG) ---------- */
+/* Pace: a dica desta tela (min:s /km) substitui a padrão do gráfico */
+.treino-pace { position: relative; }
+.treino-pace .gr-dica:not(.pace-dica) { display: none; }
+.pace-dica { min-width: 132px; }
+.pace-dica-delta { margin-top: 3px; font-size: 0.7rem; font-weight: 650; color: var(--texto-2); font-variant-numeric: tabular-nums; }
+.pace-dica-delta.pace-mais-rapida { color: var(--bom); }
+.pace-dica-delta.pace-mais-lenta { color: var(--ruim); }
+.pace-dica-recorde { margin-top: 2px; font-size: 0.7rem; font-weight: 700; color: var(--aviso); }
+
+/* Aderência × medidas: barras, resumo da semana tocada e a linha da medida */
+.aderencia-graficos { display: flex; flex-direction: column; gap: 6px; }
+.aderencia-semana {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; min-height: 2.7em; align-content: center;
+  padding: 6px 10px; border-radius: var(--raio-sm); background: var(--superficie-2); font-size: 0.8rem; color: var(--texto-2);
+}
+.aderencia-semana > b { color: var(--texto); font-size: 0.82rem; }
+.aderencia-semana span b { color: var(--texto); }
+.aderencia-sem-medida { margin: 4px 0 0; font-size: 0.8rem; }

@@ -1,13 +1,15 @@
 import '../estilos/treino.css';
-import { lazy, Suspense, useState } from 'react';
+import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { CartaoForca } from '../componentes/forca';
+import { Numero } from '../componentes/movimento';
 import { Anel, BarraMeta, Kpi, Pilulas } from '../componentes/painel';
 import { CartaoTreinoHoje, FormDiaTreino, FormMetas } from '../componentes/treino';
 import { CalendarioTreino, LegendaCalendario } from '../componentes/treino-calendario';
+import { AderenciaMedidas, GraficoPaceCorridas } from '../componentes/treino-graficos';
 import { chanceMeta, PROJECAO, projecaoNoRitmo, type ChanceMeta, type ChaveProjecao, type ValorProjetado } from '../lib/conferencia';
 import { diaDaSemana, diferencaDias } from '../lib/datas';
-import { Bloco, SemGrafico, Vazio } from '../componentes/ui';
+import { Bloco, Vazio } from '../componentes/ui';
 import { useDados } from '../dados/contexto';
 import { useTreino } from '../dados/useTreino';
 import { formatarData, somarDias } from '../lib/datas';
@@ -17,10 +19,7 @@ import { progressoMeta } from '../lib/painel';
 import { SEMANAS_POS } from '../lib/projeto';
 import { formatarKm, formatarTempo, segundaDaSemana, SUBIDA_ESFORCO, textoKmCorridos, type ComparacaoEsforco, type Contagem } from '../lib/treino';
 import { ABAS_TREINO, abaTreino, barraPlacar, resumoCorridas, textoHoje, tomPlacar, type AbaTreino } from '../lib/treino-painel';
-import type { MetricaSemanal } from '../componentes/graficos';
-
-const GraficoAderencia = lazy(() => import('../componentes/graficos').then((m) => ({ default: m.GraficoAderencia })).catch(() => ({ default: SemGrafico })));
-const GraficoPace = lazy(() => import('../componentes/graficos').then((m) => ({ default: m.GraficoPace })).catch(() => ({ default: SemGrafico })));
+import type { MetricaSemanal } from '../lib/treino-grafico';
 
 function corAderencia(a: number | null): string {
   if (a === null) return '';
@@ -270,12 +269,16 @@ export function Treino() {
         <div className="hero-stats">
           <div className="hero-stat">
             <div className="rotulo">Sequência</div>
-            <div className="valor">🔥 {p.sequenciaAtual}</div>
+            <div className="valor">
+              🔥 <Numero valor={p.sequenciaAtual} formato={(n) => String(Math.round(n))} />
+            </div>
             <div className="hero-stat-sub">{p.sequenciaAtual === 1 ? 'dia' : 'dias'}</div>
           </div>
           <div className="hero-stat">
             <div className="rotulo">Recorde</div>
-            <div className="valor">{p.recorde}</div>
+            <div className="valor">
+              <Numero valor={p.recorde} formato={(n) => String(Math.round(n))} />
+            </div>
             <div className="hero-stat-sub">{p.recorde === 1 ? 'dia' : 'dias'}</div>
           </div>
           <div className="hero-stat">
@@ -412,15 +415,16 @@ export function Treino() {
           </div>
         </div>
         {semanasGrafico.some((s) => s.aderencia !== null || s.medida) ? (
-          <Suspense fallback={<div className="grafico" />}>
-            <GraficoAderencia semanas={semanasGrafico} metrica={metrica} />
-          </Suspense>
+          <AderenciaMedidas semanas={semanasGrafico} metrica={metrica} />
         ) : (
           <Vazio>O gráfico aparece depois da 1ª semana {doPeriodo}, com os dias marcados e a medição de segunda.</Vazio>
         )}
         <details className="tabela-detalhe">
           <summary>Como ler</summary>
-          <p className="mudo">Barras: % de treinos e cardios cumpridos na semana. Linha: medição da segunda-feira seguinte (o resultado daquela semana).</p>
+          <p className="mudo">
+            Barras: % de treinos e cardios cumpridos na semana. Linha: medição da segunda-feira seguinte (o resultado daquela semana). Toque numa barra (ou num
+            ponto da linha) para destacar a semana e ver o resultado dela.
+          </p>
         </details>
       </section>
     </>
@@ -458,12 +462,14 @@ export function Treino() {
           <Kpi
             rotulo="Km totais"
             valor={p.corrida.km > 0 ? formatarKm(p.corrida.km) : '–'}
+            numero={p.corrida.km > 0 ? { valor: p.corrida.km, formato: (n) => formatarKm(Math.round(n * 100) / 100) } : undefined}
             variacao={`${p.corrida.feito} ${p.corrida.feito === 1 ? 'corrida' : 'corridas'} ${t.placarPos ? 'na fase' : 'no projeto'}`}
             legenda={p.corrida.semDistancia > 0 ? `${p.corrida.semDistancia} sem distância` : undefined}
           />
           <Kpi
             rotulo="Corridas registradas"
             valor={t.corridas.length}
+            numero={{ valor: t.corridas.length, formato: (n) => String(Math.round(n)) }}
             variacao="com distância e tempo"
             legenda={corridas ? `média de ${formatarKm(corridas.kmMedio)}` : undefined}
           />
@@ -475,12 +481,10 @@ export function Treino() {
           <div className="secao-cab">
             <div>
               <h2>Pace</h2>
-              <div className="secao-sub">Minutos por km · mais baixo = mais rápido</div>
+              <div className="secao-sub">Minutos por km · mais baixo = mais rápido · marcos: recordes</div>
             </div>
           </div>
-          <Suspense fallback={<div className="grafico" style={{ height: 200 }} />}>
-            <GraficoPace corridas={t.corridas} />
-          </Suspense>
+          <GraficoPaceCorridas corridas={t.corridas} />
         </section>
       )}
 

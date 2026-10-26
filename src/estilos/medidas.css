@@ -17,7 +17,17 @@
 .med-delta.bom { color: var(--bom); }
 .med-delta.ruim { color: var(--ruim); }
 .med-kpis .kpi-variacao { min-height: 2.3em; }
-.med-kpis .kpi:last-child .med-delta { white-space: normal; font-weight: 500; line-height: 1.25; }
+.med-kpi-rca .med-delta { white-space: normal; font-weight: 500; line-height: 1.25; }
+/* Indicador tocável: abre a Evolução já naquela medida */
+.med-kpi-botao {
+  display: flex; padding: 0; margin: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left;
+  cursor: pointer; min-width: 0; border-radius: var(--raio); -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s ease;
+}
+.med-kpi-botao > .kpi { flex: 1; min-width: 0; transition: border-color 0.2s; }
+.med-kpi-botao:active { transform: scale(0.97); }
+.med-kpi-botao:focus-visible { outline: 2px solid var(--destaque); outline-offset: 2px; }
+@media (hover: hover) { .med-kpi-botao:hover > .kpi { border-color: var(--texto-3); } }
 @media (max-width: 360px) { .med-delta { font-size: 0.72rem; } .med-delta small { font-size: 0.65rem; } }
 .med-como-ler { margin: -4px 2px 0; }
 .med-como-ler p { margin: 0; }
@@ -36,7 +46,23 @@
 .qualidade-texto { margin: 0; font-size: 0.88rem; }
 .qualidade-texto.aviso-txt { color: var(--aviso); }
 
-/* Evolução: legenda curta e o atalho para a Análise */
+/* Evolução: leitura da mira, legenda curta e o atalho para a Análise */
+.med-evolucao { scroll-margin-top: calc(76px + env(safe-area-inset-top)); }
+.med-evo { position: relative; }
+/* O botão de expandir sobe para a linha da leitura (sem uma linha vazia só para ele) */
+.med-evo > .gr-tempo { position: static; }
+.med-evo > .gr-tempo > .gr-cab { position: absolute; top: 0; right: 0; margin: 0; z-index: 3; }
+.med-leitura { display: flex; flex-direction: column; gap: 1px; min-height: 44px; margin: 2px 0 8px; font-size: 0.8rem; color: var(--texto-2); }
+.med-leitura-linha { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 10px; min-width: 0; }
+.med-leitura-linha:first-child { padding-right: 44px; }
+.med-evo:has(.gr-cab .gr-pilula) .med-leitura-linha:first-child { padding-right: 124px; }
+.med-leitura b { font-size: 1.1rem; color: var(--texto); font-weight: 750; letter-spacing: -0.01em; }
+.med-leitura-data { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--texto-3); min-width: 3.4em; }
+.med-leitura.ativa .med-leitura-data { color: var(--texto); }
+.med-leitura-difs span { white-space: nowrap; }
+.med-leitura-ok { color: var(--bom); font-weight: 650; }
+.med-leitura .etiqueta { align-self: center; }
+.med-combinado { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
 .med-rodape { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 .med-rodape .mudo { font-size: 0.78rem; flex: 1 1 160px; }
 

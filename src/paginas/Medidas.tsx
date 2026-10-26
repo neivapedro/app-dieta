@@ -1,25 +1,26 @@
 import '../estilos/medidas.css';
-import { lazy, Suspense, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ConferenciaGordura, PainelQualidade, useQualidade } from '../componentes/composicao';
 import { FormMedida } from '../componentes/formularios';
 import { CartaoFotos } from '../componentes/fotos';
+import { EvolucaoMedida, GraficosCombinados, type InfoMedida } from '../componentes/medidas-graficos';
+import { movimentoReduzido } from '../componentes/movimento';
 import { Kpi, Pilulas } from '../componentes/painel';
 import { ResumoSemana } from '../componentes/ResumoSemana';
 import { FormMetas } from '../componentes/treino';
-import { SemGrafico, Vazio } from '../componentes/ui';
+import { Vazio } from '../componentes/ui';
 import { useDados } from '../dados/contexto';
 import { useCalculos } from '../dados/useCalculos';
 import { formatarData } from '../lib/datas';
 import { cm, corVariacao, kg, num, pp, sinal } from '../lib/formato';
 import { COR_RCA, faixaRca, ganhos, MDC, rca, rcaExibida, TEXTO_RCA, type ChaveMdc, type Composicao } from '../lib/gordura';
 import { historicoComAnterior } from '../lib/medidas-comparar';
+import { marcosAtipicas, marcosDecisoes, marcosMudancaDose } from '../lib/medidas-grafico';
 import { serieMetrica, type ChavePainel } from '../lib/painel';
 import { marcosDasDecisoes } from '../lib/registroDecisoes';
 import type { Medida } from '../lib/tipos';
 
-const GraficoComposicao = lazy(() => import('../componentes/graficos').then((m) => ({ default: m.GraficoComposicao })).catch(() => ({ default: SemGrafico })));
-const GraficoMetrica = lazy(() => import('../componentes/graficos').then((m) => ({ default: m.GraficoMetrica })).catch(() => ({ default: SemGrafico })));
 
 const OPCOES_GRAFICO: [ChavePainel, string][] = [
   ['cintura_cm', 'Cintura'],
@@ -33,7 +34,7 @@ const HISTORICO_CURTO = 5;
 
 /** Equivale à aba "% de Gordura" da Planilha Gorgonoidiana. */
 export function Medidas() {
-  const { medidas, perfil, registroDecisoes } = useDados();
+  const { medidas, perfil, registroDecisoes, aplicacoes } = useDados();
   const { composicoes, geral } = useCalculos();
   const qualidade = useQualidade();
   const [editando, setEditando] = useState<Medida | null>(null);
@@ -43,6 +44,7 @@ export function Medidas() {
   const [metrica, setMetrica] = useState<ChavePainel>('cintura_cm');
   const [juntos, setJuntos] = useState(false);
   const [todas, setTodas] = useState(false);
+  const evolucaoRef = useRef<HTMLElement>(null);
 
   // "Agora" = última medição normal (a mesma do Início e da Análise); a atípica fica só no histórico
   const ultimaDeTodas = composicoes[composicoes.length - 1];
@@ -64,13 +66,13 @@ export function Medidas() {
 
   // Medidas antes do peso; embaixo de cada número: variação desde a anterior ("últ.") e desde o início do ciclo ("total").
   // Variação menor que a mínima mudança detectável fica neutra (dentro do erro da fita e da balança).
-  type Tile = { rotulo: string; atual: string; semana: number | null | undefined; ganho: number | null | undefined; fmt: (n: number) => string; menorMelhor: boolean; chave: ChaveMdc & ChavePainel };
+  type Tile = { rotulo: string; atual: string; n: number | null | undefined; fmtValor: (n: number) => string; semana: number | null | undefined; ganho: number | null | undefined; fmt: (n: number) => string; menorMelhor: boolean; chave: ChaveMdc & ChavePainel };
   const tiles: Tile[] = [
-    { rotulo: 'Cintura', atual: cm(atual?.cintura_cm), semana: ultimo?.cintura_cm, ganho: g?.cintura_cm, fmt: (n) => sinal(n, 1, ' cm'), menorMelhor: true, chave: 'cintura_cm' },
-    { rotulo: '% de gordura', atual: pp(atual?.bf), semana: ultimo?.bf, ganho: g?.bf, fmt: (n) => sinal(n, 1, ' p.p.'), menorMelhor: true, chave: 'bf' },
-    { rotulo: 'Massa gorda', atual: kg(atual?.massa_gorda_kg), semana: ultimo?.massa_gorda_kg, ganho: g?.massa_gorda_kg, fmt: (n) => sinal(n, 1, ' kg'), menorMelhor: true, chave: 'massa_gorda_kg' },
-    { rotulo: 'Massa magra', atual: kg(atual?.massa_magra_kg), semana: ultimo?.massa_magra_kg, ganho: g?.massa_magra_kg, fmt: (n) => sinal(n, 1, ' kg'), menorMelhor: false, chave: 'massa_magra_kg' },
-    { rotulo: 'Peso', atual: kg(atual?.peso_kg), semana: ultimo?.peso_kg, ganho: g?.peso_kg, fmt: (n) => sinal(n, 1, ' kg'), menorMelhor: true, chave: 'peso_kg' },
+    { rotulo: 'Cintura', atual: cm(atual?.cintura_cm), n: atual?.cintura_cm, fmtValor: cm, semana: ultimo?.cintura_cm, ganho: g?.cintura_cm, fmt: (n) => sinal(n, 1, ' cm'), menorMelhor: true, chave: 'cintura_cm' },
+    { rotulo: '% de gordura', atual: pp(atual?.bf), n: atual?.bf, fmtValor: (n) => pp(n), semana: ultimo?.bf, ganho: g?.bf, fmt: (n) => sinal(n, 1, ' p.p.'), menorMelhor: true, chave: 'bf' },
+    { rotulo: 'Massa gorda', atual: kg(atual?.massa_gorda_kg), n: atual?.massa_gorda_kg, fmtValor: (n) => kg(n), semana: ultimo?.massa_gorda_kg, ganho: g?.massa_gorda_kg, fmt: (n) => sinal(n, 1, ' kg'), menorMelhor: true, chave: 'massa_gorda_kg' },
+    { rotulo: 'Massa magra', atual: kg(atual?.massa_magra_kg), n: atual?.massa_magra_kg, fmtValor: (n) => kg(n), semana: ultimo?.massa_magra_kg, ganho: g?.massa_magra_kg, fmt: (n) => sinal(n, 1, ' kg'), menorMelhor: false, chave: 'massa_magra_kg' },
+    { rotulo: 'Peso', atual: kg(atual?.peso_kg), n: atual?.peso_kg, fmtValor: (n) => kg(n), semana: ultimo?.peso_kg, ganho: g?.peso_kg, fmt: (n) => sinal(n, 1, ' kg'), menorMelhor: true, chave: 'peso_kg' },
   ];
   const medAtual = atual ? ordenadas.find((m) => m.data === atual.data) : undefined;
   const rcaAtual = atual && medAtual ? rca(atual.cintura_cm, alturaDe(medAtual)) : null;
@@ -86,14 +88,22 @@ export function Medidas() {
   const metas = perfil?.metas_projeto ?? null;
   const metaGorda = metas?.peso_kg && metas?.bf ? (metas.peso_kg * metas.bf) / 100 : null;
   const metaMagra = metas?.peso_kg && metas?.bf ? metas.peso_kg * (1 - metas.bf / 100) : null;
-  const INFO: Record<ChavePainel, { nome: string; unidade: string; meta: number | null | undefined }> = {
-    cintura_cm: { nome: 'Cintura', unidade: ' cm', meta: metas?.cintura_cm },
-    peso_kg: { nome: 'Peso', unidade: ' kg', meta: metas?.peso_kg },
-    bf: { nome: '% de gordura', unidade: '%', meta: metas?.bf },
-    massa_gorda_kg: { nome: 'Massa gorda', unidade: ' kg', meta: metaGorda },
-    massa_magra_kg: { nome: 'Massa magra', unidade: ' kg', meta: metaMagra },
+  const INFO: Record<ChavePainel, InfoMedida> = {
+    cintura_cm: { nome: 'Cintura', unidade: 'cm', sufixoDif: ' cm', meta: metas?.cintura_cm, menorMelhor: true },
+    peso_kg: { nome: 'Peso', unidade: 'kg', sufixoDif: ' kg', meta: metas?.peso_kg, menorMelhor: true },
+    bf: { nome: '% de gordura', unidade: '%', sufixoDif: ' p.p.', meta: metas?.bf, menorMelhor: true },
+    massa_gorda_kg: { nome: 'Massa gorda', unidade: 'kg', sufixoDif: ' kg', meta: metaGorda, menorMelhor: true },
+    massa_magra_kg: { nome: 'Massa magra', unidade: 'kg', sufixoDif: ' kg', meta: metaMagra, menorMelhor: false },
   };
   const pontos = serieMetrica(composicoes, metrica);
+  // Marcos no eixo do tempo: mudanças de dose, medições atípicas e decisões do ciclo
+  const marcosEvolucao = useMemo(() => [...marcosMudancaDose(aplicacoes), ...marcosAtipicas(composicoes)], [aplicacoes, composicoes]);
+  const marcosCombinado = useMemo(() => [...marcosEvolucao, ...marcosDecisoes(marcosDasDecisoes(registroDecisoes))], [marcosEvolucao, registroDecisoes]);
+  // Toque num indicador: o gráfico da Evolução passa para aquela medida e rola até ele
+  const abrirEvolucao = (k: ChavePainel) => {
+    setMetrica(k);
+    requestAnimationFrame(() => evolucaoRef.current?.scrollIntoView({ behavior: movimentoReduzido() ? 'auto' : 'smooth', block: 'start' }));
+  };
 
   // Histórico: mais recente primeiro, com a medição normal anterior (Δ); a atípica fica sem Δ
   const historico = historicoComAnterior(composicoes);
@@ -148,10 +158,11 @@ export function Medidas() {
               const corTotal = corVariacao(t.ganho, t.menorMelhor, MDC[t.chave]);
               const comVariacao = temDelta(t.semana) || temDelta(t.ganho);
               return (
+                <button key={t.rotulo} type="button" className="med-kpi-botao" onClick={() => abrirEvolucao(t.chave)} aria-label={`${t.rotulo}: ${t.atual}. Ver a evolução`}>
                 <Kpi
-                  key={t.rotulo}
                   rotulo={t.rotulo}
                   valor={t.atual}
+                  numero={t.n !== null && t.n !== undefined && Number.isFinite(t.n) ? { valor: t.n, formato: t.fmtValor } : undefined}
                   classe={corTotal}
                   valores={ultimosValores(t.chave)}
                   variacao={
@@ -171,15 +182,18 @@ export function Medidas() {
                     ) : undefined
                   }
                 />
+                </button>
               );
             })}
             {rcaAtual !== null && medAtual && (
-              <Kpi
-                rotulo="Cintura/altura"
-                valor={<span className={COR_RCA[faixaRca(rcaAtual)]}>{num(rcaExibida(rcaAtual), 2)}</span>}
-                variacao={<span className="med-delta">{TEXTO_RCA[faixaRca(rcaAtual)]}</span>}
-                valores={serieRca}
-              />
+              <button type="button" className="med-kpi-botao med-kpi-rca" onClick={() => abrirEvolucao('cintura_cm')} aria-label={`Cintura/altura: ${num(rcaExibida(rcaAtual), 2)}, ${TEXTO_RCA[faixaRca(rcaAtual)]}. Ver a evolução da cintura`}>
+                <Kpi
+                  rotulo="Cintura/altura"
+                  valor={<span className={COR_RCA[faixaRca(rcaAtual)]}>{num(rcaExibida(rcaAtual), 2)}</span>}
+                  variacao={<span className="med-delta">{TEXTO_RCA[faixaRca(rcaAtual)]}</span>}
+                  valores={serieRca}
+                />
+              </button>
             )}
           </div>
           <details className="tabela-detalhe med-como-ler">
@@ -218,7 +232,7 @@ export function Medidas() {
       <CartaoFotos />
 
       {composicoes.length > 0 && (
-        <section className="cartao">
+        <section className="cartao med-evolucao" ref={evolucaoRef}>
           <div className="secao-cab">
             <h2>Evolução</h2>
             <div className="pilulas-rolagem">
@@ -226,27 +240,22 @@ export function Medidas() {
             </div>
           </div>
           {pontos.length >= 2 ? (
-            <Suspense fallback={<div className="grafico" style={{ height: 210 }} />}>
-              <GraficoMetrica pontos={pontos} nome={INFO[metrica].nome} unidade={INFO[metrica].unidade} meta={INFO[metrica].meta} inicio={ref?.[metrica] ?? null} />
-            </Suspense>
+            <EvolucaoMedida composicoes={composicoes} metrica={metrica} info={INFO[metrica]} inicio={ref?.[metrica] ?? null} marcos={marcosEvolucao} />
           ) : (
             <Vazio>Com 2 medições, aparece a evolução de {INFO[metrica].nome.toLowerCase()}.</Vazio>
           )}
           <div className="med-rodape">
-            <span className="mudo">Medições normais · linhas: início e meta</span>
+            <span className="mudo">Arraste para ler · linhas: início e meta · ponto vazio: atípica</span>
             <Link to="/analise?aba=corpo" className="botao pequeno">
               Ver análise completa
             </Link>
           </div>
           <details className="tabela-detalhe" onToggle={(e) => setJuntos(e.currentTarget.open)}>
             <summary>Gráfico combinado</summary>
-            {juntos && (
-              <Suspense fallback={<div className="grafico" />}>
-                <GraficoComposicao dados={composicoes} marcos={marcosDasDecisoes(registroDecisoes)} />
-              </Suspense>
-            )}
+            {juntos && <GraficosCombinados composicoes={composicoes} marcos={marcosCombinado} />}
             <p className="mudo" style={{ margin: '6px 0 0', fontSize: '0.78rem' }}>
-              % de gordura, massa magra e peso juntos, com as medições atípicas (ponto vazio) e as decisões do ciclo.
+              Peso, massa magra e % de gordura na mesma linha do tempo, com as medições atípicas (ponto vazio), as mudanças de dose e as decisões do ciclo.
+              Toque num marco embaixo do gráfico para ver o que foi.
             </p>
           </details>
         </section>
