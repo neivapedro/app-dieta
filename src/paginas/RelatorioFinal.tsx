@@ -174,7 +174,7 @@ export function RelatorioFinal() {
       <Secao id="rf-compartilhar" cor="rosa" titulo="Compartilhar e guardar">
         <div className="pilha" style={{ gap: 12 }}>
           <BotaoStoriesFinal r={r} fotos={fotos} />
-          <SlotPdfFinal relatorio={r} fotos={fotos} />
+          <SlotPdfFinal relatorio={r} fotos={fotos} carregandoFotos={carregandoFotos} />
         </div>
       </Secao>
 

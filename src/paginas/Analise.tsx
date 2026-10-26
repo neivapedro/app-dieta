@@ -871,6 +871,9 @@ export function Analise() {
           </small>
         </span>
       </label>
+      <p className="texto-2" style={{ margin: '10px 0 0', fontSize: '0.8rem' }}>
+        Para o relatório final do ciclo, colorido e com capa: <Link to="/relatorio-final">Relatório final</Link>.
+      </p>
       {pdf && (
         <button className="botao bloco-largo" style={{ marginTop: 10 }} onClick={() => void compartilhar(pdf)}>
           Compartilhar PDF (salvar, imprimir, enviar)

@@ -211,8 +211,16 @@
 .rf-botao-stories-texto b { font-size: 0.98rem; }
 .rf-botao-stories-texto small { font-size: 0.76rem; font-weight: 500; color: var(--texto-2); overflow-wrap: anywhere; }
 .rf-previa-stories img, .rf-previa-stories > div { aspect-ratio: 1080 / 1920; height: min(52dvh, 440px); }
-.rf-slot-pdf { display: flex; flex-direction: column; gap: 6px; }
-.rf-slot-pdf .mudo { font-size: 0.78rem; }
+.rf-slot-pdf { display: flex; flex-direction: column; gap: 10px; }
+/* PDF final: o mesmo botão de destaque, nas cores frias */
+.rf-botao-pdf {
+  border-color: color-mix(in srgb, var(--c-ciano) 40%, var(--borda));
+  background: linear-gradient(120deg, color-mix(in srgb, var(--c-ciano) 18%, var(--superficie-2)), color-mix(in srgb, var(--c-indigo) 18%, var(--superficie-2)));
+}
+.rf-botao-pdf .rf-botao-stories-icone { background: linear-gradient(135deg, var(--c-ciano), var(--c-indigo)); }
+.rf-botao-pdf:disabled { opacity: 0.75; }
+.rf-slot-pdf .marcar { padding: 0 2px; }
+.rf-slot-pdf .alerta { margin: 0; }
 
 .rf-pos { text-align: center; }
 .rf-rodape { text-align: center; font-size: 0.78rem; color: var(--texto-2); padding: 4px 8px 8px; }
@@ -220,5 +228,3 @@
 /* Metas: a barra do caminho em cor (o resto igual ao da Análise) */
 .rf .meta-feito { background: linear-gradient(90deg, var(--c-ciano), var(--c-verde)); }
 .rf .meta-feito.bom { background: var(--bom); }
-/* Espaço do PDF final (Parte 2): desligado, mas legível (sem a opacidade do botão desligado) */
-.rf-slot-pdf .botao:disabled { opacity: 1; color: var(--texto-2); border-style: dashed; background: transparent; }
