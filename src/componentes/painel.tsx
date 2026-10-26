@@ -2,6 +2,7 @@
 // aparecem na hora, inclusive sem internet).
 import type { ReactNode } from 'react';
 import { num, pct } from '../lib/formato';
+import { Numero, useContagem } from './movimento';
 import type { ProgressoMeta } from '../lib/painel';
 
 /** Linha pequena da evolução de uma medida (últimos pontos), com o último ponto marcado. */
@@ -34,9 +35,12 @@ export function Kpi({
   classe,
   legenda,
   valores,
+  numero,
 }: {
   rotulo: string;
   valor: ReactNode;
+  /** Valor numérico: conta até ele ao aparecer (no lugar de `valor`), formatado a cada quadro */
+  numero?: { valor: number; formato: (n: number) => string };
   variacao?: ReactNode;
   /** bom / ruim / '' — a cor da variação e da linha */
   classe?: string;
@@ -46,7 +50,7 @@ export function Kpi({
   return (
     <div className="kpi">
       <div className="kpi-rotulo">{rotulo}</div>
-      <div className="kpi-valor numero">{valor}</div>
+      <div className="kpi-valor numero">{numero ? <Numero valor={numero.valor} formato={numero.formato} /> : valor}</div>
       {variacao !== undefined && <div className={`kpi-variacao numero ${classe ?? ''}`}>{variacao}</div>}
       {valores && <Sparkline valores={valores} tom={classe} />}
       {legenda && <div className="kpi-legenda">{legenda}</div>}
@@ -59,13 +63,16 @@ export function Anel({ fracao, rotulo, detalhe, tom }: { fracao: number | null; 
   const r = 26;
   const c = 2 * Math.PI * r;
   const f = fracao === null ? 0 : Math.min(Math.max(fracao, 0), 1);
+  // O anel se desenha de 0 até o valor ao aparecer, junto com o número do centro
+  const { ref, valor: pctAnim } = useContagem<HTMLDivElement>(fracao === null ? 0 : f * 100);
+  const fa = Math.min(Math.max(pctAnim / 100, 0), 1);
   return (
-    <div className="anel" role="img" aria-label={`${rotulo}: ${fracao === null ? 'sem dados' : pct(f, 0)}${detalhe ? `, ${detalhe}` : ''}`}>
+    <div ref={ref} className="anel" role="img" aria-label={`${rotulo}: ${fracao === null ? 'sem dados' : pct(f, 0)}${detalhe ? `, ${detalhe}` : ''}`}>
       <svg viewBox="0 0 64 64" aria-hidden="true">
         <circle cx="32" cy="32" r={r} className="anel-trilho" />
-        {fracao !== null && <circle cx="32" cy="32" r={r} className={`anel-valor ${tom ?? ''}`} strokeDasharray={`${f * c} ${c}`} transform="rotate(-90 32 32)" />}
+        {fracao !== null && <circle cx="32" cy="32" r={r} className={`anel-valor ${tom ?? ''}`} strokeDasharray={`${fa * c} ${c}`} transform="rotate(-90 32 32)" />}
         <text x="32" y="36" textAnchor="middle" className="anel-texto">
-          {fracao === null ? '–' : `${Math.round(f * 100)}%`}
+          {fracao === null ? '–' : `${Math.round(fa * 100)}%`}
         </text>
       </svg>
       <div className="anel-rotulo">{rotulo}</div>

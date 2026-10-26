@@ -782,3 +782,55 @@ main .pilha > .cartao, main .pilha > .kpis, main > .pilha > section { animation:
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* ---------- Movimento com propósito (rodada 2) ---------- */
+/* Folha: sobe com curva de mola, o fundo escurece junto; alça para arrastar e fechar */
+@keyframes entrar-folha { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes descer-folha { from { transform: translateY(var(--desloc, 0px)); } to { transform: translateY(100%); } }
+@keyframes sumir { from { opacity: 1; } to { opacity: 0; } }
+.folha-fundo { animation: aparecer 0.3s ease-out; }
+.folha { animation: entrar-folha 0.44s cubic-bezier(0.32, 0.72, 0, 1); }
+.folha-alca { height: 16px; margin: -12px -16px -2px; touch-action: none; cursor: grab; position: relative; }
+.folha-alca::before {
+  content: ''; position: absolute; top: 4px; left: 50%; width: 38px; height: 5px; margin-left: -19px;
+  border-radius: 999px; background: var(--borda);
+}
+/* No topo da rolagem o cabeçalho também arrasta; rolada, ele volta a rolar a folha */
+.folha.no-topo > .folha-cab { touch-action: none; }
+/* Saída: a cópia da folha desce do ponto em que estava e o fundo some */
+.folha-fundo.saindo { animation: sumir 0.3s ease-in forwards; pointer-events: none; }
+.folha-fundo.saindo .folha { animation: descer-folha 0.3s cubic-bezier(0.32, 0.72, 0, 1) forwards; }
+@media (min-width: 600px) { .folha-alca { display: none; } }
+
+/* Troca de aba: os cartões entram em cascata (~30 ms cada). Sempre "backwards", nunca "both" */
+@keyframes surgir-cartao { from { opacity: 0; transform: translateY(10px) scale(0.985); } to { opacity: 1; transform: none; } }
+main .pilha > .cartao, main .pilha > .kpis, main > .pilha > section {
+  animation-name: surgir-cartao; animation-duration: 0.38s; animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+main .pilha:not(.pagina-inicio) > :is(.cartao, .kpis, section):nth-child(2) { animation-delay: 30ms; }
+main .pilha:not(.pagina-inicio) > :is(.cartao, .kpis, section):nth-child(3) { animation-delay: 60ms; }
+main .pilha:not(.pagina-inicio) > :is(.cartao, .kpis, section):nth-child(4) { animation-delay: 90ms; }
+main .pilha:not(.pagina-inicio) > :is(.cartao, .kpis, section):nth-child(5) { animation-delay: 120ms; }
+main .pilha:not(.pagina-inicio) > :is(.cartao, .kpis, section):nth-child(6) { animation-delay: 150ms; }
+main .pilha:not(.pagina-inicio) > :is(.cartao, .kpis, section):nth-child(7) { animation-delay: 180ms; }
+main .pilha:not(.pagina-inicio) > :is(.cartao, .kpis, section):nth-child(n + 8) { animation-delay: 210ms; }
+
+/* Linha do indicador: revela da esquerda para a direita, depois o ponto final */
+@keyframes revelar-spark { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+.kpi .spark svg { animation: revelar-spark 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) 0.1s backwards; }
+.kpi .spark-ponto { animation: aparecer 0.3s ease-out 0.75s backwards; }
+
+/* Puxar para atualizar: bolha que desce de baixo do cabeçalho e gira enquanto atualiza */
+.puxar {
+  position: fixed; left: 50%; top: 0; z-index: 9; width: 40px; height: 40px; border-radius: 50%;
+  display: grid; place-items: center; pointer-events: none; color: var(--texto);
+  background: var(--superficie); border: 1px solid var(--borda); box-shadow: 0 6px 18px rgb(0 0 0 / 0.18);
+  transform: translate(-50%, -44px);
+}
+.puxar-parado { visibility: hidden; }
+.puxar-icone { width: 24px; height: 24px; }
+.puxar-trilho { fill: none; stroke: var(--superficie-2); stroke-width: 2.5; }
+.puxar-arco { fill: none; stroke: var(--texto-3); stroke-width: 2.5; stroke-linecap: round; transition: stroke 0.15s; }
+.puxar-pronto .puxar-arco, .puxar-atualizando .puxar-arco { stroke: var(--texto); }
+@keyframes girar { to { transform: rotate(360deg); } }
+.puxar-atualizando .puxar-icone { animation: girar 0.8s linear infinite; }

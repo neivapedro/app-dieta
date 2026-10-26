@@ -1,4 +1,5 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useArrastarFolha, useSaidaFolha } from './movimento';
 
 const caminhos: Record<string, ReactNode> = {
   inicio: <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" />,
@@ -54,10 +55,16 @@ export function Folha({ titulo, aoFechar, children }: { titulo: string; aoFechar
       document.body.style.overflow = overflow;
     };
   }, [aoFechar]);
+  const fundoRef = useRef<HTMLDivElement>(null);
+  const folhaRef = useRef<HTMLDivElement>(null);
+  // Arrasta para baixo pela alça/cabeçalho para fechar; ao sair, desce deslizando
+  const { eventos, desloc } = useArrastarFolha(folhaRef, fundoRef, aoFechar);
+  useSaidaFolha(fundoRef, folhaRef, desloc);
   return (
-    <div className="folha-fundo" onClick={aoFechar}>
-      <div className="folha" role="dialog" aria-modal="true" aria-label={titulo} onClick={(e) => e.stopPropagation()}>
-        <div className="cartao-cab">
+    <div className="folha-fundo" ref={fundoRef} onClick={aoFechar}>
+      <div className="folha" ref={folhaRef} role="dialog" aria-modal="true" aria-label={titulo} onClick={(e) => e.stopPropagation()}>
+        <div className="folha-alca" aria-hidden="true" {...eventos} />
+        <div className="cartao-cab folha-cab" {...eventos}>
           <h2>{titulo}</h2>
           <button className="icone-botao" onClick={aoFechar} aria-label="Fechar">
             <Icone nome="fechar" />
