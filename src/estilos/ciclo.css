@@ -1,0 +1,238 @@
+/* ---------- Tela Ciclo (Agenda, Diário, Plano, Ajustes) ---------- */
+
+/* Tons do calendário e das métricas do dia (verde bom, âmbar atenção, vermelho pior) */
+.tom-bom { --tom: color-mix(in srgb, var(--bom) 24%, var(--superficie-2)); }
+.tom-aviso { --tom: color-mix(in srgb, var(--aviso) 26%, var(--superficie-2)); }
+.tom-forte { --tom: color-mix(in srgb, var(--aviso) 55%, var(--superficie-2)); }
+.tom-ruim { --tom: color-mix(in srgb, var(--ruim) 38%, var(--superficie-2)); }
+
+/* ---------- Agenda ---------- */
+.agenda-etiqueta { margin-left: 6px; vertical-align: 1px; letter-spacing: 0; text-transform: none; }
+.agenda-doses { margin-top: 14px; }
+@media (max-width: 360px) { .agenda-hero .hero-titulo { font-size: 1.2rem; } }
+.agenda-doses .doses-barras { height: 64px; }
+.agenda-alerta { margin-bottom: 10px; font-size: 0.85rem; }
+
+/* Linha do tempo vertical: trilho à esquerda, um ponto por dose */
+.tempo { list-style: none; margin: 0; padding: 0; position: relative; }
+.tempo-fase, .tempo-dose { position: relative; padding-left: 26px; }
+.tempo-fase::before, .tempo-dose::before {
+  content: ''; position: absolute; left: 7px; top: 0; bottom: 0; width: 2px;
+  background: color-mix(in srgb, var(--texto-3) 40%, transparent);
+}
+.tempo > li:first-child::before { top: 12px; }
+.tempo > li:last-child::before { bottom: calc(100% - 22px); }
+.tempo-fase.tempo-hipotese::before, .tempo-dose.tempo-hipotese::before { background: none; border-left: 2px dashed color-mix(in srgb, var(--texto-3) 55%, transparent); width: 0; }
+.tempo-fase { display: flex; align-items: center; gap: 6px; padding-top: 8px; padding-bottom: 4px; min-width: 0; }
+.tempo > .tempo-fase:first-child { padding-top: 0; }
+.chip-fase {
+  font-size: 0.72rem; font-weight: 700; color: var(--texto-2); background: var(--superficie-2);
+  border-radius: 999px; padding: 2px 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+}
+.chip-hipotese {
+  flex: none; font-size: 0.7rem; font-weight: 700; color: var(--aviso); border: 1px dashed color-mix(in srgb, var(--aviso) 70%, transparent);
+  border-radius: 999px; padding: 1px 8px; white-space: nowrap;
+}
+.tempo-dose { display: flex; align-items: center; gap: 10px; min-height: 48px; padding-top: 6px; padding-bottom: 6px; }
+.tempo-ponto {
+  position: absolute; left: 2px; top: 50%; width: 12px; height: 12px; margin-top: -6px; border-radius: 50%;
+  background: var(--superficie); border: 2px solid var(--texto-3); z-index: 1;
+}
+.tempo-dose.tempo-hipotese .tempo-ponto { border-style: dashed; border-color: var(--aviso); }
+.tempo-dose.tempo-proxima .tempo-ponto {
+  left: 0; width: 16px; height: 16px; margin-top: -8px; background: var(--destaque); border-color: var(--destaque);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--destaque) 18%, transparent);
+}
+.tempo-dose.tempo-proxima::after {
+  content: ''; position: absolute; inset: 2px -8px 2px 18px; border-radius: var(--raio-sm); z-index: -1;
+  background: color-mix(in srgb, var(--destaque) 7%, transparent);
+}
+.tempo-dose.tempo-proxima { isolation: isolate; }
+.tempo-data { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.tempo-data b { font-weight: 650; white-space: nowrap; }
+.tempo-data > span { font-size: 0.75rem; color: var(--texto-3); }
+.tempo-data > span.ruim { color: var(--ruim); }
+.tempo-valor { flex: none; display: flex; flex-direction: column; align-items: flex-end; text-align: right; }
+.tempo-valor b { font-weight: 700; white-space: nowrap; }
+.tempo-valor span { font-size: 0.75rem; color: var(--texto-2); white-space: nowrap; }
+.tempo-valor .tempo-saldo { color: var(--texto-3); font-size: 0.7rem; }
+.tempo-dose.tempo-hipotese .tempo-valor b { color: var(--texto-2); }
+
+/* Aplicações feitas: linhas compactas, sem rolagem lateral */
+.aplic {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px; padding: 10px 0;
+  border: 0; border-top: 1px solid var(--borda-suave); background: none; text-align: left; cursor: pointer; color: inherit;
+}
+.aplic:first-child { border-top: 0; }
+.aplic-no {
+  flex: none; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--destaque) 14%, transparent); font-weight: 700; font-size: 0.85rem;
+}
+.aplic-corpo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.aplic-data { font-weight: 650; }
+.aplic-detalhe { font-size: 0.78rem; color: var(--texto-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.aplic-etiquetas { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+.aplic-valor { flex: none; display: flex; flex-direction: column; align-items: flex-end; }
+.aplic-valor b { font-weight: 700; white-space: nowrap; }
+.aplic-valor span { font-size: 0.75rem; color: var(--texto-2); white-space: nowrap; }
+
+/* ---------- Diário ---------- */
+.diario-barra { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.cab-fixa { flex-wrap: nowrap; align-items: flex-start; }
+.cab-fixa > .botao { flex: none; }
+.diario-sono { font-size: 0.8rem; color: var(--texto-3); white-space: nowrap; }
+.diario-sono b { color: var(--texto); margin-left: 2px; }
+.diario-sono b.aviso-txt { color: var(--aviso); }
+.diario-item .titulo { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+
+.cal-cab { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.cal-cab .icone-botao { flex: none; font-size: 1.3rem; line-height: 1; }
+.cal-cab .icone-botao:disabled { opacity: 0.35; cursor: default; }
+.cal-mes { flex: 1; min-width: 0; text-align: center; display: flex; flex-direction: column; }
+.cal-mes strong { font-size: 1.02rem; }
+.cal-mes .secao-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cal-metricas { display: flex; justify-content: center; margin-bottom: 12px; }
+
+.cal-grade { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.cal-semana { text-align: center; font-size: 0.68rem; font-weight: 700; color: var(--texto-3); padding-bottom: 2px; }
+.dia-cal {
+  position: relative; min-width: 0; height: 46px; border: 0; border-radius: 10px; padding: 4px 0 3px; cursor: pointer;
+  background: var(--tom, var(--superficie-2)); color: var(--texto);
+  display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+}
+.dia-cal:disabled { cursor: default; background: transparent; color: var(--texto-3); opacity: 0.55; }
+.dia-cal-num { font-size: 0.8rem; font-weight: 650; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.dia-cal-val { font-size: 0.62rem; font-weight: 600; color: color-mix(in srgb, var(--texto) 75%, transparent); line-height: 1.1; min-height: 0.7rem; }
+.dia-cal-dose { position: absolute; top: -3px; right: -2px; font-size: 0.6rem; line-height: 1; }
+/* Dia da dose: anel; hoje: número em destaque; escolhido: contorno forte */
+.dia-cal.dia-dose { box-shadow: inset 0 0 0 2px var(--destaque); }
+.dia-cal.dia-hoje .dia-cal-num { text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 2px; }
+.dia-cal.dia-sel { outline: 2px solid var(--aviso); outline-offset: 1px; }
+@media (max-width: 360px) { .dia-cal { height: 42px; border-radius: 8px; } .cal-grade { gap: 3px; } }
+
+.cal-legenda { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 12px; font-size: 0.72rem; color: var(--texto-2); }
+.cal-legenda span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.cal-legenda i { width: 12px; height: 12px; border-radius: 4px; background: var(--tom, var(--superficie-2)); flex: none; }
+.cal-legenda i.anel-dose { background: transparent; box-shadow: inset 0 0 0 2px var(--destaque); }
+
+.dia-detalhe { scroll-margin-bottom: calc(var(--nav-altura) + 16px + env(safe-area-inset-bottom)); }
+.dia-detalhe h2 { text-transform: none; }
+.dia-detalhe-etiquetas { gap: 6px; margin-top: 6px; }
+.dia-detalhe-etiquetas:empty { display: none; }
+.dia-metricas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.dia-metrica {
+  background: color-mix(in srgb, var(--tom, var(--superficie-2)) 65%, var(--superficie-2)); border-radius: var(--raio-sm); padding: 8px 10px; min-width: 0;
+  display: flex; flex-direction: column; gap: 1px;
+}
+.dia-metrica .rotulo { font-size: 0.7rem; }
+.dia-metrica b { font-size: 0.95rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dia-metrica small { font-size: 0.68rem; color: var(--texto-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 360px) { .dia-metrica { padding: 8px; } .dia-metrica b { font-size: 0.85rem; } }
+.dia-notas { margin-top: 10px; }
+
+/* ---------- Plano ---------- */
+/* Medidor do frasco: um segmento por fase; com excesso, a linha marca o fim do frasco */
+.frasco-medidor { position: relative; display: flex; gap: 2px; height: 14px; border-radius: 999px; background: var(--superficie-2); overflow: hidden; }
+.frasco-medidor > i { height: 100%; min-width: 3px; background: var(--bom); }
+.frasco-medidor > i:nth-child(even) { opacity: 0.7; }
+.frasco-medidor.sem_margem > i { background: var(--aviso); }
+.frasco-medidor.excesso > i { background: var(--ruim); }
+.frasco-fim { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--texto); }
+.frasco-rotulos { display: flex; justify-content: space-between; gap: 8px; font-size: 0.78rem; color: var(--texto-3); margin-top: 6px; }
+.frasco-rotulos b { color: var(--texto); font-weight: 650; }
+.frasco-msg { font-size: 0.85rem; margin-top: 10px; }
+.frasco-msg.ruim { color: var(--ruim); }
+.frasco-msg.aviso-txt { color: var(--aviso); }
+.frasco-reserva { margin-top: 4px; font-size: 0.78rem; }
+
+/* Fases em degraus: número no círculo, trilho ligando as fases */
+.fases { list-style: none; margin: 0; padding: 0; }
+.fase-passo { position: relative; }
+.fase-passo:not(:last-child)::before {
+  content: ''; position: absolute; left: 15px; top: 44px; bottom: -6px; width: 2px;
+  background: color-mix(in srgb, var(--texto-3) 35%, transparent);
+}
+.fase-passo.fase-feita:not(:last-child)::before { background: color-mix(in srgb, var(--bom) 60%, transparent); }
+.fase-botao {
+  display: flex; align-items: flex-start; gap: 12px; width: 100%; padding: 10px 0; min-height: 64px;
+  border: 0; background: none; color: inherit; text-align: left; cursor: pointer;
+}
+.fase-no {
+  flex: none; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 0.85rem; background: var(--superficie-2); border: 2px solid var(--borda); position: relative; z-index: 1;
+}
+.fase-passo.fase-feita .fase-no { background: color-mix(in srgb, var(--bom) 18%, var(--superficie)); border-color: var(--bom); color: var(--bom); }
+.fase-passo.fase-atual .fase-no { background: var(--destaque); border-color: var(--destaque); color: var(--destaque-texto); box-shadow: 0 0 0 4px color-mix(in srgb, var(--destaque) 16%, transparent); }
+.fase-corpo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.fase-nome { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; min-width: 0; font-weight: 650; line-height: 1.25; }
+.fase-nome-texto { min-width: 0; overflow-wrap: break-word; hyphens: auto; }
+.fase-nome .etiqueta { flex: none; }
+.fase-meta { font-size: 0.75rem; color: var(--texto-3); }
+.fase-meta .sem-quebra { white-space: nowrap; }
+.fase-barra { display: block; height: 5px; border-radius: 999px; background: var(--superficie-2); margin-top: 5px; overflow: hidden; }
+.fase-barra i { display: block; height: 100%; border-radius: 999px; background: color-mix(in srgb, var(--destaque) 55%, transparent); }
+.fase-passo.fase-atual .fase-barra i { background: var(--destaque); }
+.fase-valor { flex: none; display: flex; flex-direction: column; align-items: flex-end; text-align: right; }
+.fase-valor b { font-weight: 700; white-space: nowrap; }
+.fase-valor span { font-size: 0.72rem; color: var(--texto-2); white-space: nowrap; }
+.fase-valor span.ruim { color: var(--ruim); }
+.fase-seta { flex: none; align-self: center; color: var(--texto-3); font-size: 1.3rem; line-height: 1; }
+@media (max-width: 360px) { .fase-seta { display: none; } .fase-botao { gap: 10px; } }
+.plano-salvo { margin-top: 10px; font-size: 0.85rem; color: var(--bom); font-weight: 600; text-align: center; }
+
+/* Barra de salvar fixa acima da navegação; o espaço no fim impede que ela cubra o último cartão */
+.plano-espaco { height: 64px; }
+.plano-salvar {
+  position: fixed; z-index: 15; left: 50%; transform: translateX(-50%);
+  bottom: calc(var(--nav-altura) + 10px + env(safe-area-inset-bottom));
+  width: min(688px, calc(100% - 32px)); display: flex; align-items: center; gap: 10px;
+  padding: 8px 8px 8px 14px; border-radius: var(--raio); border: 1px solid var(--borda-suave);
+  background: var(--vidro); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px);
+  box-shadow: var(--sombra); font-size: 0.85rem; font-weight: 600; color: var(--aviso);
+  animation: surgir 0.2s ease-out;
+}
+.plano-salvar .botao { flex: none; }
+
+.folha-fase .grade-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 560px) { .folha-fase .grade-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+details.tabela-detalhe.regras { margin-top: 0; }
+details.tabela-detalhe.regras > summary { color: var(--texto); font-size: 1rem; font-weight: 650; }
+.regras-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.regras-lista li { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: var(--raio-sm); background: var(--superficie-2); }
+.regras-situacao { font-size: 0.82rem; color: var(--texto-2); }
+.regras-acao { font-size: 0.9rem; font-weight: 650; }
+
+/* ---------- Ajustes: lista agrupada (como os Ajustes do iPhone) ---------- */
+.ajustes { gap: 18px; }
+.grupo-titulo { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--texto-3); margin: 0 4px 6px; }
+.grupo-lista {
+  background: var(--superficie); border: 1px solid var(--borda-suave); border-radius: var(--raio); box-shadow: var(--sombra);
+  overflow: hidden;
+}
+.grupo-rodape { font-size: 0.75rem; color: var(--texto-3); margin: 6px 4px 0; line-height: 1.4; }
+.ajuste {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 48px; padding: 4px 14px;
+  border-top: 1px solid var(--borda-suave); cursor: text;
+}
+.grupo-lista > .ajuste:first-child { border-top: 0; }
+.ajuste-rotulo { flex: 0 1 auto; min-width: 0; font-size: 0.92rem; }
+.ajuste-valor { flex: 1 1 0; min-width: 0; display: flex; align-items: center; justify-content: flex-end; gap: 4px; color: var(--texto-2); }
+.ajuste-valor input {
+  min-width: 0; width: 100%; max-width: 100%; min-height: 40px; padding: 6px 0; border: 0; background: transparent;
+  text-align: right; font-size: 16px; color: var(--texto-2); font-variant-numeric: tabular-nums;
+}
+.ajuste-valor input[inputmode='decimal'] { width: 4.5em; }
+.ajuste-valor input[type='date'] { width: auto; flex: none; -webkit-appearance: none; appearance: none; }
+.ajuste-valor input:focus { outline: none; color: var(--texto); }
+.ajuste:focus-within { background: color-mix(in srgb, var(--superficie-2) 60%, transparent); }
+.ajuste-unidade { font-size: 0.82rem; color: var(--texto-3); }
+.ajuste-leitura { cursor: default; }
+.ajuste-leitura .ajuste-rotulo { flex: 1 1 auto; }
+.ajuste-leitura .ajuste-valor { flex: none; font-weight: 650; color: var(--texto); font-size: 0.9rem; white-space: nowrap; }
+.grupo-escolhas { padding: 12px 14px; display: flex; flex-direction: column; gap: 14px; }
+@media (max-width: 360px) {
+  .ajuste { padding: 4px 12px; }
+  .ajuste-rotulo { font-size: 0.85rem; }
+}
+.agenda-hero .sem-quebra { white-space: nowrap; }
