@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useDados } from '../dados/contexto';
 import { useCalculos } from '../dados/useCalculos';
 import { useMetaAgua, useTreino } from '../dados/useTreino';
-import { diaDeSintoma, diaVazio, mediaSono7, resumoSintomas, TEXTO_SINTOMA_AGUA, TEXTO_SONO_BAIXO } from '../lib/bemestar';
+import { diaDeSintoma, diaVazio, mediaSono7, TEXTO_SINTOMA_AGUA, TEXTO_SONO_BAIXO } from '../lib/bemestar';
+import { progressoTarefas, tarefasDoDia, type ChaveTarefa, type EntradaTarefas, type Tarefa } from '../lib/inicio-hoje';
 import { hojeLocal, somarDias } from '../lib/datas';
 import { kg, lerPeso, num, paraTexto } from '../lib/formato';
 import { diaCurto, horaDaFaixaOntem, pendenciasDeOntem, textoPendencias } from '../lib/rotina';
@@ -10,7 +11,7 @@ import { alertasSeguranca, AVISO_SEGURANCA } from '../lib/seguranca';
 import { NIVEIS_NAUSEA, type RegistroDiario } from '../lib/tipos';
 import { rotuloCardio, segundaDaSemana, tipoCardioEfetivo, tocarCardio, type TipoCardio } from '../lib/treino';
 import { BotaoCorrida, FormDiaTreino, MarcadoresDia } from './treino';
-import { Bloco, Campo, Escolhas } from './ui';
+import { Campo, Escolhas } from './ui';
 
 const OPCOES_PLANO = [
   { valor: 'sim' as const, rotulo: 'Sim' },
@@ -149,20 +150,91 @@ export function FaixaOntem() {
   );
 }
 
-/**
- * Depois das 18h: treino, cardio, náusea, sintomas, "segui o plano?" e peso
- * num cartão só, cada toque gravando na hora pela fila (sem abrir folha).
- */
-export function CartaoFecharDia({ etiqueta, aoEditar }: { etiqueta?: string; aoEditar?: () => void }) {
+/** Dados do checklist de hoje (o anel do topo e o cartão usam a mesma conta). */
+export function useTarefasHoje(dose: EntradaTarefas['dose']) {
   const { diario, dieta, medidas } = useDados();
   const { hoje } = useCalculos();
   const metaAguaDe = useMetaAgua();
+  const t = useTreino();
+  const reg = diario.find((r) => r.data === hoje);
   // Dia com medição: o peso do dia é o da medição (não oferece um segundo peso)
   const medicaoHoje = medidas.find((m) => m.data === hoje && m.peso_kg > 0) ?? null;
+  const comTreino = !!t && t.placar.iniciado && !t.placar.encerrado;
+  const tr = t?.doDia(hoje) ?? null;
+  // Às segundas, para quem já mede: a medição em jejum entra no checklist
+  const segunda = segundaDaSemana(hoje);
+  const medicao = medidas.length && hoje === segunda ? { feita: medidas.some((m) => m.data >= segunda) } : null;
+  const tarefas = tarefasDoDia({
+    reg,
+    pesoMedicao: medicaoHoje?.peso_kg ?? null,
+    dose,
+    medicao,
+    comTreino,
+    treinoDia: tr,
+    comDieta: temPlano(dieta),
+    metaAgua: metaAguaDe(hoje).meta,
+  });
+  return { tarefas, progresso: progressoTarefas(tarefas), reg, medicaoHoje, comTreino, tr };
+}
+
+export type TarefasHoje = ReturnType<typeof useTarefasHoje>;
+
+/** Anel de progresso pequeno (checklist do dia, frasco usado). */
+export function AnelHoje({ fracao, texto, sub, tom, rotulo }: { fracao: number; texto: string; sub?: string; tom?: string; rotulo: string }) {
+  const r = 26;
+  const c = 2 * Math.PI * r;
+  const f = Math.min(Math.max(fracao, 0), 1);
+  return (
+    <div className={`anel-hoje ${tom ?? ''}`} role="img" aria-label={rotulo}>
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <circle cx="32" cy="32" r={r} className="anel-hoje-trilho" />
+        {f > 0 && <circle cx="32" cy="32" r={r} className="anel-hoje-valor" strokeDasharray={`${f * c} ${c}`} transform="rotate(-90 32 32)" />}
+      </svg>
+      <span className="anel-hoje-centro" aria-hidden="true">
+        <b className="numero">{texto}</b>
+        {sub && <span>{sub}</span>}
+      </span>
+    </div>
+  );
+}
+
+// Ordem das linhas à noite: como era o "Fechar o dia" (náusea e sintomas, plano, peso; água e sono no fim)
+const ORDEM_NOITE: ChaveTarefa[] = ['dose', 'medicao', 'nausea', 'plano', 'peso', 'agua', 'sono'];
+
+function Marca({ feito }: { feito: boolean }) {
+  return (
+    <span className="tarefa-check" aria-hidden="true">
+      {feito ? '✓' : ''}
+    </span>
+  );
+}
+
+/**
+ * Checklist de hoje: treino e cardio com um toque, e o Diário do dia (peso, náusea,
+ * água, sono, plano) abrindo o registro. Depois das 18h vira o "Fechar o dia": náusea,
+ * sintomas, "segui o plano?" e peso gravam ali mesmo, cada toque na hora pela fila.
+ */
+export function ChecklistHoje({
+  h,
+  noite,
+  etiqueta,
+  aoDiario,
+  aoMedir,
+  aoDose,
+}: {
+  h: TarefasHoje;
+  noite: boolean;
+  etiqueta?: string;
+  aoDiario: () => void;
+  aoMedir: () => void;
+  aoDose: () => void;
+}) {
+  const { diario } = useDados();
+  const { hoje } = useCalculos();
   const t = useTreino();
   const gravarDia = useGravarDia();
   const gravarTreino = useGravarTreino();
-  const reg = diario.find((r) => r.data === hoje);
+  const { tarefas, progresso, reg, medicaoHoje, comTreino, tr } = h;
   const [peso, setPeso] = useState(paraTexto(reg?.peso_kg));
   // Campo não mexido acompanha o peso gravado (ex.: peso salvo junto com a aplicação)
   const [mexeuPeso, setMexeuPeso] = useState(false);
@@ -171,12 +243,12 @@ export function CartaoFecharDia({ etiqueta, aoEditar }: { etiqueta?: string; aoE
     if (!mexeuPeso) setPeso(paraTexto(pesoGravado));
   }, [pesoGravado, hoje, mexeuPeso]);
   const [erroPeso, setErroPeso] = useState<string | null>(null);
-  const [corridaAberta, setCorridaAberta] = useState(false);
+  const [treinoAberto, setTreinoAberto] = useState(false);
   // Sintomas que estavam "não" antes de ligar: desligar volta para "não"
   const naoAntes = useRef(new Set<string>());
-  const comTreino = !!t && t.placar.iniciado && !t.placar.encerrado;
-  const tr = t?.doDia(hoje);
-  const corrida = tipoCardioEfetivo(hoje, tr) === 'corrida';
+  const corridaFeita = !!tr?.cardio && tipoCardioEfetivo(hoje, tr) === 'corrida';
+  const sono = mediaSono7(diario, hoje);
+  const placar = t?.placar;
 
   function salvarPeso(e: FormEvent) {
     e.preventDefault();
@@ -186,158 +258,198 @@ export function CartaoFecharDia({ etiqueta, aoEditar }: { etiqueta?: string; aoE
     setMexeuPeso(false);
     gravarDia(hoje, { peso_kg: p.valor });
   }
-
   const pesoMudou = (lerPeso(peso).valor ?? null) !== (reg?.peso_kg ?? null) || !!lerPeso(peso).erro;
 
+  const linhas = tarefas.filter((x) => x.chave !== 'treino' && x.chave !== 'cardio');
+  if (noite) linhas.sort((a, b) => ORDEM_NOITE.indexOf(a.chave) - ORDEM_NOITE.indexOf(b.chave));
+
+  // Linha que abre o registro (Diário, medição ou aplicação)
+  const linhaBotao = (x: Tarefa, aoTocar: () => void, destaque?: boolean) => (
+    <li key={x.chave} className={`tarefa ${x.feito ? 'feito' : ''} ${destaque && !x.feito ? 'tarefa-destaque' : ''}`}>
+      <button type="button" className="tarefa-linha" onClick={aoTocar}>
+        <Marca feito={x.feito} />
+        <span className="tarefa-rotulo">{x.rotulo}</span>
+        <span className="tarefa-valor numero">{x.detalhe}</span>
+        <span className="tarefa-seta" aria-hidden="true">
+          ›
+        </span>
+        <span className="oculto-visual">{x.feito ? ' · feito' : ' · a fazer'}</span>
+      </button>
+    </li>
+  );
+  // Linha que já está feita e não abre nada (ex.: aplicação registrada hoje)
+  const linhaFeita = (x: Tarefa) => (
+    <li key={x.chave} className="tarefa feito">
+      <div className="tarefa-linha">
+        <Marca feito />
+        <span className="tarefa-rotulo">{x.rotulo}</span>
+        <span className="tarefa-valor numero">{x.detalhe}</span>
+      </div>
+    </li>
+  );
+  // Linha com o controle embaixo (só no "Fechar o dia")
+  const linhaControle = (x: Tarefa, controle: ReactNode) => (
+    <li key={x.chave} className={`tarefa tarefa-com-controle ${x.feito ? 'feito' : ''}`}>
+      <div className="tarefa-linha">
+        <Marca feito={x.feito} />
+        <span className="tarefa-rotulo">{x.rotulo}</span>
+        <span className="tarefa-valor numero">{x.detalhe}</span>
+      </div>
+      <div className="tarefa-controle">{controle}</div>
+    </li>
+  );
+
+  function linha(x: Tarefa) {
+    if (x.chave === 'dose') return x.feito ? linhaFeita(x) : linhaBotao(x, aoDose, true);
+    if (x.chave === 'medicao')
+      return x.feito ? (
+        linhaFeita(x)
+      ) : (
+        <li key={x.chave} className="tarefa tarefa-destaque">
+          <button type="button" className="tarefa-linha" onClick={aoMedir}>
+            <Marca feito={false} />
+            <span className="tarefa-rotulo">
+              Medição de segunda
+              <span className="tarefa-sub">Em jejum, depois de ir ao banheiro e antes de beber água. Mesma fita e mesmo horário de sempre.</span>
+            </span>
+            <span className="tarefa-acao">Medir</span>
+            <span className="oculto-visual"> · a fazer</span>
+          </button>
+        </li>
+      );
+    if (!noite) return linhaBotao(x, aoDiario);
+    if (x.chave === 'nausea')
+      return linhaControle(
+        x,
+        <>
+          <Campo rotulo="Náusea (0 a 3)" grupo>
+            <Escolhas opcoes={OPCOES_NAUSEA} valor={reg?.nausea ?? null} aoMudar={(v) => gravarDia(hoje, { nausea: v })} permitirVazio />
+          </Campo>
+          <Campo rotulo="Sintomas (toque para ligar ou desligar)" grupo>
+            <div className="sintomas">
+              {SINTOMAS.map(([k, rotulo]) => {
+                const v = reg?.[k];
+                // Desligar volta para "não" quando o dia já tem resposta de sintoma (não apaga um "não" respondido)
+                const respondido = SINTOMAS.some(([j]) => j !== k && reg?.[j] != null) || naoAntes.current.has(k);
+                return (
+                  <button
+                    type="button"
+                    key={k}
+                    aria-pressed={v === true}
+                    className={`sintoma ${v === true ? 'sim' : v === false ? 'nao' : ''}`}
+                    onClick={() => {
+                      if (v === false) naoAntes.current.add(k);
+                      gravarDia(hoje, { [k]: v === true ? (respondido ? false : null) : true });
+                    }}
+                  >
+                    {rotulo}
+                    {v === true ? ': sim' : v === false ? ': não' : ''}
+                  </button>
+                );
+              })}
+            </div>
+          </Campo>
+        </>,
+      );
+    if (x.chave === 'plano')
+      return linhaControle(
+        { ...x, rotulo: 'Segui o plano hoje?' },
+        <Escolhas opcoes={OPCOES_PLANO} valor={reg?.dieta_seguida ?? null} aoMudar={(v) => gravarDia(hoje, { dieta_seguida: v })} permitirVazio />,
+      );
+    if (x.chave === 'peso')
+      return medicaoHoje ? (
+        <li key={x.chave} className="tarefa feito">
+          <div className="tarefa-linha">
+            <Marca feito />
+            <span className="tarefa-rotulo">
+              Peso
+              <span className="tarefa-sub">
+                Peso do dia: <b>{kg(medicaoHoje.peso_kg)}</b>, da medição de hoje.
+              </span>
+            </span>
+          </div>
+        </li>
+      ) : (
+        linhaControle(
+          x,
+          <form className="linha" style={{ alignItems: 'flex-end', flexWrap: 'nowrap' }} onSubmit={salvarPeso}>
+            <label className="campo cresce">
+              <span>Peso (kg, opcional)</span>
+              <input
+                inputMode="decimal"
+                value={peso}
+                onChange={(e) => {
+                  setPeso(e.target.value.replace(/[^\d.,]/g, ''));
+                  setMexeuPeso(true);
+                  setErroPeso(null);
+                }}
+              />
+            </label>
+            <button className="botao" disabled={!pesoMudou} style={{ flex: 'none' }}>
+              {reg?.peso_kg != null && !pesoMudou ? 'Salvo' : 'Salvar peso'}
+            </button>
+          </form>,
+        )
+      );
+    return linhaBotao(x, aoDiario);
+  }
+
+  const titulo = noite ? 'Fechar o dia' : 'Checklist de hoje';
   return (
-    <section className="cartao pilha" style={{ gap: 12 }} aria-label="Fechar o dia">
-      <div className="cartao-cab" style={{ marginBottom: 0 }}>
-        <h2>Fechar o dia</h2>
-        <span className="mudo">{etiqueta ?? diaCurto(hoje)}</span>
+    <section className={`cartao checklist ${noite ? 'checklist-noite' : ''}`} aria-label={titulo}>
+      <div className="checklist-cab">
+        <div className="cresce">
+          <h2>{titulo}</h2>
+          <div className="secao-sub">
+            {etiqueta ?? diaCurto(hoje)}
+            {noite ? ' · cada toque grava na hora' : ' · toque para anotar'}
+          </div>
+        </div>
+        <span className="checklist-contagem numero" aria-label={`${progresso.feitas} de ${progresso.total} feitos`}>
+          <b>{progresso.feitas}</b> de {progresso.total}
+        </span>
+      </div>
+      <div className="checklist-barra" aria-hidden="true">
+        <div style={{ width: `${progresso.fracao * 100}%` }} />
       </div>
       {comTreino && (
-        <MarcadoresDia
-          data={hoje}
-          reg={tr}
-          aoTreino={() => gravarTreino(hoje, { treino: !tr?.treino })}
-          aoCardio={(tipo) => gravarTreino(hoje, { cardioTipo: tipo })}
-        />
-      )}
-      {comTreino && corrida && tr?.cardio && <BotaoCorrida reg={tr} aoTocar={() => setCorridaAberta(true)} />}
-      <Campo rotulo="Náusea (0 a 3)" grupo>
-        <Escolhas opcoes={OPCOES_NAUSEA} valor={reg?.nausea ?? null} aoMudar={(v) => gravarDia(hoje, { nausea: v })} permitirVazio />
-      </Campo>
-      <Campo rotulo="Sintomas (toque para ligar ou desligar)" grupo>
-        <div className="sintomas">
-          {SINTOMAS.map(([k, rotulo]) => {
-            const v = reg?.[k];
-            // Desligar volta para "não" quando o dia já tem resposta de sintoma (não apaga um "não" respondido)
-            const respondido = SINTOMAS.some(([j]) => j !== k && reg?.[j] != null) || naoAntes.current.has(k);
-            return (
-              <button
-                type="button"
-                key={k}
-                aria-pressed={v === true}
-                className={`sintoma ${v === true ? 'sim' : v === false ? 'nao' : ''}`}
-                onClick={() => {
-                  if (v === false) naoAntes.current.add(k);
-                  gravarDia(hoje, { [k]: v === true ? (respondido ? false : null) : true });
-                }}
-              >
-                {rotulo}
-                {v === true ? ': sim' : v === false ? ': não' : ''}
-              </button>
-            );
-          })}
-        </div>
-      </Campo>
-      {diaDeSintoma(reg) && <div className="alerta info">{TEXTO_SINTOMA_AGUA}</div>}
-      {temPlano(dieta) && (
-        <Campo rotulo="Segui o plano hoje?" grupo>
-          <Escolhas opcoes={OPCOES_PLANO} valor={reg?.dieta_seguida ?? null} aoMudar={(v) => gravarDia(hoje, { dieta_seguida: v })} permitirVazio />
-        </Campo>
-      )}
-      {medicaoHoje ? (
-        <p className="texto-2">
-          Peso do dia: <b>{kg(medicaoHoje.peso_kg)}</b>, da medição de hoje.
-        </p>
-      ) : (
-      <form className="linha" style={{ alignItems: 'flex-end', flexWrap: 'nowrap' }} onSubmit={salvarPeso}>
-        <label className="campo cresce">
-          <span>Peso (kg, opcional)</span>
-          <input
-            inputMode="decimal"
-            value={peso}
-            onChange={(e) => {
-              setPeso(e.target.value.replace(/[^\d.,]/g, ''));
-              setMexeuPeso(true);
-              setErroPeso(null);
-            }}
+        <div className="checklist-treino">
+          <MarcadoresDia
+            data={hoje}
+            reg={tr}
+            aoTreino={() => gravarTreino(hoje, { treino: !tr?.treino })}
+            aoCardio={(tipo) => gravarTreino(hoje, { cardioTipo: tipo })}
           />
-        </label>
-        <button className="botao" disabled={!pesoMudou} style={{ flex: 'none' }}>
-          {reg?.peso_kg != null && !pesoMudou ? 'Salvo' : 'Salvar peso'}
-        </button>
-      </form>
+          {corridaFeita && <BotaoCorrida reg={tr} aoTocar={() => setTreinoAberto(true)} />}
+          <div className="checklist-treino-pe">
+            <span className="mudo cresce">
+              {placar ? `Dia ${placar.diaAtual} de ${placar.totalDias}` : ''}
+              {placar && placar.sequenciaAtual > 1 ? ` · 🔥 ${placar.sequenciaAtual} seguidos` : ''}
+            </span>
+            {!corridaFeita && (
+              <button type="button" className="botao pequeno" onClick={() => setTreinoAberto(true)}>
+                Esforço
+              </button>
+            )}
+          </div>
+        </div>
       )}
+      <ul className="tarefas">{linhas.map(linha)}</ul>
       {erroPeso && <div className="alerta erro">{erroPeso}</div>}
-      {/* Água, sono, urina e observações: resumo do que já foi anotado e o registro completo */}
-      <div className="linha entre" style={{ alignItems: 'center' }}>
-        <span className="texto-2 cresce">
-          {[
-            `Água ${reg?.agua_l != null ? num(reg.agua_l, 1) : '–'} de ${num(metaAguaDe(hoje).meta, 1)} L`,
-            reg?.sono_h != null && `sono ${num(reg.sono_h, 1)} h`,
-            reg?.cor_urina && `urina ${reg.cor_urina}`,
-          ]
-            .filter(Boolean)
-            .join(' · ')}
-        </span>
-        {aoEditar && (
-          <button type="button" className="botao pequeno" onClick={aoEditar}>
-            Registro completo
-          </button>
-        )}
-      </div>
-      {reg?.observacoes && <p className="mudo obs-curta">Obs.: {reg.observacoes}</p>}
-      {corridaAberta && <FormDiaTreino data={hoje} foco="corrida" aoFechar={() => setCorridaAberta(false)} />}
-    </section>
-  );
-}
-
-/** Registro do dia (peso, náusea, sintomas): logo abaixo da dose de D0 a D3, mais abaixo nos outros dias. */
-export function CartaoRegistroDia({ aoEditar, etiqueta }: { aoEditar: () => void; etiqueta?: string }) {
-  const { diario, medidas } = useDados();
-  const { hoje } = useCalculos();
-  const metaAguaDe = useMetaAgua();
-  const reg = diario.find((r) => r.data === hoje);
-  const medicaoHoje = medidas.find((m) => m.data === hoje && m.peso_kg > 0) ?? null;
-  const sono = mediaSono7(diario, hoje);
-  const metaAguaHoje = metaAguaDe(hoje).meta;
-  return (
-    <section className="cartao">
-      <div className="cartao-cab">
-        <h2>
-          Hoje{etiqueta ? <span className="mudo" style={{ fontWeight: 500 }}> · {etiqueta}</span> : null}
-        </h2>
-        <button className="botao pequeno" onClick={aoEditar}>
-          {reg ? 'Editar' : 'Registrar'}
-        </button>
-      </div>
-      {reg ? (
-        <div className="grade grade-3">
-          <Bloco rotulo="Peso" valor={kg(medicaoHoje?.peso_kg ?? reg.peso_kg)} />
-          <Bloco rotulo="Náusea" valor={reg.nausea === null ? '–' : NIVEIS_NAUSEA[reg.nausea]} />
-          <Bloco rotulo="Sintomas" valor={resumoSintomas(reg)} />
-        </div>
-      ) : (
-        <p className="mudo">Anote peso, náusea, efeitos, sono e água de hoje. Vale para qualquer dia, não só o da aplicação.</p>
-      )}
-      {reg && (reg.sono_h != null || reg.agua_l != null || reg.cor_urina) ? (
-        <p className="texto-2" style={{ marginTop: 8 }}>
-          {[
-            reg.sono_h != null && `Sono ${num(reg.sono_h, 1)} h`,
-            reg.agua_l != null && `Água ${num(reg.agua_l, 1)} de ${num(metaAguaHoje, 1)} L`,
-            reg.cor_urina && `urina ${reg.cor_urina}`,
-          ]
-            .filter(Boolean)
-            .join(' · ')}
-        </p>
-      ) : null}
-      {diaDeSintoma(reg) && (
-        <div className="alerta info" style={{ marginTop: 8 }}>
-          {TEXTO_SINTOMA_AGUA}
-        </div>
-      )}
+      {diaDeSintoma(reg) && <div className="alerta info">{TEXTO_SINTOMA_AGUA}</div>}
       {sono.baixo && (
-        <div className="alerta" style={{ marginTop: 8 }}>
+        <div className="alerta">
           {TEXTO_SONO_BAIXO} (média de 7 dias: {num(sono.media, 1)} h)
         </div>
       )}
-      {reg?.observacoes && (
-        <p className="mudo obs-curta" style={{ marginTop: 8 }}>
-          Obs.: {reg.observacoes}
-        </p>
-      )}
+      {reg?.observacoes && <p className="mudo obs-curta">Obs.: {reg.observacoes}</p>}
+      <div className="checklist-pe">
+        <span className="mudo cresce">{reg?.cor_urina ? `Urina ${reg.cor_urina}` : 'Urina e observações'}</span>
+        <button type="button" className="botao pequeno" onClick={aoDiario}>
+          Registro completo
+        </button>
+      </div>
+      {treinoAberto && <FormDiaTreino data={hoje} foco={corridaFeita ? 'corrida' : undefined} aoFechar={() => setTreinoAberto(false)} />}
     </section>
   );
 }
@@ -359,30 +471,6 @@ export function AlertasSeguranca({ compacto }: { compacto?: boolean }) {
       <p className="mudo" style={{ fontSize: '0.78rem' }}>
         {AVISO_SEGURANCA}
       </p>
-    </section>
-  );
-}
-
-/** Às segundas, enquanto não houver medição na semana: lembrete da medição em jejum. */
-export function CartaoMedicaoSegunda({ aoMedir }: { aoMedir: () => void }) {
-  const { medidas } = useDados();
-  const { hoje } = useCalculos();
-  if (!medidas.length) return null;
-  const segunda = segundaDaSemana(hoje);
-  if (hoje !== segunda) return null;
-  if (medidas.some((m) => m.data >= segunda)) return null;
-  return (
-    <section className="cartao proxima hoje">
-      <div className="cartao-cab">
-        <h2>Medição de segunda</h2>
-        <span className="etiqueta destaque">Hoje</span>
-      </div>
-      <p className="texto-2" style={{ marginBottom: 10 }}>
-        Em jejum, depois de ir ao banheiro e antes de beber água. Mesma fita e mesmo horário de sempre.
-      </p>
-      <button className="botao primario bloco-largo" onClick={aoMedir}>
-        Fazer a medição
-      </button>
     </section>
   );
 }
