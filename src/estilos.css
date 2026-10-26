@@ -39,9 +39,9 @@
     --texto-3: #6b6b70;
     --destaque: #0b0b0c;
     --destaque-texto: #ffffff;
-    --bom: #248a3d;
+    --bom: #1e7a35;
     --ruim: #d70015;
-    --aviso: #b25000;
+    --aviso: #a04600;
     --info: #6e6e73;
     --sombra: 0 1px 3px rgb(0 0 0 / 0.08);
     --g-peso: #0b0b0c;
@@ -61,9 +61,9 @@
   --texto-3: #6b6b70;
   --destaque: #0b0b0c;
   --destaque-texto: #ffffff;
-  --bom: #248a3d;
+  --bom: #1e7a35;
   --ruim: #d70015;
-  --aviso: #b25000;
+  --aviso: #a04600;
   --info: #6e6e73;
   --sombra: 0 1px 3px rgb(0 0 0 / 0.08);
   --g-peso: #0b0b0c;
@@ -143,8 +143,8 @@ a { color: var(--destaque); }
 }
 .etiqueta.destaque { background: color-mix(in srgb, var(--destaque) 18%, transparent); color: var(--destaque); }
 .etiqueta.ruim { background: color-mix(in srgb, var(--ruim) 18%, transparent); color: var(--ruim); }
-.etiqueta.bom { background: color-mix(in srgb, var(--bom) 18%, transparent); color: var(--bom); }
-.etiqueta.aviso { background: color-mix(in srgb, var(--aviso) 18%, transparent); color: var(--aviso); }
+.etiqueta.bom { background: color-mix(in srgb, var(--bom) 18%, transparent); color: color-mix(in srgb, var(--bom) 82%, var(--texto)); }
+.etiqueta.aviso { background: color-mix(in srgb, var(--aviso) 18%, transparent); color: color-mix(in srgb, var(--aviso) 82%, var(--texto)); }
 
 .botao {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
@@ -490,7 +490,11 @@ details.ajuda summary { min-height: 32px; display: flex; align-items: center; }
 .fotos-numero .texto-2 { font-size: 0.72rem; }
 .marcar { display: flex; flex-wrap: nowrap; align-items: flex-start; gap: 10px; cursor: pointer; }
 .marcar input { width: 20px; height: 20px; flex: none; margin: 2px 0 0; }
-.marcar.desligado { cursor: default; opacity: 0.6; }
+.marcar.desligado { cursor: default; }
+/* Só a caixa e o título ficam apagados: a dica de como liberar continua legível */
+.marcar.desligado > input { opacity: 0.6; }
+.marcar.desligado > span { color: color-mix(in srgb, var(--texto) 60%, transparent); }
+.marcar.desligado small { color: var(--texto-2); }
 /* Cabeçalho: livro (retatrutida) e perfil lado a lado */
 .topo-acoes { display: flex; gap: 8px; flex: none; }
 .icone-botao.ativo { background: var(--superficie-2); border-color: var(--texto-3); }
@@ -669,6 +673,11 @@ details.ajuda summary { min-height: 32px; display: flex; align-items: center; }
   font-size: 0.72rem; font-weight: 650; font-variant-numeric: tabular-nums;
   background: color-mix(in srgb, var(--aviso) var(--intensidade, 8%), var(--superficie-2));
 }
+/* Texto legível sobre a cor forte: no escuro o amarelo pede texto escuro; no claro, só a célula máxima pede branco */
+.calor-celula.forte { color: #0b0b0c; }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .calor-celula.forte { color: var(--texto); } :root:not([data-theme="dark"]) .calor-celula.maxima { color: #fff; } }
+:root[data-theme="light"] .calor-celula.forte { color: var(--texto); }
+:root[data-theme="light"] .calor-celula.maxima { color: #fff; }
 .calor-celula.vazia { background: var(--superficie-2); color: var(--texto-3); font-weight: 400; }
 .calor-escala { display: flex; align-items: center; gap: 6px; font-size: 0.7rem; color: var(--texto-3); margin-top: 8px; }
 .calor-escala i { width: 64px; height: 8px; border-radius: 999px; background: linear-gradient(90deg, var(--superficie-2), color-mix(in srgb, var(--aviso) 93%, var(--superficie-2))); }

@@ -161,7 +161,7 @@
   flex: none; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
   font-weight: 700; font-size: 0.85rem; background: var(--superficie-2); border: 2px solid var(--borda); position: relative; z-index: 1;
 }
-.fase-passo.fase-feita .fase-no { background: color-mix(in srgb, var(--bom) 18%, var(--superficie)); border-color: var(--bom); color: var(--bom); }
+.fase-passo.fase-feita .fase-no { background: color-mix(in srgb, var(--bom) 18%, var(--superficie)); border-color: var(--bom); color: color-mix(in srgb, var(--bom) 82%, var(--texto)); }
 .fase-passo.fase-atual .fase-no { background: var(--destaque); border-color: var(--destaque); color: var(--destaque-texto); box-shadow: 0 0 0 4px color-mix(in srgb, var(--destaque) 16%, transparent); }
 .fase-corpo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .fase-nome { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; min-width: 0; font-weight: 650; line-height: 1.25; }

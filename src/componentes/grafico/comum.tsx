@@ -1,6 +1,7 @@
 // Peças comuns dos gráficos: cores do tema, medida da largura, gesto de toque e tela cheia.
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode, type PointerEvent as PE } from 'react';
 import { createPortal } from 'react-dom';
+import { travarRolagem } from '../../lib/trava-rolagem';
 import type { CorSerie } from './tipos';
 
 const VARS: Record<CorSerie, string> = {
@@ -266,13 +267,12 @@ export function TelaCheia({ titulo, aoFechar, children }: { titulo: string; aoFe
       }
     };
     document.addEventListener('keydown', esc, true);
-    const ov = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    const soltar = travarRolagem();
     document.documentElement.classList.add('gr-tela-cheia-aberta');
     fecharRef.current?.focus({ preventScroll: true });
     return () => {
       document.removeEventListener('keydown', esc, true);
-      document.body.style.overflow = ov;
+      soltar();
       document.documentElement.classList.remove('gr-tela-cheia-aberta');
       antes?.focus?.({ preventScroll: true });
     };

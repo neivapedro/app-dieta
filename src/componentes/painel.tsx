@@ -129,7 +129,7 @@ export function MapaCalor({ colunas, linhas, max = 3 }: { colunas: string[]; lin
           {l.valores.map((v, i) => (
             <span
               key={i}
-              className={`calor-celula ${v === null ? 'vazia' : ''}`}
+              className={`calor-celula ${v === null ? 'vazia' : v / max >= 0.95 ? 'forte maxima' : v / max >= 0.5 ? 'forte' : ''}`}
               style={v === null ? undefined : { ['--intensidade' as string]: `${Math.round(Math.min(v / max, 1) * 85 + 8)}%` }}
               title={v === null ? 'sem registro' : `${colunas[i]}: ${num(v, 1)}`}
             >

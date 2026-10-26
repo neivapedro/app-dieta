@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as PE, type ReactNode } from 'react';
+import { travarRolagem } from '../lib/trava-rolagem';
 import { createPortal } from 'react-dom';
 import { useDados } from '../dados/contexto';
 import { useCalculos } from '../dados/useCalculos';
@@ -286,14 +287,13 @@ export function RecapSemana({ data, aoFechar }: { data?: string; aoFechar: () =>
     window.addEventListener('keydown', tecla, true);
     const visivel = () => setEscondido(document.hidden);
     document.addEventListener('visibilitychange', visivel);
-    const overflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    const soltar = travarRolagem();
     const antes = document.activeElement as HTMLElement | null;
     raiz.current?.focus();
     return () => {
       window.removeEventListener('keydown', tecla, true);
       document.removeEventListener('visibilitychange', visivel);
-      document.body.style.overflow = overflow;
+      soltar();
       antes?.focus?.();
     };
   }, []);

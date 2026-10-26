@@ -148,6 +148,8 @@ export function ProvedorDados({ children }: { children: ReactNode }) {
     }
     let base: Dados;
     try {
+      // Aparelho sem rede: abre direto com a cópia guardada (sem esperar as tentativas do servidor)
+      if (repositorio.modo === 'nuvem' && typeof navigator !== 'undefined' && navigator.onLine === false) throw new TypeError('Failed to fetch');
       const [perfil, ciclo, aplicacoes, diario, medidas] = await Promise.all([
         repositorio.obterPerfil(),
         repositorio.obterCiclo(),

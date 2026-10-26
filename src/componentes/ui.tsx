@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { travarRolagem } from '../lib/trava-rolagem';
 import { useArrastarFolha, useSaidaFolha } from './movimento';
 
 const caminhos: Record<string, ReactNode> = {
@@ -48,21 +49,51 @@ export function Folha({ titulo, aoFechar, children }: { titulo: string; aoFechar
   useEffect(() => {
     const esc = (e: KeyboardEvent) => e.key === 'Escape' && aoFechar();
     document.addEventListener('keydown', esc);
-    const overflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    const soltar = travarRolagem();
     return () => {
       document.removeEventListener('keydown', esc);
-      document.body.style.overflow = overflow;
+      soltar();
     };
   }, [aoFechar]);
   const fundoRef = useRef<HTMLDivElement>(null);
   const folhaRef = useRef<HTMLDivElement>(null);
+  // Foco: entra na folha ao abrir (sem roubar um campo com foco automático), o Tab fica dentro
+  // dela e, ao fechar, volta para o botão que a abriu
+  useEffect(() => {
+    const folha = folhaRef.current;
+    const antes = document.activeElement as HTMLElement | null;
+    if (folha && !folha.contains(document.activeElement)) folha.focus({ preventScroll: true });
+    const tab = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab' || !folha) return;
+      const focaveis = [...folha.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')].filter(
+        (x) => x.offsetParent !== null,
+      );
+      if (!focaveis.length) return;
+      const primeiro = focaveis[0];
+      const ultimo = focaveis[focaveis.length - 1];
+      if (e.shiftKey && (document.activeElement === primeiro || document.activeElement === folha)) {
+        e.preventDefault();
+        ultimo.focus();
+      } else if (!e.shiftKey && document.activeElement === ultimo) {
+        e.preventDefault();
+        primeiro.focus();
+      } else if (!folha.contains(document.activeElement)) {
+        e.preventDefault();
+        primeiro.focus();
+      }
+    };
+    folha?.addEventListener('keydown', tab);
+    return () => {
+      folha?.removeEventListener('keydown', tab);
+      if (antes && antes.isConnected && antes !== document.body) antes.focus({ preventScroll: true });
+    };
+  }, []);
   // Arrasta para baixo pela alça/cabeçalho para fechar; ao sair, desce deslizando
   const { eventos, desloc } = useArrastarFolha(folhaRef, fundoRef, aoFechar);
   useSaidaFolha(fundoRef, folhaRef, desloc);
   return (
     <div className="folha-fundo" ref={fundoRef} onClick={aoFechar}>
-      <div className="folha" ref={folhaRef} role="dialog" aria-modal="true" aria-label={titulo} onClick={(e) => e.stopPropagation()}>
+      <div className="folha" ref={folhaRef} role="dialog" aria-modal="true" aria-label={titulo} tabIndex={-1} onClick={(e) => e.stopPropagation()}>
         <div className="folha-alca" aria-hidden="true" {...eventos} />
         <div className="cartao-cab folha-cab" {...eventos}>
           <h2>{titulo}</h2>

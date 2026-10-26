@@ -1122,7 +1122,11 @@ export function Perfil() {
       )}
 
       <div className="pf-grupo">
-        <button type="button" className="pf-linha pf-sair" onClick={() => void sair()}>
+        <button type="button" className="pf-linha pf-sair" onClick={() => {
+            // O próximo login (ou conta nova) começa no Início, não no Perfil
+            navegar('/', { replace: true });
+            void sair();
+          }}>
           Sair da conta
         </button>
       </div>

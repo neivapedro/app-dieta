@@ -239,7 +239,7 @@ export function useSaidaFolha(fundoRef: RefObject<HTMLElement | null>, folhaRef:
 
 // Onde o gesto pertence a outra coisa: folhas, gráficos, carrossel, campos
 const SEM_PUXAR =
-  '.folha-fundo, [role="dialog"], [aria-modal="true"], .grafico, .grafico-interativo, .recharts-wrapper, [data-sem-puxar], .foto-carrossel, input, textarea, select, [contenteditable="true"]';
+  '.folha-fundo, [role="dialog"], [aria-modal="true"], .gr, .gr-zoom, .gr-tela-cheia, .grafico, .grafico-interativo, [data-sem-puxar], .foto-carrossel, input, textarea, select, [contenteditable="true"]';
 
 function bloqueado(alvo: EventTarget | null): boolean {
   let el = alvo instanceof Element ? alvo : null;
