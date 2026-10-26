@@ -336,7 +336,18 @@ export function Dieta() {
               {tendencia ? (
                 <div className="pilha" style={{ gap: 8 }}>
                   <div className="grade grade-3">
-                    <Bloco rotulo="O plano prevê" valor={deficitPlano !== null ? `${num(deficitPlano, 0)}/dia` : semBanco ? 'carregando' : '–'} />
+                    <Bloco
+                      rotulo="O plano prevê"
+                      valor={
+                        deficitPlano !== null
+                          ? deficitPlano < 0
+                            ? `superávit de ${num(-deficitPlano, 0)}/dia`
+                            : `${num(deficitPlano, 0)}/dia`
+                          : semBanco
+                            ? 'carregando'
+                            : '–'
+                      }
+                    />
                     <Bloco rotulo="As medidas mostram" valor={`≈ ${num(tendencia.deficit_dia, 0)}/dia`} />
                     <Bloco
                       rotulo="Para a meta"

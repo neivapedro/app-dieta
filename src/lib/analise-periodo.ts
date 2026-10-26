@@ -40,7 +40,7 @@ export function rotuloFaseCurto(fases: Pick<AnaliseFase, 'dose_mg' | 'fase_indic
 export function opcoesPeriodo(e: { hoje: string; inicio: string; fases: Pick<AnaliseFase, 'dose_mg' | 'fase_indice' | 'inicio' | 'fim'>[] }): OpcaoPeriodo[] {
   const { hoje, inicio, fases } = e;
   const lista: OpcaoPeriodo[] = [
-    { chave: '1s', rotulo: '7 dias', quando: 'nos últimos 7 dias', de: somarDias(hoje, -7), ate: hoje, tipo: 'janela' },
+    { chave: '1s', rotulo: '7 dias', quando: 'nos últimos 7 dias', de: somarDias(hoje, -6), ate: hoje, tipo: 'janela' },
     { chave: '4s', rotulo: '4 sem', quando: 'nas últimas 4 semanas', de: somarDias(hoje, -28), ate: hoje, tipo: 'janela' },
   ];
   if (diferencaDias(inicio, hoje) > 28) lista.push({ chave: '8s', rotulo: '8 sem', quando: 'nas últimas 8 semanas', de: somarDias(hoje, -56), ate: hoje, tipo: 'janela' });

@@ -1,3 +1,4 @@
+import { SEMANAS_POS } from '../lib/projeto';
 import '../estilos/inicio.css';
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -343,7 +344,11 @@ export function Inicio() {
             <div className="hoje-hero-titulo">{tituloFase}</div>
             {diaCiclo !== null && totalDias !== null && (
               <div className="hero-sub numero">
-                {diaCiclo >= 1 ? `Dia ${diaCiclo} de ${totalDias} do ${pos ? 'projeto' : 'ciclo'}` : `${totalDias} dias de ciclo pela frente`}
+                {pos && pos.semana !== null
+                  ? `Fase pós-remédio · semana ${pos.semana + 1} de ${SEMANAS_POS}${pos.encerrada ? ' (concluída)' : ''}`
+                  : diaCiclo >= 1
+                    ? `Dia ${diaCiclo} de ${totalDias} do ${pos ? 'projeto' : 'ciclo'}`
+                    : `${totalDias} dias de ciclo pela frente`}
               </div>
             )}
           </div>

@@ -88,7 +88,7 @@ export function tomAdesao(f: number | null): string {
 }
 
 /** Barra do caminho até a meta: início, agora e meta, com a % percorrida. */
-export function BarraMeta({ nome, p, fmt }: { nome: string; p: ProgressoMeta; fmt: (n: number) => string }) {
+export function BarraMeta({ nome, p, fmt, rotuloAtual = 'Agora' }: { nome: string; p: ProgressoMeta; fmt: (n: number) => string; /** "Final" depois do fim do projeto */ rotuloAtual?: string }) {
   return (
     <div className="meta-linha">
       <div className="meta-cab">
@@ -101,11 +101,14 @@ export function BarraMeta({ nome, p, fmt }: { nome: string; p: ProgressoMeta; fm
       <div className="meta-pes numero">
         <span>Início {fmt(p.inicio)}</span>
         <span>
-          <b>Agora {fmt(p.atual)}</b>
+          <b>
+            {rotuloAtual} {fmt(p.atual)}
+          </b>
         </span>
         <span>Meta {fmt(p.meta)}</span>
       </div>
-      {!p.alcancada && <div className="meta-falta">Faltam {fmt(p.falta)}</div>}
+      {/* Diferença de porcentagem é em pontos percentuais (22,5% → 15% faltam 7,5 p.p.) */}
+      {!p.alcancada && <div className="meta-falta">Faltam {fmt(p.falta).replace(/%$/, ' p.p.')}</div>}
     </div>
   );
 }

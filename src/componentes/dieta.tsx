@@ -149,7 +149,8 @@ export function LinhaItem({
   useEffect(() => () => window.clearTimeout(saida.current), []);
   // Mantém o campo em sincronia quando a quantidade muda por fora (troca de unidade)
   useEffect(() => {
-    if (paraNumero(texto) !== item.quantidade) setTexto(paraTexto(item.quantidade));
+    // Campo vazio vale zero enquanto se digita: não vira "0" ao apagar (nem "02" depois)
+    if ((paraNumero(texto) ?? 0) !== item.quantidade) setTexto(paraTexto(item.quantidade));
   }, [item.quantidade]);
 
   const m = macrosDoItem(item, alimento);

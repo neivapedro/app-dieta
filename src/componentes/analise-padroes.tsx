@@ -16,7 +16,18 @@ const CURTO: Record<IdDispersao, string> = {
   agua_sintoma: 'Água × sintomas',
 };
 
-export function Padroes({ dados, aoDestacar, destaque }: { dados: DadosCorrelacao; aoDestacar: (d: { chave: string; rotulo: string; de: string; ate: string } | null) => void; destaque: string | null }) {
+export function Padroes({
+  dados,
+  aoDestacar,
+  destaque,
+  emCiclo = true,
+}: {
+  dados: DadosCorrelacao;
+  aoDestacar: (d: { chave: string; rotulo: string; de: string; ate: string } | null) => void;
+  destaque: string | null;
+  /** Período do filtro é o ciclo inteiro (não adianta sugerir o Ciclo) */
+  emCiclo?: boolean;
+}) {
   const insights = useMemo(() => insightsCorrelacoes(dados), [dados]);
   const analises = useMemo(() => analisesDispersao(dados), [dados]);
   const [id, setId] = useState<IdDispersao>('sono_nausea');
@@ -47,7 +58,7 @@ export function Padroes({ dados, aoDestacar, destaque }: { dados: DadosCorrelaca
           ))}
         </div>
       ) : (
-        <Vazio>Os padrões aparecem com 5 semanas (ou 14 dias) de registros e uma associação clara. Tente o período Ciclo.</Vazio>
+        <Vazio>Os padrões aparecem com 5 semanas (ou 14 dias) de registros e uma associação clara.{emCiclo ? '' : ' Tente o período Ciclo.'}</Vazio>
       )}
 
       <div className="pilulas-rolagem analise-padroes-pilulas">

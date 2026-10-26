@@ -352,9 +352,8 @@
 }
 .corrida-dist {
   font-weight: 650;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* Corrida longa (21,08 km · 2:03:05) quebra a linha em vez de cortar */
+  overflow-wrap: anywhere;
 }
 .corrida-dia {
   font-size: 0.75rem;

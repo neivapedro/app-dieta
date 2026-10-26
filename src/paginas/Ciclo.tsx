@@ -1,4 +1,4 @@
-import { Fragment, useState, type FormEvent, type ReactNode } from 'react';
+import { Fragment, useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Diario } from './Diario';
 import { AvisoRapido } from '../componentes/dose';
@@ -41,11 +41,16 @@ const ABAS_CICLO: [Aba, string][] = [
   ['ajustes', 'Ajustes'],
 ];
 
+/** Plano com mudanças não salvas (para avisar antes de sair dele) */
+const planoComMudancas = { atual: false };
+
 export function Ciclo() {
   // A sub-aba fica no endereço (?aba=diario), para o link antigo do Diário continuar funcionando
   const [params, setParams] = useSearchParams();
   const aba = (ABAS_CICLO.find(([k]) => k === params.get('aba'))?.[0] ?? 'agenda') as Aba;
   const setAba = (a: Aba) => {
+    if (aba === 'plano' && a !== 'plano' && planoComMudancas.atual && !window.confirm('O plano tem mudanças não salvas. Sair sem salvar?')) return;
+    planoComMudancas.atual = false;
     setParams(a === 'agenda' ? {} : { aba: a }, { replace: true });
     window.scrollTo({ top: 0 });
   };
@@ -151,7 +156,7 @@ function Agenda() {
             <div className="hero-stat-sub">{pct(resumo.percentual_usado, 0)} usado</div>
           </div>
           <div className="hero-stat">
-            <div className="rotulo">Termina</div>
+            <div className="rotulo">Última dose</div>
             <div className="valor">{resumo.data_fim_prevista ? formatarData(resumo.data_fim_prevista, true).slice(0, 5) : '–'}</div>
             <div className="hero-stat-sub">{resumo.data_fim_prevista ? `${resumo.data_fim_prevista.slice(0, 4)}${resumo.fim_hipotese ? ' · se subir' : ''}` : ''}</div>
           </div>
@@ -188,7 +193,7 @@ function Agenda() {
                   {p0.numero}ª · {nomeFase(p0.fase)}
                   {atrasada && <span className="etiqueta ruim agenda-etiqueta">atrasada</span>}
                 </span>
-                <span className="ruim">O saldo ({num(Math.max(resumo.saldo_mg, 0))} mg) não cobre esta dose.</span>
+                <span className="aviso-txt">Última do frasco: só restam {num(Math.max(resumo.saldo_mg, 0))} mg (o plano previa {num(p0.dose_plano_mg)} mg).</span>
               </div>
               <div className="tempo-valor numero">
                 <b>{num(p0.dose_mg)} mg</b>
@@ -392,7 +397,30 @@ function Plano() {
   const { resumo } = useCalculos();
   const [fases, setFases] = useState<FaseEdicao[]>(ciclo!.fases.map(paraEdicao));
   const [salvo, setSalvo] = useState(true);
+  // "✓ Plano salvo" só aparece depois de salvar nesta visita (não ao abrir)
+  const [acabouDeSalvar, setAcabouDeSalvar] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  // Mudanças não salvas: avisa antes de trocar de aba, sair pela barra de baixo ou fechar o app
+  useEffect(() => {
+    planoComMudancas.atual = !salvo;
+    if (salvo) return;
+    const antesDeSair = (e: BeforeUnloadEvent) => e.preventDefault();
+    const aoClicar = (e: MouseEvent) => {
+      const link = (e.target as Element | null)?.closest?.('a[href]');
+      if (!link || !link.closest('.nav, .topo, .cartao-link')) return;
+      if (!window.confirm('O plano tem mudanças não salvas. Sair sem salvar?')) {
+        e.preventDefault();
+        e.stopPropagation();
+      } else planoComMudancas.atual = false;
+    };
+    window.addEventListener('beforeunload', antesDeSair);
+    document.addEventListener('click', aoClicar, true);
+    return () => {
+      window.removeEventListener('beforeunload', antesDeSair);
+      document.removeEventListener('click', aoClicar, true);
+    };
+  }, [salvo]);
+  useEffect(() => () => void (planoComMudancas.atual = false), []);
   // Fase aberta na folha de edição
   const [aberta, setAberta] = useState<number | null>(null);
 
@@ -455,6 +483,7 @@ function Plano() {
     // Dose e semanas de cada fase entram no registro de decisões
     registrarAlteracoes(compararFases(antes, fasesValidas), desfazSubir ? [desfazSubir.id] : []);
     setSalvo(true);
+    setAcabouDeSalvar(true);
   }
 
   // Escala do medidor: o frasco, ou o plano quando ele passa do frasco
@@ -553,7 +582,7 @@ function Plano() {
           })}
         </ol>
         {erro && <div className="alerta erro" style={{ marginTop: 10 }}>{erro}</div>}
-        {salvo && <p className="plano-salvo">✓ Plano salvo</p>}
+        {salvo && acabouDeSalvar && <p className="plano-salvo">✓ Plano salvo</p>}
       </section>
 
       <section className="cartao">
@@ -646,6 +675,14 @@ function FolhaFase({
           <CampoNumero rotulo="Dose semanal" sufixo="mg" valor={f.dose} aoMudar={(v) => alterar('dose', v)} />
           <CampoNumero rotulo="Nº de semanas" valor={f.semanas} aoMudar={(v) => alterar('semanas', v)} />
         </div>
+        {/* Valor inválido: avisa já aqui (a prévia usa 1 semana até corrigir; Salvar recusa) */}
+        {(() => {
+          const n = paraNumero(f.semanas);
+          const d = paraNumero(f.dose);
+          if (d === null || d <= 0) return <div className="alerta erro">Informe uma dose maior que zero.</div>;
+          if (n === null || n < 1 || !Number.isInteger(n)) return <div className="alerta erro">Informe um número inteiro de semanas (1 ou mais). A prévia usa 1 semana até corrigir.</div>;
+          return null;
+        })()}
         <div className="grade grade-4">
           <Info rotulo="Volume">{num(mgParaMl(fv.dose_mg, ciclo.concentracao_mg_ml), 4)} ml</Info>
           <Info rotulo="Seringa U-100">{ui(m.ui)}</Info>

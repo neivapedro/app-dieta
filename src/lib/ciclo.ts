@@ -429,6 +429,8 @@ export interface ProximaDose extends Marcacao {
   saldo_suficiente: boolean;
   /** Dose além do plano, usando a sobra do frasco */
   extra: boolean;
+  /** Dose do plano para esta posição (dose_mg é menor quando o frasco só tem a sobra) */
+  dose_plano_mg: number;
 }
 
 export interface DoseProjetada {
@@ -579,8 +581,9 @@ export function calcularCiclo(
     // Saldo que não cobre a dose: o app indicava a sobra do frasco
     const sobraAntes = Math.round((ciclo.quantidade_total_mg - acumulado) * 100) / 100;
     const prevista = sobraAntes > 0.005 && sobraAntes < indicada ? sobraAntes : indicada;
-    // Intervalo que valia depois da aplicação anterior (uma troca nos Ajustes vale daí em diante)
-    const intervaloPar = i === 0 ? intervalo : intervaloNaData(ciclo, ordenadas[i - 1].data);
+    // Intervalo que valia quando esta dose foi aplicada: uma troca nos Ajustes feita antes dela
+    // (mesmo depois da anterior) já vale, como na próxima dose; as doses antigas não são reavaliadas
+    const intervaloPar = i === 0 ? intervalo : intervaloNaData(ciclo, ap.data);
     const data_prevista = i === 0 ? ciclo.data_inicio : somarDias(ordenadas[i - 1].data, intervaloPar);
     const seguinte = ordenadas[i + 1]?.data ?? null;
     const concAp = concentracaoDe(ap, ciclo);
@@ -635,8 +638,10 @@ export function calcularCiclo(
     const data = ultima ? somarDias(ultima.data, intervalo) : ciclo.data_inicio;
     const dias = diferencaDias(hoje, data);
     const extra = situacao.estado === 'fim_plano';
-    // Dose extra (depois do plano) é a sobra: nunca mais do que o frasco tem
-    const dose = extra ? Math.min(situacao.dose_mg, Math.round(saldo * 100) / 100) : situacao.dose_mg;
+    // O frasco que não cobre a dose (extra ou a última do plano) indica a sobra: nunca mais do que
+    // ele tem — a mesma dose que o formulário de aplicação propõe e a Agenda conta como prevista
+    const sobra = Math.round(saldo * 100) / 100;
+    const dose = extra || (sobra > 0.005 && sobra < situacao.dose_mg) ? Math.min(situacao.dose_mg, sobra) : situacao.dose_mg;
     proxima = {
       numero,
       data,
@@ -645,12 +650,14 @@ export function calcularCiclo(
       estado: situacao.estado,
       situacao: dias > 0 ? 'futura' : dias === 0 ? 'hoje' : 'atrasada',
       dias: Math.abs(dias),
-      saldo_suficiente: saldo + EPS >= dose,
+      // Cobre a dose do plano? (com a sobra, a aplicação acontece, mas menor)
+      saldo_suficiente: saldo + EPS >= (extra ? dose : situacao.dose_mg),
       extra,
+      dose_plano_mg: situacao.dose_mg,
       ...marcacao(dose, ciclo),
     };
     if (!proxima.saldo_suficiente && !proxima.extra) {
-      alertas.push(`O saldo (${fmt(saldo)} mg) não cobre a próxima dose prevista de ${fmt(dose)} mg.`);
+      alertas.push(`O saldo (${fmt(saldo)} mg) não cobre a dose do plano (${fmt(situacao.dose_mg)} mg): a próxima aplicação usa o que sobrou, ${fmt(dose)} mg.`);
     }
 
     // Doses que faltam no plano: o resto do degrau atual e, depois, as fases

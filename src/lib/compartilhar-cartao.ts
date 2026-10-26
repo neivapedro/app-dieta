@@ -1,5 +1,6 @@
 // Cartão de progresso para compartilhar (imagem PNG): só as contas, sem desenho.
 // Usa as mesmas contas da Análise (analisarGeral, MDC, adesaoPeriodo) e nunca sugere dose.
+import { DIAS_REFERENCIA } from './analise-periodo';
 import { analisarGeral, type PontoPeso } from './analise';
 import { diferencaDias, formatarData, segundaDaSemana, somarDias } from './datas';
 import { cm, corVariacao, kg, num, pp, sinal } from './formato';
@@ -146,10 +147,18 @@ export function montarCartao(e: EntradaCartao): DadosCartao {
   const de = e.periodo?.de ?? e.inicioCiclo;
   const ateBruto = e.periodo?.ate ?? e.fimPadrao ?? e.hoje;
   const ate = ateBruto < de ? de : ateBruto;
+  // Com período (filtro da Análise): a referência é a medição até 7 dias antes do começo, nunca uma
+  // mais antiga — a mesma regra da Análise (parNoPeriodo), para o cartão não exagerar o resultado
+  const desde = comPeriodo ? somarDias(de, -DIAS_REFERENCIA) : '0000-00-00';
   const comps = e.composicoes.filter((c) => c.data <= ate);
   const serie = e.serie.filter((p) => p.data <= ate);
   // Mesmas regras da Análise: início = última medição normal até o começo; agora = última normal
-  const g = analisarGeral(de, serie, comps, ate);
+  const g = analisarGeral(
+    de,
+    serie.filter((p) => p.data >= desde),
+    comps.filter((c) => c.data >= desde),
+    ate,
+  );
   const ini = g.medida_inicial;
   // Medição do início que fica depois do fim do período não conta
   const atu = g.medida_atual && ini && g.medida_atual.data > ini.data ? g.medida_atual : null;
@@ -207,7 +216,9 @@ export function montarCartao(e: EntradaCartao): DadosCartao {
   const periodoTexto = textoPeriodo(deTexto, atu?.data && !comPeriodo ? atu.data : ate);
   const dose = e.incluirDose ? textoDose(e.aplicacoes, de, ate) : null;
   const partes = [principal, ...metricas].filter((m) => m.delta !== null).map((m) => `${m.rotulo} ${m.texto}`);
-  const descricao = `${titulo}, ${periodoTexto}. ${partes.length ? partes.join(', ') : 'Sem variação para comparar ainda'}.`;
+  const corpo = partes.length ? partes.join(', ') : 'Sem variação para comparar ainda';
+  // "p.p." no fim já termina a frase (sem ponto duplo)
+  const descricao = `${titulo}, ${periodoTexto}. ${corpo}${corpo.endsWith('.') ? '' : '.'}`;
   return {
     de,
     ate,

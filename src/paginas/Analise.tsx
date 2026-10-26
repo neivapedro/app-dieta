@@ -205,7 +205,8 @@ export function Analise() {
               : (d.texto ?? '');
   // Ritmo pelas medições (em jejum, às segundas) quando houver 3 ou mais; senão, por todas as pesagens
   const serieMedidas = serie.filter((p) => p.origem === 'medida');
-  const pelaMedida = serieMedidas.length >= 3;
+  // Pelas medições quando há 3 na janela da tendência (28 dias); senão, por todas as pesagens
+  const pelaMedida = serieMedidas.filter((p) => !p.atipica && p.data <= hoje && diferencaDias(p.data, hoje) <= 28).length >= 3;
   const tend = tendenciaPeso(pelaMedida ? serieMedidas : serie, hoje);
   const pesoAtual = geral.peso_atual?.peso_kg ?? null;
   const pesagens = pelaMedida ? 'medições' : 'pesagens';
@@ -576,6 +577,7 @@ export function Analise() {
     { nome: 'Cintura', p: progressoMeta(ini?.cintura_cm, agoraP?.cintura_cm, metas?.cintura_cm), fmt: (n: number) => cm(n) },
     { nome: '% de gordura', p: progressoMeta(ini?.bf, agoraP?.bf, metas?.bf), fmt: (n: number) => pp(n) },
     { nome: 'Massa gorda', p: progressoMeta(ini?.massa_gorda_kg, agoraP?.massa_gorda_kg, metaGorda), fmt: (n: number) => kg(n) },
+    ...(perfil?.sexo === 'Feminino' ? [{ nome: 'Quadril', p: progressoMeta(ini?.quadril_cm, agoraP?.quadril_cm, metas?.quadril_cm), fmt: (n: number) => cm(n) }] : []),
   ].filter((x): x is { nome: string; p: ProgressoMeta; fmt: (n: number) => string } => x.p !== null);
   const maisAdiantada = [...progressos].sort((a, b) => b.p.fracao - a.p.fracao)[0];
 
@@ -608,6 +610,30 @@ export function Analise() {
     const ate0 = per.ate < ontem ? per.ate : ontem;
     return adesaoPeriodo({ diario, treinos: treino ? treinos : null, de: de0, ate: ate0, metaAgua: (d) => metaAguaDe(d).meta });
   })();
+  // Hábitos › Treino: no ciclo, o placar do projeto; noutro período, os números do período do filtro
+  const blocosTreinoTela =
+    emCiclo || !treino || !adesaoP?.treino
+      ? blocosTreino
+      : (() => {
+          const de0 = per.de;
+          const ate0 = per.ate;
+          const corridasP = treino.corridas.filter((c) => c.data >= de0 && c.data <= ate0);
+          const comKm = treinos.filter((t) => t.data >= de0 && t.data <= ate0 && t.cardio && (t.corrida_km ?? 0) > 0);
+          const km = comKm.reduce((x, t) => x + (t.corrida_km ?? 0), 0);
+          const t = adesaoP.treino!;
+          const c = adesaoP.cardio!;
+          return [
+            {
+              rotulo: '',
+              valores: [
+                `${t.feito} de ${t.total} · ${pct(t.fracao, 0)}`,
+                `${c.feito} de ${c.total} · ${pct(c.fracao, 0)}`,
+                comKm.length ? `${comKm.length} · ${num(km, 1)} km` : '–',
+                corridasP.length ? `${formatarTempo(Math.min(...corridasP.map((x) => x.pace)))} /km` : '–',
+              ],
+            },
+          ];
+        })();
   const listaDestaques = destaques({
     cintura: difP('cintura_cm'),
     gorda: difP('massa_gorda_kg'),
@@ -1513,7 +1539,7 @@ export function Analise() {
                 max={7}
                 formato={(v) => `${num(v, 0)} d`}
               />
-              {blocosTreino.map((b) => (
+              {blocosTreinoTela.map((b) => (
                 <div key={b.rotulo} className="pilha" style={{ gap: 6, marginTop: 10 }}>
                   {b.rotulo && <span className="rotulo">{b.rotulo}</span>}
                   <div className="grade grade-4">
@@ -1613,7 +1639,7 @@ export function Analise() {
                   <div className="secao-sub">Hábitos × resultados {emCiclo ? 'no ciclo' : per.quando} · associação, não causa</div>
                 </div>
               </div>
-              <Padroes dados={dadosPadroes} destaque={destaque?.chave ?? null} aoDestacar={setDestaque} />
+              <Padroes dados={dadosPadroes} destaque={destaque?.chave ?? null} aoDestacar={setDestaque} emCiclo={emCiclo} />
             </section>
           )}
 

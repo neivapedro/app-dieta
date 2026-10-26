@@ -184,3 +184,7 @@
   .dieta-chip { flex-direction: column; align-items: center; gap: 0; border-radius: 12px; padding: 6px 4px; line-height: 1.25; }
   .dieta-chip b { font-size: 0.85rem; }
 }
+
+/* Teclado aberto num campo de quantidade: a "Falta" já aparece logo abaixo do campo; a barra fixa
+   sai do caminho (em paisagem ela cobria os números do campo) */
+.dieta:has(.falta-chips-inline) .saldo-fixo.dieta-saldo { display: none; }

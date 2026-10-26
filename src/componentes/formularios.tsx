@@ -80,8 +80,8 @@ export function FormAplicacao({ aplicacao, aoFechar, aoSalvar }: { aplicacao?: A
   const vizinhas = m ? marcasVizinhas(m.ui_pratica, marca, conc) : null;
   // Data prevista para esta posição: anterior + intervalo (a 1ª, a data de início)
   const anterior = antesDe(data).at(-1);
-  // Intervalo que valia depois da anterior (uma troca nos Ajustes não reavalia as doses antigas)
-  const dataPrevista = anterior ? somarDias(anterior.data, intervaloNaData(ciclo!, anterior.data)) : ciclo!.data_inicio;
+  // Intervalo que vale na data desta dose (o mesmo da Agenda e do Início; as doses antigas não são reavaliadas)
+  const dataPrevista = anterior ? somarDias(anterior.data, intervaloNaData(ciclo!, data || hoje)) : ciclo!.data_inicio;
   const desvio = data ? diferencaDias(dataPrevista, data) : 0;
   const desviaAgenda = Math.abs(desvio) >= 2 && aplicacao?.data !== data && !antesDeOutras;
   // Depois desta dose ainda sobra frasco para outra? Senão, não há "próximas datas" para mudar
@@ -634,7 +634,15 @@ export function FormMedida({ medida, aoFechar, aoSalvar }: { medida?: Medida; ao
           fora, não murche nem estufe a barriga.
         </p>
         <div className="grade">
-          {sexo === 'Feminino' && <CampoNumero rotulo="Quadril" sufixo="cm" valor={quadril} aoMudar={setQuadril} />}
+          {sexo === 'Feminino' && (
+            <CampoNumero
+              rotulo="Quadril"
+              sufixo="cm"
+              valor={quadril}
+              aoMudar={setQuadril}
+              dica={anterior?.quadril_cm != null ? <DicaAnterior valor={paraNumero(quadril)} anterior={anterior.quadril_cm} data={anterior.data} unidade="cm" limite={3} /> : undefined}
+            />
+          )}
         </div>
         <details className="ajuda">
           <summary>Como medir</summary>

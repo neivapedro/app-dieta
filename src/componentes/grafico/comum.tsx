@@ -1,5 +1,5 @@
 // Peças comuns dos gráficos: cores do tema, medida da largura, gesto de toque e tela cheia.
-import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode, type PointerEvent as PE } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode, type PointerEvent as PE } from 'react';
 import { createPortal } from 'react-dom';
 import type { CorSerie } from './tipos';
 
@@ -86,7 +86,10 @@ interface Dedo {
  * arraste horizontal ou toque longo liga a mira; dois dedos fazem a pinça.
  */
 export function useGesto<T extends Element>(op: OpcoesGesto) {
-  const ref = useRef<T>(null);
+  // Ref de callback: o SVG só aparece depois de medir a largura, então os ouvintes
+  // nativos precisam ser ligados quando o elemento existir (não só na montagem)
+  const [el, setEl] = useState<T | null>(null);
+  const ref = useCallback((n: T | null) => setEl(n), []);
   const opRef = useRef(op);
   opRef.current = op;
   const st = useRef({
@@ -100,7 +103,6 @@ export function useGesto<T extends Element>(op: OpcoesGesto) {
 
   // Durante a mira/pinça, o iPhone não pode rolar a página nem dar zoom nela
   useEffect(() => {
-    const el = ref.current;
     if (!el) return;
     const bloquear = (e: Event) => {
       const m = st.current.modo;
@@ -113,7 +115,7 @@ export function useGesto<T extends Element>(op: OpcoesGesto) {
       el.removeEventListener('touchmove', bloquear);
       el.removeEventListener('gesturestart', gesto);
     };
-  }, []);
+  }, [el]);
 
   useEffect(() => () => {
     clearTimeout(st.current.timer || undefined);

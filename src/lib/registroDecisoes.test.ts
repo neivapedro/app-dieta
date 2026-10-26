@@ -117,3 +117,21 @@ describe('Registro de decisões: leitura', () => {
     expect(mudancasMisturadas([r('a', '2026-10-05', 'dose'), r('b', '2026-10-12', 'dieta')])).toEqual([]);
   });
 });
+
+describe('compararFases: fase removida ou incluída no meio', () => {
+  const f = (nome: string, dose_mg: number, semanas: number) => ({ nome, dose_mg, semanas, objetivo: '' });
+  const plano = [f('A', 1.25, 4), f('B', 1.5, 4), f('C', 1.75, 4), f('D', 2, 4)];
+  it('remover a fase 3 registra só a remoção', () => {
+    const r = compararFases(plano, [plano[0], plano[1], plano[3]]);
+    expect(r).toHaveLength(1);
+    expect(r.map(descreverRegistro)).toEqual(['Fase 3: 4 sem. × 1,75 mg → removida']);
+  });
+  it('incluir uma fase no meio registra só a inclusão', () => {
+    const r = compararFases(plano, [plano[0], f('Nova', 1.4, 2), ...plano.slice(1)]);
+    expect(r.map(descreverRegistro)).toEqual(['Fase 2: 2 sem. × 1,40 mg']);
+  });
+  it('remover e mudar outra fase volta à comparação posição a posição', () => {
+    const r = compararFases(plano, [plano[0], f('B', 1.6, 4), plano[3]]);
+    expect(r.length).toBeGreaterThan(1);
+  });
+});

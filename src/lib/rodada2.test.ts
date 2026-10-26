@@ -63,6 +63,16 @@ describe('Ciclo: troca do intervalo entre doses', () => {
     expect(intervaloNaData({ intervalo_dias: 14, decisoes: [troca] }, '2026-11-02')).toBe(14);
   });
 
+  it('dose aplicada depois da troca, na data que a Agenda mostrava, não conta como atraso', () => {
+    // Última dose 29/10, troca para 14 dias em 02/11, próxima mostrada em 12/11 e aplicada nela
+    const r = calcularCiclo({ ...base, intervalo_dias: 14, decisoes: [troca] }, [...aps, { ...ap('2026-11-12', 1.5), id: 'n' }], [], '2026-11-12');
+    const u = r.linhas.at(-1)!;
+    expect(u.data_prevista).toBe('2026-11-12');
+    expect(u.atraso_dias).toBe(0);
+    // As anteriores continuam no intervalo da época
+    expect(r.linhas.slice(1, -1).every((l) => l.atraso_dias === 0)).toBe(true);
+  });
+
   it('sem a troca registrada (mudada antes da correção), 7 dias com intervalo 14 também não é duplicado', () => {
     const r = calcularCiclo({ ...base, intervalo_dias: 14 }, aps, [], '2026-11-02');
     expect(r.alertas.filter((a) => a.includes('duplicado'))).toEqual([]);

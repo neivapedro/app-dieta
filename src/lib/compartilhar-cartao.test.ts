@@ -105,6 +105,12 @@ describe('montarCartao', () => {
     expect(d.serieCintura[7].data).toBe(dia(56));
     expect(d.legendaLinhas).toBe('últimas 8 medições');
   });
+  it('período com buraco nas medições: a referência é a de até 7 dias antes (como a Análise), não uma antiga', () => {
+    // Medições nos dias 0, 7, 42 e 56; período 28 → 56: vale 42 → 56, não 7 → 56
+    const lacunas = historicoComposicao([medida(0, 98, 96), medida(7, 97.5, 95.5), medida(42, 95.6, 92.6), medida(56, 94.6, 91.6)], 'Masculino', { altura_cm: 181 });
+    const d = montarCartao(base({ composicoes: lacunas, periodo: { de: dia(28), ate: dia(56) }, hoje: dia(56) }));
+    expect(d.principal.texto).toBe('− 1,0 cm');
+  });
   it('hábitos: da 1ª dose até ontem; na semana, até a véspera da medição', () => {
     const ciclo = montarCartao(base());
     expect(ciclo.adesao.map((a) => a.rotulo)).toEqual(['Treino', 'Cardio', 'Dieta', 'Água', 'Sono 7 h+']);

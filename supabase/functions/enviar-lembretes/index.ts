@@ -118,7 +118,9 @@ Deno.serve(async (req) => {
     const numero = lista.length + 1;
     const fases = ciclo.fases as Fase[];
     const { estado, proxima } = planoDeDoses(fases, lista as { data: string; dose_mg: number }[], decisoes);
-    const dose = estado === 'fim_plano' ? Math.min(proxima.dose_mg, Math.round((Number(ciclo.quantidade_total_mg) - usado) * 100) / 100) : proxima.dose_mg;
+    // Sobra menor que a dose (extra ou a última do plano): o lembrete indica a sobra, como o app
+    const sobra = Math.round((Number(ciclo.quantidade_total_mg) - usado) * 100) / 100;
+    const dose = estado === 'fim_plano' || (sobra > 0.005 && sobra < proxima.dose_mg) ? Math.min(proxima.dose_mg, sobra) : proxima.dose_mg;
     // Arredonda à marcação da seringa, como o app (marcacao() em src/lib/ciclo.ts)
     const passo = Number(ciclo.passo_ui) > 0 ? Number(ciclo.passo_ui) : 0.5;
     const ui = Math.floor(((dose / Number(ciclo.concentracao_mg_ml)) * 100) / passo + 0.5 + 1e-9) * passo;
@@ -128,7 +130,7 @@ Deno.serve(async (req) => {
     const saldo = Number(ciclo.quantidade_total_mg) - usado;
     const avisoSeringa = ui > capacidade + 1e-9 ? ` ${fmtUi(ui)} UI passa da capacidade da sua seringa de ${fmtUi(capacidade)} UI: confira a seringa ou a dose no app.` : '';
     const avisoSaldo =
-      estado !== 'fim_plano' && saldo + 1e-9 < dose ? ` O saldo (${fmt(saldo)} mg) não cobre a dose de ${fmt(dose)} mg: confira o frasco no app.` : '';
+      estado !== 'fim_plano' && dose + 1e-9 < proxima.dose_mg ? ` Última do frasco: só restam ${fmt(saldo)} mg (o plano previa ${fmt(proxima.dose_mg)} mg).` : '';
     const titulo = atraso === 0 ? '💉 Hoje é dia de aplicação' : `⚠️ Aplicação atrasada há ${atraso} dia(s)`;
     const fase =
       estado === 'fim_plano' ? 'dose extra (sobra do frasco)' : proxima.fase_indice !== null ? `fase ${fases[proxima.fase_indice].nome}` : 'dose fora do plano';

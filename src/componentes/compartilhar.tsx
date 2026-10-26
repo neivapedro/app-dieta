@@ -75,7 +75,14 @@ function FolhaCompartilhar({ periodo, aoFechar }: { periodo?: Periodo | null; ao
 
   // A imagem é gerada antes do toque: no iPhone, o Compartilhar só abre logo depois do toque
   const urlAtual = useRef<string | null>(null);
-  useEffect(() => () => void (urlAtual.current && URL.revokeObjectURL(urlAtual.current)), []);
+  // Ao fechar, a folha ainda desliza para baixo com a imagem: libera a URL só depois da animação
+  useEffect(
+    () => () => {
+      const u = urlAtual.current;
+      if (u) setTimeout(() => URL.revokeObjectURL(u), 1500);
+    },
+    [],
+  );
   useEffect(() => {
     let vivo = true;
     // Opção trocada: a imagem anterior não pode mais sair (ex.: com a dose que acabou de ser tirada)

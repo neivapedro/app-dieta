@@ -94,7 +94,8 @@ export function rotuloCardio(data: string, reg?: Pick<TreinoDia, 'cardio_tipo' |
 export function periodoProjeto(ciclo: Ciclo, resumo: ResumoCiclo, inicioPos?: string | null, hoje?: string): { inicio: string; fim: string } {
   const primeira = resumo.linhas[0]?.aplicacao.data;
   const amanha = hoje ? somarDias(hoje, 1) : null;
-  const inicio = primeira ?? (amanha && ciclo.data_inicio < amanha ? amanha : ciclo.data_inicio);
+  // A data planejada vale até o próprio dia (hoje); só uma data que já passou vira amanhã
+  const inicio = primeira ?? (amanha && hoje && ciclo.data_inicio < hoje ? amanha : ciclo.data_inicio);
   // Plano sem projeção mas com uma dose ainda pedida (dose extra, saldo que não cobre a
   // dose): o projeto fica aberto, com o check do dia, até essa dose ou a fase pós-remédio.
   // Assim, registrá-la com atraso não cobra como falta dias em que não havia onde marcar.

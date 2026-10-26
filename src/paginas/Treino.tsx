@@ -438,6 +438,9 @@ export function Treino() {
   const abaCorridas = (
     <>
       {p.corrida.feito > 0 || corridas ? (
+        <>
+        {/* Na fase pós-remédio os km são só da fase; pace e corridas registradas, o histórico todo */}
+        {t.placarPos && <div className="secao-sub">Pace e corridas registradas: desde o início · km: só a fase pós-remédio</div>}
         <div className="kpis">
           <Kpi
             rotulo="Último pace"
@@ -474,6 +477,7 @@ export function Treino() {
             legenda={corridas ? `média de ${formatarKm(corridas.kmMedio)}` : undefined}
           />
         </div>
+        </>
       ) : null}
 
       {t.corridas.length > 1 && (
@@ -610,7 +614,7 @@ export function Treino() {
               <div className="metas metas-treino">
                 {comBarra.map((x) => (
                   <div key={x.l.nome} className="meta-item">
-                    <BarraMeta nome={x.l.nome} p={x.prog!} fmt={(n) => x.l.fmt(n)} />
+                    <BarraMeta nome={x.l.nome} p={x.prog!} fmt={(n) => x.l.fmt(n)} rotuloAtual={final ? 'Final' : 'Agora'} />
                     {(x.dif !== null || x.proj) && (
                       <div className="meta-extra">
                         {textoDif(x)}

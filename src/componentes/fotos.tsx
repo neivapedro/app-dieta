@@ -142,7 +142,9 @@ export function useFotos(opcoes?: { miniaturas?: boolean }) {
     return () => {
       vivo = false;
       parar();
-      urls.forEach((u) => URL.revokeObjectURL(u));
+      // Folha com foto ainda deslizando para fora ao sair da tela: libera as URLs depois da animação
+      const soltar = [...urls.values()];
+      setTimeout(() => soltar.forEach((u) => URL.revokeObjectURL(u)), 1500);
     };
   }, [id, gerar]);
   // Outra conta: nada da anterior aparece, nem por um instante

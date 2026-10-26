@@ -831,3 +831,12 @@ main .pilha > :is(.cartao, .kpis, section):nth-child(n + 8) { animation-delay: 2
 .puxar-pronto .puxar-arco, .puxar-atualizando .puxar-arco { stroke: var(--texto); }
 @keyframes girar { to { transform: rotate(360deg); } }
 .puxar-atualizando .puxar-icone { animation: girar 0.8s linear infinite; }
+
+/* Alvos de toque: 40 px de altura para o dedo (pílulas compactas ganham área invisível em volta) */
+.botao.pequeno { min-height: 40px; }
+.abas button { min-height: 40px; }
+details.tabela-detalhe > summary, details.ajuda > summary { min-height: 40px; }
+.pilulas button { min-height: 34px; position: relative; }
+.pilulas button::after { content: ''; position: absolute; inset: -3px -1px; }
+.item-dieta-nome { padding: 9px 0; margin: -9px 0; }
+@media (max-width: 360px) { .topo h1 { font-size: 1.25rem; } }

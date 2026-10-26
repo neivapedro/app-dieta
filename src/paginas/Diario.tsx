@@ -63,6 +63,12 @@ export function Diario() {
   const [metrica, setMetrica] = useState<MetricaDia>('nausea');
   const [mes, setMes] = useState(mesDe(hoje));
   const [sel, setSel] = useState(hoje);
+  // Virou o dia com o app aberto: quem estava em "hoje" passa para o novo hoje
+  const [hojeAntes, setHojeAntes] = useState(hoje);
+  if (hojeAntes !== hoje) {
+    setHojeAntes(hoje);
+    if (sel === hojeAntes) setSel(hoje);
+  }
   const [qtd, setQtd] = useState(POR_PAGINA);
   const detalheRef = useRef<HTMLElement>(null);
   const [rolarDetalhe, setRolarDetalhe] = useState(false);

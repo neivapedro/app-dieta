@@ -150,8 +150,10 @@ Deno.serve(async (req) => {
       const semSaldo = saldo + EPS < f.dose_mg;
       if (semSaldo && k > 0) break;
       const saldoAntes = saldo;
-      saldo -= f.dose_mg;
-      const fase = { dose_mg: f.dose_mg, nome: f.fase_indice === null ? 'fora do plano' : fases[f.fase_indice].nome };
+      // Sem saldo para a dose do plano: a última aplicação usa a sobra (como o app indica)
+      const doseAqui = semSaldo ? Math.round(saldoAntes * 100) / 100 : f.dose_mg;
+      saldo -= doseAqui;
+      const fase = { dose_mg: doseAqui, nome: f.fase_indice === null ? 'fora do plano' : fases[f.fase_indice].nome };
       const indice = f.fase_indice ?? -1;
       // Arredonda à marcação da seringa, como o app (marcacao() em src/lib/ciclo.ts)
       const passo = Number(ciclo.passo_ui) > 0 ? Number(ciclo.passo_ui) : 0.5;
@@ -162,7 +164,7 @@ Deno.serve(async (req) => {
       const nota = `${f.hipotese ? ' (se subir)' : ''}${aDecidir ? ' · decida no app' : ''}`;
       const aviso =
         (aDecidir ? `\n${estado === 'pendente' ? 'Fim da fase' : 'Dose fora do plano'}: até decidir no app, a dose continua ${fmtMg(proxima.dose_mg)} mg.` : '') +
-        (semSaldo ? `\nO saldo (${fmtMg(saldoAntes)} mg) não cobre a dose de ${fmtMg(fase.dose_mg)} mg: confira o frasco no app.` : '');
+        (semSaldo ? `\nÚltima do frasco: só restam ${fmtMg(saldoAntes)} mg (o plano previa ${fmtMg(f.dose_mg)} mg). Confira o frasco no app.` : '');
       const acimaDaSeringa = ui > capacidade + EPS;
       const linhaSeringa = acimaDaSeringa
         ? `Seringa U-100: ${fmt(ui)} UI passa da capacidade da sua seringa de ${fmt(capacidade)} UI: confira a seringa ou a dose no app`
@@ -173,7 +175,7 @@ Deno.serve(async (req) => {
         `DTSTAMP:${carimbo(agora)}`,
         `DTSTART:${carimbo(inicio)}`,
         `DTEND:${carimbo(new Date(inicio.getTime() + 15 * 60_000))}`,
-        `SUMMARY:${escapar(`💉 Retatrutida ${fmtMg(fase.dose_mg)} mg · ${fmt(ui)} UI${atrasada ? ' (atrasada)' : ''}${nota}${semSaldo ? ' · saldo não cobre' : ''}${acimaDaSeringa ? ' · confira a seringa' : ''}`)}`,
+        `SUMMARY:${escapar(`💉 Retatrutida ${fmtMg(fase.dose_mg)} mg · ${fmt(ui)} UI${atrasada ? ' (atrasada)' : ''}${nota}${semSaldo ? ' · última do frasco' : ''}${acimaDaSeringa ? ' · confira a seringa' : ''}`)}`,
         `DESCRIPTION:${escapar(
           `${n}ª dose · ${indice >= 0 ? `Fase ${indice + 1} · ${fase.nome}` : 'dose fora do plano'}${nota}${aviso}\n` +
             `${linhaSeringa}\n` +

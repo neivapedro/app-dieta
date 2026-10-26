@@ -62,6 +62,25 @@ const descreverFase = (f: Fase) => `${semanas(f.semanas)} × ${num(f.dose_mg, 2)
 /** Mudanças do Plano: dose e semanas de cada fase, fases novas e removidas (nome e objetivo não contam). */
 export function compararFases(antes: Fase[], depois: Fase[]): Alteracao[] {
   const r: Alteracao[] = [];
+  // Uma fase removida ou incluída no meio: registra só ela (não "mudou a dose" das seguintes)
+  const igual = (a: Fase, b: Fase) => a.nome === b.nome && Math.abs(a.dose_mg - b.dose_mg) < 1e-9 && a.semanas === b.semanas;
+  const semUma = (maior: Fase[], menor: Fase[]) => {
+    for (let j = 0; j < maior.length; j++) if (maior.filter((_, k) => k !== j).every((f, k) => igual(f, menor[k]))) return j;
+    return -1;
+  };
+  if (antes.length === depois.length + 1) {
+    const j = semUma(antes, depois);
+    if (j >= 0) {
+      empurrar(r, 'plano', `Fase ${j + 1}`, descreverFase(antes[j]), null);
+      return r;
+    }
+  } else if (depois.length === antes.length + 1) {
+    const j = semUma(depois, antes);
+    if (j >= 0) {
+      empurrar(r, 'plano', `Fase ${j + 1}`, null, descreverFase(depois[j]));
+      return r;
+    }
+  }
   const n = Math.max(antes.length, depois.length);
   for (let i = 0; i < n; i++) {
     const a = antes[i];

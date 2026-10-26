@@ -93,3 +93,10 @@
 
 /* Topo da Geral: Compartilhar e PDF lado a lado, sem apertar o título */
 .hero-acoes { display: flex; flex-direction: column; gap: 6px; align-items: stretch; flex: none; }
+/* Celular pequeno: os botões vão para baixo do título (o nome da fase não quebra no meio da palavra) */
+.hero-titulo { overflow-wrap: break-word; hyphens: auto; }
+@media (max-width: 360px) {
+  .hero > .hero-cab { flex-wrap: wrap; }
+  .hero > .hero-cab > .hero-acoes { flex-direction: row; width: 100%; }
+  .hero > .hero-cab > .hero-acoes > * { flex: 1; }
+}
