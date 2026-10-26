@@ -1,0 +1,202 @@
+/* Compartilhar o progresso (cartão em imagem) e o resumo da semana em stories */
+
+/* ---------- Botões de entrada ---------- */
+.botao-compartilhar { gap: 8px; }
+.botao-compartilhar svg { width: 18px; height: 18px; flex: none; }
+
+.resumo-atalhos { display: grid; grid-template-columns: minmax(0, 1fr) 100px; gap: 8px; }
+/* Compartilhar ao lado dos stories: ícone em cima, o nome embaixo */
+.botao-compartilhar-vertical { flex-direction: column; gap: 3px; min-height: 60px; padding: 6px 4px; font-size: 0.74rem; font-weight: 650; white-space: nowrap; }
+.botao-compartilhar-vertical svg { width: 20px; height: 20px; }
+
+.botao-stories {
+  justify-content: flex-start; gap: 12px; min-height: 60px; padding: 8px 12px 8px 8px; text-align: left; min-width: 0;
+  background: linear-gradient(120deg, color-mix(in srgb, var(--aviso) 16%, var(--superficie-2)), var(--superficie-2) 70%);
+  border-color: color-mix(in srgb, var(--aviso) 38%, var(--borda));
+}
+.botao-stories > svg { width: 18px; height: 18px; flex: none; color: var(--texto-2); }
+.botao-stories-anel {
+  width: 44px; height: 44px; border-radius: 50%; padding: 2px; flex: none; display: grid; place-items: center;
+  background: conic-gradient(from 210deg, var(--aviso), color-mix(in srgb, var(--aviso) 45%, var(--ruim)), var(--aviso));
+}
+.botao-stories-anel img {
+  width: 100%; height: 100%; object-fit: contain; border-radius: 50%; padding: 6px;
+  background: linear-gradient(180deg, #3a3a3c, #0b0b0c); border: 2px solid var(--superficie-2);
+}
+.botao-stories-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.2; }
+.botao-stories-texto b { font-size: 0.98rem; white-space: nowrap; }
+@media (max-width: 359px) {
+  .botao-stories > svg { display: none; }
+  .botao-stories { gap: 10px; padding-right: 8px; }
+  .botao-stories-anel { width: 40px; height: 40px; }
+}
+.botao-stories-texto small { color: var(--texto-2); font-size: 0.75rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- Folha de compartilhar ---------- */
+/* Fica por cima dos stories e de outra folha aberta */
+.compartilhar-camada .folha-fundo { z-index: 90; }
+.compartilhar-previa { display: flex; justify-content: center; }
+.compartilhar-previa img, .compartilhar-previa > div {
+  display: block; height: min(46dvh, 380px); width: auto; max-width: 100%; aspect-ratio: 1080 / 1350;
+  border-radius: 16px; border: 1px solid var(--borda-suave); box-shadow: 0 18px 40px -20px rgb(0 0 0 / 0.65);
+}
+.compartilhar-previa img { transition: opacity 0.2s; }
+.compartilhar-previa.atualizando img { opacity: 0.5; }
+.compartilhar-erro { display: flex; align-items: center; justify-content: center; padding: 16px; text-align: center; color: var(--texto-2); background: var(--superficie-2); }
+.compartilhar-opcoes { display: flex; flex-direction: column; gap: 12px; }
+.compartilhar-opcoes .marcar { min-height: 40px; }
+.compartilhar-opcoes small { display: block; font-size: 0.8rem; }
+.compartilhar-acao { gap: 8px; }
+.compartilhar-msg { text-align: center; }
+
+/* ---------- Stories ---------- */
+.recap {
+  position: fixed; inset: 0; z-index: 70; display: flex; flex-direction: column;
+  background: var(--fundo); color: var(--texto); outline: none; overscroll-behavior: contain;
+  padding: 0 0 env(safe-area-inset-bottom);
+  animation: recap-abrir 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: transform 0.25s ease, opacity 0.25s ease;
+}
+.recap.arrastando { transition: none; }
+@keyframes recap-abrir { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: none; } }
+
+.recap-topo {
+  /* Por cima dos cartões: o brilho de cada cartão chega até o alto da tela */
+  position: absolute; z-index: 2; top: 0; left: 0; right: 0; max-width: 560px; margin: 0 auto;
+  padding: calc(env(safe-area-inset-top) + 10px) 12px 0; pointer-events: none;
+}
+.recap-topo button { pointer-events: auto; }
+.recap-barras { display: flex; gap: 4px; }
+.recap-barra { flex: 1; height: 3px; border-radius: 2px; overflow: hidden; background: color-mix(in srgb, var(--texto) 22%, transparent); }
+.recap-encher { display: block; height: 100%; background: var(--texto); transform: scaleX(0); transform-origin: left; }
+.recap-barra.passou .recap-encher { transform: scaleX(1); }
+.recap-barra.ativa .recap-encher { animation: recap-encher var(--recap-duracao, 9s) linear forwards; }
+.recap.pausado .recap-barra.ativa .recap-encher { animation-play-state: paused; }
+@keyframes recap-encher { to { transform: scaleX(1); } }
+/* Menos movimento: o cartão não passa sozinho e a barra dele já aparece cheia */
+@media (prefers-reduced-motion: reduce) { .recap-barra.ativa .recap-encher { transform: scaleX(1); } }
+
+.recap-cab { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.recap-marca { width: 34px; height: 34px; border-radius: 10px; }
+.recap-marca img { width: 26px; height: 26px; }
+.recap-cab-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
+.recap-cab-texto b { font-size: 0.85rem; }
+.recap-cab-texto span { font-size: 0.75rem; color: var(--texto-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.recap-fechar { width: 44px; height: 44px; background: transparent; border-color: transparent; }
+
+.recap-palco {
+  position: relative; flex: 1; min-height: 0; overflow: hidden;
+  touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+}
+.recap-trilho { display: flex; height: 100%; transition: transform 0.34s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.recap.arrastando .recap-trilho { transition: none; }
+.recap-cartao { flex: 0 0 100%; height: 100%; position: relative; overflow: hidden; display: flex; --recap-cor: var(--aviso); }
+.recap-cartao::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(110% 60% at 90% 0%, color-mix(in srgb, var(--recap-cor) 24%, transparent), transparent 62%),
+    radial-gradient(80% 45% at 0% 100%, color-mix(in srgb, var(--recap-cor) 10%, transparent), transparent 70%);
+}
+.recap-cartao-constancia { --recap-cor: var(--bom); }
+.recap-cartao-corpo { --recap-cor: var(--info); }
+.recap-cartao-foco { --recap-cor: var(--texto-2); }
+
+.recap-conteudo {
+  position: relative; flex: 1; width: 100%; max-width: 560px; margin: 0 auto; overflow: hidden;
+  display: flex; flex-direction: column; justify-content: space-between; gap: 14px;
+  padding: calc(env(safe-area-inset-top) + 82px) 22px clamp(14px, 3dvh, 28px);
+}
+/* O conteúdo fica no meio da altura que sobra */
+.recap-anima { flex: 1; display: flex; flex-direction: column; justify-content: center; min-height: 0; padding-bottom: 4dvh; }
+.recap-cartao.ativa .recap-anima > * { animation: surgir 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+.recap-cartao.ativa .recap-anima > :nth-child(2) { animation-delay: 0.05s; }
+.recap-cartao.ativa .recap-anima > :nth-child(3) { animation-delay: 0.12s; }
+.recap-cartao.ativa .recap-anima > :nth-child(4) { animation-delay: 0.2s; }
+.recap-cartao.ativa .recap-anima > :nth-child(5) { animation-delay: 0.28s; }
+
+.recap-sobre { font-size: 0.74rem; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700; color: var(--texto-3); }
+.recap-titulo { font-size: clamp(1.8rem, 9vw, 2.6rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.04; margin: 6px 0 clamp(12px, 3.2dvh, 28px); text-wrap: balance; }
+.recap-rotulo { font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; color: var(--texto-2); }
+.recap-texto { font-size: 0.95rem; color: var(--texto-2); line-height: 1.4; }
+.recap-destaque-texto { color: var(--texto); font-size: 1.05rem; font-weight: 600; margin-top: 14px; }
+.recap-nota { font-size: 0.82rem; color: var(--texto-2); margin-top: clamp(10px, 2dvh, 18px); }
+.recap-vazio { font-size: 1rem; color: var(--texto-2); line-height: 1.45; }
+.recap-rodape { font-size: 0.72rem; color: var(--texto-3); line-height: 1.35; }
+.recap-bom { color: var(--bom); }
+.recap-ruim { color: var(--ruim); }
+
+/* (a) Números */
+.recap-lista-numeros { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: clamp(8px, 2.2dvh, 20px); }
+.recap-lista-numeros li {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'rot sub' 'num num';
+  align-items: baseline; column-gap: 10px; row-gap: 2px;
+  border-top: 1px solid var(--borda-suave); padding-top: clamp(8px, 1.6dvh, 14px);
+}
+.recap-lista-numeros .recap-rotulo { grid-area: rot; }
+.recap-lista-numeros .recap-sub { grid-area: sub; font-size: 0.85rem; color: var(--texto-2); white-space: nowrap; }
+.recap-grande { grid-area: num; font-size: clamp(2.1rem, 11.5vw, 3.4rem); font-weight: 800; letter-spacing: -0.035em; line-height: 1.02; white-space: nowrap; }
+
+/* (b) Constância */
+.aneis.recap-aneis { display: flex; flex-wrap: wrap; justify-content: center; gap: clamp(12px, 2.6dvh, 24px) 0; }
+.recap-aneis .anel { flex: 0 0 33.33%; }
+.recap-aneis .anel svg { width: clamp(62px, 19vw, 92px); height: clamp(62px, 19vw, 92px); }
+.recap-aneis .anel-rotulo { font-size: 0.85rem; margin-top: 2px; }
+.recap-aneis .anel-detalhe { font-size: 0.72rem; }
+.recap-c-constancia .recap-texto { margin-top: clamp(12px, 2.6dvh, 22px); }
+
+/* (c) Depois da dose */
+.recap-nausea { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; height: clamp(120px, 26dvh, 220px); }
+.recap-dia { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+.recap-dia-barra {
+  flex: 1; width: 100%; max-width: 36px; display: flex; align-items: flex-end; overflow: hidden;
+  border-radius: 10px; background: color-mix(in srgb, var(--texto) 7%, transparent);
+}
+.recap-dia-barra span { display: block; width: 100%; height: calc(var(--n) * 100%); border-radius: 10px; background: var(--texto-3); transform-origin: bottom; }
+.recap-dia-barra .n1 { background: var(--texto-2); }
+.recap-dia-barra .n2 { background: var(--aviso); }
+.recap-dia-barra .n3 { background: var(--ruim); }
+.recap-dia-barra .nx { background: transparent; }
+.recap-cartao.ativa .recap-dia-barra span { animation: recap-crescer 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) 0.15s backwards; }
+@keyframes recap-crescer { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+.recap-dia-sem { font-size: 0.75rem; font-weight: 650; color: var(--texto-2); }
+.recap-dia.pico .recap-dia-sem { color: var(--texto); }
+.recap-dia-d { font-size: 0.68rem; color: var(--texto-3); font-variant-numeric: tabular-nums; }
+.recap-dia-d.dose { color: var(--aviso); font-weight: 750; }
+.recap-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.recap-chips span { padding: 6px 10px; border-radius: 999px; background: var(--superficie-2); font-size: 0.8rem; color: var(--texto-2); }
+.recap-chips span.com { color: var(--texto); background: color-mix(in srgb, var(--aviso) 16%, var(--superficie-2)); }
+
+/* (d) Destaque */
+.recap-trofeu {
+  display: flex; flex-direction: column; gap: 6px; padding: clamp(14px, 3dvh, 22px) 18px; border-radius: 22px;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--aviso) 16%, var(--superficie)), var(--superficie) 75%);
+  border: 1px solid color-mix(in srgb, var(--aviso) 32%, var(--borda-suave));
+}
+.recap-trofeu .recap-rotulo { color: var(--aviso); }
+.recap-enorme { font-size: clamp(2.5rem, 14vw, 4.2rem); font-weight: 850; letter-spacing: -0.04em; line-height: 1; overflow-wrap: anywhere; }
+.recap-outros { margin-top: clamp(14px, 3dvh, 26px); }
+.recap-outros ul { list-style: none; padding: 0; margin: 6px 0 0; }
+.recap-outros li { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 10px 0; border-top: 1px solid var(--borda-suave); font-size: 0.95rem; }
+.recap-outros li span { color: var(--texto-2); min-width: 0; }
+.recap-outros li b { white-space: nowrap; }
+
+/* (e) Foco */
+.recap-lista-foco { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: clamp(10px, 2.2dvh, 18px); }
+.recap-lista-foco li { display: flex; gap: 12px; align-items: flex-start; }
+.recap-foco-n {
+  flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+  font-weight: 800; font-size: 0.9rem; background: var(--destaque); color: var(--destaque-texto);
+}
+.recap-lista-foco b { display: block; font-size: 1.02rem; line-height: 1.3; }
+.recap-lista-foco small { display: block; color: var(--texto-2); font-size: 0.8rem; line-height: 1.35; margin-top: 2px; }
+.recap-acoes { display: flex; flex-direction: column; gap: 8px; margin-top: clamp(16px, 3.4dvh, 30px); }
+.recap-acoes .botao { width: 100%; min-height: 48px; }
+
+@media (min-width: 600px) {
+  .recap-conteudo { padding-left: 32px; padding-right: 32px; }
+}
+@media (max-height: 620px) {
+  .recap-titulo { font-size: 1.7rem; margin-bottom: 10px; }
+  .recap-grande { font-size: 2rem; }
+  .recap-lista-foco small { display: none; }
+}

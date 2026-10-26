@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useDados } from '../dados/contexto';
 import { useCalculos } from '../dados/useCalculos';
@@ -8,7 +9,9 @@ import { cm, corVariacao, kg, mg, num, pp, sinal } from '../lib/formato';
 import { MDC, type ChaveMdc } from '../lib/gordura';
 import { diasCurtos, dietaNoPeriodo, efeitosNoPeriodo, faltasNosPeriodos, sugestaoSemana, textoDietaSemana, type TipoSugestao } from '../lib/semana';
 import { segundaDaSemana } from '../lib/treino';
+import { BotaoCompartilharProgresso } from './compartilhar';
 import { LinhaQualidade, useQualidade } from './composicao';
+import { BotaoStories, RecapSemana } from './recap';
 import { Folha } from './ui';
 
 const FAIXA = { lento: 'abaixo de 0,5%', ideal: 'na faixa de 0,5 a 1%', rapido: 'acima de 1%: atenção à massa magra', ganho: 'subindo' } as const;
@@ -20,6 +23,8 @@ export function ResumoSemana({ data, aoFechar }: { data?: string; aoFechar: () =
   const { aplicacoes, treinos, diario, ciclo, dieta } = useDados();
   const { composicoes, resumo } = useCalculos();
   const treino = useTreino();
+  // A mesma semana em stories (tela cheia)
+  const [stories, setStories] = useState(false);
   // A medição que acabou de ser salva (pode ser retroativa), comparada com a anterior a ela
   const i = data ? composicoes.findIndex((c) => c.data === data) : composicoes.length - 1;
   const idx = i >= 0 ? i : composicoes.length - 1;
@@ -65,6 +70,10 @@ export function ResumoSemana({ data, aoFechar }: { data?: string; aoFechar: () =
   return (
     <Folha titulo={antesDoCiclo ? `Medição · ${formatarData(atual.data)}` : `Semana ${semana} · ${formatarData(atual.data)}`} aoFechar={aoFechar}>
       <div className="pilha">
+        <div className="resumo-atalhos">
+          <BotaoStories aoAbrir={() => setStories(true)} />
+          <BotaoCompartilharProgresso periodo={{ de, ate: atual.data }} classe="botao-compartilhar-vertical" />
+        </div>
         <div className="tabela-rolagem">
           <table>
             <thead>
@@ -215,6 +224,7 @@ export function ResumoSemana({ data, aoFechar }: { data?: string; aoFechar: () =
           Fechar
         </button>
       </div>
+      {stories && <RecapSemana data={atual.data} aoFechar={() => setStories(false)} />}
     </Folha>
   );
 }
