@@ -1,9 +1,14 @@
 import { BrowserRouter, HashRouter, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { NovaSenha } from './paginas/Entrar';
+import { PuxarAtualizar } from './componentes/movimento';
 import { Protecao } from './componentes/Protecao';
 import { Icone } from './componentes/ui';
 import { useDados } from './dados/contexto';
+import { useCalculos } from './dados/useCalculos';
+import { useProjeto } from './dados/useProjeto';
+import { useTreino } from './dados/useTreino';
+import { aplicarBadge, pendentesHoje, temBadge } from './lib/badge-hoje';
 import { Analise } from './paginas/Analise';
 import { Ciclo } from './paginas/Ciclo';
 import { Configurar } from './paginas/Configurar';
@@ -97,8 +102,53 @@ function Avisos() {
   );
 }
 
+/**
+ * Número no ícone do app (iPhone 16.4+, instalado, com notificações): tarefas de hoje
+ * que faltam no checklist do Início. Atualiza com os dados e ao voltar ao app; 0 limpa.
+ */
+function useBadgeApp() {
+  const { diario, medidas, dieta } = useDados();
+  const { resumo, hoje } = useCalculos();
+  const proj = useProjeto();
+  const t = useTreino();
+  const comTreino = !!t && t.placar.iniciado && !t.placar.encerrado;
+  const n = pendentesHoje({
+    hoje,
+    diario,
+    medidas,
+    comDieta: !!dieta?.refeicoes.some((r) => r.itens.length),
+    proxima: resumo?.proxima ?? null,
+    ultimaDose: proj?.ultimaDose ?? null,
+    posRemedio: !!proj?.pos,
+    comTreino,
+    treinoDia: t?.doDia(hoje) ?? null,
+    temResumo: !!resumo && !!proj,
+  });
+  const ultimo = useRef(n);
+  ultimo.current = n;
+  useEffect(() => {
+    void aplicarBadge(n);
+  }, [n]);
+  useEffect(() => {
+    const ver = () => void aplicarBadge(ultimo.current);
+    document.addEventListener('visibilitychange', ver);
+    return () => {
+      document.removeEventListener('visibilitychange', ver);
+      // Saiu da conta: o ícone fica sem número
+      void aplicarBadge(0);
+    };
+  }, []);
+}
+
+/** Só faz as contas do badge onde o aparelho tem o recurso */
+function BadgeApp() {
+  useBadgeApp();
+  return null;
+}
+
 function Estrutura() {
-  const { perfil, ciclo } = useDados();
+  const { perfil, ciclo, recarregar } = useDados();
+  const [comBadge] = useState(() => temBadge());
   const { pathname } = useLocation();
   // Cada aba abre do topo, não na altura em que a anterior estava
   useEffect(() => {
@@ -131,6 +181,8 @@ function Estrutura() {
           </div>
         </header>
         <Avisos />
+        <PuxarAtualizar aoAtualizar={recarregar} />
+        {comBadge && <BadgeApp />}
         <main>
           <Protecao chave={pathname}>
           <Routes>
@@ -191,7 +243,8 @@ export function App() {
   const { usuario, carregando, perfil, ciclo, erro, semConexao, recuperandoSenha, falhouCarregar, recarregar } = useDados();
   if (recuperandoSenha) return <NovaSenha />;
   if (semConexao) return <SemConexao />;
-  if (carregando) {
+  // Recarregando com os dados já na tela (puxar para atualizar, "Tentar"): a tela fica
+  if (carregando && !(usuario && perfil && ciclo)) {
     return (
       <div className="carregando-app" role="status" aria-label="Carregando">
         <div className="esqueleto" style={{ height: 44, width: '55%' }} />
