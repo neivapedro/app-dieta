@@ -1,0 +1,520 @@
+/* ---------- Aba Treino: abas, hero do projeto, placar, calendário em mapa de calor ---------- */
+
+/* Hero: anel do percorrido à direita */
+.treino-hero-anel {
+  flex: none;
+  margin-top: -2px;
+}
+.treino-hero-anel .anel svg {
+  width: 62px;
+  height: 62px;
+}
+.treino-hero-anel .anel-rotulo {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--texto-3);
+}
+.treino-hero-anel .anel-valor {
+  stroke: var(--destaque);
+}
+.treino-hoje-status.completo {
+  color: var(--bom);
+}
+.treino-semana {
+  margin-top: 14px;
+}
+.treino-semana-cab {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.treino-link {
+  border: 0;
+  background: transparent;
+  color: var(--texto-2);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 32px;
+  padding: 0 2px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Calendário: verde mais forte = mais do dia feito (treino e cardio) */
+.cal-treino {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+.cal-cab {
+  text-align: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--texto-3);
+  padding-bottom: 2px;
+}
+.cal-dia {
+  min-width: 0;
+  min-height: 44px;
+  padding: 4px 1px;
+  border: 0;
+  border-radius: 10px;
+  font: inherit;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: var(--superficie-2);
+  color: var(--texto);
+  transition:
+    transform 0.12s ease,
+    background-color 0.2s,
+    box-shadow 0.2s;
+}
+.cal-dia:not(:disabled):active {
+  transform: scale(0.93);
+}
+.cal-dia.fora {
+  visibility: hidden;
+}
+.cal-dia.n2 {
+  background: var(--bom);
+  color: #fff;
+}
+.cal-dia.n1 {
+  background: color-mix(in srgb, var(--bom) 40%, var(--superficie-2));
+}
+.cal-dia.n0.passado {
+  background: color-mix(in srgb, var(--ruim) 18%, var(--superficie-2));
+}
+.cal-dia.futuro {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--borda-suave);
+  color: var(--texto-3);
+  cursor: default;
+}
+.cal-dia.hoje {
+  box-shadow: inset 0 0 0 2px var(--texto);
+}
+.cal-dia.n2.hoje {
+  box-shadow:
+    inset 0 0 0 2px var(--texto),
+    inset 0 0 0 4px var(--bom);
+}
+.cal-num {
+  font-size: 0.66rem;
+  font-weight: 650;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+@media (max-width: 340px) {
+  .cal-num {
+    font-size: 0.58rem;
+    letter-spacing: -0.02em;
+  }
+}
+.cal-pips {
+  display: flex;
+  gap: 2px;
+}
+.cal-pip {
+  width: 13px;
+  height: 13px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.56rem;
+  font-weight: 800;
+  line-height: 1;
+  opacity: 0.38;
+}
+.cal-pip.sim {
+  opacity: 1;
+  background: color-mix(in srgb, currentColor 22%, transparent);
+}
+.cal-dia.futuro .cal-pip {
+  opacity: 0.5;
+}
+.cal-legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 0.75rem;
+  color: var(--texto-2);
+  margin-top: 10px;
+}
+.cal-legenda > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.cal-amostra {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  border-radius: 4px;
+  background: var(--superficie-2);
+}
+.cal-amostra.n2 {
+  background: var(--bom);
+}
+.cal-amostra.n1 {
+  background: color-mix(in srgb, var(--bom) 40%, var(--superficie-2));
+}
+.cal-amostra.n0 {
+  background: color-mix(in srgb, var(--ruim) 18%, var(--superficie-2));
+}
+.cal-amostra.hoje {
+  background: transparent;
+  box-shadow: inset 0 0 0 2px var(--texto);
+}
+.cal-nota {
+  font-size: 0.75rem;
+  color: var(--texto-3);
+  margin-top: 4px;
+}
+
+/* Placar: anéis da % e barras feito × projeção sobre o total do período */
+.aneis.placar-aneis {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+@media (max-width: 360px) {
+  .placar-aneis .anel svg {
+    width: 56px;
+    height: 56px;
+  }
+  .placar-aneis .anel-rotulo {
+    font-size: 0.74rem;
+  }
+}
+.placar-linhas {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 18px;
+}
+.placar-linha-cab {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.placar-linha-nome {
+  font-weight: 650;
+  font-size: 0.9rem;
+  min-width: 0;
+}
+.placar-linha-proj {
+  font-size: 0.78rem;
+  color: var(--texto-2);
+  white-space: nowrap;
+}
+.placar-linha-proj b {
+  color: var(--texto);
+  font-weight: 700;
+}
+.placar-trilho {
+  position: relative;
+  height: 10px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: var(--superficie-2);
+  overflow: hidden;
+}
+.placar-proj,
+.placar-feito {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  border-radius: 999px;
+}
+.placar-proj {
+  background: color-mix(in srgb, var(--texto-3) 38%, transparent);
+}
+.placar-feito {
+  background: var(--destaque);
+}
+.placar-feito.bom {
+  background: var(--bom);
+}
+.placar-feito.aviso {
+  background: var(--aviso);
+}
+.placar-feito.ruim {
+  background: var(--ruim);
+}
+.placar-meta {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--texto);
+  opacity: 0.85;
+}
+.placar-linha-pes {
+  font-size: 0.75rem;
+  color: var(--texto-3);
+  margin-top: 4px;
+}
+.placar-linha-pes .sem-quebra {
+  white-space: nowrap;
+}
+.placar-legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 0.75rem;
+  color: var(--texto-2);
+  margin-top: 12px;
+}
+.placar-legenda > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.placar-amostra {
+  display: inline-block;
+  width: 14px;
+  height: 8px;
+  border-radius: 999px;
+}
+.placar-amostra.feito {
+  background: linear-gradient(90deg, var(--ruim), var(--aviso), var(--bom));
+}
+.placar-amostra.proj {
+  background: color-mix(in srgb, var(--texto-3) 38%, transparent);
+}
+.placar-amostra.meta {
+  width: 2px;
+  height: 12px;
+  border-radius: 0;
+  background: var(--texto);
+}
+
+/* Corridas: lista em cartões (data, distância e tempo, pace) */
+.corridas-lista {
+  display: flex;
+  flex-direction: column;
+}
+.corrida-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 8px 0;
+  border: 0;
+  border-top: 1px solid var(--borda-suave);
+  background: transparent;
+  color: var(--texto);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.corrida-item:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.corrida-data {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: var(--raio-sm);
+  background: var(--superficie-2);
+  line-height: 1.1;
+}
+.corrida-data b {
+  font-size: 1.05rem;
+  font-weight: 750;
+}
+.corrida-data small {
+  font-size: 0.64rem;
+  color: var(--texto-3);
+}
+.corrida-meio {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.corrida-dist {
+  font-weight: 650;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.corrida-dia {
+  font-size: 0.75rem;
+  color: var(--texto-3);
+}
+.corrida-pace {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.corrida-pace b {
+  font-size: 1.05rem;
+  font-weight: 750;
+}
+.corrida-pace small {
+  font-size: 0.72rem;
+  color: var(--texto-3);
+}
+.corrida-delta {
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+.corrida-delta.mudo {
+  font-weight: 400;
+}
+
+/* Metas: barras do caminho e cartões compactos das medidas sem meta */
+.metas-treino .meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.meta-extra {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  font-size: 0.75rem;
+  color: var(--texto-3);
+}
+.meta-dif {
+  font-weight: 650;
+}
+.meta-ritmo b {
+  color: var(--texto-2);
+  font-weight: 650;
+}
+.chance-provavel {
+  color: var(--bom);
+  font-weight: 650;
+}
+.chance-improvavel {
+  color: var(--aviso);
+  font-weight: 650;
+}
+.chance-possivel {
+  color: var(--texto-2);
+}
+.metas-sem-titulo {
+  margin: 20px 0 8px;
+}
+.medidas-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.medida-card {
+  background: var(--superficie-2);
+  border-radius: var(--raio-sm);
+  padding: 10px 12px;
+  min-width: 0;
+}
+.medida-card-nome {
+  font-size: 0.7rem;
+  color: var(--texto-3);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+}
+.medida-card-valor {
+  font-size: 1.15rem;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+}
+.medida-card-sub {
+  font-size: 0.72rem;
+  color: var(--texto-2);
+}
+.medida-ok {
+  color: var(--bom);
+  font-weight: 650;
+}
+
+/* Força: lista em vez da tabela larga */
+.kpi-variacao.aviso {
+  color: var(--aviso);
+}
+.spark.aviso {
+  color: var(--aviso);
+}
+.forca-lista {
+  display: flex;
+  flex-direction: column;
+}
+.forca-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--borda-suave);
+}
+.forca-item.forca-cab {
+  border-top: 0;
+  padding: 0 0 4px;
+  font-size: 0.7rem;
+  color: var(--texto-3);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.forca-cab span + span {
+  text-align: right;
+}
+.forca-nome {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.forca-nome b {
+  font-weight: 650;
+  overflow-wrap: break-word;
+}
+.forca-nome small {
+  font-size: 0.72rem;
+  color: var(--texto-3);
+}
+.forca-num {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.25;
+}
+.forca-1rm {
+  font-weight: 700;
+  white-space: nowrap;
+}
+.forca-ref {
+  font-size: 0.8rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+/* Em 320 px os textos de apoio do hero quebram em vez de vazar da caixa */
+.treino-hero .hero-stat-sub {
+  white-space: normal;
+  line-height: 1.25;
+}
+.treino-hero .hero-stat .valor.treino-hoje-status {
+  white-space: normal;
+  line-height: 1.2;
+}
