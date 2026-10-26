@@ -198,3 +198,104 @@
    dentro dele (fim da fase, esforço do treino) ficava atrás do cabeçalho. Sem o preenchimento,
    o efeito some ao terminar a animação e a folha volta a cobrir a tela toda. */
 main .pilha.pagina-inicio > .cartao, main .pilha.pagina-inicio > section { animation-fill-mode: none; }
+
+/* ---------- Anéis do dia (Treino/Diário, Dieta/Checklist, Água) ---------- */
+/* Verde, âmbar e um branco (preto no claro) puxado para o verde: as cores da casa */
+.pagina-inicio {
+  --anel-1: var(--bom);
+  --anel-2: var(--aviso);
+  --anel-3: color-mix(in srgb, var(--texto) 80%, var(--bom));
+}
+.pagina-inicio .anel-externo { --cor-anel: var(--anel-1); }
+.pagina-inicio .anel-meio { --cor-anel: var(--anel-2); }
+.pagina-inicio .anel-interno { --cor-anel: var(--anel-3); }
+
+.pagina-inicio .aneis-svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.pagina-inicio .anel-trilho { fill: none; stroke: color-mix(in srgb, var(--cor-anel) 16%, transparent); }
+.pagina-inicio .anel-arco {
+  fill: none; stroke: var(--cor-anel); stroke-linecap: round;
+  transition: stroke-dasharray 1s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s;
+}
+.pagina-inicio .aneis-mini .anel-arco { transition-duration: 0.7s; }
+.pagina-inicio .anel-arco.vazio { opacity: 0; }
+/* No histórico, o anel fechado se destaca do parcial */
+.pagina-inicio .aneis-mini g:not(.fechado) .anel-arco { opacity: 0.5; }
+.pagina-inicio .aneis-mini g:not(.fechado) .anel-arco.vazio { opacity: 0; }
+.pagina-inicio .aneis-mini .anel-trilho { stroke: color-mix(in srgb, var(--cor-anel) 13%, transparent); }
+/* Anel fechado hoje: um brilho discreto depois de desenhar */
+.pagina-inicio .anel-brilho { fill: none; stroke: var(--cor-anel); opacity: 0; transition: opacity 0.7s ease 0.9s; }
+.pagina-inicio .aneis-svg.desenhado .anel-brilho { opacity: 0.42; }
+
+.pagina-inicio .aneis-hoje { display: flex; align-items: center; gap: 14px; }
+.pagina-inicio .aneis-hoje-figura { flex: none; width: 112px; height: 112px; }
+.pagina-inicio .aneis-legenda { list-style: none; margin: 0; padding: 0; flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.pagina-inicio .aneis-legenda li + li { border-top: 1px solid var(--borda-suave); }
+.pagina-inicio .aneis-legenda-linha {
+  display: flex; align-items: center; gap: 8px; width: 100%; min-height: 40px; padding: 6px 4px; border: 0; border-radius: 10px;
+  background: none; color: var(--texto); text-align: left; cursor: pointer; transition: background-color 0.2s, transform 0.12s ease;
+}
+.pagina-inicio .aneis-legenda-linha:active { background: var(--superficie-2); transform: scale(0.98); }
+.pagina-inicio .aneis-ponto { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--cor-anel); }
+.pagina-inicio .aneis-legenda-rotulo { flex: 1; min-width: 0; font-size: 0.9rem; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pagina-inicio .aneis-legenda-valor {
+  flex: none; display: inline-flex; align-items: center; gap: 4px; font-size: 0.95rem; font-weight: 750; letter-spacing: -0.01em; white-space: nowrap;
+  color: var(--cor-anel);
+}
+.pagina-inicio .aneis-legenda-linha.vazio .aneis-legenda-valor { color: var(--texto-3); font-weight: 650; }
+.pagina-inicio .aneis-ok { font-size: 0.75rem; }
+.pagina-inicio .aneis-legenda-seta { flex: none; color: var(--texto-3); font-size: 1.15rem; line-height: 1; }
+@media (max-width: 360px) {
+  .pagina-inicio .aneis-hoje { gap: 10px; }
+  .pagina-inicio .aneis-hoje-figura { width: 92px; height: 92px; }
+  .pagina-inicio .aneis-legenda-linha { gap: 6px; padding: 6px 2px; }
+  .pagina-inicio .aneis-legenda-rotulo { font-size: 0.85rem; }
+  .pagina-inicio .aneis-legenda-valor { font-size: 0.88rem; }
+  .pagina-inicio .aneis-legenda-seta { display: none; }
+}
+
+/* Linha do checklist chamada pela legenda: pisca de leve */
+.pagina-inicio .pulso-anel { animation: pulso-anel 1.5s ease-out; border-radius: 10px; }
+@keyframes pulso-anel {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--aviso) 60%, transparent); background: color-mix(in srgb, var(--aviso) 10%, transparent); }
+  100% { box-shadow: 0 0 0 14px transparent; background: transparent; }
+}
+
+/* ---------- Seu ciclo em anéis: um dia por célula ---------- */
+.pagina-inicio .historico-aneis { display: flex; flex-direction: column; gap: 12px; }
+.pagina-inicio .historico-aneis .secao-cab { flex-wrap: nowrap; align-items: flex-start; }
+.pagina-inicio .historico-aneis .secao-cab > .botao { flex: none; }
+.pagina-inicio .historico-legenda { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 0.78rem; color: var(--texto-2); margin-top: -4px; }
+.pagina-inicio .historico-legenda > span { display: inline-flex; align-items: center; gap: 6px; }
+.pagina-inicio .historico-legenda b { color: var(--texto); font-weight: 700; }
+.pagina-inicio .historico-legenda .aneis-ponto { width: 8px; height: 8px; }
+.pagina-inicio .historico-grade { display: flex; flex-direction: column; gap: 3px; }
+.pagina-inicio .historico-linha { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+.pagina-inicio .historico-cab span { text-align: center; font-size: 0.66rem; font-weight: 700; color: var(--texto-3); letter-spacing: 0.04em; }
+.pagina-inicio .historico-dia {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-width: 0; min-height: 48px; padding: 4px 0;
+  border: 1px solid transparent; border-radius: 10px; background: none; color: var(--texto-3); font: inherit;
+}
+.pagina-inicio button.historico-dia { cursor: pointer; transition: background-color 0.2s, transform 0.12s ease; }
+.pagina-inicio button.historico-dia:active { background: var(--superficie-2); transform: scale(0.94); }
+.pagina-inicio .historico-dia .aneis-svg { width: 30px; height: 30px; }
+.pagina-inicio .historico-num { font-size: 0.62rem; font-weight: 600; line-height: 1; }
+.pagina-inicio .historico-dia.completo .historico-num { color: var(--texto); font-weight: 800; }
+.pagina-inicio .historico-dia.hoje { border-color: color-mix(in srgb, var(--texto) 55%, transparent); }
+.pagina-inicio .historico-dia.sel { background: var(--superficie-2); border-color: var(--texto-2); }
+.pagina-inicio .historico-dia.fora { opacity: 0.35; justify-content: flex-end; padding-bottom: 7px; }
+.pagina-inicio .historico-dia.fora:not(.futuro) .historico-num { visibility: hidden; }
+
+.pagina-inicio .historico-detalhe { padding: 10px 12px; border-radius: var(--raio-sm); background: var(--superficie-2); animation: surgir 0.25s ease-out; }
+.pagina-inicio .historico-detalhe-cab { display: flex; align-items: center; gap: 8px; }
+.pagina-inicio .historico-detalhe-cab b { flex: 1; min-width: 0; font-size: 0.9rem; }
+.pagina-inicio .historico-detalhe-cab .mudo { font-size: 0.78rem; white-space: nowrap; }
+.pagina-inicio .historico-fechar {
+  flex: none; width: 40px; height: 40px; margin: -8px -8px -8px 0; border: 0; border-radius: 10px; background: none; color: var(--texto-3);
+  font-size: 1.3rem; line-height: 1; cursor: pointer;
+}
+.pagina-inicio .historico-detalhe ul { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.pagina-inicio .historico-detalhe li { display: flex; align-items: center; gap: 8px; min-height: 28px; font-size: 0.85rem; }
+.pagina-inicio .historico-detalhe li .numero { font-weight: 700; white-space: nowrap; }
+.pagina-inicio .historico-detalhe li.fechado .numero { color: var(--cor-anel); }
+.pagina-inicio .historico-estado { flex: none; min-width: 74px; text-align: right; font-size: 0.75rem; color: var(--texto-3); }
+.pagina-inicio .historico-detalhe li.fechado .historico-estado { color: var(--texto-2); font-weight: 650; }

@@ -4,10 +4,12 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { TextoRca } from '../componentes/composicao';
 import { AvisoRapido, FaseConfirmada, FimDeFase, ForaDoPlano } from '../componentes/dose';
 import { FormAplicacao, FormDiario, FormMedida } from '../componentes/formularios';
+import { AneisHoje, HistoricoAneis, useAneis } from '../componentes/aneis';
 import { AlertasSeguranca, AnelHoje, ChecklistHoje, FaixaOntem, useTarefasHoje } from '../componentes/inicio';
 import { Kpi } from '../componentes/painel';
 import { CartaoFimProjeto } from '../componentes/projeto';
 import { ResumoSemana } from '../componentes/ResumoSemana';
+import { FormDiaTreino } from '../componentes/treino';
 import { Bloco, Icone } from '../componentes/ui';
 import { useDados } from '../dados/contexto';
 import { useCalculos } from '../dados/useCalculos';
@@ -203,6 +205,8 @@ export function Inicio() {
         }
       : null,
   );
+  const aneis = useAneis(tarefas);
+  const [treinoAberto, setTreinoAberto] = useState(false);
 
   if (!ciclo || !resumo || !proj) return null;
   const regHoje = diario.find((r) => r.data === hoje);
@@ -236,7 +240,25 @@ export function Inicio() {
           : p.fase
             ? `Fase ${p.fase.indice + 1} · ${p.fase.fase.nome}`
             : 'Dose fora do plano';
-  const { progresso } = tarefas;
+
+  // Linha da legenda dos anéis: leva ao controle do checklist (centraliza e pisca de leve)
+  function rolarPara(id: string) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const reduzir = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    el.scrollIntoView({ behavior: reduzir ? 'auto' : 'smooth', block: 'center' });
+    el.classList.remove('pulso-anel');
+    void el.offsetWidth;
+    el.classList.add('pulso-anel');
+    window.setTimeout(() => el.classList.remove('pulso-anel'), 1600);
+  }
+  const acoesAneis = {
+    // Treino: a folha de treino e cardio do dia; sem Treino: o registro do Diário
+    externo: () => (tarefas.comTreino ? setTreinoAberto(true) : setDiarioAberto(true)),
+    // Dieta: à noite, o "Segui o plano hoje?" do Fechar o dia; de dia, o Diário. Sem plano: o checklist
+    meio: () => (tarefas.comDieta ? (fecharDia ? rolarPara('tarefa-plano') : setDiarioAberto(true)) : rolarPara('checklist-hoje')),
+    interno: () => setDiarioAberto(true),
+  };
 
   const ini = geral.medida_inicial;
   const atu = geral.medida_atual;
@@ -325,14 +347,9 @@ export function Inicio() {
               </div>
             )}
           </div>
-          <AnelHoje
-            fracao={progresso.fracao}
-            texto={`${progresso.feitas}/${progresso.total}`}
-            sub="hoje"
-            tom={progresso.total > 0 && progresso.feitas === progresso.total ? 'bom' : ''}
-            rotulo={`Checklist de hoje: ${progresso.feitas} de ${progresso.total} feitos`}
-          />
         </div>
+
+        <AneisHoje aneis={aneis.hoje} acoes={acoesAneis} />
 
         {!pos && p ? (
           destaque || doseAberta ? (
@@ -397,6 +414,8 @@ export function Inicio() {
           </button>
         </div>
       )}
+
+      <HistoricoAneis semanas={aneis.semanas} />
 
       <section className="cartao antes-agora">
         <div className="secao-cab">
@@ -516,6 +535,7 @@ export function Inicio() {
 
       {registrar && <FormAplicacao aoFechar={fecharRegistro} aoSalvar={setAviso} />}
       {aviso && <AvisoRapido texto={aviso} aoSumir={() => setAviso(null)} />}
+      {treinoAberto && <FormDiaTreino data={hoje} aoFechar={() => setTreinoAberto(false)} />}
       {diarioAberto && <FormDiario registro={regHoje} aoFechar={() => setDiarioAberto(false)} />}
       {medindo && <FormMedida aoFechar={() => setMedindo(false)} aoSalvar={(data) => setResumo(data)} />}
       {resumoSemana && <ResumoSemana data={resumoSemana} aoFechar={() => setResumo(null)} />}
