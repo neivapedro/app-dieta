@@ -1,0 +1,119 @@
+/* ---------- Tela Medidas ---------- */
+
+/* Topo: título, data e o botão da nova medição */
+.med-hero .hero-titulo { font-size: 1.35rem; }
+.med-acoes { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+.med-acoes .botao { flex: 1 1 130px; padding: 0 10px; white-space: nowrap; }
+.med-nova { font-size: 0.98rem; }
+@media (max-width: 360px) { .med-acoes .botao { flex-basis: 100%; } }
+.med-mais { font-size: 1.3rem; font-weight: 400; line-height: 1; margin-top: -2px; }
+.med-atipica { margin: 10px 0 0; font-size: 0.82rem; color: var(--texto-2); }
+
+/* Indicadores: duas variações (última e total), cada uma com a sua cor */
+.med-kpis-sub { margin: 2px 2px -6px; }
+.med-deltas { display: flex; flex-direction: column; gap: 0; }
+.med-delta { color: var(--texto-2); font-size: 0.78rem; font-weight: 650; white-space: nowrap; }
+.med-delta small { color: var(--texto-3); font-weight: 500; font-size: 0.7rem; }
+.med-delta.bom { color: var(--bom); }
+.med-delta.ruim { color: var(--ruim); }
+.med-kpis .kpi-variacao { min-height: 2.3em; }
+.med-kpis .kpi:last-child .med-delta { white-space: normal; font-weight: 500; line-height: 1.25; }
+@media (max-width: 360px) { .med-delta { font-size: 0.72rem; } .med-delta small { font-size: 0.65rem; } }
+.med-como-ler { margin: -4px 2px 0; }
+.med-como-ler p { margin: 0; }
+
+/* Qualidade da perda: barra dividida gordura × massa magra */
+.qualidade { display: flex; flex-direction: column; gap: 8px; }
+.qualidade-cab { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.qualidade-barra { display: flex; height: 14px; border-radius: 999px; overflow: hidden; background: var(--superficie-2); gap: 2px; }
+.qualidade-barra > span { height: 100%; min-width: 4px; }
+.qualidade-gordura { background: var(--bom); }
+.qualidade-magra { background: var(--texto-3); }
+.qualidade-magra.aviso { background: var(--aviso); }
+.qualidade-legenda { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 0.8rem; color: var(--texto-2); }
+.qualidade-legenda i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; vertical-align: -1px; margin-right: 2px; }
+.qualidade-legenda b { color: var(--texto); }
+.qualidade-texto { margin: 0; font-size: 0.88rem; }
+.qualidade-texto.aviso-txt { color: var(--aviso); }
+
+/* Evolução: legenda curta e o atalho para a Análise */
+.med-rodape { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.med-rodape .mudo { font-size: 0.78rem; flex: 1 1 160px; }
+
+/* Histórico em cartões (sem rolagem para o lado) */
+.med-hist { display: flex; flex-direction: column; gap: 8px; }
+.med-hist-item {
+  display: flex; flex-direction: column; gap: 6px; width: 100%; text-align: left; cursor: pointer;
+  padding: 10px 12px; border-radius: var(--raio-sm); border: 1px solid var(--borda-suave); background: var(--superficie-2);
+  color: var(--texto); font: inherit;
+  transition: transform 0.12s ease, background-color 0.2s;
+}
+.med-hist-item:active { transform: scale(0.985); }
+.med-hist-item:focus-visible { outline: 2px solid var(--destaque); outline-offset: 2px; }
+.med-hist-cab { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.med-hist-cab b { font-size: 0.9rem; }
+.med-hist-seta { margin-left: auto; color: var(--texto-3); font-size: 1.2rem; line-height: 1; }
+.med-hist-valores { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.med-hist-valor { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; }
+.med-hist-rotulo { font-size: 0.68rem; color: var(--texto-3); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700; white-space: nowrap; }
+.med-hist-num { font-weight: 650; font-size: 0.95rem; white-space: nowrap; }
+.med-chip {
+  display: inline-flex; align-items: center; padding: 1px 7px; border-radius: 999px; font-size: 0.72rem; font-weight: 650; white-space: nowrap;
+  background: color-mix(in srgb, var(--texto-3) 16%, transparent); color: var(--texto-2);
+}
+.med-chip.bom { background: color-mix(in srgb, var(--bom) 18%, transparent); color: var(--bom); }
+.med-chip.ruim { background: color-mix(in srgb, var(--ruim) 18%, transparent); color: var(--ruim); }
+.med-chip.vazio { background: transparent; color: var(--texto-3); padding-left: 0; }
+@media (max-width: 360px) {
+  .med-hist-item { padding: 9px 10px; }
+  .med-hist-num { font-size: 0.85rem; }
+  .med-chip { font-size: 0.66rem; padding: 1px 5px; }
+  .med-hist-rotulo { font-size: 0.62rem; }
+}
+
+/* Fotos */
+.fotos-cartao .fotos-grade { grid-template-columns: repeat(4, minmax(0, 1fr)); max-width: none; gap: 6px; }
+@media (max-width: 360px) { .fotos-cartao .fotos-grade { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.fotos-cartao .foto-adicionar-texto { font-size: 0.7rem; }
+
+/* Comparador Antes × Depois com cortina */
+.cmp { display: flex; flex-direction: column; gap: 10px; }
+.cmp-pose { font-size: 0.8rem; color: var(--texto-2); font-weight: 600; }
+.cmp-caixa {
+  position: relative; width: 100%; max-height: 62dvh; margin: 0 auto; overflow: hidden; border-radius: var(--raio-sm);
+  background: var(--superficie-2); touch-action: pan-y; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  cursor: ew-resize;
+}
+.cmp-foto { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; -webkit-user-drag: none; }
+.cmp-antes { transition: clip-path 0.2s ease-out; }
+.cmp-caixa.arrastando .cmp-antes, .cmp-caixa.arrastando .cmp-linha { transition: none; }
+.cmp-linha {
+  position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--destaque);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--destaque-texto) 35%, transparent); pointer-events: none; transition: left 0.2s ease-out;
+}
+.cmp-alca {
+  position: absolute; top: 50%; left: 50%; width: 44px; height: 44px; transform: translate(-50%, -50%);
+  border-radius: 50%; background: var(--destaque); color: var(--destaque-texto); display: flex; align-items: center; justify-content: center;
+  box-shadow: var(--sombra), 0 0 0 1px color-mix(in srgb, var(--destaque-texto) 25%, transparent); pointer-events: auto;
+}
+.cmp-alca:focus-visible { outline: 3px solid var(--aviso); outline-offset: 2px; }
+.cmp-alca svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.cmp-etiqueta {
+  position: absolute; top: 8px; padding: 3px 8px; border-radius: 999px; font-size: 0.72rem; font-weight: 650; white-space: nowrap;
+  color: var(--texto); background: color-mix(in srgb, var(--fundo) 62%, transparent); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  pointer-events: none; transition: opacity 0.2s;
+}
+.cmp-etiqueta.esquerda { left: 8px; }
+.cmp-etiqueta.direita { right: 8px; }
+@media (max-width: 360px) { .cmp-etiqueta { font-size: 0.66rem; padding: 2px 6px; } }
+.cmp-numeros { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 6px; }
+.cmp-numero { display: flex; flex-direction: column; gap: 1px; min-width: 0; padding: 7px 9px; border-radius: 10px; background: var(--superficie-2); }
+.cmp-numero-rotulo { font-size: 0.66rem; color: var(--texto-3); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cmp-numero b { font-size: 0.9rem; white-space: nowrap; }
+.cmp-delta { font-size: 0.75rem; font-weight: 650; color: var(--texto-2); white-space: nowrap; }
+.cmp-delta.bom { color: var(--bom); }
+.cmp-delta.ruim { color: var(--ruim); }
+.cmp-nota { margin: -4px 0 0; font-size: 0.75rem; }
+@media (prefers-reduced-motion: reduce) {
+  .cmp-antes, .cmp-linha, .cmp-etiqueta, .med-hist-item { transition: none; }
+}

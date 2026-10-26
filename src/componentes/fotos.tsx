@@ -58,6 +58,7 @@ import {
   type Ponto,
   type Vista,
 } from '../lib/zoom';
+import { ComparadorFotos } from './medidas-comparador';
 import { BotaoExcluir, Campo, Escolhas, Folha } from './ui';
 
 export interface FotoTela extends FotoGuardada {
@@ -309,10 +310,16 @@ export function CartaoFotos() {
   const vista = vendo ? fotos.find((f) => f.id === vendo) : undefined;
   const salvando = lote && lote.fase === 'salvando' ? lote : null;
 
+  const comNumeros = medicoes.some((m) => m.data);
   return (
-    <section className="cartao pilha" style={{ gap: 10 }}>
-      <div className="cartao-cab" style={{ marginBottom: 0 }}>
-        <h2>Fotos: antes e depois</h2>
+    <section className="cartao pilha fotos-cartao" style={{ gap: 12 }}>
+      <div className="secao-cab" style={{ marginBottom: 0 }}>
+        <div className="cresce">
+          <h2>Fotos: antes e depois</h2>
+          <div className="secao-sub">
+            {fotos.length ? `${fotosTexto(fotos.length)} · ~${textoTamanho(bytes)} neste aparelho` : 'Frente, lado e costas, nas mesmas condições'}
+          </div>
+        </div>
         {horaDoDepois && <span className="etiqueta aviso">fim do ciclo</span>}
       </div>
       {horaDoDepois && (
@@ -324,9 +331,10 @@ export function CartaoFotos() {
         </div>
       )}
       {erro && <div className="alerta erro">{erro}</div>}
+      {!carregando && !erro && <ComparadorFotos fotos={fotos} composicoes={composicoes} feminino={feminino} />}
       {!carregando && !erro && (
-        <div className="pilha" style={{ gap: 16 }}>
-          {medicoes.map(({ s, data, c }) => {
+        <div className="pilha" style={{ gap: 14 }}>
+          {medicoes.map(({ s }) => {
             const daSessao = fotosDaSessao(fotos, s);
             const periodo = periodoDaSessao(fotos, s);
             const ocupado = salvando?.sessao === s;
@@ -367,16 +375,9 @@ export function CartaoFotos() {
                     onClick={() => adicionar(s)}
                   >
                     <span className="foto-mais">{ocupado ? '…' : '+'}</span>
-                    <span className="foto-adicionar-texto">{ocupado ? `Salvando ${salvando.atual} de ${salvando.arquivos.length}…` : 'Adicionar fotos'}</span>
+                    <span className="foto-adicionar-texto">{ocupado ? `Salvando ${salvando.atual} de ${salvando.arquivos.length}…` : daSessao.length ? 'Mais fotos' : 'Adicionar fotos'}</span>
                   </button>
                 </div>
-                <NumerosSessao
-                  c={c}
-                  base={s === 'depois' ? (medicoes[0].c ?? null) : null}
-                  data={data}
-                  feminino={feminino}
-                  origem={data ? `${daSessao.length > 1 ? 'Foto mais recente' : 'Foto'} de ${formatarData(data, true)}` : undefined}
-                />
               </div>
             );
           })}
@@ -384,16 +385,40 @@ export function CartaoFotos() {
       )}
       {/* Com a folha de uma foto aberta, o erro aparece só nela */}
       {msg && !vendo && <div className={`alerta ${msg.tipo}`}>{msg.texto}</div>}
-      {fotos.length > 0 && (
-        <p className="texto-2" style={{ margin: 0 }}>
-          {fotosTexto(fotos.length)} · ~{textoTamanho(bytes)} neste aparelho
-        </p>
+      {!carregando && !erro && comNumeros && (
+        <details className="tabela-detalhe" style={{ marginTop: 0 }}>
+          <summary>Números das fotos</summary>
+          <div className="pilha" style={{ gap: 12 }}>
+            {medicoes.map(({ s, data, c }) =>
+              data ? (
+                <div key={s} className="fotos-sessao">
+                  <b>{ROTULO_SESSAO[s]}</b>
+                  <NumerosSessao
+                    c={c}
+                    base={s === 'depois' ? (medicoes[0].c ?? null) : null}
+                    data={data}
+                    feminino={feminino}
+                    origem={`${fotosDaSessao(fotos, s).length > 1 ? 'Foto mais recente' : 'Foto'} de ${formatarData(data, true)}`}
+                  />
+                </div>
+              ) : null,
+            )}
+          </div>
+        </details>
       )}
-      <p className="mudo">
-        Para comparar: mesma luz, mesmo lugar, mesma distância, de manhã em jejum, roupa parecida. Marque Frente, Lado ou Costas para formar os pares
-        Antes × Depois do PDF. O Depois pode ser preenchido a qualquer momento.
-      </p>
-      <p className="mudo">
+      <details className="tabela-detalhe" style={{ marginTop: 0 }}>
+        <summary>Como tirar e guardar</summary>
+        <div className="pilha" style={{ gap: 8 }}>
+          <p className="mudo" style={{ margin: 0 }}>
+            Para comparar: mesma luz, mesmo lugar, mesma distância, de manhã em jejum, roupa parecida. Marque Frente, Lado ou Costas para formar os pares
+            Antes × Depois do comparador e do PDF. O Depois pode ser preenchido a qualquer momento.
+          </p>
+          <p className="mudo" style={{ margin: 0 }}>
+            No comparador, arraste a linha para o lado (ou toque num ponto da foto) para ver mais do Antes ou do Depois.
+          </p>
+        </div>
+      </details>
+      <p className="mudo" style={{ margin: 0 }}>
         As fotos ficam só neste aparelho. Para não perder ao trocar de celular, faça o backup no <Link to="/perfil">Perfil</Link> (com as fotos).
       </p>
       {/* Várias de uma vez; sem "capture": o iPhone oferece a câmera e a galeria */}
