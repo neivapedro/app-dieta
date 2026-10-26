@@ -704,3 +704,80 @@ details.tabela-detalhe > summary::-webkit-details-marker { display: none; }
 details.tabela-detalhe > summary::before { content: '▸'; transition: transform 0.15s; }
 details.tabela-detalhe[open] > summary::before { transform: rotate(90deg); }
 details.tabela-detalhe[open] > summary { margin-bottom: 8px; }
+
+/* ---------- Visual moderno: base global (vale para todas as telas) ---------- */
+:root {
+  --raio: 18px;
+  --raio-sm: 12px;
+  --borda-suave: color-mix(in srgb, var(--borda) 75%, transparent);
+  --vidro: color-mix(in srgb, var(--fundo) 74%, transparent);
+  --aba-ativa: #3a3a3e;
+  --sombra: 0 1px 2px rgb(0 0 0 / 0.35), 0 10px 28px -16px rgb(0 0 0 / 0.6);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, 'Segoe UI', Roboto, sans-serif;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) { --aba-ativa: #ffffff; --sombra: 0 1px 2px rgb(0 0 0 / 0.05), 0 10px 28px -16px rgb(0 0 0 / 0.14); }
+}
+:root[data-theme="light"] { --aba-ativa: #ffffff; --sombra: 0 1px 2px rgb(0 0 0 / 0.05), 0 10px 28px -16px rgb(0 0 0 / 0.14); }
+:root[data-theme="dark"] { --aba-ativa: #3a3a3e; }
+
+.cartao { border-radius: var(--raio); border-color: var(--borda-suave); }
+.bloco { border-radius: var(--raio-sm); }
+h2 { font-size: 1.08rem; }
+
+/* Cabeçalho e barra de abas de vidro (translúcidos com desfoque, como no iOS) */
+.topo {
+  margin: 0 -16px; padding-left: 16px; padding-right: 16px;
+  background: var(--vidro);
+  -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px);
+}
+.topo h1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.topo .sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nav {
+  background: var(--vidro); border-top-color: var(--borda-suave);
+  -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px);
+}
+.nav a { position: relative; isolation: isolate; transition: color 0.2s; }
+.nav a.ativo::before {
+  content: ''; position: absolute; z-index: -1; top: 7px; left: 50%; width: 52px; height: 32px; transform: translateX(-50%);
+  border-radius: 999px; background: color-mix(in srgb, var(--destaque) 13%, transparent);
+}
+.nav-itens.apertado a.ativo::before { width: 44px; height: 30px; }
+
+/* Abas e seletores em pílula */
+.abas { background: var(--superficie-2); border: 0; padding: 3px; border-radius: 13px; }
+.abas button { border-radius: 10px; transition: background-color 0.2s, color 0.2s, box-shadow 0.2s; }
+.abas button.ativo { background: var(--aba-ativa); color: var(--texto); box-shadow: 0 1px 3px rgb(0 0 0 / 0.18); }
+.pilulas button.ativo { background: var(--aba-ativa); }
+.escolhas button { transition: background-color 0.2s, color 0.2s, border-color 0.2s; }
+
+/* Toque: o botão afunda um pouco */
+.botao, .escolhas button, .abas button, .pilulas button, .check-dia, .icone-botao, .sintoma, .dia-celula {
+  transition: transform 0.12s ease, background-color 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s;
+}
+.botao:not(:disabled):active, .escolhas button:active, .abas button:active, .pilulas button:active,
+.check-dia:active, .icone-botao:active, .sintoma:active, .dia-celula:not(:disabled):active { transform: scale(0.97); }
+
+/* Animações curtas: cartões surgindo, folha subindo, check marcando */
+@keyframes surgir { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes aparecer { from { opacity: 0; } to { opacity: 1; } }
+@keyframes subir-folha { from { transform: translateY(28px); opacity: 0.6; } to { transform: none; opacity: 1; } }
+@keyframes marcar { 0% { transform: scale(0.6); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
+main .pilha > .cartao, main .pilha > .kpis, main > .pilha > section { animation: surgir 0.28s ease-out both; }
+.folha-fundo { animation: aparecer 0.2s ease-out; }
+.folha { animation: subir-folha 0.26s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.check-dia.feito .check-dia-icone { animation: marcar 0.3s ease-out; }
+
+/* Carregando: cartões-esqueleto com brilho passando */
+@keyframes brilho { from { background-position: -200% 0; } to { background-position: 200% 0; } }
+.esqueleto {
+  border-radius: var(--raio);
+  background: linear-gradient(90deg, var(--superficie) 0%, var(--superficie-2) 50%, var(--superficie) 100%);
+  background-size: 200% 100%; animation: brilho 1.4s linear infinite;
+}
+.carregando-app { max-width: 720px; margin: 0 auto; padding: calc(20px + env(safe-area-inset-top)) 16px; display: flex; flex-direction: column; gap: 14px; }
+
+/* Quem pede menos movimento no iPhone (Acessibilidade → Movimento) não vê animações */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}

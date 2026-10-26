@@ -7,8 +7,8 @@ import type { PontoPeso } from '../lib/analise';
 import type { LinhaAplicacao } from '../lib/ciclo';
 
 const BASE = '2000-01-01';
-const paraDia = (d: string) => diferencaDias(BASE, d);
-const deDia = (n: number) => somarDias(BASE, n);
+export const paraDia = (d: string) => diferencaDias(BASE, d);
+export const deDia = (n: number) => somarDias(BASE, n);
 
 type Cores = { peso: string; magra: string; bf: string; dose: string };
 
@@ -19,7 +19,7 @@ function lerCores(): Cores {
 }
 
 /** Cores das séries vindas do tema (claro/escuro), atualizadas quando o tema muda. */
-function useCores(): Cores {
+export function useCores(): Cores {
   const [cores, setCores] = useState(lerCores);
   useEffect(() => {
     const atualizar = () => setCores(lerCores());
@@ -35,7 +35,7 @@ function useCores(): Cores {
   return cores;
 }
 
-function eixoX() {
+export function eixoX() {
   return (
     <XAxis
       dataKey="dia"

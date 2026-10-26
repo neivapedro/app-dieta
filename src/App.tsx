@@ -193,8 +193,11 @@ export function App() {
   if (semConexao) return <SemConexao />;
   if (carregando) {
     return (
-      <div className="centro">
-        <p className="mudo">Carregando…</p>
+      <div className="carregando-app" role="status" aria-label="Carregando">
+        <div className="esqueleto" style={{ height: 44, width: '55%' }} />
+        <div className="esqueleto" style={{ height: 150 }} />
+        <div className="esqueleto" style={{ height: 96 }} />
+        <div className="esqueleto" style={{ height: 210 }} />
       </div>
     );
   }
