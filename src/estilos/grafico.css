@@ -1,0 +1,182 @@
+/* Motor de gráficos em SVG (componentes/grafico). Só tokens de cor: funciona no claro e no escuro. */
+
+.gr {
+  /* fundo atrás das marcas (anel dos pontos, halo dos rótulos) */
+  --gr-fundo: var(--superficie);
+  --gr-grade: color-mix(in srgb, var(--borda) 70%, transparent);
+  position: relative;
+  min-width: 0;
+  -webkit-user-select: none; user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.gr-corpo { position: relative; width: 100%; }
+.gr-svg { display: block; overflow: visible; touch-action: pan-y; }
+.gr-foco { border-radius: 10px; outline: none; }
+.gr-foco:focus-visible { box-shadow: 0 0 0 2px var(--gr-fundo), 0 0 0 4px var(--texto-3); }
+.gr-fundo-toque { fill: transparent; }
+.gr-vazio {
+  height: 100%; display: flex; align-items: center; justify-content: center;
+  color: var(--texto-3); font-size: 0.85rem; border: 1px dashed var(--borda); border-radius: 12px;
+}
+
+/* Visualmente escondido (tabela e leitura para leitores de tela) */
+.gr-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* Cabeçalho: legenda + ações */
+.gr-cab { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 32px; margin-bottom: 6px; }
+.gr-legenda { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 12px; min-width: 0; }
+.gr-legenda li { display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--texto-2); white-space: nowrap; line-height: 1.2; }
+.gr-chave { flex: none; overflow: visible; }
+.gr-chave-linha { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.gr-acoes { display: flex; align-items: center; gap: 6px; flex: none; margin-left: auto; }
+.gr-botao-icone {
+  position: relative; width: 32px; height: 32px; display: inline-grid; place-items: center; flex: none;
+  border: 1px solid var(--borda-suave, var(--borda)); border-radius: 10px; background: var(--superficie-2); color: var(--texto-2);
+  cursor: pointer; padding: 0; transition: transform 0.12s ease, background-color 0.2s, color 0.2s;
+}
+.gr-botao-icone::after { content: ''; position: absolute; inset: -5px; } /* alvo de 42 px */
+.gr-botao-icone:hover { color: var(--texto); }
+.gr-botao-icone:active { transform: scale(0.94); }
+.gr-botao-icone svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.gr-botao-icone:focus-visible, .gr-pilula:focus-visible { outline: 2px solid var(--texto-3); outline-offset: 2px; }
+.gr-pilula {
+  position: relative; height: 28px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--borda-suave, var(--borda));
+  background: var(--superficie-2); color: var(--texto); font-size: 0.75rem; font-weight: 600; cursor: pointer;
+  transition: transform 0.12s ease;
+}
+.gr-pilula::after { content: ''; position: absolute; inset: -7px -2px; }
+.gr-pilula:active { transform: scale(0.95); }
+
+/* Eixos e grade */
+.gr-grade { stroke: var(--gr-grade); stroke-width: 1; shape-rendering: crispEdges; }
+.gr-grade-base { stroke: var(--borda); }
+.gr-grade-v { stroke-opacity: 0.6; }
+.gr-eixo { fill: var(--texto-3); font-size: 11px; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.gr-eixo-forte { fill: var(--texto); font-weight: 650; }
+.gr-eixo-nome { fill: var(--texto-2); font-size: 11px; font-weight: 600; }
+
+/* Marcas */
+.gr-linha { fill: none; stroke-width: 2.25; stroke-linecap: round; stroke-linejoin: round; }
+.gr-tracejada { stroke-width: 1.75; stroke-dasharray: 5 4; stroke-linecap: butt; }
+.gr-degrau { stroke-width: 1.75; stroke-linejoin: miter; stroke-linecap: butt; }
+.gr-degrau-area { opacity: 0.06; }
+.gr-area { stroke: none; }
+.gr-barra { opacity: 0.9; transition: opacity 0.2s; }
+.gr-tempo.gr-com-mira .gr-barra { opacity: 0.45; }
+.gr-tempo .gr-barra-ativa { opacity: 1; }
+.gr-ponto { stroke: var(--gr-fundo); stroke-width: 1.5; }
+.gr-atipico { fill: var(--gr-fundo); stroke-width: 1.6; }
+.gr-faixa { opacity: 0.16; }
+.gr-faixa-borda { fill: none; stroke-width: 1; stroke-opacity: 0.45; stroke-dasharray: 2 3; }
+.gr-destaque { fill: var(--texto); opacity: 0.07; }
+.gr-guia-marco { stroke: var(--texto-3); stroke-opacity: 0.35; stroke-dasharray: 2 3; shape-rendering: crispEdges; }
+
+/* Referências */
+.gr-ref line { stroke-width: 1.25; stroke-opacity: 0.85; }
+.gr-ref-rotulo {
+  fill: var(--texto-2); font-size: 10.5px; font-weight: 600; font-variant-numeric: tabular-nums;
+  paint-order: stroke; stroke: var(--gr-fundo); stroke-width: 4px; stroke-linejoin: round;
+}
+
+/* Marcos no eixo do tempo */
+.gr-marco { cursor: pointer; }
+.gr-sim { stroke: var(--gr-fundo); stroke-width: 1.5; }
+.gr-sim-dose { fill: var(--aviso); }
+.gr-sim-decisao { fill: var(--texto); }
+.gr-sim-medicao { fill: var(--texto-3); }
+.gr-sim-atipico { fill: var(--gr-fundo); stroke: var(--texto-2); }
+.gr-sim-nota { fill: none; stroke: var(--texto-2); stroke-width: 1.5; }
+.gr-marco-anel { fill: none; stroke: var(--texto-2); stroke-width: 1.25; }
+
+/* Mira */
+.gr-mira { pointer-events: none; }
+.gr-mira-linha { stroke: var(--texto-2); stroke-width: 1; stroke-opacity: 0.7; }
+.gr-mira-faixa { stroke-width: 4; stroke-linecap: round; stroke-opacity: 0.35; }
+.gr-mira-ponto { stroke: var(--gr-fundo); stroke-width: 2; }
+.gr-mira-atipico { fill: var(--gr-fundo); stroke-width: 2; }
+
+/* Dica flutuante */
+.gr-dica, .gr-balao {
+  position: absolute; z-index: 2; pointer-events: none;
+  min-width: 112px; max-width: min(240px, 72%);
+  padding: 7px 10px 8px; border-radius: 12px;
+  background: color-mix(in srgb, var(--superficie) 88%, transparent);
+  -webkit-backdrop-filter: saturate(160%) blur(14px); backdrop-filter: saturate(160%) blur(14px);
+  border: 1px solid var(--borda-suave, var(--borda));
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.12), 0 8px 24px -8px rgb(0 0 0 / 0.35);
+  font-size: 0.75rem; line-height: 1.3; color: var(--texto);
+}
+.gr-dica-data { font-size: 0.7rem; font-weight: 600; color: var(--texto-2); margin-bottom: 3px; white-space: nowrap; }
+.gr-dica-linha { display: flex; align-items: center; gap: 6px; padding: 1px 0; }
+.gr-dica-nome { color: var(--texto-2); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gr-dica-valor { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; margin-left: 8px; }
+.gr-dica-outra { font-weight: 500; color: var(--texto-3); font-size: 0.68rem; }
+.gr-balao { max-width: min(260px, 86%); }
+.gr-balao-linha { display: flex; align-items: flex-start; gap: 7px; padding: 2px 0; white-space: normal; overflow-wrap: anywhere; }
+.gr-balao-linha svg { flex: none; margin-top: 2px; overflow: visible; }
+
+/* Faixa de zoom */
+.gr-zoom { margin-top: 6px; }
+.gr-zoom svg { display: block; touch-action: pan-y; cursor: grab; overflow: visible; }
+.gr-zoom-trilho { fill: var(--superficie-2); }
+.gr-zoom-mini { fill: none; stroke-width: 1.25; stroke-opacity: 0.55; stroke-linejoin: round; }
+.gr-zoom-fora { fill: var(--gr-fundo); opacity: 0.55; }
+.gr-zoom-janela { fill: none; stroke: var(--texto-3); stroke-width: 1; }
+.gr-zoom-alca rect { fill: var(--aba-ativa, var(--superficie)); stroke: var(--borda); stroke-width: 1; filter: drop-shadow(0 1px 1.5px rgb(0 0 0 / 0.25)); }
+.gr-zoom-alca line { stroke: var(--texto-3); stroke-width: 1; stroke-linecap: round; }
+
+/* Dispersão */
+.gr-disp-ponto { fill: var(--texto); fill-opacity: 0.82; stroke: var(--gr-fundo); stroke-width: 1.5; transition: r 0.15s; }
+.gr-disp-destaque { fill: var(--aviso); fill-opacity: 1; }
+.gr-disp-ativo { fill-opacity: 1; stroke: var(--gr-fundo); stroke-width: 2.5; }
+.gr-com-mira .gr-disp-ponto:not(.gr-disp-ativo) { fill-opacity: 0.4; }
+.gr-tendencia { stroke: var(--texto-2); stroke-width: 1.5; stroke-dasharray: 6 4; stroke-linecap: round; }
+.gr-r {
+  position: absolute; top: 0; right: 0; pointer-events: none;
+  font-size: 0.72rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--texto);
+  background: var(--superficie-2); border-radius: 999px; padding: 2px 9px;
+}
+.gr-r span { color: var(--texto-3); font-weight: 500; }
+
+/* Barras por categoria */
+.gr-barra-cat { opacity: 1; }
+.gr-barra-grupo { transition: opacity 0.2s; }
+.gr-apagada { opacity: 0.35; }
+.gr-barra-fundo { fill: var(--texto); opacity: 0.06; }
+.gr-barra-foco { stroke: var(--texto-3); stroke-width: 1; }
+.gr-barra-nula { stroke: var(--texto-3); stroke-width: 2; stroke-linecap: round; }
+.gr-barra-valor { fill: var(--texto-2); font-size: 10.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.gr-barras .gr-svg { cursor: pointer; }
+
+/* Tela cheia: acima das folhas e da navegação; usa a largura toda quando o iPhone vira */
+.gr-tela-cheia {
+  position: fixed; inset: 0; z-index: 1000;
+  display: flex; flex-direction: column;
+  background: var(--fundo);
+  padding: calc(8px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
+  overscroll-behavior: contain;
+  animation: gr-aparecer 0.22s ease-out;
+}
+.gr-tela-cheia .gr { --gr-fundo: var(--fundo); }
+.gr-tela-cheia-cab { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; }
+.gr-tela-cheia-cab h2 { font-size: 1.05rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gr-fechar { width: 40px; height: 40px; border-radius: 999px; }
+.gr-tela-cheia-corpo { flex: 1; min-height: 0; position: relative; }
+html.gr-tela-cheia-aberta, html.gr-tela-cheia-aberta body { overflow: hidden; }
+
+/* Movimento: desenho das linhas, barras crescendo, áreas surgindo (nada disso com movimento reduzido) */
+@keyframes gr-desenhar { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes gr-surgir { from { opacity: 0; } }
+@keyframes gr-crescer { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes gr-aparecer { from { opacity: 0; transform: scale(0.985); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: no-preference) {
+  .gr-desenhar { stroke-dasharray: 1 1; stroke-dashoffset: 1; animation: gr-desenhar 0.9s cubic-bezier(0.33, 0.9, 0.3, 1) 0.05s both; }
+  .gr-surgir { animation: gr-surgir 0.6s ease-out 0.2s both; }
+  .gr-surgir-tarde { animation: gr-surgir 0.3s ease-out 0.8s both; }
+  .gr-crescer { transform-box: fill-box; transform-origin: 50% 100%; animation: gr-crescer 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gr-tela-cheia { animation: none; }
+  .gr-barra-grupo, .gr-barra, .gr-disp-ponto { transition: none; }
+}
