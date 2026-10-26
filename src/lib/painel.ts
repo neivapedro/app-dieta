@@ -162,6 +162,10 @@ export interface EntradaDestaques {
   periodoAdesao?: string;
   /** Meta mais adiantada (para um destaque de progresso) */
   meta: { nome: string; fracao: number; alcancada: boolean } | null;
+  /** Como dizer o período das variações do corpo (padrão "desde o início"; filtro da Análise: "nas últimas 4 semanas") */
+  desde?: string;
+  /** De onde vem o ritmo (padrão "das últimas 4 semanas") */
+  periodoRitmo?: string;
 }
 
 /**
@@ -172,25 +176,26 @@ export interface EntradaDestaques {
 export function destaques(e: EntradaDestaques): Destaque[] {
   const lista: Destaque[] = [];
   const passou = (v: number | null, mdc: number) => v !== null && Math.abs(v) >= mdc - 1e-9;
+  const desde = e.desde ?? 'desde o início';
 
   if (passou(e.cintura, MDC.cintura_cm)) {
-    lista.push({ tom: e.cintura! < 0 ? 'bom' : 'atencao', texto: `Cintura ${sinal(e.cintura, 1, ' cm')} desde o início.` });
+    lista.push({ tom: e.cintura! < 0 ? 'bom' : 'atencao', texto: `Cintura ${sinal(e.cintura, 1, ' cm')} ${desde}.` });
   }
   if (passou(e.gorda, MDC.massa_gorda_kg)) {
-    lista.push({ tom: e.gorda! < 0 ? 'bom' : 'atencao', texto: `Massa gorda ${sinal(e.gorda, 1, ' kg')} desde o início.` });
+    lista.push({ tom: e.gorda! < 0 ? 'bom' : 'atencao', texto: `Massa gorda ${sinal(e.gorda, 1, ' kg')} ${desde}.` });
   }
   if (e.magra !== null) {
-    if (passou(e.magra, MDC.massa_magra_kg) && e.magra < 0) lista.push({ tom: 'atencao', texto: `Massa magra ${sinal(e.magra, 1, ' kg')} desde o início: acima do erro da fita.` });
+    if (passou(e.magra, MDC.massa_magra_kg) && e.magra < 0) lista.push({ tom: 'atencao', texto: `Massa magra ${sinal(e.magra, 1, ' kg')} ${desde}: acima do erro da fita.` });
     else if (e.gorda !== null && e.gorda < 0) lista.push({ tom: 'bom', texto: 'Massa magra preservada: a variação está dentro do erro da fita.' });
   }
   if (e.ritmo) {
     const p = `${num(e.ritmo.pct, 2)}% do peso por semana`;
     if (e.ritmo.faixa === 'ideal') lista.push({ tom: 'bom', texto: `Ritmo de ${p}: na faixa que preserva a massa magra (0,5 a 1%).` });
     else if (e.ritmo.faixa === 'rapido') lista.push({ tom: 'atencao', texto: `Ritmo de ${p}: acima de 1%, a massa magra tende a sofrer mais.` });
-    else if (e.ritmo.faixa === 'ganho') lista.push({ tom: 'atencao', texto: 'Peso subindo na tendência das últimas 4 semanas.' });
+    else if (e.ritmo.faixa === 'ganho') lista.push({ tom: 'atencao', texto: `Peso subindo na tendência ${e.periodoRitmo ?? 'das últimas 4 semanas'}.` });
     else lista.push({ tom: 'info', texto: `Ritmo de ${p}: abaixo de 0,5% por semana.` });
   } else if (e.peso !== null && passou(e.peso, MDC.peso_kg)) {
-    lista.push({ tom: e.peso < 0 ? 'bom' : 'atencao', texto: `Peso ${sinal(e.peso, 1, ' kg')}${e.pesoPct !== null ? ` (${sinal(e.pesoPct * 100, 1, '%')})` : ''} desde o início.` });
+    lista.push({ tom: e.peso < 0 ? 'bom' : 'atencao', texto: `Peso ${sinal(e.peso, 1, ' kg')}${e.pesoPct !== null ? ` (${sinal(e.pesoPct * 100, 1, '%')})` : ''} ${desde}.` });
   }
   if (e.gorduraDaPerda !== null && e.gorduraDaPerda < 0.75) {
     lista.push({ tom: 'atencao', texto: `Só ${pct(Math.max(e.gorduraDaPerda, 0), 0)} da perda recente veio de gordura.` });

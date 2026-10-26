@@ -1,10 +1,17 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import '../estilos/analise.css';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ListaDecisoes } from '../componentes/decisoes';
 import { prepararFotosPdf, useFotos } from '../componentes/fotos';
 import { LinhaQualidade, useQualidade } from '../componentes/composicao';
-import { Anel, BarraMeta, Kpi, LinhaDoses, MapaCalor, Pilulas, tomAdesao, Variacoes } from '../componentes/painel';
-import { Bloco, SemGrafico, Vazio } from '../componentes/ui';
+import { Anel, BarraMeta, LinhaDoses, MapaCalor, Pilulas, tomAdesao, Variacoes } from '../componentes/painel';
+import { Bloco, Vazio } from '../componentes/ui';
+import { GraficoBarrasSemana, ProvedorSincronia, type Marco, type PontoSerie, type Serie } from '../componentes/grafico';
+import { BarraPeriodo, type DestaqueAnalise } from '../componentes/analise-filtro';
+import { FaixaFases, GraficoJanela, LinhaDoTempo } from '../componentes/analise-graficos';
+import { BarrasRitmo, FolhaMetrica, KpiToque, type DetalheMetrica } from '../componentes/analise-detalhe';
+import { GraficoPrevisao } from '../componentes/analise-previsao';
+import { Padroes } from '../componentes/analise-padroes';
 import { useDados } from '../dados/contexto';
 import { useAlimentos } from '../dados/useAlimentos';
 import { useCalculos } from '../dados/useCalculos';
@@ -14,7 +21,7 @@ import { analisarGeral, colunasNausea, composicaoPorFase, rotuloBloco, sintomasP
 import { fasePos } from '../lib/projeto';
 import { aguaSemana, mediaSono7, SONO_MINIMO_H, sonoPorFase, TEXTO_SONO_BAIXO } from '../lib/bemestar';
 import { descreverFaseAtual, textoProximaDoseRelatorio } from '../lib/ciclo';
-import { ritmoPercentual, tendenciaMedidas, tendenciaPeso, textoQualidade } from '../lib/conferencia';
+import { qualidadePerda, ritmoPercentual, tendenciaMedidas, tendenciaPeso, textoQualidade } from '../lib/conferencia';
 import {
   colunasQuadro,
   montarQuadro,
@@ -30,7 +37,7 @@ import {
   toleranciaIntervalo,
 } from '../lib/consulta';
 import { dataPorExtenso, diferencaDias, formatarData, somarDias } from '../lib/datas';
-import { curto, decisoesPorDia, marcosDasDecisoes } from '../lib/registroDecisoes';
+import { curto, decisoesPorDia } from '../lib/registroDecisoes';
 import { historicoAlertas } from '../lib/seguranca';
 import { estimarTamanhoPdf, montarFotosPdf, textoTamanho } from '../lib/fotos';
 import type { ImagemPdf, ModeloRelatorio } from '../lib/relatorioPdf';
@@ -41,12 +48,10 @@ import { conselhoConferencia, dietaNaTendencia, textoDietaSemana, textoPlanoSegu
 import { adesaoPeriodo, destaques, habitosPorSemana, picoNausea, progressoMeta, serieMetrica, type AdesaoPeriodo, type ChavePainel, type ProgressoMeta, type Taxa } from '../lib/painel';
 import { diaCurto } from '../lib/rotina';
 import { aderenciaDoTreino, formatarTempo, textoCorridasPeriodo } from '../lib/treino';
-
-const GraficoPesoDose = lazy(() => import('../componentes/graficos').then((m) => ({ default: m.GraficoPesoDose })).catch(() => ({ default: SemGrafico })));
-const GraficoMetrica = lazy(() => import('../componentes/graficos').then((m) => ({ default: m.GraficoMetrica })).catch(() => ({ default: SemGrafico })));
-const GraficoMassas = lazy(() => import('../componentes/graficos').then((m) => ({ default: m.GraficoMassas })).catch(() => ({ default: SemGrafico })));
-const GraficoTreinoSemanas = lazy(() => import('../componentes/graficos').then((m) => ({ default: m.GraficoTreinoSemanas })).catch(() => ({ default: SemGrafico })));
-const GraficoBemEstar = lazy(() => import('../componentes/graficos').then((m) => ({ default: m.GraficoBemEstar })).catch(() => ({ default: SemGrafico })));
+import { fasesNoPeriodo, fimDoBloco, lerPeriodo, noPeriodo, opcoesPeriodo, resumoPeriodo, rotuloFaseCurto } from '../lib/analise-periodo';
+import { preverMeta } from '../lib/analise-previsao';
+import { marcosAnalise } from '../lib/analise-detalhe';
+import { dadosCorrelacao, filtrarPeriodo } from '../lib/correlacoes';
 
 type AbaAnalise = 'geral' | 'corpo' | 'remedio' | 'habitos' | 'relatorio';
 const ABAS_ANALISE: [AbaAnalise, string][] = [
@@ -147,12 +152,23 @@ export function Analise() {
   // A aba fica no endereço (?aba=corpo): voltar para a Análise reabre a mesma
   const [params, setParams] = useSearchParams();
   const aba = (ABAS_ANALISE.find(([k]) => k === params.get('aba'))?.[0] ?? 'geral') as AbaAnalise;
+  // O período do filtro também fica no endereço (?periodo=4s); a aba e o período não se apagam um ao outro
+  const mudarParams = (aba: AbaAnalise, periodo: string | null) => {
+    const novo: Record<string, string> = {};
+    if (aba !== 'geral') novo.aba = aba;
+    if (periodo && periodo !== 'ciclo') novo.periodo = periodo;
+    setParams(novo, { replace: true });
+  };
   const setAba = (a: AbaAnalise) => {
-    setParams(a === 'geral' ? {} : { aba: a }, { replace: true });
+    mudarParams(a, params.get('periodo'));
     window.scrollTo({ top: 0 });
   };
-  const [periodoAdesao, setPeriodoAdesao] = useState<'7' | '28' | 'ciclo'>('28');
   const [metrica, setMetrica] = useState<ChavePainel>('cintura_cm');
+  // Destaque cruzado (bloco de dose, semana ou dia) e o detalhe de um KPI aberto
+  const [destaque, setDestaque] = useState<DestaqueAnalise | null>(null);
+  const [folha, setFolha] = useState<ChavePainel | 'ritmo' | null>(null);
+  const fecharFolha = useCallback(() => setFolha(null), []);
+  const [metaPrev, setMetaPrev] = useState<'peso' | 'cintura'>('cintura');
   if (!resumo) return null;
 
   const datasAplic = resumo.linhas.map((l) => l.aplicacao.data);
@@ -515,28 +531,67 @@ export function Analise() {
   const semanaCiclo = diaCiclo ? Math.min(Math.ceil(diaCiclo / 7), semanasTotal ?? Infinity) : null;
   const p0 = resumo.proxima;
 
-  // Indicadores: valor de agora, variação desde o início e a linha das últimas medições
-  const difBf = ini && atu && ini.bf !== null && atu.bf !== null ? atu.bf - ini.bf : null;
-  const ultimosValores = (k: ChavePainel) => serieMetrica(composicoes, k).slice(-10).map((x) => x.valor);
+  // Filtro de período (o PDF não é filtrado): no "Ciclo", as mesmas contas de sempre
+  const ontem = somarDias(hoje, -1);
+  const primeiraDose = datasAplic[0] ?? null;
+  const opcoesPer = opcoesPeriodo({ hoje, inicio: primeiraDose ?? ciclo?.data_inicio ?? hoje, fases });
+  const per = lerPeriodo(params.get('periodo'), opcoesPer);
+  const emCiclo = per.chave === 'ciclo';
+  const janela = emCiclo ? null : { de: per.de, ate: per.ate };
+  const setPeriodo = (chave: string) => mudarParams(aba, chave);
+  const rp = emCiclo ? null : resumoPeriodo({ serie, composicoes, de: per.de, ate: per.ate });
+  /** Medição de referência e a do fim do período (no ciclo: início e agora) */
+  const iniP: Composicao | null = emCiclo ? ini : rp!.comp.ini;
+  const atuP: Composicao | null = emCiclo ? atu : rp!.comp.comVariacao ? rp!.comp.fim : null;
+  const agoraP: Composicao | null = emCiclo ? (atu ?? ini) : (rp!.comp.fim ?? rp!.comp.ini);
+  const difP = (k: 'cintura_cm' | 'massa_gorda_kg' | 'massa_magra_kg' | 'bf') =>
+    iniP && atuP && iniP[k] !== null && atuP[k] !== null ? (atuP[k] as number) - (iniP[k] as number) : null;
+  const pesoAgoraP = emCiclo ? (geral.peso_atual?.peso_kg ?? null) : (rp!.peso.fim?.peso_kg ?? null);
+  const varPesoP = emCiclo ? geral.variacao_kg : rp!.variacao_kg;
+  const varPesoPctP = emCiclo ? geral.variacao_percentual : rp!.variacao_percentual;
+  const tendP = emCiclo ? tend : rp!.tendencia;
+  const ritmoP = emCiclo ? ritmo : tendP && pesoAgoraP ? ritmoPercentual(tendP.kg_semana, pesoAgoraP) : null;
+  const pesagensP = emCiclo ? pesagens : rp!.fonte;
+  const qualidadeP = emCiclo ? qualidade : qualidadePerda(noPeriodo(composicoes, per.de, per.ate, true), 99);
+  const fasesP = emCiclo ? fases.map((_, i) => i) : fasesNoPeriodo(fases, per.de, per.ate);
+  const diarioP = emCiclo ? diario : diario.filter((r) => r.data >= per.de && r.data <= per.ate);
+  const sintomasP = emCiclo ? sintomas : sintomasPorFase(fases, datasAplic, diarioP, fimFases, ciclo?.intervalo_dias);
+  const destaqueP = destaque ? { de: destaque.de, ate: destaque.ate } : null;
+
+  // Indicadores: valor no fim do período, variação no período e a linha das medições
+  const difBf = difP('bf');
+  const ultimosValores = (k: ChavePainel) => (emCiclo ? serieMetrica(composicoes, k).slice(-10) : noPeriodo(serieMetrica(composicoes, k), per.de, per.ate, true)).map((x) => x.valor);
   const pesosNormais = serie.filter((x) => !x.atipica);
+  const valoresPeso = (emCiclo ? pesosNormais.slice(-14) : noPeriodo(pesosNormais, per.de, per.ate, true)).map((x) => x.peso_kg);
   const FAIXA_RITMO = { ideal: 'na faixa de 0,5 a 1%/sem', rapido: 'acima de 1%/sem', lento: 'abaixo de 0,5%/sem', ganho: 'peso subindo' } as const;
 
-  // Metas do projeto (definidas na aba Treino)
+  // Metas do projeto (definidas na aba Treino): do início do projeto até o fim do período
   const metas = perfil?.metas_projeto ?? null;
   const metaGorda = metas?.peso_kg && metas?.bf ? (metas.peso_kg * metas.bf) / 100 : null;
   const metaMagra = metas?.peso_kg && metas?.bf ? metas.peso_kg * (1 - metas.bf / 100) : null;
   const pesoInicio = geral.peso_inicial?.peso_kg ?? ini?.peso_kg ?? null;
   const progressos = [
-    { nome: 'Peso', p: progressoMeta(pesoInicio, geral.peso_atual?.peso_kg, metas?.peso_kg), fmt: (n: number) => kg(n) },
-    { nome: 'Cintura', p: progressoMeta(ini?.cintura_cm, atu?.cintura_cm, metas?.cintura_cm), fmt: (n: number) => cm(n) },
-    { nome: '% de gordura', p: progressoMeta(ini?.bf, atu?.bf, metas?.bf), fmt: (n: number) => pp(n) },
-    { nome: 'Massa gorda', p: progressoMeta(ini?.massa_gorda_kg, atu?.massa_gorda_kg, metaGorda), fmt: (n: number) => kg(n) },
+    { nome: 'Peso', p: progressoMeta(pesoInicio, pesoAgoraP, metas?.peso_kg), fmt: (n: number) => kg(n) },
+    { nome: 'Cintura', p: progressoMeta(ini?.cintura_cm, agoraP?.cintura_cm, metas?.cintura_cm), fmt: (n: number) => cm(n) },
+    { nome: '% de gordura', p: progressoMeta(ini?.bf, agoraP?.bf, metas?.bf), fmt: (n: number) => pp(n) },
+    { nome: 'Massa gorda', p: progressoMeta(ini?.massa_gorda_kg, agoraP?.massa_gorda_kg, metaGorda), fmt: (n: number) => kg(n) },
   ].filter((x): x is { nome: string; p: ProgressoMeta; fmt: (n: number) => string } => x.p !== null);
   const maisAdiantada = [...progressos].sort((a, b) => b.p.fracao - a.p.fracao)[0];
 
+  // Previsão até a meta (peso e cintura): a tendência de hoje, sem filtro; some com o projeto encerrado
+  const fimProjeto = periodoCiclo && periodoCiclo.fim >= hoje ? periodoCiclo.fim : null;
+  const pontosPesoKpi = composicoes.filter((c) => !c.atipica).length >= 2 ? composicoes.map((c) => ({ data: c.data, valor: c.peso_kg, atipico: !!c.atipica })) : serie.map((p) => ({ data: p.data, valor: p.peso_kg, atipico: !!p.atipica }));
+  const normaisDe = (l: { data: string; valor: number | null; atipico?: boolean }[]) => l.filter((p) => !p.atipico && p.valor !== null).map((p) => ({ data: p.data, valor: p.valor as number }));
+  const pontosCintura = composicoes.map((c) => ({ data: c.data, valor: c.cintura_cm, atipico: !!c.atipica }));
+  const prevPeso = fimProjeto && metas?.peso_kg ? preverMeta(normaisDe(pontosPesoKpi), { meta: metas.peso_kg, hoje, fim: fimProjeto, piso: 0.5 }) : null;
+  const prevCintura = fimProjeto && metas?.cintura_cm ? preverMeta(normaisDe(pontosCintura), { meta: metas.cintura_cm, hoje, fim: fimProjeto, piso: 0.5 }) : null;
+  const previsoes = [
+    ...(prevCintura && !prevCintura.alcancada ? [{ chave: 'cintura' as const, rotulo: 'Cintura', p: prevCintura, pontos: pontosCintura, unidade: 'cm' }] : []),
+    ...(prevPeso && !prevPeso.alcancada ? [{ chave: 'peso' as const, rotulo: 'Peso', p: prevPeso, pontos: pontosPesoKpi, unidade: 'kg' }] : []),
+  ];
+  const previsaoSel = previsoes.find((x) => x.chave === metaPrev) ?? previsoes[0] ?? null;
+
   // Adesão aos hábitos: até ontem (hoje ainda está em aberto), a partir da 1ª dose
-  const ontem = somarDias(hoje, -1);
-  const primeiraDose = datasAplic[0] ?? null;
   const adesao = (dias: number | null) => {
     if (!primeiraDose) return null;
     const de0 = dias === null ? primeiraDose : somarDias(hoje, -dias);
@@ -544,19 +599,28 @@ export function Analise() {
   };
   const curtoCiclo = !!primeiraDose && diferencaDias(primeiraDose, hoje) <= 28;
   const adesao28 = adesao(28);
-  const adesaoSel = adesao(periodoAdesao === 'ciclo' ? null : Number(periodoAdesao));
+  // Adesão no período do filtro (o ciclo: desde a 1ª dose)
+  const adesaoP = (() => {
+    if (!primeiraDose) return null;
+    if (emCiclo) return adesao(null);
+    const de0 = per.de < primeiraDose ? primeiraDose : per.de;
+    const ate0 = per.ate < ontem ? per.ate : ontem;
+    return adesaoPeriodo({ diario, treinos: treino ? treinos : null, de: de0, ate: ate0, metaAgua: (d) => metaAguaDe(d).meta });
+  })();
   const listaDestaques = destaques({
-    cintura: dif('cintura_cm'),
-    gorda: dif('massa_gorda_kg'),
-    magra: dif('massa_magra_kg'),
-    peso: geral.variacao_kg,
-    pesoPct: geral.variacao_percentual,
-    ritmo,
-    gorduraDaPerda: qualidade && !qualidade.sem_perda ? qualidade.gordura : null,
-    nausea: picoNausea(sintomas, colNausea),
-    adesao: adesao28,
-    periodoAdesao: curtoCiclo ? 'desde o início' : 'nas últimas 4 semanas',
+    cintura: difP('cintura_cm'),
+    gorda: difP('massa_gorda_kg'),
+    magra: difP('massa_magra_kg'),
+    peso: varPesoP,
+    pesoPct: varPesoPctP,
+    ritmo: ritmoP,
+    gorduraDaPerda: qualidadeP && !qualidadeP.sem_perda ? qualidadeP.gordura : null,
+    nausea: picoNausea(sintomasP, colNausea),
+    // No ciclo, os hábitos das últimas 4 semanas (como sempre); com filtro, os do período
+    adesao: emCiclo ? adesao28 : adesaoP,
+    periodoAdesao: emCiclo ? (curtoCiclo ? 'desde o início' : 'nas últimas 4 semanas') : per.quando,
     meta: maisAdiantada ? { nome: maisAdiantada.nome.toLowerCase(), fracao: maisAdiantada.p.fracao, alcancada: maisAdiantada.p.alcancada } : null,
+    ...(emCiclo ? {} : { desde: per.quando, periodoRitmo: 'do período' }),
   });
 
   // Semana a semana (as mesmas linhas do PDF)
@@ -573,15 +637,79 @@ export function Analise() {
       })
     : [];
   const rotuloSemana = (s: string) => formatarData(s, true).slice(0, 5);
-  const treinoSemanas = linhasSemana.filter((l) => l.treino !== null && l.dias > 0).map((l) => ({ rotulo: rotuloSemana(l.segunda), treino: l.treino!, cardio: l.cardio!, dias: l.dias }));
+  // Semanas que tocam o período do filtro
+  const naJanela = (segunda: string) => emCiclo || (segunda <= per.ate && somarDias(segunda, 6) >= per.de);
+  const treinoSemanas = linhasSemana.filter((l) => l.treino !== null && l.dias > 0 && naJanela(l.segunda));
   const habitos = habitosPorSemana(
     diario,
     linhasSemana.map((l) => l.segunda),
     hoje,
     (d) => metaAguaDe(d).meta,
-  );
-  const bemEstar = habitos.map((h) => ({ rotulo: rotuloSemana(h.segunda), agua: h.agua_l, meta: h.agua_meta_l, sono: h.sono_h }));
+  ).filter((h) => naJanela(h.segunda));
   const temBemEstar = habitos.some((h) => h.agua_l !== null || h.sono_h !== null);
+  const temSonoSemana = habitos.some((h) => h.sono_h !== null);
+  const temAguaSemana = habitos.some((h) => h.agua_l !== null);
+  const destacarSemana = (segunda: string | null) =>
+    setDestaque(segunda ? { chave: segunda, rotulo: `semana de ${rotuloSemana(segunda)}`, de: segunda, ate: somarDias(segunda, 6) } : null);
+  const semanaSel = destaque && linhasSemana.some((l) => l.segunda === destaque.chave) ? destaque.chave : null;
+
+  // Blocos de dose: rótulo curto, período e destaque ao tocar
+  const faseInfo = fases.map((f, i) => ({ chave: `f${i + 1}`, rotulo: rotuloFaseCurto(fases, i), de: f.inicio, ate: fimDoBloco(fases, i), doses: f.doses }));
+  const destacarFase = (chave: string | null) => {
+    const f = faseInfo.find((x) => x.chave === chave);
+    setDestaque(f ? { chave: f.chave, rotulo: `fase ${f.rotulo}`, de: f.de, ate: f.ate } : null);
+  };
+  const faseSel = destaque && faseInfo.some((f) => f.chave === destaque.chave) ? destaque.chave : null;
+  // Linha de tabela de fase tocável (o botão do rótulo dá o acesso pelo teclado)
+  const linhaFase = (i: number) => ({
+    className: `linha-tocavel${faseSel === faseInfo[i].chave ? ' selecionada' : ''}`,
+    onClick: () => destacarFase(faseSel === faseInfo[i].chave ? null : faseInfo[i].chave),
+  });
+  const botaoFase = (i: number, rotulo: ReactNode) => (
+    <button type="button" className="linha-fase-botao" aria-pressed={faseSel === faseInfo[i].chave} aria-label={`Destacar a fase ${faseInfo[i].rotulo} nos gráficos`}>
+      {rotulo}
+    </button>
+  );
+
+  // Séries dos gráficos de tempo e os marcos (doses, decisões, anotações, medições)
+  const marcos: Marco[] = marcosAnalise({
+    doses: resumo.linhas.map((l) => ({ data: l.aplicacao.data, dose_mg: l.aplicacao.dose_mg })),
+    decisoes: ciclo?.decisoes ?? undefined,
+    registros: registroDecisoes,
+    medicoes: composicoes,
+  });
+  const pontosPeso: PontoSerie[] = serie.map((p) => ({ data: p.data, valor: p.peso_kg, ...(p.atipica ? { atipico: true } : {}) }));
+  const pontosDose: PontoSerie[] = resumo.linhas.length
+    ? [
+        ...resumo.linhas.map((l) => ({ data: l.aplicacao.data, valor: l.aplicacao.dose_mg })),
+        // O degrau vai até hoje (ou até o fim do período do remédio)
+        { data: fimRemedio && fimRemedio < hoje ? fimRemedio : hoje, valor: resumo.linhas[resumo.linhas.length - 1].aplicacao.dose_mg },
+      ]
+    : [];
+  const seriesPesoDose: Serie[] = [
+    { id: 'peso', nome: 'Peso', tipo: 'area', pontos: pontosPeso, cor: 'texto', unidade: 'kg', casas: 1 },
+    ...(pontosDose.length ? [{ id: 'dose', nome: 'Dose', tipo: 'degrau' as const, pontos: pontosDose, cor: 'aviso' as const, eixo: 'dir' as const, unidade: 'mg', casas: 2 }] : []),
+  ];
+  const diasDiario = [...diario].filter((r) => r.data <= hoje).sort((a, b) => a.data.localeCompare(b.data));
+  const pontosNausea: PontoSerie[] = diasDiario.filter((r) => r.nausea !== null).map((r) => ({ data: r.data, valor: r.nausea }));
+  const pontosSono: PontoSerie[] = diasDiario.filter((r) => typeof r.sono_h === 'number').map((r) => ({ data: r.data, valor: r.sono_h as number }));
+
+  // Correlações (Padrões, em Hábitos) no período do filtro
+  const dadosPadroes = (() => {
+    if (!primeiraDose) return null;
+    const d = dadosCorrelacao({
+      inicio: primeiraDose,
+      hoje,
+      aplicacoes: resumo.linhas.map((l) => l.aplicacao),
+      serie,
+      composicoes,
+      diario,
+      treinos: treino ? treinos : null,
+      periodosTreino: treino ? [treino.projeto, ...(treino.placarPos ? [{ inicio: treino.inicio, fim: treino.fim }] : [])] : undefined,
+      metaAgua: (dd) => metaAguaDe(dd).meta,
+    });
+    return emCiclo ? d : filtrarPeriodo(d, per.de, per.ate);
+  })();
 
   // Gráfico de uma medida (aba Corpo)
   const OPCOES_METRICA: [ChavePainel, string][] = [
@@ -591,29 +719,76 @@ export function Analise() {
     ['massa_gorda_kg', 'Gorda'],
     ['massa_magra_kg', 'Magra'],
   ];
-  const INFO_METRICA: Record<ChavePainel, { nome: string; unidade: string; meta: number | null | undefined; inicio: number | null | undefined }> = {
-    cintura_cm: { nome: 'Cintura', unidade: ' cm', meta: metas?.cintura_cm, inicio: ini?.cintura_cm },
-    peso_kg: { nome: 'Peso', unidade: ' kg', meta: metas?.peso_kg, inicio: pesoInicio },
-    bf: { nome: '% de gordura', unidade: '%', meta: metas?.bf, inicio: ini?.bf },
-    massa_gorda_kg: { nome: 'Massa gorda', unidade: ' kg', meta: metaGorda, inicio: ini?.massa_gorda_kg },
-    massa_magra_kg: { nome: 'Massa magra', unidade: ' kg', meta: metaMagra, inicio: ini?.massa_magra_kg },
+  const INFO_METRICA: Record<ChavePainel, { nome: string; unidade: string; meta: number | null | undefined; inicio: number | null | undefined; mdc: number; menorMelhor: boolean }> = {
+    cintura_cm: { nome: 'Cintura', unidade: 'cm', meta: metas?.cintura_cm, inicio: ini?.cintura_cm, mdc: MDC.cintura_cm, menorMelhor: true },
+    peso_kg: { nome: 'Peso', unidade: 'kg', meta: metas?.peso_kg, inicio: pesoInicio, mdc: MDC.peso_kg, menorMelhor: true },
+    bf: { nome: '% de gordura', unidade: '%', meta: metas?.bf, inicio: ini?.bf, mdc: MDC.bf, menorMelhor: true },
+    massa_gorda_kg: { nome: 'Massa gorda', unidade: 'kg', meta: metaGorda, inicio: ini?.massa_gorda_kg, mdc: MDC.massa_gorda_kg, menorMelhor: true },
+    massa_magra_kg: { nome: 'Massa magra', unidade: 'kg', meta: metaMagra, inicio: ini?.massa_magra_kg, mdc: MDC.massa_magra_kg, menorMelhor: false },
   };
-  const pontosMetrica = metrica === 'peso_kg' ? pesosNormais.map((x) => ({ data: x.data, valor: x.peso_kg })) : serieMetrica(composicoes, metrica);
+  /** Histórico de uma medida (atípicas como círculo vazado) */
+  const pontosDe = (k: ChavePainel): PontoSerie[] =>
+    k === 'peso_kg' ? pontosPesoKpi : composicoes.filter((c) => c[k] !== null).map((c) => ({ data: c.data, valor: c[k] as number, ...(c.atipica ? { atipico: true } : {}) }));
+  const pontosMetrica = metrica === 'peso_kg' ? pontosPeso : pontosDe(metrica);
   const comMassas = composicoes.filter((c) => !c.atipica && c.massa_magra_kg !== null && c.massa_gorda_kg !== null).length >= 2;
+  const seriesMassas: Serie[] = [
+    { id: 'peso', nome: 'Peso', tipo: 'area', pontos: composicoes.filter((c) => !c.atipica && c.massa_magra_kg !== null).map((c) => ({ data: c.data, valor: c.peso_kg })), cor: 'texto', unidade: 'kg', casas: 1 },
+    { id: 'magra', nome: 'Massa magra', tipo: 'area', pontos: composicoes.filter((c) => !c.atipica && c.massa_magra_kg !== null).map((c) => ({ data: c.data, valor: c.massa_magra_kg })), cor: 'bom', unidade: 'kg', casas: 1 },
+    { id: 'gorda', nome: 'Massa gorda (eixo dir.)', tipo: 'linha', tracejado: true, pontos: composicoes.filter((c) => !c.atipica && c.massa_gorda_kg !== null).map((c) => ({ data: c.data, valor: c.massa_gorda_kg })), cor: 'aviso', eixo: 'dir', unidade: 'kg', casas: 1 },
+  ];
 
-  const variacoes = ini
+  const variacoes = iniP
     ? [
-        { nome: 'Cintura', delta: dif('cintura_cm'), texto: sinal(dif('cintura_cm'), 1, ' cm'), classe: corVariacao(dif('cintura_cm'), true, MDC.cintura_cm), escala: 4 * MDC.cintura_cm },
+        { nome: 'Cintura', delta: difP('cintura_cm'), texto: sinal(difP('cintura_cm'), 1, ' cm'), classe: corVariacao(difP('cintura_cm'), true, MDC.cintura_cm), escala: 4 * MDC.cintura_cm },
         { nome: '% gordura', delta: difBf, texto: sinal(difBf, 1, ' p.p.'), classe: corVariacao(difBf, true, MDC.bf), escala: 4 * MDC.bf },
-        { nome: 'Massa gorda', delta: dif('massa_gorda_kg'), texto: sinal(dif('massa_gorda_kg'), 1, ' kg'), classe: corVariacao(dif('massa_gorda_kg'), true, MDC.massa_gorda_kg), escala: 4 * MDC.massa_gorda_kg },
-        { nome: 'Massa magra', delta: dif('massa_magra_kg'), texto: sinal(dif('massa_magra_kg'), 1, ' kg'), classe: corVariacao(dif('massa_magra_kg'), false, MDC.massa_magra_kg), escala: 4 * MDC.massa_magra_kg },
-        { nome: 'Peso', delta: geral.variacao_kg, texto: sinal(geral.variacao_kg, 1, ' kg'), classe: corVariacao(geral.variacao_kg, true, MDC.peso_kg), escala: 4 * MDC.peso_kg },
+        { nome: 'Massa gorda', delta: difP('massa_gorda_kg'), texto: sinal(difP('massa_gorda_kg'), 1, ' kg'), classe: corVariacao(difP('massa_gorda_kg'), true, MDC.massa_gorda_kg), escala: 4 * MDC.massa_gorda_kg },
+        { nome: 'Massa magra', delta: difP('massa_magra_kg'), texto: sinal(difP('massa_magra_kg'), 1, ' kg'), classe: corVariacao(difP('massa_magra_kg'), false, MDC.massa_magra_kg), escala: 4 * MDC.massa_magra_kg },
+        { nome: 'Peso', delta: varPesoP, texto: sinal(varPesoP, 1, ' kg'), classe: corVariacao(varPesoP, true, MDC.peso_kg), escala: 4 * MDC.peso_kg },
       ]
     : [];
 
-  const nauseaVazia = sintomas.every((s) => s.nausea_por_dia.every((n) => n === null)) && !temSintomas;
-  const rotuloFaseCurto = (i: number) => `${num(fases[i].dose_mg, 2)} mg${fases[i].fase_indice !== null ? ` · F${fases[i].fase_indice! + 1}` : ''}`;
+  const nauseaVazia = sintomasP.every((s) => s.nausea_por_dia.every((n) => n === null)) && !temSintomas;
+  const rotuloFaseCurto2 = (i: number) => `${num(fases[i].dose_mg, 2)} mg${fases[i].fase_indice !== null ? ` · F${fases[i].fase_indice! + 1}` : ''}`;
 
+  // Detalhe do KPI tocado
+  const fasesDetalhe = faseInfo.map((f) => ({ rotulo: f.rotulo, de: f.de, ate: f.ate }));
+  const detalhe: DetalheMetrica | null = (() => {
+    if (!folha) return null;
+    const comoLerPeso = 'Com 2 medições ou mais, o peso vem das medições (em jejum, às segundas), como no resumo; senão, das pesagens do Diário.';
+    if (folha === 'ritmo' || folha === 'peso_kg') {
+      return {
+        titulo: folha === 'ritmo' ? 'Ritmo do peso' : 'Peso',
+        nome: 'peso',
+        pontos: pontosPesoKpi,
+        unidade: 'kg',
+        casas: 1,
+        menorMelhor: true,
+        mdc: MDC.peso_kg,
+        inicio: pesoInicio,
+        meta: metas?.peso_kg,
+        previsao: prevPeso,
+        comoLer:
+          folha === 'ritmo'
+            ? `Ritmo: tendência (regressão) das ${pesagensP} ${emCiclo ? 'das últimas 4 semanas' : 'do período'}, em % do peso por semana; 0,5 a 1% preserva melhor a massa magra. ${comoLerPeso}`
+            : comoLerPeso,
+        extra: folha === 'ritmo' ? <BarrasRitmo pontos={normaisDe(pontosPesoKpi)} /> : undefined,
+      };
+    }
+    const info = INFO_METRICA[folha];
+    return {
+      titulo: info.nome,
+      nome: info.nome.toLowerCase(),
+      pontos: pontosDe(folha),
+      unidade: info.unidade,
+      casas: 1,
+      menorMelhor: info.menorMelhor,
+      mdc: info.mdc,
+      inicio: info.inicio,
+      meta: info.meta,
+      previsao: folha === 'cintura_cm' ? prevCintura : null,
+      comoLer: `Medições com fita, em jejum, às segundas (método da Marinha dos EUA para % de gordura e massas).`,
+    };
+  })();
   const anelDe = (rotulo: string, t: Taxa | null, unidade: string) =>
     t ? <Anel key={rotulo} rotulo={rotulo} fracao={t.fracao} tom={tomAdesao(t.fracao)} detalhe={t.total ? `${num(t.feito, t.feito % 1 ? 1 : 0)} de ${t.total} ${unidade}` : 'sem registro'} /> : null;
   const aneis = (a: AdesaoPeriodo | null) =>
@@ -681,8 +856,21 @@ export function Analise() {
     </section>
   );
 
+  const kpiDe = (rotulo: string, chave: ChavePainel, valor: number | null | undefined, fmt: (n: number) => string, variacao: string, classe: string, valores: number[]) => (
+    <KpiToque
+      rotulo={rotulo}
+      valor={valor == null ? '–' : fmt(valor)}
+      {...(valor != null ? { numero: { valor, formato: fmt } } : {})}
+      variacao={variacao}
+      classe={classe}
+      valores={valores}
+      aoAbrir={() => setFolha(chave)}
+    />
+  );
+  const intervaloIniAtu = iniP ? `${formatarData(iniP.data, true)} → ${atuP ? formatarData(atuP.data, true) : 'sem nova medição'}` : 'Medições com fita, em jejum';
+
   return (
-    <div className="pilha relatorio">
+    <div className="pilha relatorio analise">
       <div className="so-impressao">
         <h1>Relatório do ciclo · {perfil?.nome}</h1>
         <p>Gerado em {formatarData(hoje)}. Dados registrados pelo próprio paciente no app Ciclo.</p>
@@ -696,8 +884,12 @@ export function Analise() {
         ))}
       </div>
 
+      {aba !== 'relatorio' && (
+        <BarraPeriodo opcoes={opcoesPer} atual={per} aoMudar={setPeriodo} destaque={destaque} aoLimparDestaque={() => setDestaque(null)} hoje={hoje} />
+      )}
+
       {aba === 'geral' && (
-        <>
+        <ProvedorSincronia>
           <section className="cartao hero">
             <div className="hero-cab">
               <div className="cresce">
@@ -741,51 +933,50 @@ export function Analise() {
             </div>
           </section>
 
-          <div className="secao-sub" style={{ margin: '2px 2px -6px' }}>
-            Agora e a variação desde o início{ini ? ` (${formatarData(ini.data, true).slice(0, 5)})` : ''} · linha: últimas medições
+          <div className="secao-sub analise-kpis-sub">
+            {emCiclo
+              ? `Agora e a variação desde o início${ini ? ` (${formatarData(ini.data, true).slice(0, 5)})` : ''}`
+              : `Fim do período e a variação ${per.quando}`}{' '}
+            · toque para ver o detalhe
           </div>
           <div className="kpis">
-            <Kpi
-              rotulo="Peso"
-              valor={kg(geral.peso_atual?.peso_kg)}
-              variacao={geral.variacao_kg === null ? '–' : `${sinal(geral.variacao_kg, 1, ' kg')}${geral.variacao_percentual !== null ? ` · ${sinal(geral.variacao_percentual * 100, 1, '%')}` : ''}`}
-              classe={corVariacao(geral.variacao_kg, true, MDC.peso_kg)}
-              valores={pesosNormais.slice(-14).map((x) => x.peso_kg)}
-            />
-            <Kpi
-              rotulo="Cintura"
-              valor={cm((atu ?? ini)?.cintura_cm)}
-              variacao={dif('cintura_cm') === null ? '–' : sinal(dif('cintura_cm'), 1, ' cm')}
-              classe={corVariacao(dif('cintura_cm'), true, MDC.cintura_cm)}
-              valores={ultimosValores('cintura_cm')}
-            />
-            <Kpi
-              rotulo="% de gordura"
-              valor={pp((atu ?? ini)?.bf)}
-              variacao={difBf === null ? '–' : sinal(difBf, 1, ' p.p.')}
-              classe={corVariacao(difBf, true, MDC.bf)}
-              valores={ultimosValores('bf')}
-            />
-            <Kpi
-              rotulo="Massa magra"
-              valor={kg((atu ?? ini)?.massa_magra_kg)}
-              variacao={dif('massa_magra_kg') === null ? '–' : sinal(dif('massa_magra_kg'), 1, ' kg')}
-              classe={corVariacao(dif('massa_magra_kg'), false, MDC.massa_magra_kg)}
-              valores={ultimosValores('massa_magra_kg')}
-            />
-            <Kpi
-              rotulo="Massa gorda"
-              valor={kg((atu ?? ini)?.massa_gorda_kg)}
-              variacao={dif('massa_gorda_kg') === null ? '–' : sinal(dif('massa_gorda_kg'), 1, ' kg')}
-              classe={corVariacao(dif('massa_gorda_kg'), true, MDC.massa_gorda_kg)}
-              valores={ultimosValores('massa_gorda_kg')}
-            />
-            <Kpi
+            {kpiDe(
+              'Peso',
+              'peso_kg',
+              pesoAgoraP,
+              (n) => kg(n),
+              varPesoP === null ? '–' : `${sinal(varPesoP, 1, ' kg')}${varPesoPctP !== null ? ` · ${sinal(varPesoPctP * 100, 1, '%')}` : ''}`,
+              corVariacao(varPesoP, true, MDC.peso_kg),
+              valoresPeso,
+            )}
+            {kpiDe('Cintura', 'cintura_cm', agoraP?.cintura_cm, (n) => cm(n), difP('cintura_cm') === null ? '–' : sinal(difP('cintura_cm'), 1, ' cm'), corVariacao(difP('cintura_cm'), true, MDC.cintura_cm), ultimosValores('cintura_cm'))}
+            {kpiDe('% de gordura', 'bf', agoraP?.bf, (n) => pp(n), difBf === null ? '–' : sinal(difBf, 1, ' p.p.'), corVariacao(difBf, true, MDC.bf), ultimosValores('bf'))}
+            {kpiDe(
+              'Massa magra',
+              'massa_magra_kg',
+              agoraP?.massa_magra_kg,
+              (n) => kg(n),
+              difP('massa_magra_kg') === null ? '–' : sinal(difP('massa_magra_kg'), 1, ' kg'),
+              corVariacao(difP('massa_magra_kg'), false, MDC.massa_magra_kg),
+              ultimosValores('massa_magra_kg'),
+            )}
+            {kpiDe(
+              'Massa gorda',
+              'massa_gorda_kg',
+              agoraP?.massa_gorda_kg,
+              (n) => kg(n),
+              difP('massa_gorda_kg') === null ? '–' : sinal(difP('massa_gorda_kg'), 1, ' kg'),
+              corVariacao(difP('massa_gorda_kg'), true, MDC.massa_gorda_kg),
+              ultimosValores('massa_gorda_kg'),
+            )}
+            <KpiToque
               rotulo="Ritmo"
-              valor={ritmo ? `${num(ritmo.pct, 2)}%` : '–'}
-              variacao={ritmo ? `${sinal(tend!.kg_semana, 2, ' kg')}/sem` : 'por semana'}
-              classe={ritmo ? COR_FAIXA[ritmo.faixa] : ''}
-              legenda={ritmo ? FAIXA_RITMO[ritmo.faixa] : 'aparece com 3 pesagens em 2 semanas'}
+              valor={ritmoP ? `${num(ritmoP.pct, 2)}%` : '–'}
+              {...(ritmoP ? { numero: { valor: ritmoP.pct, formato: (n: number) => `${num(n, 2)}%` } } : {})}
+              variacao={ritmoP ? `${sinal(tendP!.kg_semana, 2, ' kg')}/sem` : 'por semana'}
+              classe={ritmoP ? COR_FAIXA[ritmoP.faixa] : ''}
+              legenda={ritmoP ? FAIXA_RITMO[ritmoP.faixa] : emCiclo ? 'aparece com 3 pesagens em 2 semanas' : 'precisa de 3 pesagens em 2 semanas no período'}
+              aoAbrir={() => setFolha('ritmo')}
             />
           </div>
 
@@ -793,7 +984,7 @@ export function Analise() {
             <div className="secao-cab">
               <div>
                 <h2>Destaques</h2>
-                <div className="secao-sub">O que os seus registros mostram agora</div>
+                <div className="secao-sub">{emCiclo ? 'O que os seus registros mostram agora' : `O que os registros mostram ${per.quando}`}</div>
               </div>
             </div>
             {listaDestaques.length ? (
@@ -808,7 +999,11 @@ export function Analise() {
                 ))}
               </div>
             ) : (
-              <Vazio>Os destaques aparecem conforme você registra medidas, pesos e o Diário. Variações menores que o erro da fita não entram.</Vazio>
+              <Vazio>
+                {emCiclo
+                  ? 'Os destaques aparecem conforme você registra medidas, pesos e o Diário. Variações menores que o erro da fita não entram.'
+                  : 'Nada que passe do erro da fita neste período. Tente um período maior.'}
+              </Vazio>
             )}
           </section>
 
@@ -817,7 +1012,7 @@ export function Analise() {
               <div className="secao-cab">
                 <div>
                   <h2>Metas do projeto</h2>
-                  <div className="secao-sub">Do início até a meta, pela medição mais recente</div>
+                  <div className="secao-sub">{emCiclo ? 'Do início até a meta, pela medição mais recente' : `Do início até a meta, pela medição até ${formatarData(per.ate).slice(0, 5)}`}</div>
                 </div>
               </div>
               <div className="metas">
@@ -825,6 +1020,25 @@ export function Analise() {
                   <BarraMeta key={x.nome} nome={x.nome} p={x.p} fmt={x.fmt} />
                 ))}
               </div>
+              {previsaoSel && (
+                <div className="analise-metas-previsao">
+                  <div className="secao-cab" style={{ marginBottom: 6 }}>
+                    <div>
+                      <h3>No ritmo atual</h3>
+                      <div className="secao-sub">Tendência de hoje até a meta (não muda com o filtro)</div>
+                    </div>
+                    {previsoes.length > 1 && (
+                      <Pilulas
+                        rotulo="Medida da previsão"
+                        opcoes={previsoes.map((x) => [x.chave, x.rotulo] as ['peso' | 'cintura', string])}
+                        valor={previsaoSel.chave}
+                        aoMudar={setMetaPrev}
+                      />
+                    )}
+                  </div>
+                  <GraficoPrevisao key={previsaoSel.chave} nome={previsaoSel.chave} pontos={previsaoSel.pontos} previsao={previsaoSel.p} unidade={previsaoSel.unidade} marcos={marcos} destaque={destaqueP} />
+                </div>
+              )}
             </section>
           )}
 
@@ -832,13 +1046,30 @@ export function Analise() {
             <div className="secao-cab">
               <div>
                 <h2>Peso × dose</h2>
-                <div className="secao-sub">Pesagens e degraus de dose aplicada</div>
+                <div className="secao-sub">Arraste para ler · pinça ou faixa para ampliar · toque nos marcos</div>
               </div>
             </div>
             {serie.length > 0 || resumo.linhas.length > 0 ? (
-              <Suspense fallback={<div className="grafico" />}>
-                <GraficoPesoDose serie={serie} linhas={resumo.linhas} hoje={hoje} fimDose={fimRemedio && fimRemedio < hoje ? fimRemedio : undefined} marcos={marcosDasDecisoes(registroDecisoes)} />
-              </Suspense>
+              <>
+                <GraficoJanela
+                  titulo="Peso × dose"
+                  series={seriesPesoDose}
+                  marcos={marcos}
+                  destaque={destaqueP}
+                  janela={janela}
+                  permitirZoom
+                  expandivel
+                  altura={230}
+                  formatoDir={(v) => `${v.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}`}
+                />
+                <details className="tabela-detalhe">
+                  <summary>Como ler</summary>
+                  <p className="mudo">
+                    Área: pesagens (Diário e medições); círculo vazado = medição atípica, fora das tendências. Degrau: dose aplicada (eixo da direita, mg).
+                    Marcos no eixo do tempo: ● troca de dose, ◆ decisão, □ anotação, ○ medição atípica, · medição de segunda.
+                  </p>
+                </details>
+              </>
             ) : (
               <Vazio>Registre pesos no Diário ou nas Medidas para ver o gráfico.</Vazio>
             )}
@@ -848,36 +1079,37 @@ export function Analise() {
             <div className="secao-cab">
               <div>
                 <h2>Hábitos</h2>
-                <div className="secao-sub">{curtoCiclo ? 'Desde a 1ª dose, até ontem' : 'Últimas 4 semanas, até ontem'}</div>
+                <div className="secao-sub">{emCiclo ? (curtoCiclo ? 'Desde a 1ª dose, até ontem' : 'Últimas 4 semanas, até ontem') : `${per.quando[0].toUpperCase()}${per.quando.slice(1)}, até ontem`}</div>
               </div>
               <button className="botao pequeno" onClick={() => setAba('habitos')}>
                 Detalhes
               </button>
             </div>
-            {aneis(adesao28)}
+            {aneis(emCiclo ? adesao28 : adesaoP)}
           </section>
-        </>
+        </ProvedorSincronia>
       )}
 
       {aba === 'corpo' && (
-        <>
+        <ProvedorSincronia>
           <section className="cartao">
             <div className="secao-cab">
               <div>
-                <h2>Início × agora</h2>
-                <div className="secao-sub">{ini ? `${formatarData(ini.data, true)} → ${atu ? formatarData(atu.data, true) : 'sem nova medição'}` : 'Medições com fita, em jejum'}</div>
+                <h2>{emCiclo ? 'Início × agora' : 'Início × fim do período'}</h2>
+                <div className="secao-sub">{intervaloIniAtu}</div>
               </div>
             </div>
-            {ini ? (
+            {iniP ? (
               <>
                 <Variacoes itens={variacoes} />
-                {!atu && <p className="mudo" style={{ marginTop: 8 }}>Faça uma nova medição para comparar com a inicial.</p>}
+                {!atuP && <p className="mudo" style={{ marginTop: 8 }}>{emCiclo ? 'Faça uma nova medição para comparar com a inicial.' : 'Só uma medição neste período: escolha um período maior para comparar.'}</p>}
                 <details className="tabela-detalhe">
                   <summary>Ver tabela</summary>
-                  <Comparacao ini={ini} atu={atu} />
+                  <Comparacao ini={iniP} atu={atuP} />
                 </details>
                 <p className="mudo" style={{ marginTop: 8 }}>
                   Verde: melhorou além do erro da fita. Variações menores que o erro ficam cinza.
+                  {!emCiclo && ' Referência: a última medição até 7 dias antes do início do período.'}
                 </p>
               </>
             ) : (
@@ -894,16 +1126,28 @@ export function Analise() {
                 <Pilulas rotulo="Medida do gráfico" opcoes={OPCOES_METRICA} valor={metrica} aoMudar={setMetrica} />
               </div>
             </div>
-            {pontosMetrica.length >= 2 ? (
-              <Suspense fallback={<div className="grafico" style={{ height: 210 }} />}>
-                <GraficoMetrica
-                  pontos={pontosMetrica}
-                  nome={INFO_METRICA[metrica].nome}
-                  unidade={INFO_METRICA[metrica].unidade}
-                  meta={INFO_METRICA[metrica].meta}
-                  inicio={INFO_METRICA[metrica].inicio}
+            {pontosMetrica.filter((x) => x.valor !== null && !x.atipico).length >= 2 ? (
+              <>
+                <GraficoJanela
+                  key={metrica}
+                  titulo={`Evolução: ${INFO_METRICA[metrica].nome}`}
+                  series={[{ id: metrica, nome: INFO_METRICA[metrica].nome, tipo: 'area', pontos: pontosMetrica, cor: 'texto', unidade: INFO_METRICA[metrica].unidade, casas: 1 }]}
+                  referencias={[
+                    ...(INFO_METRICA[metrica].inicio != null ? [{ valor: INFO_METRICA[metrica].inicio!, rotulo: 'início', cor: 'neutro' as const }] : []),
+                    ...(INFO_METRICA[metrica].meta != null ? [{ valor: INFO_METRICA[metrica].meta!, rotulo: 'meta', cor: 'bom' as const }] : []),
+                  ]}
+                  marcos={marcos}
+                  destaque={destaqueP}
+                  janela={janela}
+                  sincronia="analise-corpo"
+                  permitirZoom
+                  expandivel
+                  altura={210}
                 />
-              </Suspense>
+                <button type="button" className="botao pequeno analise-ver-detalhe" onClick={() => setFolha(metrica)}>
+                  Detalhe de {INFO_METRICA[metrica].nome.toLowerCase()}: semanas, fases e previsão
+                </button>
+              </>
             ) : (
               <Vazio>Com 2 medições, aparece a evolução de {INFO_METRICA[metrica].nome.toLowerCase()}.</Vazio>
             )}
@@ -914,25 +1158,26 @@ export function Analise() {
               <div className="secao-cab">
                 <div>
                   <h2>Composição do peso</h2>
-                  <div className="secao-sub">Quanto do peso é massa magra e quanto é gordura</div>
+                  <div className="secao-sub">Peso, massa magra e massa gorda (eixo da direita) a cada medição</div>
                 </div>
               </div>
-              <Suspense fallback={<div className="grafico" style={{ height: 220 }} />}>
-                <GraficoMassas dados={composicoes} />
-              </Suspense>
+              <GraficoJanela titulo="Composição do peso" series={seriesMassas} destaque={destaqueP} janela={janela} sincronia="analise-corpo" permitirZoom expandivel altura={210} />
+              <p className="mudo" style={{ marginTop: 6 }}>
+                A faixa entre o peso e a massa magra é a massa gorda.
+              </p>
             </section>
           )}
 
           <section className="cartao">
             <h2>Qualidade da perda</h2>
-            <LinhaQualidade q={qualidade} />
+            <LinhaQualidade q={qualidadeP} />
           </section>
 
           <section className="cartao">
             <div className="secao-cab">
               <div>
                 <h2>Por fase</h2>
-                <div className="secao-sub">Cintura, massa gorda e massa magra em cada bloco de dose</div>
+                <div className="secao-sub">Cintura, massa gorda e massa magra em cada bloco de dose · toque para destacar</div>
               </div>
             </div>
             {fases.length === 0 ? (
@@ -955,11 +1200,12 @@ export function Analise() {
                       </tr>
                     </thead>
                     <tbody>
-                      {fases.map((f, i) => {
+                      {fasesP.map((i) => {
+                        const f = fases[i];
                         const c = compFases[i];
                         return (
-                          <tr key={f.indice}>
-                            <td>{rotuloBloco(f)}</td>
+                          <tr key={f.indice} {...linhaFase(i)}>
+                            <td>{botaoFase(i, rotuloBloco(f))}</td>
                             <td className={corVariacao(c.cintura, true, MDC.cintura_cm)}>{sinal(c.cintura, 1, ' cm')}</td>
                             <td className={corVariacao(c.gorda, true, MDC.massa_gorda_kg)}>{sinal(c.gorda, 1, ' kg')}</td>
                             <td className={corVariacao(c.magra, false, MDC.massa_magra_kg)}>{sinal(c.magra, 1, ' kg')}</td>
@@ -982,6 +1228,7 @@ export function Analise() {
                     </tbody>
                   </table>
                 </div>
+                {!emCiclo && fasesP.length < fases.length && <p className="mudo" style={{ marginTop: 6 }}>Só as fases que tocam o período escolhido.</p>}
                 <details className="tabela-detalhe">
                   <summary>Como ler</summary>
                   <p className="mudo">
@@ -995,11 +1242,11 @@ export function Analise() {
               </>
             )}
           </section>
-        </>
+        </ProvedorSincronia>
       )}
 
       {aba === 'remedio' && (
-        <>
+        <ProvedorSincronia>
           <section className="cartao">
             <div className="secao-cab">
               <div>
@@ -1022,31 +1269,64 @@ export function Analise() {
             <div className="secao-cab">
               <div>
                 <h2>Doses do ciclo</h2>
-                <div className="secao-sub">Altura da barra = dose em mg</div>
+                <div className="secao-sub">Altura da barra = dose em mg · toque num bloco para destacá-lo nos gráficos</div>
               </div>
             </div>
             {resumo.linhas.length || resumo.projecao.length ? (
-              <LinhaDoses
-                feitas={resumo.linhas.map((l) => ({ numero: l.numero, dose: l.aplicacao.dose_mg, data: l.aplicacao.data }))}
-                previstas={resumo.projecao.map((d) => ({ numero: d.numero, dose: d.dose_mg, data: d.data, hipotese: d.hipotese }))}
-              />
+              <>
+                <LinhaDoses
+                  feitas={resumo.linhas.map((l) => ({ numero: l.numero, dose: l.aplicacao.dose_mg, data: l.aplicacao.data }))}
+                  previstas={resumo.projecao.map((d) => ({ numero: d.numero, dose: d.dose_mg, data: d.data, hipotese: d.hipotese }))}
+                />
+                {fases.length > 0 && <FaixaFases fases={faseInfo} selecionada={faseSel} aoSelecionar={destacarFase} />}
+              </>
             ) : (
               <Vazio>Nenhuma aplicação registrada.</Vazio>
             )}
           </section>
 
+          {(serie.length > 0 || pontosNausea.length > 0 || pontosSono.length > 0) && (
+            <section className="cartao">
+              <div className="secao-cab">
+                <div>
+                  <h2>Linha do tempo</h2>
+                  <div className="secao-sub">Arraste num gráfico: a mesma data aparece nos três</div>
+                </div>
+              </div>
+              <LinhaDoTempo
+                peso={pontosPeso}
+                cintura={pontosCintura}
+                nausea={pontosNausea}
+                sono={pontosSono}
+                marcos={marcos}
+                destaque={destaqueP}
+                janela={janela}
+              />
+              <details className="tabela-detalhe">
+                <summary>Como ler</summary>
+                <p className="mudo">
+                  Peso (pesagens e medições), cintura (fita) e, por dia, a náusea do Diário (barras, 0 a 3) e o sono da noite anterior (linha, eixo da direita,
+                  com a referência de 7 h). Toque num bloco de dose acima para sombrear o período dele. Ver junto não prova causa.
+                </p>
+              </details>
+            </section>
+          )}
+
           <section className="cartao">
             <div className="secao-cab">
               <div>
                 <h2>Náusea depois da dose</h2>
-                <div className="secao-sub">Média de 0 a 3 por dia depois da aplicação (D0 = dia da dose)</div>
+                <div className="secao-sub">Média de 0 a 3 por dia depois da aplicação (D0 = dia da dose){emCiclo ? '' : ` · ${per.quando}`}</div>
               </div>
             </div>
             {nauseaVazia ? (
-              <Vazio>Registre a náusea no Diário (0 a 3) para ver em que dia depois da dose ela aparece.</Vazio>
+              <Vazio>{emCiclo ? 'Registre a náusea no Diário (0 a 3) para ver em que dia depois da dose ela aparece.' : 'Sem náusea registrada neste período.'}</Vazio>
             ) : (
               <>
-                <MapaCalor colunas={colNausea.map((c) => c.rotulo)} linhas={sintomas.map((s, i) => ({ rotulo: rotuloFaseCurto(i), valores: s.nausea_por_dia }))} />
+                <MapaCalor
+                  colunas={colNausea.map((c) => c.rotulo)}
+                  linhas={fasesP.map((i) => ({ rotulo: rotuloFaseCurto2(i), valores: sintomasP[i].nausea_por_dia }))}
+                />
                 <div className="calor-escala">
                   <span>0</span>
                   <i />
@@ -1066,14 +1346,17 @@ export function Analise() {
                           </tr>
                         </thead>
                         <tbody>
-                          {sintomas.map((s, i) => (
-                            <tr key={s.indice}>
-                              <td>{rotuloBloco(fases[i])}</td>
-                              <td>{s.vomito === null ? '–' : pct(s.vomito, 0)}</td>
-                              <td>{s.diarreia === null ? '–' : pct(s.diarreia, 0)}</td>
-                              <td>{s.intestino_preso === null ? '–' : pct(s.intestino_preso, 0)}</td>
-                            </tr>
-                          ))}
+                          {fasesP.map((i) => {
+                            const s = sintomasP[i];
+                            return (
+                              <tr key={s.indice}>
+                                <td>{rotuloBloco(fases[i])}</td>
+                                <td>{s.vomito === null ? '–' : pct(s.vomito, 0)}</td>
+                                <td>{s.diarreia === null ? '–' : pct(s.diarreia, 0)}</td>
+                                <td>{s.intestino_preso === null ? '–' : pct(s.intestino_preso, 0)}</td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
@@ -1089,7 +1372,7 @@ export function Analise() {
             <div className="secao-cab">
               <div>
                 <h2>Peso e náusea por fase</h2>
-                <div className="secao-sub">Ritmo de peso de cada bloco de dose</div>
+                <div className="secao-sub">Ritmo de peso de cada bloco de dose · toque para destacar</div>
               </div>
             </div>
             {fases.length === 0 ? (
@@ -1110,48 +1393,52 @@ export function Analise() {
                       </tr>
                     </thead>
                     <tbody>
-                      {fases.map((f, i) => (
-                        <tr key={f.indice}>
-                          <td>
-                            {rotuloBloco(f)} {f.em_andamento && <span className="etiqueta bom">atual</span>}
-                          </td>
-                          <td>
-                            {f.doses} × {num(f.dose_mg)} mg
-                          </td>
-                          <td>
-                            {formatarData(f.inicio, true)} –{' '}
-                            {i < fases.length - 1 ? formatarData(somarDias(f.fim, -1), true) : f.fim === hoje ? 'hoje' : formatarData(f.fim, true)}
-                          </td>
-                          <td>
-                            {num(f.peso_inicio, 1)} → {num(f.peso_fim, 1)}
-                          </td>
-                          <td className={f.poucos_dados ? undefined : corVariacao(f.kg_por_semana, true)}>
-                            {f.poucos_dados ? (
-                              <span className="texto-2">
-                                {f.variacao_kg !== null ? `${sinal(f.variacao_kg, 1, ' kg')} · ` : ''}
-                                {f.em_andamento && f.variacao_kg === null ? 'aguardando 2ª semana' : 'poucos dados'}
-                              </span>
-                            ) : (
-                              sinal(f.kg_por_semana, 2)
-                            )}
-                          </td>
-                          <td className={f.vs_anterior && f.vs_anterior.estado !== 'parecida' ? (f.vs_anterior.estado === 'mais_rapida' ? 'bom' : 'aviso-txt') : 'texto-2'}>
-                            {i === 0
-                              ? '–'
-                              : !f.vs_anterior
-                                ? 'poucos dados'
-                                : f.vs_anterior.estado === 'parecida'
-                                  ? 'parecida (dentro do ruído)'
-                                  : `${f.vs_anterior.estado === 'mais_rapida' ? 'mais rápida' : 'mais lenta'} (${sinal(f.vs_anterior.diferenca, 2)})`}
-                          </td>
-                          <td>
-                            {num(f.nausea_media, 1)} / {f.nausea_max ?? '–'}
-                          </td>
-                        </tr>
-                      ))}
+                      {fasesP.map((i) => {
+                        const f = fases[i];
+                        return (
+                          <tr key={f.indice} {...linhaFase(i)}>
+                            <td>
+                              {botaoFase(i, rotuloBloco(f))} {f.em_andamento && <span className="etiqueta bom">atual</span>}
+                            </td>
+                            <td>
+                              {f.doses} × {num(f.dose_mg)} mg
+                            </td>
+                            <td>
+                              {formatarData(f.inicio, true)} –{' '}
+                              {i < fases.length - 1 ? formatarData(somarDias(f.fim, -1), true) : f.fim === hoje ? 'hoje' : formatarData(f.fim, true)}
+                            </td>
+                            <td>
+                              {num(f.peso_inicio, 1)} → {num(f.peso_fim, 1)}
+                            </td>
+                            <td className={f.poucos_dados ? undefined : corVariacao(f.kg_por_semana, true)}>
+                              {f.poucos_dados ? (
+                                <span className="texto-2">
+                                  {f.variacao_kg !== null ? `${sinal(f.variacao_kg, 1, ' kg')} · ` : ''}
+                                  {f.em_andamento && f.variacao_kg === null ? 'aguardando 2ª semana' : 'poucos dados'}
+                                </span>
+                              ) : (
+                                sinal(f.kg_por_semana, 2)
+                              )}
+                            </td>
+                            <td className={f.vs_anterior && f.vs_anterior.estado !== 'parecida' ? (f.vs_anterior.estado === 'mais_rapida' ? 'bom' : 'aviso-txt') : 'texto-2'}>
+                              {i === 0
+                                ? '–'
+                                : !f.vs_anterior
+                                  ? 'poucos dados'
+                                  : f.vs_anterior.estado === 'parecida'
+                                    ? 'parecida (dentro do ruído)'
+                                    : `${f.vs_anterior.estado === 'mais_rapida' ? 'mais rápida' : 'mais lenta'} (${sinal(f.vs_anterior.diferenca, 2)})`}
+                            </td>
+                            <td>
+                              {num(f.nausea_media, 1)} / {f.nausea_max ?? '–'}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
+                {!emCiclo && fasesP.length < fases.length && <p className="mudo" style={{ marginTop: 6 }}>Só as fases que tocam o período escolhido.</p>}
                 <details className="tabela-detalhe">
                   <summary>Como ler</summary>
                   <p className="mudo">
@@ -1182,7 +1469,7 @@ export function Analise() {
               <p className="mudo" style={{ marginTop: 8 }}>Também vão para o PDF.</p>
             </section>
           )}
-        </>
+        </ProvedorSincronia>
       )}
 
       {aba === 'habitos' && (
@@ -1191,23 +1478,13 @@ export function Analise() {
             <div className="secao-cab">
               <div>
                 <h2>Adesão</h2>
-                <div className="secao-sub">Até ontem (hoje ainda está em aberto)</div>
+                <div className="secao-sub">{emCiclo ? 'Desde a 1ª dose' : `${per.quando[0].toUpperCase()}${per.quando.slice(1)}`}, até ontem (hoje ainda está em aberto)</div>
               </div>
-              <Pilulas
-                rotulo="Período"
-                opcoes={[
-                  ['7', '7 dias'],
-                  ['28', '28 dias'],
-                  ['ciclo', 'Ciclo'],
-                ]}
-                valor={periodoAdesao}
-                aoMudar={setPeriodoAdesao}
-              />
             </div>
-            {aneis(adesaoSel)}
+            {aneis(adesaoP)}
             <p className="mudo" style={{ marginTop: 10 }}>
               Dieta: &quot;em parte&quot; vale meio dia, entre os dias respondidos. Água: dias na meta entre os dias anotados. Sono: noites com 7 h ou mais.
-              Diário: dias com algum registro.
+              Diário: dias com algum registro. Troque o período no alto (7 dias, 4 semanas, ciclo ou uma fase).
             </p>
           </section>
 
@@ -1216,12 +1493,21 @@ export function Analise() {
               <div className="secao-cab">
                 <div>
                   <h2>Treino por semana</h2>
-                  <div className="secao-sub">Dias com treino e com cardio, de segunda a domingo</div>
+                  <div className="secao-sub">Dias com treino e com cardio, de segunda a domingo · toque numa semana para destacá-la</div>
                 </div>
               </div>
-              <Suspense fallback={<div className="grafico" style={{ height: 200 }} />}>
-                <GraficoTreinoSemanas semanas={treinoSemanas} />
-              </Suspense>
+              <GraficoBarrasSemana
+                titulo="Treino por semana"
+                barras={treinoSemanas.map((l) => ({ chave: l.segunda, rotulo: rotuloSemana(l.segunda), valores: [{ serie: 'treino', valor: l.treino }, { serie: 'cardio', valor: l.cardio }] }))}
+                series={[
+                  { id: 'treino', nome: 'Treino', cor: 'texto' },
+                  { id: 'cardio', nome: 'Cardio', cor: 'bom' },
+                ]}
+                selecionada={semanaSel}
+                aoSelecionar={destacarSemana}
+                max={7}
+                formato={(v) => `${num(v, 0)} d`}
+              />
               {blocosTreino.map((b) => (
                 <div key={b.rotulo} className="pilha" style={{ gap: 6, marginTop: 10 }}>
                   {b.rotulo && <span className="rotulo">{b.rotulo}</span>}
@@ -1241,13 +1527,46 @@ export function Analise() {
               <div className="secao-cab">
                 <div>
                   <h2>Sono e hidratação</h2>
-                  <div className="secao-sub">Médias por semana e dos últimos 7 dias</div>
+                  <div className="secao-sub">Médias por semana e dos últimos 7 dias · toque numa semana para destacá-la</div>
                 </div>
               </div>
-              {temBemEstar && (
-                <Suspense fallback={<div className="grafico" style={{ height: 210 }} />}>
-                  <GraficoBemEstar semanas={bemEstar} />
-                </Suspense>
+              {temSonoSemana && (
+                <>
+                  <div className="rotulo analise-rotulo-grafico">Sono médio (meta: 7 h ou mais)</div>
+                  <GraficoBarrasSemana
+                    titulo="Sono médio por semana"
+                    barras={habitos.map((h) => ({ chave: h.segunda, rotulo: rotuloSemana(h.segunda), valores: [{ serie: 'sono', valor: h.sono_h === null ? null : Math.round(h.sono_h * 10) / 10 }] }))}
+                    series={[{ id: 'sono', nome: 'Sono', cor: 'aviso' }]}
+                    selecionada={semanaSel}
+                    aoSelecionar={destacarSemana}
+                    altura={150}
+                    formato={(v) => `${num(v, 1)} h`}
+                  />
+                </>
+              )}
+              {temAguaSemana && (
+                <>
+                  <div className="rotulo analise-rotulo-grafico">Água: média e meta (L por dia)</div>
+                  <GraficoBarrasSemana
+                    titulo="Água por semana"
+                    barras={habitos.map((h) => ({
+                      chave: h.segunda,
+                      rotulo: rotuloSemana(h.segunda),
+                      valores: [
+                        { serie: 'agua', valor: h.agua_l === null ? null : Math.round(h.agua_l * 10) / 10 },
+                        { serie: 'meta', valor: h.agua_meta_l === null ? null : Math.round(h.agua_meta_l * 10) / 10 },
+                      ],
+                    }))}
+                    series={[
+                      { id: 'agua', nome: 'Água', cor: 'destaque' },
+                      { id: 'meta', nome: 'Meta', cor: 'neutro' },
+                    ]}
+                    selecionada={semanaSel}
+                    aoSelecionar={destacarSemana}
+                    altura={160}
+                    formato={(v) => `${num(v, 1)} L`}
+                  />
+                </>
               )}
               <div className="grade" style={{ marginTop: 10 }}>
                 <Bloco
@@ -1278,6 +1597,18 @@ export function Analise() {
                   de bebidas por dia{treino ? ' + 0,7 L por hora de treino e cardio' : ''}. Beber muito além da meta não ajuda.
                 </p>
               </details>
+            </section>
+          )}
+
+          {dadosPadroes && (
+            <section className="cartao">
+              <div className="secao-cab">
+                <div>
+                  <h2>Padrões</h2>
+                  <div className="secao-sub">Hábitos × resultados {emCiclo ? 'no ciclo' : per.quando} · associação, não causa</div>
+                </div>
+              </div>
+              <Padroes dados={dadosPadroes} destaque={destaque?.chave ?? null} aoDestacar={setDestaque} />
             </section>
           )}
 
@@ -1389,6 +1720,8 @@ export function Analise() {
           <ListaDecisoes />
         </>
       )}
+
+      {detalhe && <FolhaMetrica d={detalhe} marcos={marcos} fases={fasesDetalhe} hoje={hoje} destaque={destaqueP} aoFechar={fecharFolha} />}
 
       <p className="mudo so-impressao">Este relatório registra e calcula; as decisões de dose são tomadas com acompanhamento médico.</p>
     </div>
