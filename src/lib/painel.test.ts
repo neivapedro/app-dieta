@@ -128,3 +128,13 @@ describe('destaques', () => {
     expect(l).toHaveLength(6);
   });
 });
+
+describe('destaques no período do filtro', () => {
+  it('as variações dizem o período pedido', () => {
+    const base: EntradaDestaques = { cintura: -2.5, gorda: null, magra: null, peso: -2, pesoPct: -0.02, ritmo: { faixa: 'ganho', pct: -0.1 }, gorduraDaPerda: null, nausea: null, adesao: null, meta: null };
+    const l = destaques({ ...base, desde: 'nas últimas 4 semanas', periodoRitmo: 'do período' }).map((d) => d.texto);
+    expect(l).toContain('Cintura − 2,5 cm nas últimas 4 semanas.');
+    expect(l).toContain('Peso subindo na tendência do período.');
+    expect(destaques(base).map((d) => d.texto)).toContain('Cintura − 2,5 cm desde o início.');
+  });
+});
