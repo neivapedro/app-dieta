@@ -763,7 +763,8 @@ h2 { font-size: 1.08rem; }
 @keyframes aparecer { from { opacity: 0; } to { opacity: 1; } }
 @keyframes subir-folha { from { transform: translateY(28px); opacity: 0.6; } to { transform: none; opacity: 1; } }
 @keyframes marcar { 0% { transform: scale(0.6); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
-main .pilha > .cartao, main .pilha > .kpis, main > .pilha > section { animation: surgir 0.28s ease-out both; }
+/* "backwards": depois de surgir, o cartão não guarda o transform (senão uma folha aberta dentro dele fica presa atrás do cabeçalho) */
+main .pilha > .cartao, main .pilha > .kpis, main > .pilha > section { animation: surgir 0.28s ease-out backwards; }
 .folha-fundo { animation: aparecer 0.2s ease-out; }
 .folha { animation: subir-folha 0.26s cubic-bezier(0.2, 0.8, 0.2, 1); }
 .check-dia.feito .check-dia-icone { animation: marcar 0.3s ease-out; }
