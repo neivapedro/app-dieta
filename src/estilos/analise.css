@@ -90,3 +90,6 @@
 .analise-dispersao { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
 .analise-padrao-texto { font-size: 0.88rem; }
 .analise-ponto { font-size: 0.82rem; }
+
+/* Topo da Geral: Compartilhar e PDF lado a lado, sem apertar o título */
+.hero-acoes { display: flex; flex-direction: column; gap: 6px; align-items: stretch; flex: none; }

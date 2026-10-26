@@ -48,6 +48,7 @@ import { conselhoConferencia, dietaNaTendencia, textoDietaSemana, textoPlanoSegu
 import { adesaoPeriodo, destaques, habitosPorSemana, picoNausea, progressoMeta, serieMetrica, type AdesaoPeriodo, type ChavePainel, type ProgressoMeta, type Taxa } from '../lib/painel';
 import { diaCurto } from '../lib/rotina';
 import { aderenciaDoTreino, formatarTempo, textoCorridasPeriodo } from '../lib/treino';
+import { BotaoCompartilharProgresso } from '../componentes/compartilhar';
 import { fasesNoPeriodo, fimDoBloco, lerPeriodo, noPeriodo, opcoesPeriodo, resumoPeriodo, rotuloFaseCurto } from '../lib/analise-periodo';
 import { preverMeta } from '../lib/analise-previsao';
 import { marcosAnalise } from '../lib/analise-detalhe';
@@ -897,9 +898,13 @@ export function Analise() {
                 <div className="hero-titulo">{p0 ? `${num(p0.dose_mg)} mg · ${p0.fase ? p0.fase.fase.nome : 'fora do plano'}` : faseDepois ? 'Fase pós-remédio' : 'Ciclo concluído'}</div>
                 <div className="hero-sub">{faseAtual}</div>
               </div>
-              <button className="botao pequeno" onClick={() => setAba('relatorio')}>
-                PDF
-              </button>
+              <div className="hero-acoes">
+                {/* Cartão de progresso (imagem) do período escolhido no filtro; sem a dose por padrão */}
+                <BotaoCompartilharProgresso variante="pequeno" periodo={janela} />
+                <button className="botao pequeno" onClick={() => setAba('relatorio')}>
+                  PDF
+                </button>
+              </div>
             </div>
             {diaCiclo !== null && totalDias !== null && (
               <div className="hero-progresso">
