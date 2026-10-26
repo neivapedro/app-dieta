@@ -50,6 +50,61 @@ export function LinhaQualidade({ q }: { q: QualidadePerda | null }) {
   );
 }
 
+/**
+ * Qualidade da perda em painel (aba Medidas): barra dividida entre gordura e
+ * massa magra, o ritmo e, com aviso, a ação. Mesmos números da LinhaQualidade.
+ */
+export function PainelQualidade({ q }: { q: QualidadePerda | null }) {
+  if (!q) return <p className="mudo">Com 3 medições em 2 semanas, aparece a qualidade da perda (quanto foi gordura e quanto foi massa magra).</p>;
+  const gordura = Math.min(Math.max(q.gordura, 0), 1);
+  const magra = Math.min(Math.max(q.magra, 0), 1);
+  const soma = gordura + magra || 1;
+  return (
+    <div className="qualidade">
+      <div className="qualidade-cab">
+        <span className="secao-sub" style={{ margin: 0 }}>
+          Últimas {q.medicoes} medições · {formatarData(q.de, true).slice(0, 5)} a {formatarData(q.ate, true).slice(0, 5)}
+        </span>
+        {q.aviso && <span className="etiqueta aviso">atenção</span>}
+      </div>
+      {!q.sem_perda && (
+        <>
+          <div className="qualidade-barra" role="img" aria-label={`Qualidade da perda: ${textoQualidade(q)}`}>
+            {gordura > 0 && <span className="qualidade-gordura" style={{ width: `${(gordura / soma) * 100}%` }} />}
+            {magra > 0 && <span className={`qualidade-magra ${q.aviso ? 'aviso' : ''}`} style={{ width: `${(magra / soma) * 100}%` }} />}
+          </div>
+          <div className="qualidade-legenda numero">
+            <span>
+              <i className="qualidade-gordura" /> Gordura <b>{Math.round(gordura * 100)}%</b>
+            </span>
+            <span>
+              <i className={`qualidade-magra ${q.aviso ? 'aviso' : ''}`} /> Massa magra <b>{Math.round(magra * 100)}%</b>
+            </span>
+          </div>
+        </>
+      )}
+      <p className={`qualidade-texto ${q.aviso ? 'aviso-txt' : ''}`}>
+        {/* Com as duas partes na barra, o texto fica só com o ritmo */}
+        {q.sem_perda || q.gordura <= 0 || q.magra <= 0 ? (
+          <>
+            {textoQualidade(q).replace(/^./, (c) => c.toUpperCase())}
+            {!q.sem_perda && <> · ritmo {num(q.ritmo_pct, 2)}% do peso/sem</>}.
+          </>
+        ) : (
+          <>Ritmo de {num(q.ritmo_pct, 2)}% do peso por semana.</>
+        )}
+      </p>
+      {q.aviso && (
+        <p className="mudo" style={{ margin: 0 }}>
+          {q.gordura < 0.75 ? 'Menos de 3/4 da perda veio de gordura.' : ''}
+          {q.ritmo_pct > 1 ? ' Acima de 1% por semana a massa magra sofre mais.' : ''}
+        </p>
+      )}
+      {q.aviso && <AcaoQualidadeLink q={q} />}
+    </div>
+  );
+}
+
 /** Ação tirada do app (proteína por refeição, proteína do dia, treino ou ritmo). Só baixa o banco de alimentos quando há aviso. */
 function AcaoQualidadeLink({ q }: { q: QualidadePerda }) {
   const { dieta, treinos } = useDados();
