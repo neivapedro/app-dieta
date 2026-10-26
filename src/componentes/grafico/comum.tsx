@@ -11,6 +11,13 @@ const VARS: Record<CorSerie, string> = {
   bom: 'var(--bom)',
   ruim: 'var(--ruim)',
   destaque: 'var(--destaque)',
+  azul: 'var(--c-azul)',
+  roxo: 'var(--c-roxo)',
+  rosa: 'var(--c-rosa)',
+  ciano: 'var(--c-ciano)',
+  laranja: 'var(--c-laranja)',
+  verde: 'var(--c-verde)',
+  indigo: 'var(--c-indigo)',
 };
 /** Ordem fixa das cores quando a série não diz a sua (nunca cicla por posição de filtro) */
 export const ORDEM_CORES: CorSerie[] = ['texto', 'aviso', 'neutro', 'bom', 'ruim', 'destaque'];

@@ -711,6 +711,43 @@ details.tabela-detalhe > summary::before { content: '▸'; transition: transform
 details.tabela-detalhe[open] > summary::before { transform: rotate(90deg); }
 details.tabela-detalhe[open] > summary { margin-bottom: 8px; }
 
+/* Acentos coloridos (gráficos e seções do Relatório final): ≥ 4,5:1 sobre a superfície nos dois temas */
+:root {
+  --c-azul: #409cff; --c-roxo: #c77dff; --c-rosa: #ff6482; --c-ciano: #5ac8e6;
+  --c-laranja: #ff9f0a; --c-verde: #34c759; --c-indigo: #8e8cff;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --c-azul: #0062c4; --c-roxo: #8a3ab9; --c-rosa: #c4174f; --c-ciano: #00718f;
+    --c-laranja: #a84800; --c-verde: #1e7a35; --c-indigo: #4a47c9;
+  }
+}
+:root[data-theme="light"] {
+  --c-azul: #0062c4; --c-roxo: #8a3ab9; --c-rosa: #c4174f; --c-ciano: #00718f;
+  --c-laranja: #a84800; --c-verde: #1e7a35; --c-indigo: #4a47c9;
+}
+
+/* Atalho para o Relatório final (Análise e Início) */
+.rf-entrada {
+  display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 10px 14px 10px 10px; border-radius: var(--raio, 18px);
+  text-decoration: none; color: var(--texto); border: 1px solid color-mix(in srgb, var(--c-indigo) 35%, var(--borda));
+  background: linear-gradient(120deg, color-mix(in srgb, var(--c-indigo) 16%, var(--superficie)), color-mix(in srgb, var(--c-rosa) 12%, var(--superficie)));
+  box-shadow: var(--sombra); transition: transform 0.12s ease;
+}
+.rf-entrada:active { transform: scale(0.985); }
+.rf-entrada.pronto {
+  border-color: color-mix(in srgb, var(--c-rosa) 45%, var(--borda));
+  background: linear-gradient(120deg, color-mix(in srgb, var(--c-indigo) 26%, var(--superficie)), color-mix(in srgb, var(--c-rosa) 22%, var(--superficie)));
+}
+.rf-entrada-icone {
+  flex: none; width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; color: var(--destaque-texto);
+  background: linear-gradient(135deg, var(--c-indigo), var(--c-rosa));
+}
+.rf-entrada-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
+.rf-entrada-texto b { font-size: 0.98rem; overflow-wrap: anywhere; }
+.rf-entrada-texto small { font-size: 0.78rem; color: var(--texto-2); overflow-wrap: anywhere; }
+.rf-entrada-seta { flex: none; font-size: 1.5rem; line-height: 1; color: var(--texto-2); }
+
 /* ---------- Visual moderno: base global (vale para todas as telas) ---------- */
 :root {
   --raio: 18px;

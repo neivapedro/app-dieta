@@ -1,0 +1,224 @@
+/* Relatório final: capa, seções com acento de cor (--rf-cor), fotos, linha do tempo e recordes.
+   Só tokens: funciona no claro e no escuro. Entradas sempre com "backwards" (nunca "both"). */
+
+.rf { --rf-cor: var(--c-indigo); }
+.rf .gr-destaque { fill: var(--c-indigo); opacity: 0.16; }
+.rf h3 { font-size: 0.92rem; font-weight: 650; }
+
+.rf-voltar {
+  align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px 0 10px; margin-bottom: -4px;
+  border-radius: 999px; background: var(--superficie-2); color: var(--texto); text-decoration: none; font-weight: 600; font-size: 0.88rem;
+}
+.rf-voltar span { font-size: 1.25rem; line-height: 1; margin-top: -2px; }
+.rf-aviso { align-items: center; }
+
+/* ---------- Capa ---------- */
+.rf-capa {
+  position: relative; overflow: hidden; border-radius: var(--raio); padding: 18px 16px 16px;
+  border: 1px solid var(--borda-suave); box-shadow: var(--sombra);
+  background:
+    radial-gradient(110% 80% at 100% 0%, color-mix(in srgb, var(--c-indigo) 24%, transparent), transparent 62%),
+    radial-gradient(90% 60% at 0% 100%, color-mix(in srgb, var(--c-rosa) 16%, transparent), transparent 62%),
+    radial-gradient(70% 50% at 0% 0%, color-mix(in srgb, var(--c-ciano) 10%, transparent), transparent 60%),
+    var(--superficie);
+}
+.rf-capa-topo { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.rf-estado {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 0 10px; border-radius: 999px;
+  font-size: 0.75rem; font-weight: 700; letter-spacing: 0.01em;
+}
+.rf-estado i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none; }
+.rf-estado.concluido { background: color-mix(in srgb, var(--bom) 18%, var(--superficie)); color: color-mix(in srgb, var(--bom) 80%, var(--texto)); }
+.rf-estado.previa { background: color-mix(in srgb, var(--aviso) 18%, var(--superficie)); color: color-mix(in srgb, var(--aviso) 78%, var(--texto)); }
+.rf-capa-periodo { font-size: 0.78rem; font-weight: 600; color: var(--texto-2); white-space: nowrap; }
+.rf-capa-titulo { margin-top: 12px; font-size: 1.75rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; overflow-wrap: anywhere; }
+.rf-capa-nome { color: var(--texto); }
+.rf-grad {
+  background: linear-gradient(90deg, var(--c-indigo), var(--c-rosa));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
+}
+.rf-capa-resumo { margin-top: 8px; color: var(--texto-2); font-size: 0.9rem; overflow-wrap: anywhere; }
+
+.rf-capa-fotos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
+.rf-capa-fotos figure { position: relative; margin: 0; border-radius: 14px; overflow: hidden; aspect-ratio: 3 / 4; background: var(--superficie-2); }
+.rf-capa-fotos img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; -webkit-user-drag: none; }
+.rf-capa-fotos figure:first-child { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--c-indigo) 70%, transparent); }
+.rf-capa-fotos figure:last-child { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--c-rosa) 70%, transparent); }
+.rf-capa-fotos figcaption {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 26px 10px 8px; color: #fff; font-size: 0.75rem; font-variant-numeric: tabular-nums;
+  background: linear-gradient(180deg, rgb(0 0 0 / 0), rgb(0 0 0 / 0.72));
+}
+.rf-capa-fotos figcaption b { font-weight: 750; margin-right: 4px; }
+
+.rf-capa-grande { display: flex; flex-direction: column; margin-top: 16px; }
+.rf-capa-grande-rotulo { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 750; color: var(--texto-2); }
+.rf-capa-grande-valor { font-size: clamp(2.3rem, 12vw, 3.1rem); font-weight: 800; letter-spacing: -0.04em; line-height: 1.05; white-space: nowrap; }
+.rf-capa-grande-sub { font-size: 0.82rem; color: var(--texto-2); margin-top: 2px; }
+
+.rf-ladrilhos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
+@media (min-width: 520px) { .rf-ladrilhos { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.rf-ladrilho {
+  display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 9px 10px 10px; border-radius: var(--raio-sm);
+  background: color-mix(in srgb, var(--superficie) 72%, transparent); border: 1px solid var(--borda-suave);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+.rf-ladrilho-rotulo { display: flex; align-items: center; gap: 5px; font-size: 0.68rem; font-weight: 750; text-transform: uppercase; letter-spacing: 0.05em; color: var(--texto-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rf-ladrilho-rotulo i { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--rf-cor); }
+.rf-ladrilho-valor { font-size: 1.08rem; font-weight: 750; letter-spacing: -0.02em; line-height: 1.2; overflow-wrap: anywhere; }
+.rf-ladrilho-sub { font-size: 0.7rem; color: var(--texto-2); line-height: 1.25; overflow-wrap: anywhere; }
+@media (max-width: 359px) { .rf-ladrilho-valor { font-size: 0.98rem; } }
+
+/* ---------- Índice das seções ---------- */
+.rf-indice {
+  display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: -2px -16px 0; padding: 2px 16px;
+  scroll-padding: 0 16px;
+}
+.rf-indice::-webkit-scrollbar { display: none; }
+.rf-indice button {
+  flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--borda-suave); background: var(--superficie); color: var(--texto); font-weight: 650; font-size: 0.82rem; white-space: nowrap;
+}
+.rf-indice button i { width: 8px; height: 8px; border-radius: 50%; background: var(--rf-cor); }
+.rf-indice button:active { transform: scale(0.97); }
+
+/* ---------- Seções ---------- */
+.rf-secao {
+  scroll-margin-top: calc(72px + env(safe-area-inset-top));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--rf-cor) 7%, var(--superficie)), var(--superficie) 140px);
+}
+.rf-secao-cab h2 { display: flex; align-items: center; gap: 8px; }
+.rf-secao-cab h2::before { content: ''; flex: none; width: 4px; height: 18px; border-radius: 4px; background: var(--rf-cor); }
+.rf-nota { margin-top: 10px; font-size: 0.78rem; overflow-wrap: anywhere; }
+.rf-rotulo-grafico { margin: 12px 0 4px; }
+.rf-grafico { margin-top: 16px; min-width: 0; }
+.rf-grafico > h3 { margin-bottom: 6px; }
+.rf-linha-info { margin-top: 10px; font-size: 0.88rem; }
+.rf-linhas-info { margin: 12px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: 0.86rem; color: var(--texto-2); }
+.rf-linhas-info li { position: relative; padding-left: 16px; overflow-wrap: anywhere; }
+.rf-linhas-info li::before { content: ''; position: absolute; left: 2px; top: 0.5em; width: 6px; height: 6px; border-radius: 50%; background: var(--rf-cor); }
+
+/* Registros */
+.rf-registros { display: flex; flex-wrap: wrap; gap: 6px; }
+.rf-registro { display: inline-flex; align-items: baseline; gap: 4px; padding: 5px 10px; border-radius: 999px; background: var(--superficie-2); font-size: 0.78rem; color: var(--texto-2); }
+.rf-registro b { color: var(--texto); font-size: 0.9rem; }
+
+/* Tabela início × fim */
+.rf-numeros { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; column-gap: 10px; font-size: 0.86rem; }
+.rf-numeros-linha { display: contents; }
+.rf-numeros-linha > span { padding: 8px 0; border-top: 1px solid var(--borda-suave); min-width: 0; }
+.rf-numeros-cab > span { border-top: 0; padding-top: 0; font-size: 0.7rem; font-weight: 700; color: var(--texto-2); text-transform: uppercase; letter-spacing: 0.04em; }
+.rf-numeros-nome { font-weight: 600; overflow-wrap: anywhere; }
+.rf-numeros-valores { color: var(--texto-2); white-space: nowrap; text-align: right; }
+.rf-numeros-delta { font-weight: 750; white-space: nowrap; text-align: right; }
+@media (max-width: 359px) { .rf-numeros { font-size: 0.78rem; column-gap: 6px; } }
+
+/* ---------- Fotos ---------- */
+.rf-fotos { display: flex; flex-direction: column; gap: 14px; }
+.rf-fotos > .pilulas { align-self: flex-start; }
+.rf-par { display: flex; flex-direction: column; gap: 8px; }
+.rf-par + .rf-par { padding-top: 14px; border-top: 1px solid var(--borda-suave); }
+.rf-par-cab { font-weight: 700; font-size: 0.9rem; }
+.rf-par-grade { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.rf-par-lado { margin: 0; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.rf-par-lado img, .rf-par-falta { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: var(--raio-sm); background: var(--superficie-2); display: block; -webkit-user-drag: none; }
+.rf-par-lado.antes img { box-shadow: 0 0 0 2px color-mix(in srgb, var(--c-indigo) 55%, transparent); }
+.rf-par-lado.depois img { box-shadow: 0 0 0 2px color-mix(in srgb, var(--c-rosa) 55%, transparent); }
+.rf-par-lado figcaption { font-size: 0.8rem; color: var(--texto-2); }
+.rf-par-lado figcaption b { color: var(--texto); margin-right: 4px; }
+.rf-par-numeros { margin: 0; display: flex; flex-direction: column; gap: 4px; }
+.rf-par-numeros > div { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; padding: 5px 8px; border-radius: 9px; background: var(--superficie-2); font-size: 0.76rem; min-width: 0; }
+.rf-par-numeros dt { color: var(--texto-2); white-space: nowrap; }
+.rf-par-numeros dd { margin: 0; font-weight: 650; text-align: right; display: flex; flex-direction: column; align-items: flex-end; white-space: nowrap; }
+.rf-par-delta { font-size: 0.7rem; font-weight: 700; color: var(--texto-2); }
+.rf-par-delta.bom { color: var(--bom); }
+.rf-par-delta.ruim { color: var(--ruim); }
+.rf-par-sem { font-size: 0.75rem; }
+@media (max-width: 359px) { .rf-par-numeros > div { flex-direction: column; align-items: flex-start; gap: 0; } .rf-par-numeros dd { align-items: flex-start; } }
+
+/* ---------- Fases ---------- */
+.rf-degraus { margin-top: 2px; }
+.rf-degraus-barras { display: flex; align-items: flex-end; gap: 3px; height: 112px; }
+.rf-degraus-barras span {
+  flex-basis: 0; min-width: 16px; border-radius: 8px 8px 3px 3px; overflow: hidden; display: flex; justify-content: center;
+  background: linear-gradient(180deg, var(--rf-cor), color-mix(in srgb, var(--rf-cor) 45%, transparent));
+}
+.rf-degraus-barras b { margin-top: 5px; font-size: 0.66rem; font-weight: 800; color: var(--fundo); white-space: nowrap; }
+.rf-degraus-eixo { display: flex; justify-content: space-between; gap: 6px; font-size: 0.7rem; color: var(--texto-2); margin-top: 6px; }
+.rf-degraus-eixo span:nth-child(2) { text-align: center; }
+
+.rf-tempo { list-style: none; margin: 16px 0 10px; padding: 0; position: relative; display: flex; flex-direction: column; gap: 12px; }
+.rf-tempo::before { content: ''; position: absolute; left: 6px; top: 6px; bottom: 6px; width: 2px; border-radius: 2px; background: linear-gradient(180deg, var(--c-ciano), var(--c-indigo), var(--c-rosa), var(--c-laranja)); opacity: 0.55; }
+.rf-tempo-item { position: relative; padding-left: 24px; min-width: 0; }
+.rf-tempo-ponto { position: absolute; left: 0; top: 3px; width: 14px; height: 14px; border-radius: 50%; background: var(--texto-3); box-shadow: 0 0 0 3px var(--superficie); }
+.rf-tempo-item.inicio .rf-tempo-ponto, .rf-tempo-item.fase .rf-tempo-ponto { background: var(--rf-cor); }
+.rf-tempo-item.fim .rf-tempo-ponto { background: var(--c-rosa); }
+.rf-tempo-item.registro .rf-tempo-ponto, .rf-tempo-item.anotacao .rf-tempo-ponto { width: 10px; height: 10px; left: 2px; top: 5px; }
+.rf-tempo-corpo { min-width: 0; }
+.rf-tempo-data { font-size: 0.72rem; font-weight: 650; color: var(--texto-2); }
+.rf-tempo-titulo { font-weight: 650; font-size: 0.9rem; margin-top: 1px; }
+.rf-tempo-detalhe { font-size: 0.82rem; color: var(--texto-2); overflow-wrap: anywhere; }
+
+.rf-fase {
+  margin-top: 6px; padding: 10px 12px; border-radius: var(--raio-sm);
+  background: color-mix(in srgb, var(--rf-cor) 9%, var(--superficie-2)); border-left: 3px solid var(--rf-cor);
+}
+.rf-fase-cab { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.rf-fase-cab b { font-size: 0.95rem; margin-right: 2px; }
+.rf-fase-cab .etiqueta { background: color-mix(in srgb, var(--superficie) 70%, transparent); color: var(--texto-2); }
+.rf-fase-cab .etiqueta.aviso { color: color-mix(in srgb, var(--aviso) 78%, var(--texto)); }
+.rf-fase-periodo { font-size: 0.76rem; color: var(--texto-2); margin-top: 2px; }
+.rf-fase-numeros { margin: 8px 0 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 10px; }
+@media (max-width: 359px) { .rf-fase-numeros { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.rf-fase-numeros > div { min-width: 0; }
+.rf-fase-numeros dt { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700; color: var(--texto-2); }
+.rf-fase-numeros dd { margin: 0; font-size: 0.86rem; font-weight: 650; overflow-wrap: anywhere; }
+
+/* ---------- Hábitos ---------- */
+.rf-aneis { margin-top: 2px; }
+.rf-mini-grade { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
+.rf-mini-grade .rf-ladrilho { background: var(--superficie-2); border-color: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; }
+
+/* ---------- Recordes ---------- */
+.rf-recordes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.rf-recorde:last-child:nth-child(odd) { grid-column: 1 / -1; }
+.rf-recorde {
+  display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 12px; border-radius: var(--raio-sm);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--rf-cor) 12%, var(--superficie-2)), var(--superficie-2) 70%);
+}
+.rf-recorde-icone {
+  width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; margin-bottom: 4px;
+  background: color-mix(in srgb, var(--rf-cor) 20%, transparent); color: var(--rf-cor);
+}
+.rf-recorde-icone svg { width: 18px; height: 18px; }
+.rf-recorde-titulo { font-size: 0.75rem; font-weight: 650; color: var(--texto-2); line-height: 1.25; overflow-wrap: anywhere; }
+.rf-recorde-valor { font-size: 1.3rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.15; overflow-wrap: anywhere; }
+.rf-recorde-detalhe { font-size: 0.72rem; color: var(--texto-2); line-height: 1.3; overflow-wrap: anywhere; }
+@media (max-width: 359px) { .rf-recorde { padding: 10px; } .rf-recorde-valor { font-size: 1.12rem; } }
+
+/* ---------- Compartilhar e PDF ---------- */
+.rf-botao-stories {
+  justify-content: flex-start; gap: 12px; min-height: 64px; padding: 8px 14px 8px 10px; text-align: left; width: 100%;
+  border-color: color-mix(in srgb, var(--c-indigo) 40%, var(--borda));
+  background: linear-gradient(120deg, color-mix(in srgb, var(--c-indigo) 20%, var(--superficie-2)), color-mix(in srgb, var(--c-rosa) 16%, var(--superficie-2)));
+}
+.rf-botao-stories-icone {
+  flex: none; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; color: var(--destaque-texto);
+  background: linear-gradient(135deg, var(--c-indigo), var(--c-rosa));
+}
+.rf-botao-stories-icone svg { width: 20px; height: 20px; }
+.rf-botao-stories-texto { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.rf-botao-stories-texto b { font-size: 0.98rem; }
+.rf-botao-stories-texto small { font-size: 0.76rem; font-weight: 500; color: var(--texto-2); overflow-wrap: anywhere; }
+.rf-previa-stories img, .rf-previa-stories > div { aspect-ratio: 1080 / 1920; height: min(52dvh, 440px); }
+.rf-slot-pdf { display: flex; flex-direction: column; gap: 6px; }
+.rf-slot-pdf .mudo { font-size: 0.78rem; }
+
+.rf-pos { text-align: center; }
+.rf-rodape { text-align: center; font-size: 0.78rem; color: var(--texto-2); padding: 4px 8px 8px; }
+
+/* Metas: a barra do caminho em cor (o resto igual ao da Análise) */
+.rf .meta-feito { background: linear-gradient(90deg, var(--c-ciano), var(--c-verde)); }
+.rf .meta-feito.bom { background: var(--bom); }
+/* Espaço do PDF final (Parte 2): desligado, mas legível (sem a opacidade do botão desligado) */
+.rf-slot-pdf .botao:disabled { opacity: 1; color: var(--texto-2); border-style: dashed; background: transparent; }

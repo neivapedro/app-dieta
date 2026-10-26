@@ -49,6 +49,7 @@ import { adesaoPeriodo, destaques, habitosPorSemana, picoNausea, progressoMeta, 
 import { diaCurto } from '../lib/rotina';
 import { aderenciaDoTreino, formatarTempo, textoCorridasPeriodo } from '../lib/treino';
 import { BotaoCompartilharProgresso } from '../componentes/compartilhar';
+import { CartaoRelatorioFinal } from '../componentes/relatorio-final-entrada';
 import { fasesNoPeriodo, fimDoBloco, lerPeriodo, noPeriodo, opcoesPeriodo, resumoPeriodo, rotuloFaseCurto } from '../lib/analise-periodo';
 import { preverMeta } from '../lib/analise-previsao';
 import { marcosAnalise } from '../lib/analise-detalhe';
@@ -963,6 +964,8 @@ export function Analise() {
               </div>
             </div>
           </section>
+
+          <CartaoRelatorioFinal onde="analise" />
 
           <div className="secao-sub analise-kpis-sub">
             {emCiclo

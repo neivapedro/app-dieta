@@ -1,6 +1,7 @@
 // Tipos públicos do motor de gráficos (SVG puro)
 
-export type CorSerie = 'texto' | 'neutro' | 'aviso' | 'bom' | 'ruim' | 'destaque';
+/** Cores do tema; as de nome de cor (azul…) são acentos para gráficos coloridos (tokens --c-* em estilos.css) */
+export type CorSerie = 'texto' | 'neutro' | 'aviso' | 'bom' | 'ruim' | 'destaque' | 'azul' | 'roxo' | 'rosa' | 'ciano' | 'laranja' | 'verde' | 'indigo';
 
 export interface PontoSerie {
   /** AAAA-MM-DD */

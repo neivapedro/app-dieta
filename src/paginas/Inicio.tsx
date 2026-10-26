@@ -9,6 +9,7 @@ import { AneisHoje, HistoricoAneis, useAneis } from '../componentes/aneis';
 import { AlertasSeguranca, AnelHoje, ChecklistHoje, FaixaOntem, useTarefasHoje } from '../componentes/inicio';
 import { Kpi } from '../componentes/painel';
 import { CartaoFimProjeto } from '../componentes/projeto';
+import { CartaoRelatorioFinal } from '../componentes/relatorio-final-entrada';
 import { ResumoSemana } from '../componentes/ResumoSemana';
 import { FormDiaTreino } from '../componentes/treino';
 import { Bloco, Icone } from '../componentes/ui';
@@ -386,6 +387,9 @@ export function Inicio() {
           )
         ) : null}
       </section>
+
+      {/* Ciclo concluído: o relatório final fica pronto (só aparece depois do fim) */}
+      <CartaoRelatorioFinal onde="inicio" />
 
       {/* Fim do remédio (ou plano concluído com sobra no frasco): o balanço do projeto */}
       {mostrarFimProjeto && <CartaoFimProjeto aoRegistrar={() => setRegistrar(true)} />}

@@ -63,17 +63,17 @@ export function pontosLinha(serie: { data: string; valor: number }[], c: Caixa):
 
 // ---------- Peças de desenho ----------
 
-function fonte(ctx: CanvasRenderingContext2D, peso: number, px: number) {
+export function fonte(ctx: CanvasRenderingContext2D, peso: number, px: number) {
   ctx.font = `${peso} ${px}px ${FONTE}`;
 }
 
-function espacar(ctx: CanvasRenderingContext2D, px: number) {
+export function espacar(ctx: CanvasRenderingContext2D, px: number) {
   // letterSpacing não existe em todo navegador: sem ele, o texto sai sem o espaçamento
   if ('letterSpacing' in ctx) (ctx as CanvasRenderingContext2D & { letterSpacing: string }).letterSpacing = `${px}px`;
 }
 
 /** Escreve o texto no maior tamanho (até `px`) que cabe em `max`. */
-function texto(ctx: CanvasRenderingContext2D, t: string, x: number, y: number, o: { px: number; peso?: number; cor: string; max?: number; alinhar?: CanvasTextAlign; minimo?: number }) {
+export function texto(ctx: CanvasRenderingContext2D, t: string, x: number, y: number, o: { px: number; peso?: number; cor: string; max?: number; alinhar?: CanvasTextAlign; minimo?: number }) {
   const peso = o.peso ?? 400;
   const px = o.max ? tamanhoQueCabe((p) => (fonte(ctx, peso, p), ctx.measureText(t).width), o.max, o.px, o.minimo ?? 12) : o.px;
   fonte(ctx, peso, px);
@@ -83,13 +83,13 @@ function texto(ctx: CanvasRenderingContext2D, t: string, x: number, y: number, o
   return px;
 }
 
-function rotulo(ctx: CanvasRenderingContext2D, t: string, x: number, y: number, cor: string = PALETA.texto3, px = 24) {
+export function rotulo(ctx: CanvasRenderingContext2D, t: string, x: number, y: number, cor: string = PALETA.texto3, px = 24) {
   espacar(ctx, 3);
   texto(ctx, t.toUpperCase(), x, y, { px, peso: 700, cor });
   espacar(ctx, 0);
 }
 
-function retangulo(ctx: CanvasRenderingContext2D, c: Caixa, raio: number) {
+export function retangulo(ctx: CanvasRenderingContext2D, c: Caixa, raio: number) {
   // Caminho à mão (roundRect só existe nos navegadores mais novos)
   const r = Math.min(raio, c.l / 2, c.a / 2);
   ctx.beginPath();
@@ -101,7 +101,7 @@ function retangulo(ctx: CanvasRenderingContext2D, c: Caixa, raio: number) {
   ctx.closePath();
 }
 
-function painel(ctx: CanvasRenderingContext2D, c: Caixa, raio = 32, forte = false) {
+export function painel(ctx: CanvasRenderingContext2D, c: Caixa, raio = 32, forte = false) {
   retangulo(ctx, c, raio);
   const g = ctx.createLinearGradient(0, c.y, 0, c.y + c.a);
   g.addColorStop(0, forte ? PALETA.superficieForte : PALETA.superficie);
@@ -165,7 +165,7 @@ function cabecalho(ctx: CanvasRenderingContext2D, d: DadosCartao, marca: CanvasI
   texto(ctx, d.periodoTexto, p.x + largura / 2, p.y + 37, { px: 26, peso: 600, cor: PALETA.texto, alinhar: 'center', max: largura - 32 });
 }
 
-function linha(ctx: CanvasRenderingContext2D, serie: { data: string; valor: number }[], c: Caixa, cor: string, espessura = 6) {
+export function linha(ctx: CanvasRenderingContext2D, serie: { data: string; valor: number }[], c: Caixa, cor: string, espessura = 6) {
   const pts = pontosLinha(serie, c);
   if (pts.length < 2) return;
   const caminho = () => {
@@ -216,7 +216,7 @@ function linha(ctx: CanvasRenderingContext2D, serie: { data: string; valor: numb
   ctx.fill();
 }
 
-function hexComAlfa(hex: string, a: number): string {
+export function hexComAlfa(hex: string, a: number): string {
   const h = hex.replace('#', '');
   const n = parseInt(h.length === 3 ? h.split('').map((x) => x + x).join('') : h, 16);
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;

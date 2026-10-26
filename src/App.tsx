@@ -21,6 +21,8 @@ import { Treino } from './paginas/Treino';
 
 // Texto longo e só de leitura: baixa à parte (o service worker guarda junto com o resto)
 const Retatrutida = lazy(() => import('./paginas/Retatrutida'));
+// Relatório final: tela longa, com gráficos e fotos; baixa só quando aberta
+const RelatorioFinal = lazy(() => import('./paginas/RelatorioFinal'));
 
 const ABAS = [
   { para: '/', rotulo: 'Início', icone: 'inicio', titulo: 'Início' },
@@ -33,7 +35,7 @@ const ABAS = [
 const ABA_TREINO = { para: '/treino', rotulo: 'Treino', icone: 'treino', titulo: 'Treino' };
 
 // Telas abertas pelos botões do cabeçalho (fora da barra de abas)
-const TITULOS_EXTRAS: Record<string, string> = { '/perfil': 'Perfil', '/retatrutida': 'Retatrutida' };
+const TITULOS_EXTRAS: Record<string, string> = { '/perfil': 'Perfil', '/retatrutida': 'Retatrutida', '/relatorio-final': 'Relatório final' };
 
 function AvisoNovaVersao() {
   // O aviso pode chegar antes desta parte da tela existir (ainda carregando)
@@ -198,6 +200,14 @@ function Estrutura() {
               element={
                 <Suspense fallback={<p className="mudo">Carregando…</p>}>
                   <Retatrutida />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/relatorio-final"
+              element={
+                <Suspense fallback={<p className="mudo">Carregando…</p>}>
+                  <RelatorioFinal />
                 </Suspense>
               }
             />
