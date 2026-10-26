@@ -164,6 +164,8 @@ export function useTarefasHoje(dose: EntradaTarefas['dose']) {
   // Às segundas, para quem já mede: a medição em jejum entra no checklist
   const segunda = segundaDaSemana(hoje);
   const medicao = medidas.length && hoje === segunda ? { feita: medidas.some((m) => m.data >= segunda) } : null;
+  const comDieta = temPlano(dieta);
+  const metaAgua = metaAguaDe(hoje).meta;
   const tarefas = tarefasDoDia({
     reg,
     pesoMedicao: medicaoHoje?.peso_kg ?? null,
@@ -171,10 +173,10 @@ export function useTarefasHoje(dose: EntradaTarefas['dose']) {
     medicao,
     comTreino,
     treinoDia: tr,
-    comDieta: temPlano(dieta),
-    metaAgua: metaAguaDe(hoje).meta,
+    comDieta,
+    metaAgua,
   });
-  return { tarefas, progresso: progressoTarefas(tarefas), reg, medicaoHoje, comTreino, tr };
+  return { tarefas, progresso: progressoTarefas(tarefas), reg, medicaoHoje, comTreino, tr, comDieta, metaAgua };
 }
 
 export type TarefasHoje = ReturnType<typeof useTarefasHoje>;
@@ -265,7 +267,7 @@ export function ChecklistHoje({
 
   // Linha que abre o registro (Diário, medição ou aplicação)
   const linhaBotao = (x: Tarefa, aoTocar: () => void, destaque?: boolean) => (
-    <li key={x.chave} className={`tarefa ${x.feito ? 'feito' : ''} ${destaque && !x.feito ? 'tarefa-destaque' : ''}`}>
+    <li key={x.chave} id={`tarefa-${x.chave}`} className={`tarefa ${x.feito ? 'feito' : ''} ${destaque && !x.feito ? 'tarefa-destaque' : ''}`}>
       <button type="button" className="tarefa-linha" onClick={aoTocar}>
         <Marca feito={x.feito} />
         <span className="tarefa-rotulo">{x.rotulo}</span>
@@ -289,7 +291,7 @@ export function ChecklistHoje({
   );
   // Linha com o controle embaixo (só no "Fechar o dia")
   const linhaControle = (x: Tarefa, controle: ReactNode) => (
-    <li key={x.chave} className={`tarefa tarefa-com-controle ${x.feito ? 'feito' : ''}`}>
+    <li key={x.chave} id={`tarefa-${x.chave}`} className={`tarefa tarefa-com-controle ${x.feito ? 'feito' : ''}`}>
       <div className="tarefa-linha">
         <Marca feito={x.feito} />
         <span className="tarefa-rotulo">{x.rotulo}</span>
@@ -396,7 +398,7 @@ export function ChecklistHoje({
 
   const titulo = noite ? 'Fechar o dia' : 'Checklist de hoje';
   return (
-    <section className={`cartao checklist ${noite ? 'checklist-noite' : ''}`} aria-label={titulo}>
+    <section id="checklist-hoje" className={`cartao checklist ${noite ? 'checklist-noite' : ''}`} aria-label={titulo}>
       <div className="checklist-cab">
         <div className="cresce">
           <h2>{titulo}</h2>
