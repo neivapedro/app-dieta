@@ -7,7 +7,7 @@ import { formatarData } from '../lib/datas';
 import { MDC } from '../lib/gordura';
 import { corVariacao, num, sinal, ui } from '../lib/formato';
 import type { DecisaoFase, Fase } from '../lib/tipos';
-import { Bloco, Campo } from './ui';
+import { Bloco, Campo, Folha } from './ui';
 
 /** Grava as decisões do fim de fase pela fila (funciona sem internet). */
 function useDecisoes() {
@@ -23,7 +23,8 @@ const dias = (n: number) => `${n} ${n === 1 ? 'dia' : 'dias'}`;
 
 /**
  * Bloco "Fim da fase" do cartão da dose: aparece quando o degrau completou.
- * Mostra os números da fase e as regras do Plano; o app nunca sobe sozinho.
+ * No cartão, um resumo curto (4 números e a dose nova); os números completos,
+ * as regras do Plano e Subir / Repetir / Anotar abrem numa folha. O app nunca sobe sozinho.
  */
 export function FimDeFase({ aoDecidir }: { aoDecidir?: () => void } = {}) {
   const { ciclo, diario } = useDados();
@@ -31,6 +32,7 @@ export function FimDeFase({ aoDecidir }: { aoDecidir?: () => void } = {}) {
   const { decisoes, salvar, nova } = useDecisoes();
   const [modo, setModo] = useState<'repetir' | 'anotar' | null>(null);
   const [texto, setTexto] = useState('');
+  const [folha, setFolha] = useState(false);
   if (!ciclo || !resumo?.proxima) return null;
   const s = resumo.degrau;
   const d = s.degrau;
@@ -80,14 +82,13 @@ export function FimDeFase({ aoDecidir }: { aoDecidir?: () => void } = {}) {
     setModo(null);
   }
 
-  return (
-    <div className="fim-fase pilha">
-      <div className="cartao-cab" style={{ marginBottom: 0 }}>
-        <h3>
-          Fim da fase {d.ultima_fase + 1} · {atual.nome}
-        </h3>
-        {s.estado === 'pendente' ? <span className="etiqueta aviso">a decidir</span> : <span className="etiqueta bom">decidido</span>}
-      </div>
+  const pendente = s.estado === 'pendente';
+  const ritmo = !bloco || bloco.poucos_dados ? null : bloco.kg_por_semana;
+  const etiquetaEstado = pendente ? <span className="etiqueta aviso">a decidir</span> : <span className="etiqueta bom">decidido</span>;
+  const doseNovaTexto = `${num(doseAtual)} → ${num(doseNova)} mg (${sinal(mNova.ui_pratica - mAtual.ui_pratica, 2, ' UI')})`;
+
+  const conteudo = (
+    <div className="pilha" style={{ gap: 10 }}>
       <p className="texto-2">
         {d.bloco.aplicacoes} {d.bloco.aplicacoes === 1 ? 'dose' : 'doses'} de {num(doseAtual)} mg desde {formatarData(d.bloco.data_inicio)}.{' '}
         {s.estado === 'pendente'
@@ -120,9 +121,7 @@ export function FimDeFase({ aoDecidir }: { aoDecidir?: () => void } = {}) {
         </ul>
       </details>
       <div>
-        <span className="etiqueta destaque">
-          Dose nova: {num(doseAtual)} → {num(doseNova)} mg ({sinal(mNova.ui_pratica - mAtual.ui_pratica, 2, ' UI')})
-        </span>
+        <span className="etiqueta destaque">Dose nova: {doseNovaTexto}</span>
       </div>
 
       {s.estado === 'subir' ? (
@@ -196,6 +195,55 @@ export function FimDeFase({ aoDecidir }: { aoDecidir?: () => void } = {}) {
         </ul>
       )}
       <p className="mudo">Os números só descrevem a fase. A decisão de dose é sua, combinada com o seu médico.</p>
+    </div>
+  );
+
+  return (
+    <div className={`fim-fase fim-fase-compacto ${pendente ? 'pendente' : 'decidido'}`}>
+      <div className="fim-fase-cab">
+        <h3>
+          Fase {d.ultima_fase + 1} concluída<span className="fim-fase-nome"> · {atual.nome}</span>
+        </h3>
+        {etiquetaEstado}
+      </div>
+      <p className="texto-2">
+        {d.bloco.aplicacoes} {d.bloco.aplicacoes === 1 ? 'dose' : 'doses'} de {num(doseAtual)} mg desde {formatarData(d.bloco.data_inicio, true).slice(0, 5)}.{' '}
+        {pendente
+          ? `A próxima continua ${num(doseAtual)} mg até você decidir.`
+          : `Decidido em ${formatarData(s.decisao!.data, true).slice(0, 5)}: subir para ${num(doseNova)} mg (${ui(mNova.ui_pratica)}) na próxima dose.`}
+      </p>
+      <div className="fim-fase-kpis">
+        <div>
+          <span>Náusea média</span>
+          <b className="numero">{numeros.nausea_media === null ? '–' : num(numeros.nausea_media, 1)}</b>
+        </div>
+        <div>
+          <span>Vômito</span>
+          <b className={`numero ${numeros.vomito ? 'kpi-ruim' : ''}`}>{numeros.vomito} de {dias(regs)}</b>
+        </div>
+        <div>
+          <span>Ritmo de peso</span>
+          <b className={`numero kpi-${corVariacao(ritmo, true) || 'neutro'}`}>{ritmo === null ? 'poucos dados' : sinal(ritmo, 2, ' kg/sem')}</b>
+        </div>
+        <div>
+          <span>Cintura</span>
+          <b className={`numero kpi-${corVariacao(comp?.cintura ?? null, true, MDC.cintura_cm) || 'neutro'}`}>{sinal(comp?.cintura ?? null, 1, ' cm')}</b>
+        </div>
+      </div>
+      <div className="fim-fase-pe">
+        <span className="etiqueta destaque">Dose nova: {doseNovaTexto}</span>
+      </div>
+      <button type="button" className={`botao bloco-largo ${pendente ? 'primario' : ''}`} onClick={() => setFolha(true)} aria-haspopup="dialog">
+        {pendente ? 'Ver números e decidir' : 'Ver decisão e anotações'}
+      </button>
+      {folha && (
+        <Folha titulo={`Fim da fase ${d.ultima_fase + 1} · ${atual.nome}`} aoFechar={() => setFolha(false)}>
+          <div className="linha" style={{ marginTop: -4, marginBottom: 10 }}>
+            {etiquetaEstado}
+          </div>
+          {conteudo}
+        </Folha>
+      )}
     </div>
   );
 }
