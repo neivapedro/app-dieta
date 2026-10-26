@@ -6,7 +6,8 @@ import { calcularIndiceForca, chaveExercicio, EXERCICIOS_PADRAO, exerciciosDoPer
 import { kg, num, paraNumero, paraTexto, sinal } from '../lib/formato';
 import { segundaDaSemana } from '../lib/treino';
 import type { RegistroForca } from '../lib/tipos';
-import { Bloco, Campo, CampoNumero, Folha, Vazio } from './ui';
+import { Kpi } from './painel';
+import { Campo, CampoNumero, Folha, Vazio } from './ui';
 
 const variacao = (v: number | null) => (v === null ? '–' : sinal(v * 100, 1, '%'));
 
@@ -30,99 +31,132 @@ export function CartaoForca({ esforcoSubiu }: { esforcoSubiu?: boolean }) {
     const r = ultimoDoExercicio(forca, nome);
     const e1rm = r ? umRmEpley(r.carga_kg, r.reps) : null;
     const ref = indice.referencias.get(chaveExercicio(nome)) ?? null;
-    return { nome, r, e1rm, vsRef: e1rm !== null && ref ? e1rm / ref - 1 : null };
+    return {
+      nome,
+      r,
+      e1rm,
+      vsRef: e1rm !== null && ref ? e1rm / ref - 1 : null,
+    };
   });
 
+  const serie = indice.semanas.filter((s) => s.suavizado !== null).map((s) => s.suavizado! * 100);
+  const tomIndice = indice.nivel === 'alerta' ? 'ruim' : indice.nivel ? 'aviso' : ultima && ultima.suavizado !== null && ultima.suavizado >= 0.02 ? 'bom' : '';
+
   return (
-    <section className="cartao">
-      <div className="cartao-cab">
-        <h2>Força</h2>
-        <button className="botao pequeno primario" onClick={() => setRegistrando(true)}>
-          {feitaNaSemana ? 'Editar semana' : 'Registrar semana'}
-        </button>
-      </div>
-      {forca.length === 0 ? (
-        <Vazio>
-          1× por semana, anote a primeira série válida (perto da falha) de cada exercício-âncora: carga, repetições e RIR (repetições na reserva). O app
-          estima o 1RM e acompanha o índice de força, um sinal de massa magra que não depende da fita.
-        </Vazio>
-      ) : (
-        <>
-          <div className="grade">
-            <Bloco rotulo="Índice de força" valor={ultima ? variacao(ultima.suavizado) : '–'} classe={indice.nivel ? 'aviso-txt' : undefined} />
-            <Bloco rotulo="Esta semana" valor={feitaNaSemana ? '✓ registrada' : 'pendente'} />
-          </div>
-          {indice.nivel && (
-            <div className={`alerta ${indice.nivel === 'alerta' ? 'erro' : ''}`} style={{ display: 'block', marginTop: 10 }}>
-              <b>
-                {indice.nivel === 'alerta' ? 'Força 10% ou mais abaixo da referência' : 'Força caindo'} há 2 semanas ({variacao(indice.queda)}).
-              </b>{' '}
-              Queda de força pode indicar perda de massa magra; fadiga acumulada, sono curto, náusea e pouca comida também derrubam a força.
-              {esforcoSubiu ? ' O esforço percebido da musculação também subiu.' : ''}
-            </div>
-          )}
-          <div className="tabela-rolagem" style={{ marginTop: 10 }}>
-            <table>
-              <thead>
-                <tr>
-                  <th>Exercício</th>
-                  <th>Última série</th>
-                  <th>1RM est.</th>
-                  <th>vs ref.</th>
-                </tr>
-              </thead>
-              <tbody>
-                {linhas.map((l) => (
-                  <tr key={l.nome}>
-                    <td>{l.nome}</td>
-                    <td>
-                      {l.r ? `${num(l.r.carga_kg, 1)} kg × ${l.r.reps}` : '–'}
-                      {l.r && <div className="sub-valor mudo">{formatarData(l.r.data, true).slice(0, 5)}{l.r.rir !== null ? ` · RIR ${l.r.rir}` : ''}</div>}
-                    </td>
-                    <td>{l.e1rm !== null ? kg(l.e1rm) : l.r ? <span className="texto-2">+{REPS_MAX_EPLEY} reps</span> : '–'}</td>
-                    <td className={l.vsRef === null ? undefined : l.vsRef <= -0.05 ? 'aviso-txt' : l.vsRef >= 0.02 ? 'bom' : undefined}>{variacao(l.vsRef)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {recentes.length > 1 && (
-            <div className="tabela-rolagem" style={{ marginTop: 10 }}>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Semana</th>
-                    <th>Índice</th>
-                    <th>Suavizado</th>
-                    <th>Massa magra</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentes.map((s) => (
-                    <tr key={s.segunda}>
-                      <td>{formatarData(s.segunda, true).slice(0, 5)}</td>
-                      <td>{variacao(s.indice)}</td>
-                      <td className={s.suavizado !== null && s.suavizado <= -0.05 ? 'aviso-txt' : undefined}>{variacao(s.suavizado)}</td>
-                      <td>{kg(magraDaSemana(s.segunda))}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </>
+    <>
+      {forca.length > 0 && (
+        <div className="kpis">
+          <Kpi
+            rotulo="Índice de força"
+            valor={ultima ? variacao(ultima.suavizado) : '–'}
+            variacao={ultima ? `vs referência · ${formatarData(ultima.segunda, true).slice(0, 5)}` : 'aparece com 2 semanas'}
+            classe={tomIndice}
+            valores={serie.length >= 2 ? serie.slice(-12) : undefined}
+          />
+          <Kpi
+            rotulo="Esta semana"
+            valor={feitaNaSemana ? '✓ registrada' : 'pendente'}
+            variacao={`${exercicios.length} ${exercicios.length === 1 ? 'exercício' : 'exercícios'}-âncora`}
+            classe={feitaNaSemana ? 'bom' : ''}
+          />
+        </div>
       )}
-      <p className="mudo" style={{ marginTop: 8 }}>
-        1RM estimado por Epley = carga × (1 + reps/30), só com até {REPS_MAX_EPLEY} repetições. Referência de cada exercício: as 2 primeiras semanas.
-        Índice = média das variações dos exercícios, suavizado em 2 leituras; queda de 5% em 2 leituras seguidas fica em atenção, de 10% em alerta. ±1
-        repetição de uma semana para outra é normal (≈ 2,5%).
-      </p>
-      <button className="botao pequeno" style={{ marginTop: 8 }} onClick={() => setEditandoLista(true)}>
-        Exercícios: {exercicios.length}
-      </button>
-      {registrando && <FormForca exercicios={exercicios} aoFechar={() => setRegistrando(false)} />}
-      {editandoLista && <FormExerciciosForca atuais={exercicios} aoFechar={() => setEditandoLista(false)} />}
-    </section>
+      <section className="cartao">
+        <div className="secao-cab">
+          <div>
+            <h2>Força</h2>
+            <div className="secao-sub">1× por semana · exercícios-âncora</div>
+          </div>
+          <button className="botao pequeno primario" onClick={() => setRegistrando(true)}>
+            {feitaNaSemana ? 'Editar semana' : 'Registrar semana'}
+          </button>
+        </div>
+        {forca.length === 0 ? (
+          <Vazio>
+            1× por semana, anote a primeira série válida (perto da falha) de cada exercício-âncora: carga, repetições e RIR (repetições na reserva). O app
+            estima o 1RM e acompanha o índice de força, um sinal de massa magra que não depende da fita.
+          </Vazio>
+        ) : (
+          <>
+            {indice.nivel && (
+              <div className={`alerta ${indice.nivel === 'alerta' ? 'erro' : ''}`} style={{ display: 'block', marginBottom: 12 }}>
+                <b>
+                  {indice.nivel === 'alerta' ? 'Força 10% ou mais abaixo da referência' : 'Força caindo'} há 2 semanas ({variacao(indice.queda)}).
+                </b>{' '}
+                Queda de força pode indicar perda de massa magra; fadiga acumulada, sono curto, náusea e pouca comida também derrubam a força.
+                {esforcoSubiu ? ' O esforço percebido da musculação também subiu.' : ''}
+              </div>
+            )}
+            <div className="forca-lista">
+              <div className="forca-item forca-cab" aria-hidden="true">
+                <span>Exercício</span>
+                <span>1RM est. · vs ref.</span>
+              </div>
+              {linhas.map((l) => (
+                <div key={l.nome} className="forca-item">
+                  <span className="forca-nome">
+                    <b>{l.nome}</b>
+                    <small className="numero">
+                      {l.r
+                        ? `${num(l.r.carga_kg, 1)} kg × ${l.r.reps} · ${formatarData(l.r.data, true).slice(0, 5)}${l.r.rir !== null ? ` · RIR ${l.r.rir}` : ''}`
+                        : 'sem registro'}
+                    </small>
+                  </span>
+                  <span className="forca-num">
+                    <span className="forca-1rm numero">
+                      {l.e1rm !== null ? kg(l.e1rm) : l.r ? <span className="texto-2">+{REPS_MAX_EPLEY} reps</span> : '–'}
+                    </span>
+                    <span className={`forca-ref numero ${l.vsRef === null ? '' : l.vsRef <= -0.05 ? 'aviso-txt' : l.vsRef >= 0.02 ? 'bom' : ''}`}>
+                      {variacao(l.vsRef)}
+                    </span>
+                  </span>
+                </div>
+              ))}
+            </div>
+            {recentes.length > 1 && (
+              <details className="tabela-detalhe">
+                <summary>Ver semanas</summary>
+                <div className="tabela-rolagem">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Semana</th>
+                        <th>Índice</th>
+                        <th>Suavizado</th>
+                        <th>Massa magra</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recentes.map((s) => (
+                        <tr key={s.segunda}>
+                          <td>{formatarData(s.segunda, true).slice(0, 5)}</td>
+                          <td>{variacao(s.indice)}</td>
+                          <td className={s.suavizado !== null && s.suavizado <= -0.05 ? 'aviso-txt' : undefined}>{variacao(s.suavizado)}</td>
+                          <td>{kg(magraDaSemana(s.segunda))}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </details>
+            )}
+          </>
+        )}
+        <details className="tabela-detalhe">
+          <summary>Como ler</summary>
+          <p className="mudo">
+            1RM estimado por Epley = carga × (1 + reps/30), só com até {REPS_MAX_EPLEY} repetições. Referência de cada exercício: as 2 primeiras semanas. Índice
+            = média das variações dos exercícios, suavizado em 2 leituras; queda de 5% em 2 leituras seguidas fica em atenção, de 10% em alerta. ±1 repetição de
+            uma semana para outra é normal (≈ 2,5%).
+          </p>
+        </details>
+        <button className="botao pequeno bloco-largo" style={{ marginTop: 8 }} onClick={() => setEditandoLista(true)}>
+          Exercícios-âncora: {exercicios.length}
+        </button>
+        {registrando && <FormForca exercicios={exercicios} aoFechar={() => setRegistrando(false)} />}
+        {editandoLista && <FormExerciciosForca atuais={exercicios} aoFechar={() => setEditandoLista(false)} />}
+      </section>
+    </>
   );
 }
 
