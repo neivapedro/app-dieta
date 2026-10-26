@@ -288,7 +288,7 @@ function CartaoFase({ f, i }: { f: FaseRelatorio; i: number }) {
   const itens: [string, string, string][] = [
     ['Doses', `${f.doses} × ${num(f.dose_mg)} mg`, ''],
     ['Peso', f.variacao_kg === null ? '–' : sinal(f.variacao_kg, 1, ' kg'), corVariacao(f.variacao_kg, true, MDC.peso_kg)],
-    ['Ritmo', f.kg_por_semana === null ? 'poucos dados' : `${sinal(f.kg_por_semana, 2, ' kg')}/sem`, ''],
+    ['Ritmo/sem.', f.kg_por_semana === null ? 'poucos dados' : sinal(f.kg_por_semana, 2, ' kg'), ''],
     ['Cintura', f.cintura_cm === null ? '–' : sinal(f.cintura_cm, 1, ' cm'), corVariacao(f.cintura_cm, true, MDC.cintura_cm)],
     ['Náusea', f.nausea_media === null ? '–' : `${num(f.nausea_media, 1)} de 3`, ''],
     ...(f.treino !== null ? ([['Treino', pct(f.treino, 0), '']] as [string, string, string][]) : []),
