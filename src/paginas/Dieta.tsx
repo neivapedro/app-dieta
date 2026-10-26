@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import '../estilos/dieta.css';
+import { useEffect, useMemo, useState } from 'react';
 import { FolhaTroca, FormConfigDieta, FormRefeicao, gr, kcal, LinhaItem, LinhaMacros, novoItem, SeletorAlimento, type Troca } from '../componentes/dieta';
+import { AnelKcal, BarraKcal, BarraMacro, FaltaChips, IconeLapis, IconeSeta, LinhaMacroMeta, ProteinaRefeicoes } from '../componentes/dieta-painel';
 import { FasePosDieta } from '../componentes/projeto';
 import { Bloco } from '../componentes/ui';
 import { useDados } from '../dados/contexto';
@@ -37,6 +39,7 @@ import {
   type PlanoDieta,
   type Refeicao,
 } from '../lib/dieta';
+import { falta, fatiasKcal, proximoNomeRefeicao } from '../lib/dieta-painel';
 import { kg, num, pp } from '../lib/formato';
 import { conselhoConferencia, dietaNaTendencia, juntar, textoDietaSemana, textoPlanoSeguido } from '../lib/semana';
 import { aderenciaDoTreino } from '../lib/treino';
@@ -44,23 +47,7 @@ import { aderenciaDoTreino } from '../lib/treino';
 type Seletor = { refeicao: string; indice: number | null } | null;
 type Removido = { refeicao: string; indice: number; item: ItemRefeicao; nome: string } | null;
 
-/** Classe e texto da coluna "Falta": ✓ dentro da tolerância, "+" em vermelho quando passou. */
-function falta(valor: number, meta: number, sufixo: string, tolerancia: number) {
-  if (Math.abs(valor) <= Math.max(tolerancia, Math.abs(meta) * 0.02)) return { classe: 'bom', texto: '✓' };
-  if (valor < 0) return { classe: 'ruim', texto: `+${num(-valor, 0)}${sufixo}` };
-  return { classe: '', texto: `${num(valor, 0)}${sufixo}` };
-}
-
 const TEXTO_ESTADO = { salvo: 'Salvo', salvando: 'Salvando…', pendente: 'Sem conexão · guardado no aparelho', erro: 'Não salvo' } as const;
-
-/** Próximo "Refeição N" livre, sempre depois do maior número em uso. */
-function proximoNomeRefeicao(refeicoes: Refeicao[]): string {
-  const n = 1 + Math.max(0, refeicoes.length, ...refeicoes.map((r) => Number(/^Refeição (\d+)$/.exec(r.nome)?.[1] ?? 0)));
-  const usados = new Set(refeicoes.map((r) => r.nome));
-  let k = n;
-  while (usados.has(`Refeição ${k}`)) k++;
-  return `Refeição ${k}`;
-}
 
 export function Dieta() {
   const { dieta, salvarDieta, estadoDieta, dietaIndisponivel, perfil, medidas, treinos, diario, ciclo } = useDados();
@@ -74,6 +61,8 @@ export function Dieta() {
   const [troca, setTroca] = useState<Troca | null>(null);
   // Pilha: remover vários seguidos e desfazer todos
   const [removidos, setRemovidos] = useState<NonNullable<Removido>[]>([]);
+  // Refeições abertas (fechadas por padrão: o plano é o mesmo todo dia)
+  const [abertas, setAbertas] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
     if (!removidos.length) return;
@@ -144,11 +133,21 @@ export function Dieta() {
   const mudarRefeicao = (id: string, fn: (r: Refeicao) => Refeicao) => atualizar({ refeicoes: plano.refeicoes.map((r) => (r.id === id ? fn(r) : r)) });
   const mudarItem = (id: string, indice: number, item: ItemRefeicao) =>
     mudarRefeicao(id, (r) => ({ ...r, itens: r.itens.map((x, i) => (i === indice ? item : x)) }));
+  const abrir = (id: string) => setAbertas((a) => (a.has(id) ? a : new Set(a).add(id)));
+  const alternar = (id: string) =>
+    setAbertas((a) => {
+      const n = new Set(a);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
 
   function escolher(a: Alimento) {
     if (!seletor) return;
     const { refeicao, indice } = seletor;
     setSeletor(null);
+    // A refeição abre para ajustar a quantidade do que entrou
+    abrir(refeicao);
     if (indice === null) return mudarRefeicao(refeicao, (r) => ({ ...r, itens: [...r.itens, novoItem(a)] }));
     const atual = plano!.refeicoes.find((r) => r.id === refeicao)?.itens[indice];
     if (!atual) return;
@@ -180,6 +179,8 @@ export function Dieta() {
       });
     }
     atualizar({ refeicoes });
+    // O alimento volta à vista
+    setAbertas((a) => new Set([...a, ...removidos.map((r) => r.refeicao)]));
     setRemovidos([]);
   }
 
@@ -202,60 +203,59 @@ export function Dieta() {
 
   const refeicaoEditando = plano.refeicoes.find((r) => r.id === editando);
   const ajuste = plano.config.ajuste_kcal;
-
-  const chipsFalta = (): ReactNode =>
-    saldo && (
-      <div className="falta-inline">
-        <span className="rotulo">Falta</span>
-        {(
-          [
-            ['m-pa', 'Ptn A', saldo.falta.ptn_animal, saldo.meta.ptn_animal, ' g', 1],
-            ['m-c', 'Carb', saldo.falta.carb, saldo.meta.carb, ' g', 1],
-            ['m-g', 'Gord', saldo.falta.gord, saldo.meta.gord, ' g', 1],
-            ['m-k', 'kcal', saldo.falta.kcal, saldo.meta.kcal, '', 15],
-          ] as const
-        ).map(([cor, nome, valor, meta, suf, tol]) => {
-          const f = falta(valor, meta, suf, tol);
-          return (
-            <span key={nome} className="saldo-item">
-              {nome === 'kcal' ? (
-                <>
-                  <b className={f.classe}>{f.texto}</b> <span className={cor}>kcal</span>
-                </>
-              ) : (
-                <>
-                  <span className={cor}>{nome}</span> <b className={f.classe}>{f.texto}</b>
-                </>
-              )}
-            </span>
-          );
-        })}
-      </div>
-    );
+  const comItens = plano.refeicoes.filter((r) => r.itens.length > 0);
+  const todasAbertas = comItens.length > 0 && comItens.every((r) => abertas.has(r.id));
+  const fibraMeta = saldo ? metaFibra(saldo.meta.kcal) : 0;
+  // Totais do plano só valem com a lista de alimentos (sem ela, "–")
+  const planoConhecido = !semBanco && (!!banco || plano.refeicoes.every((r) => !r.itens.length));
+  const v = (n: number) => (planoConhecido ? n : null);
 
   return (
-    <div className="pilha">
+    <div className="pilha dieta">
       <FasePosDieta />
 
-      {/* Meta do dia (compacta: o detalhe fica em "Como é calculado") */}
-      <section className="cartao">
-        <div className="cartao-cab" style={{ marginBottom: 6 }}>
-          <h2>Meta do dia</h2>
+      {/* Meta do dia: anel das kcal do plano × meta, barras dos macros e de onde vem a meta */}
+      <section className="cartao hero dieta-hero">
+        <div className="hero-cab">
+          <div>
+            <div className="sobretitulo">Meta do dia</div>
+            {metas && <div className="dieta-meta-kcal numero">{kcal(metas.meta_kcal)}</div>}
+          </div>
           <button className="botao pequeno" onClick={() => setConfig(true)}>
             Ajustar
           </button>
         </div>
         {metas && corpo && ultima ? (
-          <div className="pilha" style={{ gap: 8 }}>
-            <div className="grande">{kcal(metas.meta_kcal)}</div>
+          <>
+            <div className="dieta-painel">
+              <AnelKcal plano={v(total.kcal)} meta={metas.meta_kcal} />
+              <div className="dieta-barras">
+                <BarraMacro nome="Proteína animal" curto="Ptn animal" classe="m-pa" plano={v(total.ptn_animal)} meta={metas.ptn_animal_g} />
+                <BarraMacro nome="Carboidrato" curto="Carbo" classe="m-c" plano={v(total.carb)} meta={saldo ? saldo.meta.carb : 0} />
+                <BarraMacro nome="Gordura" curto="Gordura" classe="m-g" plano={v(total.gord)} meta={metas.gord_g} />
+                {saldo && (
+                  <div className="dieta-fibra numero">
+                    Fibra {num(total.fibra, 0)}/{num(fibraMeta, 0)} g{total.fibra >= fibraMeta * 0.98 && <span className="barra-ok"> ✓</span>}
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* De onde vem a meta: basal → gasto total → ajuste */}
-            <div className="grade grade-3">
-              <Bloco rotulo="Basal (TMB)" valor={num(metas.tmb, 0)} />
-              <Bloco rotulo="Gasto total" valor={num(metas.gasto_total, 0)} />
-              <Bloco rotulo={ajuste < 0 ? 'Déficit' : ajuste > 0 ? 'Superávit' : 'Ajuste'} valor={ajuste === 0 ? '0' : `${ajuste < 0 ? '−' : '+'} ${num(Math.abs(ajuste), 0)}`} />
+            <div className="dieta-chips" aria-label="De onde vem a meta">
+              <span className="dieta-chip">
+                <span>Basal</span> <b className="numero">{num(metas.tmb, 0)}</b>
+              </span>
+              <span className="dieta-chip">
+                <span>Gasto</span> <b className="numero">{num(metas.gasto_total, 0)}</b>
+              </span>
+              <span className="dieta-chip">
+                <span>{ajuste < 0 ? 'Déficit' : ajuste > 0 ? 'Superávit' : 'Ajuste'}</span>{' '}
+                <b className="numero">{ajuste === 0 ? '0' : `${ajuste < 0 ? '−' : '+'}${num(Math.abs(ajuste), 0)}`}</b>
+              </span>
             </div>
             {ajuste < 0 && fracaoMagra && (
-              <p className="texto-2">
+              <p className="dieta-ritmo">
                 Ritmo pelo déficit: <b>≈ {num(ritmoEstimado(-ajuste, corpo.peso_kg, fracaoMagra.p), 1)}% do peso por semana</b>
                 {ritmoMedido && (
                   <>
@@ -265,19 +265,19 @@ export function Dieta() {
                 )}
               </p>
             )}
-            <p className="texto-2">
-              kcal por dia. Basal pela sua massa magra de {kg(corpo.massa_magra_kg)}, {textoBaseMetas(corpo)}; gasto total = basal × dia a dia +
-              exercícios; meta = gasto total{ajuste === 0 ? ' (sem ajuste)' : ajuste < 0 ? ' − déficit' : ' + superávit'}.
-            </p>
             {diasMedicao > 10 && (
-              <div className="alerta">
+              <div className="alerta" style={{ marginTop: 10 }}>
                 {corpo.medicoes > 1 ? `Última medição em ${formatarData(ultima.data)}: meta calculada` : 'Meta calculada'} {textoBaseMetas(corpo)}. Faça uma nova
                 medição para atualizar.
               </div>
             )}
-            <details className="ajuda">
+            <details className="tabela-detalhe">
               <summary>Como é calculado</summary>
               <div className="pilha" style={{ gap: 8 }}>
+                <p className="texto-2">
+                  kcal por dia. Basal pela sua massa magra de {kg(corpo.massa_magra_kg)}, {textoBaseMetas(corpo)}; gasto total = basal × dia a dia +
+                  exercícios; meta = gasto total{ajuste === 0 ? ' (sem ajuste)' : ajuste < 0 ? ' − déficit' : ' + superávit'}.
+                </p>
                 <div className="grade">
                   <Bloco rotulo="Basal (TMB)" valor={kcal(metas.tmb)} />
                   <Bloco rotulo={`Dia a dia (×${num(plano.config.fator_atividade, 2).replace(/,?0+$/, '')})`} valor={kcal(metas.dia_a_dia)} />
@@ -331,7 +331,7 @@ export function Dieta() {
                 )}
               </div>
             </details>
-            <details className="ajuda">
+            <details className="tabela-detalhe" style={{ marginTop: 0 }}>
               <summary>Conferência com as suas medidas</summary>
               {tendencia ? (
                 <div className="pilha" style={{ gap: 8 }}>
@@ -373,158 +373,208 @@ export function Dieta() {
                 <p className="texto-2">Com 4 medições em pelo menos 3 semanas, o app compara o déficit do plano com o que as suas medidas mostram.</p>
               )}
             </details>
-          </div>
+          </>
         ) : (
-          <div className="alerta" style={{ display: 'block' }}>
+          <div className="alerta" style={{ display: 'block', marginTop: 12 }}>
             O basal (taxa metabólica basal) é calculado pela sua massa magra, que vem da medição de cintura, pescoço{perfil?.sexo === 'Feminino' ? ', quadril' : ''} e peso. Registre uma medição na aba{' '}
             <b>Medidas</b> e aqui aparecem o basal, o gasto total e a meta do dia.
           </div>
         )}
       </section>
 
-      {/* Refeições */}
-      <div className="linha entre">
-        <h2>Refeições</h2>
-        <span className={estadoDieta === 'erro' ? 'ruim' : estadoDieta === 'pendente' ? 'aviso-txt' : 'texto-2'} style={{ fontSize: '0.85rem' }}>
-          {TEXTO_ESTADO[estadoDieta]}
-        </span>
-      </div>
-      {!banco && !falhouAlimentos && <p className="texto-2">Carregando alimentos…</p>}
-      {!banco && falhouAlimentos && (
-        <div className="alerta erro" style={{ alignItems: 'center' }}>
-          <span className="cresce">Não deu para baixar a lista de alimentos (sem sinal?).</span>
-          <button className="botao pequeno" onClick={tentarDeNovo}>
-            Tentar de novo
-          </button>
+      {/* Refeições: fechadas mostram nome, horário, kcal e macros; abertas, os alimentos */}
+      <section className="dieta-refeicoes">
+        <div className="secao-cab">
+          <div className="cresce">
+            <h2>Refeições</h2>
+            <div className="secao-sub">
+              O mesmo plano todo dia · {plano.refeicoes.length === 1 ? '1 refeição' : `${plano.refeicoes.length} refeições`}
+              {' · '}
+              <span className={`dieta-estado ${estadoDieta === 'erro' ? 'estado-ruim' : estadoDieta === 'pendente' ? 'estado-aviso' : ''}`}>{TEXTO_ESTADO[estadoDieta]}</span>
+            </div>
+          </div>
+          {banco && comItens.length > 0 && (
+            <button type="button" className="botao pequeno" onClick={() => setAbertas(todasAbertas ? new Set() : new Set(comItens.map((r) => r.id)))}>
+              {todasAbertas ? 'Fechar todas' : 'Abrir todas'}
+            </button>
+          )}
         </div>
-      )}
-      {banco &&
-        plano.refeicoes.map((r, ri) => {
-          const m = porRefeicao[ri];
-          const ptnOk = alvoRefeicao !== null && m && atingeCorteProteina(m.ptn_animal, alvoRefeicao * 0.9);
-          return (
-            <section key={r.id} className="cartao refeicao">
-              <div className="cartao-cab">
-                <button type="button" className="refeicao-titulo" onClick={() => setEditando(r.id)}>
-                  <h2>
-                    {r.nome}
-                    {r.horario ? ` · ${r.horario}` : ''}
-                  </h2>
-                  <span className="texto-2">editar</span>
-                </button>
-                <span className="etiqueta">{kcal(m?.kcal ?? 0)}</span>
-              </div>
-              {r.itens.map((item, i) => (
-                <LinhaItem
-                  key={`${i}-${item.alimento_id}`}
-                  item={item}
-                  alimento={banco.mapa.get(item.alimento_id)}
-                  aoMudar={(novo) => mudarItem(r.id, i, novo)}
-                  aoRemover={() => remover(r.id, i)}
-                  aoTrocar={() => setSeletor({ refeicao: r.id, indice: i })}
-                  faltaNoFoco={chipsFalta()}
-                  fechar={saldo ? fecharMacro(item, banco.mapa.get(item.alimento_id), saldo) : null}
-                />
-              ))}
-              <div className="refeicao-rodape">
-                <button type="button" className="botao pequeno" onClick={() => setSeletor({ refeicao: r.id, indice: null })}>
-                  + Alimento
-                </button>
-                {r.itens.length > 0 && m && (
-                  <div className="pilha" style={{ gap: 2, alignItems: 'flex-end' }}>
-                    <LinhaMacros m={m} kcalFinal={false} colageno={proteinaColageno([r], banco.mapa)} />
-                    {alvoRefeicao !== null && (
-                      <span className={`sub-valor ${ptnOk ? 'bom' : 'texto-2'}`}>
-                        Ptn A {gr(m.ptn_animal)} de ~{num(alvoRefeicao, 0)} g {ptnOk ? '✓' : ''}
+        {!banco && !falhouAlimentos && (
+          <div className="pilha" style={{ gap: 8 }} aria-label="Carregando alimentos">
+            <p className="texto-2">Carregando alimentos…</p>
+            {plano.refeicoes.slice(0, 3).map((r) => (
+              <div key={r.id} className="esqueleto" style={{ height: 58 }} />
+            ))}
+          </div>
+        )}
+        {!banco && falhouAlimentos && (
+          <div className="alerta erro" style={{ alignItems: 'center' }}>
+            <span className="cresce">Não deu para baixar a lista de alimentos (sem sinal?).</span>
+            <button className="botao pequeno" onClick={tentarDeNovo}>
+              Tentar de novo
+            </button>
+          </div>
+        )}
+        {banco && (
+          <div className="lista-refeicoes">
+            {plano.refeicoes.map((r, ri) => {
+              const m = porRefeicao[ri];
+              const ptnOk = alvoRefeicao !== null && m && atingeCorteProteina(m.ptn_animal, alvoRefeicao * 0.9);
+              if (!r.itens.length)
+                return (
+                  <section key={r.id} className="cartao refeicao-card vazia">
+                    <button type="button" className="ref-vazia-nome" onClick={() => setEditando(r.id)} aria-label={`Editar ${r.nome}`}>
+                      {r.horario && <span className="ref-hora numero">{r.horario}</span>}
+                      <span className="ref-nome">{r.nome}</span>
+                      <span className="ref-lapis">
+                        <IconeLapis />
                       </span>
-                    )}
-                  </div>
-                )}
-              </div>
-            </section>
-          );
-        })}
-      <button
-        type="button"
-        className="botao"
-        onClick={() => atualizar({ refeicoes: [...plano.refeicoes, { id: novoId(), nome: proximoNomeRefeicao(plano.refeicoes), horario: null, itens: [] }] })}
-      >
-        + Refeição
-      </button>
+                    </button>
+                    <button type="button" className="botao pequeno ref-adicionar" onClick={() => setSeletor({ refeicao: r.id, indice: null })}>
+                      + <span className="so-largo">Adicionar </span>
+                      <span className="so-largo">alimento</span>
+                      <span className="so-estreito">Alimento</span>
+                    </button>
+                  </section>
+                );
+              const aberta = abertas.has(r.id);
+              return (
+                <section key={r.id} className={`cartao refeicao-card ${aberta ? 'aberta' : ''}`}>
+                  <button type="button" className="ref-cab" aria-expanded={aberta} onClick={() => alternar(r.id)}>
+                    <span className="ref-titulo">
+                      {r.horario && <span className="ref-hora numero">{r.horario}</span>}
+                      <span className="ref-nome">{r.nome}</span>
+                    </span>
+                    <span className="ref-kcal numero">
+                      {num(m?.kcal ?? 0, 0)} <small>kcal</small>
+                    </span>
+                    <IconeSeta aberta={aberta} />
+                    <span className="ref-mini numero">
+                      <span>
+                        <span className="m-pa">Ptn A</span> {gr(m?.ptn_animal ?? 0)}
+                        {ptnOk && <span className="ref-alvo" aria-label="no alvo de proteína"> ✓</span>}
+                      </span>
+                      <span>
+                        <span className="m-c">Carb</span> {gr(m?.carb ?? 0)}
+                      </span>
+                      <span>
+                        <span className="m-g">Gord</span> {gr(m?.gord ?? 0)}
+                      </span>
+                      <span className="ref-qtd">{r.itens.length === 1 ? '1 alimento' : `${r.itens.length} alimentos`}</span>
+                    </span>
+                  </button>
+                  {aberta && (
+                    <div className="ref-corpo">
+                      {r.itens.map((item, i) => (
+                        <LinhaItem
+                          key={`${i}-${item.alimento_id}`}
+                          item={item}
+                          alimento={banco.mapa.get(item.alimento_id)}
+                          aoMudar={(novo) => mudarItem(r.id, i, novo)}
+                          aoRemover={() => remover(r.id, i)}
+                          aoTrocar={() => setSeletor({ refeicao: r.id, indice: i })}
+                          faltaNoFoco={saldo ? <FaltaChips saldo={saldo} inline /> : null}
+                          fechar={saldo ? fecharMacro(item, banco.mapa.get(item.alimento_id), saldo) : null}
+                        />
+                      ))}
+                      {m && (
+                        <div className="ref-resumo">
+                          <LinhaMacros m={m} kcalFinal={false} colageno={proteinaColageno([r], banco.mapa)} />
+                          {alvoRefeicao !== null && (
+                            <span className={`sub-valor ref-alvo-texto ${ptnOk ? 'estado-bom' : ''}`}>
+                              Ptn A {gr(m.ptn_animal)} de ~{num(alvoRefeicao, 0)} g {ptnOk ? '✓' : ''}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      <div className="ref-acoes">
+                        <button type="button" className="botao pequeno" onClick={() => setSeletor({ refeicao: r.id, indice: null })}>
+                          + Alimento
+                        </button>
+                        <button type="button" className="botao pequeno" onClick={() => setEditando(r.id)} aria-label={`Editar ${r.nome}: nome, horário, ordem`}>
+                          <IconeLapis /> Editar<span className="so-largo"> refeição</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </section>
+              );
+            })}
+          </div>
+        )}
+        <button
+          type="button"
+          className="botao dieta-nova-refeicao"
+          onClick={() => atualizar({ refeicoes: [...plano.refeicoes, { id: novoId(), nome: proximoNomeRefeicao(plano.refeicoes), horario: null, itens: [] }] })}
+        >
+          + Refeição
+        </button>
+      </section>
 
-      {/* Metas × plano, como a tabela "OFF" da planilha */}
+      {/* Metas × plano, como a tabela "OFF" da planilha: barras e, à parte, a tabela */}
       {saldo && metas && corpo && (
         <section className="cartao">
-          <h2>Macros do dia</h2>
-          <div className="tabela-rolagem">
-            <table className="tabela-macros">
-              <thead>
-                <tr>
-                  <th></th>
-                  <th>Meta</th>
-                  <th>Plano</th>
-                  <th>Falta</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(
-                  [
-                    ['m-pa', 'Proteína animal', saldo.meta.ptn_animal, total.ptn_animal, `${num(total.ptn_animal / corpo.massa_magra_kg, 1)} g/kg massa magra`],
-                    ['m-c', 'Carboidrato', saldo.meta.carb, total.carb, `${num(total.carb / corpo.peso_kg, 1)} g/kg`],
-                    ['m-g', 'Gordura', saldo.meta.gord, total.gord, `${num(total.gord / corpo.peso_kg, 1)} g/kg`],
-                  ] as const
-                ).map(([cor, nome, meta, feito, gkg]) => {
-                  const f = falta(meta - feito, meta, ' g', 1);
-                  const kc = cor === 'm-g' ? feito * 9 : feito * 4;
-                  return (
-                    <tr key={nome}>
-                      <td>
-                        <div className={cor}>{nome}</div>
-                        <div className="sub-linha">
-                          {gkg} · {num(kc, 0)} kcal · {total.kcal ? num((kc / total.kcal) * 100, 0) : 0}%
-                        </div>
-                      </td>
-                      <td>{gr(meta)} g</td>
-                      <td>{gr(feito)} g</td>
-                      <td className={f.classe}>{f.texto}</td>
-                    </tr>
-                  );
-                })}
-                <tr>
-                  <td>
-                    <div className="m-pv">Proteína vegetal</div>
-                    <div className="sub-linha">
-                      {num(ptnVegetal * 4, 0)} kcal · {total.kcal ? num(((ptnVegetal * 4) / total.kcal) * 100, 0) : 0}% · sai da conta do carbo
-                      {colageno >= 0.05 && ` · colágeno e gelatina (${gr(colageno)} g) à parte`}
-                    </div>
-                  </td>
-                  <td>–</td>
-                  <td>{gr(ptnVegetal)} g</td>
-                  <td>–</td>
-                </tr>
-                <tr>
-                  <td>
-                    <div>Fibra</div>
-                    <div className="sub-linha">referência: 14 g a cada 1.000 kcal · já conta no carboidrato</div>
-                  </td>
-                  <td>{gr(metaFibra(saldo.meta.kcal))} g</td>
-                  <td>{gr(total.fibra)} g</td>
-                  <td className={total.fibra >= metaFibra(saldo.meta.kcal) * 0.98 ? 'bom' : ''}>
-                    {total.fibra >= metaFibra(saldo.meta.kcal) * 0.98 ? '✓' : `${num(metaFibra(saldo.meta.kcal) - total.fibra, 0)} g`}
-                  </td>
-                </tr>
-                <tr className="total">
-                  <td>Total kcal</td>
-                  <td>{num(saldo.meta.kcal, 0)}</td>
-                  <td>{num(total.kcal, 0)}</td>
-                  <td className={falta(saldo.falta.kcal, saldo.meta.kcal, '', 15).classe}>{falta(saldo.falta.kcal, saldo.meta.kcal, '', 15).texto}</td>
-                </tr>
-              </tbody>
-            </table>
+          <div className="secao-cab">
+            <div>
+              <h2>Macros do dia</h2>
+              <div className="secao-sub">Plano × meta · o que falta</div>
+            </div>
           </div>
+          <div className="macros-metas">
+            <LinhaMacroMeta
+              nome="Proteína animal"
+              classe="m-pa"
+              plano={total.ptn_animal}
+              meta={saldo.meta.ptn_animal}
+              sufixo=" g"
+              tolerancia={1}
+              detalhe={`${num(total.ptn_animal / corpo.massa_magra_kg, 1)} g/kg massa magra · ${num(total.ptn_animal * 4, 0)} kcal`}
+            />
+            <LinhaMacroMeta
+              nome="Carboidrato"
+              classe="m-c"
+              plano={total.carb}
+              meta={saldo.meta.carb}
+              sufixo=" g"
+              tolerancia={1}
+              detalhe={`${num(total.carb / corpo.peso_kg, 1)} g/kg · ${num(total.carb * 4, 0)} kcal`}
+            />
+            <LinhaMacroMeta
+              nome="Gordura"
+              classe="m-g"
+              plano={total.gord}
+              meta={saldo.meta.gord}
+              sufixo=" g"
+              tolerancia={1}
+              detalhe={`${num(total.gord / corpo.peso_kg, 1)} g/kg · ${num(total.gord * 9, 0)} kcal`}
+            />
+            <LinhaMacroMeta
+              nome="Fibra"
+              classe="m-fibra"
+              plano={total.fibra}
+              meta={fibraMeta}
+              sufixo=" g"
+              tolerancia={0}
+              maisEhBom
+              detalhe="referência: 14 g a cada 1.000 kcal · já conta no carboidrato"
+            />
+            <LinhaMacroMeta nome="Total kcal" classe="m-k" plano={total.kcal} meta={saldo.meta.kcal} sufixo="" tolerancia={15} />
+          </div>
+
+          {total.kcal > 0 && (
+            <div className="dieta-bloco">
+              <div className="rotulo">De onde vêm as kcal do plano</div>
+              <BarraKcal fatias={fatiasKcal(total, colageno)} />
+              <div className="texto-2 dieta-pequeno">
+                Proteína vegetal {gr(ptnVegetal)} g: sai da conta do carbo
+                {colageno >= 0.05 && ` · colágeno e gelatina (${gr(colageno)} g) à parte`}.
+              </div>
+            </div>
+          )}
+
           {ptnTotal && total.kcal > 0 && (
             <>
-              <p className="texto-2" style={{ marginTop: 8 }}>
+              <p className="texto-2" style={{ marginTop: 12 }}>
                 <b>Proteína total (animal + vegetal): {gr(ptnTotal.g)} g</b> = {num(ptnTotal.gkg_magra, 1)} g/kg de massa magra · {num(ptnTotal.gkg_peso, 1)} g/kg
                 de peso. A meta continua só a animal.{colageno >= 1 && ` Colágeno e gelatina (${gr(colageno)} g) ficam fora.`}
               </p>
@@ -536,24 +586,31 @@ export function Dieta() {
             </>
           )}
           {distribuicao && distribuicao.com_itens > 0 && (
-            <div className={distribuicao.concentracao || distribuicao.no_alvo < MINIMO_REFEICOES_ALVO ? 'alerta' : 'texto-2'} style={{ marginTop: 8, display: 'block' }}>
-              <b>
-                Refeições no alvo:{' '}
-                {distribuicao.no_alvo >= MINIMO_REFEICOES_ALVO
-                  ? `${distribuicao.no_alvo} (mínimo ${MINIMO_REFEICOES_ALVO}) ✓`
-                  : `${distribuicao.no_alvo} de ${MINIMO_REFEICOES_ALVO} (mínimo)`}
-              </b>
-              {distribuicao.com_itens !== MINIMO_REFEICOES_ALVO && ` · ${distribuicao.com_itens} com alimentos no plano`}
-              {distribuicao.concentracao && (
-                <>
-                  {' '}
-                  · {distribuicao.concentracao.nome} tem {gr(distribuicao.concentracao.g)} g ({num(distribuicao.concentracao.fracao_dia * 100, 0)}% do dia): passar ~
-                  {num(distribuicao.concentracao.mover, 0)} g para {juntar(distribuicao.concentracao.para)}.
-                </>
-              )}
-              <div className="sub-linha" style={{ marginTop: 4 }}>
-                No alvo = {gr(distribuicao.corte)} g ou mais de proteína animal (90% de ~{gr(distribuicao.alvo)} g, 0,4 g/kg de massa magra). Refeição sem
-                alimentos fica fora da contagem.
+            <div className="dieta-bloco">
+              <div className="rotulo">Proteína animal por refeição</div>
+              <ProteinaRefeicoes
+                corte={distribuicao.corte}
+                itens={plano.refeicoes.flatMap((r, i) => (r.itens.length ? [{ nome: r.nome, g: porRefeicao[i]?.ptn_animal ?? 0 }] : []))}
+              />
+              <div className={distribuicao.concentracao || distribuicao.no_alvo < MINIMO_REFEICOES_ALVO ? 'alerta' : 'texto-2'} style={{ marginTop: 8, display: 'block' }}>
+                <b>
+                  Refeições no alvo:{' '}
+                  {distribuicao.no_alvo >= MINIMO_REFEICOES_ALVO
+                    ? `${distribuicao.no_alvo} (mínimo ${MINIMO_REFEICOES_ALVO}) ✓`
+                    : `${distribuicao.no_alvo} de ${MINIMO_REFEICOES_ALVO} (mínimo)`}
+                </b>
+                {distribuicao.com_itens !== MINIMO_REFEICOES_ALVO && ` · ${distribuicao.com_itens} com alimentos no plano`}
+                {distribuicao.concentracao && (
+                  <>
+                    {' '}
+                    · {distribuicao.concentracao.nome} tem {gr(distribuicao.concentracao.g)} g ({num(distribuicao.concentracao.fracao_dia * 100, 0)}% do dia): passar ~
+                    {num(distribuicao.concentracao.mover, 0)} g para {juntar(distribuicao.concentracao.para)}.
+                  </>
+                )}
+                <div className="sub-linha" style={{ marginTop: 4 }}>
+                  No alvo = {gr(distribuicao.corte)} g ou mais de proteína animal (90% de ~{gr(distribuicao.alvo)} g, 0,4 g/kg de massa magra). Refeição sem
+                  alimentos fica fora da contagem.
+                </div>
               </div>
             </div>
           )}
@@ -562,15 +619,83 @@ export function Dieta() {
               A proteína e a gordura já passam da meta de kcal. Reduza o g/kg delas ou o déficit em Ajustar.
             </div>
           )}
-          <p className="texto-2" style={{ marginTop: 8 }}>
-            “Falta” é meta − plano; “+” em vermelho é o quanto passou. Tudo em kcal pelos macros (4/4/9).
-          </p>
+
+          <details className="tabela-detalhe">
+            <summary>Ver tabela</summary>
+            <div className="tabela-rolagem">
+              <table className="tabela-macros">
+                <thead>
+                  <tr>
+                    <th></th>
+                    <th>Meta</th>
+                    <th>Plano</th>
+                    <th>Falta</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(
+                    [
+                      ['m-pa', 'Proteína animal', saldo.meta.ptn_animal, total.ptn_animal, `${num(total.ptn_animal / corpo.massa_magra_kg, 1)} g/kg massa magra`],
+                      ['m-c', 'Carboidrato', saldo.meta.carb, total.carb, `${num(total.carb / corpo.peso_kg, 1)} g/kg`],
+                      ['m-g', 'Gordura', saldo.meta.gord, total.gord, `${num(total.gord / corpo.peso_kg, 1)} g/kg`],
+                    ] as const
+                  ).map(([cor, nome, meta, feito, gkg]) => {
+                    const f = falta(meta - feito, meta, ' g', 1);
+                    const kc = cor === 'm-g' ? feito * 9 : feito * 4;
+                    return (
+                      <tr key={nome}>
+                        <td>
+                          <div className={cor}>{nome}</div>
+                          <div className="sub-linha">
+                            {gkg} · {num(kc, 0)} kcal · {total.kcal ? num((kc / total.kcal) * 100, 0) : 0}%
+                          </div>
+                        </td>
+                        <td>{gr(meta)} g</td>
+                        <td>{gr(feito)} g</td>
+                        <td className={f.classe}>{f.texto}</td>
+                      </tr>
+                    );
+                  })}
+                  <tr>
+                    <td>
+                      <div className="m-pv">Proteína vegetal</div>
+                      <div className="sub-linha">
+                        {num(ptnVegetal * 4, 0)} kcal · {total.kcal ? num(((ptnVegetal * 4) / total.kcal) * 100, 0) : 0}% · sai da conta do carbo
+                        {colageno >= 0.05 && ` · colágeno e gelatina (${gr(colageno)} g) à parte`}
+                      </div>
+                    </td>
+                    <td>–</td>
+                    <td>{gr(ptnVegetal)} g</td>
+                    <td>–</td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div>Fibra</div>
+                      <div className="sub-linha">referência: 14 g a cada 1.000 kcal · já conta no carboidrato</div>
+                    </td>
+                    <td>{gr(fibraMeta)} g</td>
+                    <td>{gr(total.fibra)} g</td>
+                    <td className={total.fibra >= fibraMeta * 0.98 ? 'bom' : ''}>{total.fibra >= fibraMeta * 0.98 ? '✓' : `${num(fibraMeta - total.fibra, 0)} g`}</td>
+                  </tr>
+                  <tr className="total">
+                    <td>Total kcal</td>
+                    <td>{num(saldo.meta.kcal, 0)}</td>
+                    <td>{num(total.kcal, 0)}</td>
+                    <td className={falta(saldo.falta.kcal, saldo.meta.kcal, '', 15).classe}>{falta(saldo.falta.kcal, saldo.meta.kcal, '', 15).texto}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p className="texto-2" style={{ marginTop: 8 }}>
+              “Falta” é meta − plano; “+” em vermelho é o quanto passou. Tudo em kcal pelos macros (4/4/9).
+            </p>
+          </details>
         </section>
       )}
 
       {/* Rodapé fixo: o aviso de desfazer fica logo acima do saldo, no mesmo bloco (nunca por cima dele) */}
       {(removidos.length > 0 || saldo) && (
-        <div className="rodape-fixo">
+        <div className="rodape-fixo dieta-rodape">
           {removidos.length > 0 && (
             <div className="alerta info desfazer" role="status">
               <span className="cresce">{removidos.length === 1 ? `${removidos[0].nome} removido.` : `${removidos.length} alimentos removidos.`}</span>
@@ -582,8 +707,8 @@ export function Dieta() {
 
           {/* Saldo fixo no rodapé enquanto monta o plano */}
           {saldo && (
-            <div className="saldo-fixo" aria-label="Quanto falta para a meta">
-              {chipsFalta()}
+            <div className="saldo-fixo dieta-saldo" aria-label="Quanto falta para a meta">
+              <FaltaChips saldo={saldo} />
               {estadoDieta !== 'salvo' && (
                 <span className={`estado-gravacao ${estadoDieta === 'erro' ? 'ruim' : estadoDieta === 'pendente' ? 'aviso-txt' : ''}`}>
                   {TEXTO_ESTADO[estadoDieta]}

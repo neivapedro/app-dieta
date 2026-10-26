@@ -1,0 +1,186 @@
+/* Aba Dieta — painel do plano (anel de kcal, barras dos macros, refeições recolhidas, "Falta" fixo) */
+
+.dieta .estado-bom { color: var(--bom); }
+.dieta .estado-ruim { color: var(--ruim); }
+.dieta .estado-aviso { color: var(--aviso); }
+
+/* ---------- Meta do dia ---------- */
+.dieta-meta-kcal { font-size: 1.6rem; font-weight: 750; letter-spacing: -0.02em; line-height: 1.15; margin-top: 2px; }
+.dieta-painel { display: grid; grid-template-columns: 128px minmax(0, 1fr); gap: 16px; align-items: center; margin-top: 14px; }
+@media (max-width: 360px) { .dieta-painel { grid-template-columns: 108px minmax(0, 1fr); gap: 12px; } }
+
+.anel-kcal { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
+.anel-kcal-circulo { position: relative; width: 100%; aspect-ratio: 1; }
+.anel-kcal-circulo svg { width: 100%; height: 100%; display: block; }
+.anel-kcal-trilho { fill: none; stroke: var(--superficie-2); stroke-width: 11; }
+.anel-kcal-valor { fill: none; stroke: var(--destaque); stroke-width: 11; stroke-linecap: round; transition: stroke-dasharray 0.4s ease; }
+.anel-kcal-valor.bom { stroke: var(--bom); }
+.anel-kcal-valor.ruim { stroke: var(--ruim); }
+.anel-kcal-centro { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1; text-align: center; }
+.anel-kcal-num { font-size: 1.5rem; font-weight: 750; letter-spacing: -0.02em; }
+.anel-kcal-de { font-size: 0.72rem; color: var(--texto-2); font-weight: 600; margin-top: 2px; }
+.anel-kcal-un { font-size: 0.66rem; color: var(--texto-3); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
+@media (max-width: 360px) { .anel-kcal-num { font-size: 1.25rem; } }
+.anel-kcal-status { font-size: 0.74rem; font-weight: 650; color: var(--texto-2); text-align: center; white-space: nowrap; }
+.anel-kcal-status.estado-bom { color: var(--bom); }
+.anel-kcal-status.estado-ruim { color: var(--ruim); }
+
+.dieta-barras { display: flex; flex-direction: column; gap: 11px; min-width: 0; }
+.barra-macro { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.barra-macro-cab { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; font-size: 0.8rem; }
+.barra-macro-nome { font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.barra-macro-nome .nome-curto { display: none; }
+@media (max-width: 380px) {
+  .barra-macro-nome .nome-longo { display: none; }
+  .barra-macro-nome .nome-curto { display: inline; }
+}
+.barra-macro-valor { color: var(--texto-3); white-space: nowrap; flex: none; font-size: 0.78rem; }
+.barra-macro-valor b { color: var(--texto); font-weight: 700; }
+.barra-macro-valor b.barra-passou { color: var(--ruim); }
+.barra-ok { color: var(--bom); font-weight: 700; }
+.barra-macro-trilho, .macro-meta-trilho { position: relative; display: flex; height: 8px; border-radius: 999px; background: var(--superficie-2); overflow: hidden; }
+.barra-macro-feito { height: 100%; background: currentColor; border-radius: 999px 0 0 999px; min-width: 3px; }
+.barra-macro-excesso { height: 100%; background: var(--ruim); opacity: 0.85; border-radius: 0 999px 999px 0; }
+.barra-macro-feito:only-child { border-radius: 999px; }
+.barra-macro.m-pa .barra-macro-trilho, .macro-meta-trilho.m-pa { color: var(--m-pa); }
+.barra-macro.m-c .barra-macro-trilho, .macro-meta-trilho.m-c { color: var(--m-c); }
+.barra-macro.m-g .barra-macro-trilho, .macro-meta-trilho.m-g { color: var(--m-g); }
+.macro-meta-trilho.m-k { color: var(--destaque); }
+.macro-meta-trilho.m-fibra { color: var(--texto-2); }
+/* Fibra: passar da referência não é ruim */
+.macro-meta-trilho.sem-teto .barra-macro-excesso { background: currentColor; opacity: 0.55; }
+/* Os nomes coloridos na barra não herdam a cor do trilho */
+.barra-macro { color: var(--texto); }
+.dieta-fibra { font-size: 0.74rem; color: var(--texto-3); }
+
+.dieta-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+.dieta-chip {
+  display: inline-flex; align-items: baseline; gap: 5px; padding: 6px 10px; border-radius: 999px;
+  background: color-mix(in srgb, var(--superficie-2) 85%, transparent); font-size: 0.78rem; color: var(--texto-2); white-space: nowrap;
+}
+.dieta-chip b { color: var(--texto); font-weight: 700; }
+.dieta-ritmo { font-size: 0.8rem; color: var(--texto-2); margin-top: 10px; }
+.dieta-ritmo b { color: var(--texto); font-weight: 650; }
+.dieta-hero details.tabela-detalhe { margin-top: 8px; }
+.dieta-hero details.tabela-detalhe + details.tabela-detalhe { margin-top: 0; border-top: 1px solid var(--borda-suave); }
+
+/* ---------- Refeições ---------- */
+.dieta-refeicoes { display: flex; flex-direction: column; }
+.dieta-refeicoes > .secao-cab { margin: 4px 0 10px; flex-wrap: nowrap; }
+.lista-refeicoes { display: flex; flex-direction: column; gap: 8px; }
+.dieta .refeicao-card { padding: 0; overflow: hidden; }
+.ref-cab {
+  width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto 18px; column-gap: 10px; row-gap: 3px; align-items: center;
+  padding: 12px 14px; min-height: 56px; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; font: inherit;
+}
+.ref-cab:active { background: color-mix(in srgb, var(--superficie-2) 60%, transparent); }
+.ref-titulo { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ref-nome { font-weight: 700; font-size: 1rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ref-hora {
+  flex: none; font-size: 0.72rem; font-weight: 700; color: var(--texto-2); padding: 2px 7px; border-radius: 999px;
+  background: var(--superficie-2);
+}
+.ref-kcal { font-weight: 750; font-size: 1rem; white-space: nowrap; }
+.ref-kcal small { font-size: 0.7rem; font-weight: 600; color: var(--texto-3); }
+.ref-seta { color: var(--texto-3); transition: transform 0.2s ease; }
+.ref-seta.aberta { transform: rotate(180deg); }
+.ref-mini { grid-column: 1 / 3; display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: 0.75rem; font-weight: 600; color: var(--texto-2); }
+.ref-mini > span { white-space: nowrap; }
+.ref-mini .ref-qtd { color: var(--texto-3); font-weight: 500; }
+.ref-alvo { color: var(--bom); font-weight: 800; }
+.ref-corpo { padding: 0 14px 12px; border-top: 1px solid var(--borda-suave); }
+.ref-corpo > .item-dieta:first-child { border-top: 0; }
+.ref-resumo { display: flex; flex-direction: column; gap: 3px; align-items: flex-end; padding: 10px 0 2px; border-top: 1px solid var(--borda); }
+.ref-resumo .macros { justify-content: flex-end; }
+.ref-alvo-texto { color: var(--texto-2); }
+.ref-alvo-texto.estado-bom { color: var(--bom); }
+.ref-acoes { display: flex; gap: 8px; margin-top: 10px; }
+.dieta .ref-acoes .botao { flex: 1 1 0; min-height: 40px; min-width: 0; }
+
+/* Refeição vazia: uma linha só, com o "Adicionar alimento" */
+.dieta .refeicao-card.vazia { display: flex; align-items: center; gap: 8px; padding: 8px 10px 8px 14px; flex-wrap: wrap; }
+.ref-vazia-nome {
+  flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0;
+  border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.ref-vazia-nome .ref-nome { color: var(--texto-2); font-weight: 650; }
+.ref-lapis { color: var(--texto-3); display: inline-flex; flex: none; }
+.dieta .ref-adicionar { flex: none; min-height: 40px; }
+.dieta .dieta-nova-refeicao { margin-top: 10px; width: 100%; background: transparent; border-style: dashed; color: var(--texto-2); }
+
+/* ---------- Macros do dia ---------- */
+.macros-metas { display: flex; flex-direction: column; gap: 14px; }
+.macro-meta { display: flex; flex-direction: column; gap: 5px; }
+.macro-meta-cab { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.macro-meta-nome { font-weight: 650; font-size: 0.9rem; }
+.macro-meta-falta { font-size: 0.8rem; font-weight: 700; color: var(--texto-2); white-space: nowrap; }
+.macro-meta-falta.estado-bom { color: var(--bom); }
+.macro-meta-falta.estado-ruim { color: var(--ruim); }
+.macro-meta-trilho { height: 10px; overflow: visible; }
+.macro-meta-trilho > .barra-macro-feito:first-child { border-radius: 999px 0 0 999px; }
+.macro-meta-trilho > .barra-macro-feito:only-child { border-radius: 999px; }
+.macro-meta-marca { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--texto); }
+.macro-meta-pes { display: flex; justify-content: space-between; gap: 8px; font-size: 0.75rem; color: var(--texto-3); }
+.macro-meta-pes b { color: var(--texto); font-weight: 650; }
+.macro-meta-detalhe { font-size: 0.72rem; color: var(--texto-3); }
+.dieta-bloco { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--borda-suave); display: flex; flex-direction: column; gap: 8px; }
+.dieta-pequeno { font-size: 0.78rem; }
+
+.barra-kcal { display: flex; flex-direction: column; gap: 8px; }
+.barra-kcal-trilho { display: flex; height: 12px; border-radius: 999px; overflow: hidden; gap: 2px; background: var(--superficie-2); }
+.barra-kcal-fatia { height: 100%; min-width: 2px; }
+.fatia-ptn_animal { background: var(--m-pa); }
+.fatia-ptn_vegetal { background: var(--m-pv); }
+.fatia-colageno { background: var(--texto-3); }
+.fatia-carb { background: var(--m-c); }
+.fatia-gord { background: var(--m-g); }
+.barra-kcal-legenda { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 0.75rem; color: var(--texto-2); font-weight: 600; }
+.barra-kcal-legenda > span { white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
+.barra-kcal-legenda i { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+
+.ptn-refeicoes { display: flex; flex-direction: column; gap: 8px; }
+.ptn-ref { display: grid; grid-template-columns: minmax(64px, 30%) minmax(0, 1fr) 56px; gap: 8px; align-items: center; font-size: 0.78rem; }
+.ptn-ref-nome { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--texto-2); }
+.ptn-ref-trilho { position: relative; height: 8px; border-radius: 999px; background: var(--superficie-2); }
+.ptn-ref-barra { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; background: var(--texto-3); min-width: 3px; }
+.ptn-ref-barra.ok { background: var(--m-pa); }
+.ptn-ref-corte { position: absolute; top: -3px; bottom: -3px; border-left: 1.5px dashed var(--texto-2); }
+.ptn-ref-valor { text-align: right; font-weight: 650; white-space: nowrap; }
+
+/* ---------- "Falta" (rodapé fixo e no campo em foco) ---------- */
+.falta-chips { display: grid; grid-template-columns: auto repeat(4, minmax(0, 1fr)); align-items: center; gap: 4px; width: 100%; }
+.falta-chips-titulo { font-size: 0.68rem; font-weight: 750; text-transform: uppercase; letter-spacing: 0.05em; color: var(--texto-3); padding-right: 4px; }
+.falta-cel { display: flex; flex-direction: column; align-items: center; min-width: 0; line-height: 1.2; }
+.falta-rot { font-size: 0.66rem; font-weight: 650; white-space: nowrap; }
+.falta-val { font-size: 0.86rem; font-weight: 750; white-space: nowrap; color: var(--texto); }
+.falta-val.estado-bom { color: var(--bom); }
+.falta-val.estado-ruim { color: var(--ruim); }
+@media (max-width: 340px) { .falta-val { font-size: 0.78rem; } .falta-chips-titulo { font-size: 0.6rem; } }
+.falta-chips-inline { padding: 6px 8px; border-radius: 10px; background: var(--superficie-2); }
+
+.dieta .saldo-fixo.dieta-saldo {
+  padding: 7px 12px; border-radius: 16px; border-color: var(--borda-suave);
+  background: color-mix(in srgb, var(--superficie) 93%, transparent);
+  -webkit-backdrop-filter: saturate(180%) blur(18px); backdrop-filter: saturate(180%) blur(18px);
+  box-shadow: 0 8px 24px -10px rgb(0 0 0 / 0.45);
+}
+.saldo-fixo.dieta-saldo .estado-gravacao { text-align: center; }
+/* Espaço no fim: o rodapé fixo nunca cobre o último cartão */
+.dieta-rodape { margin-top: 2px; }
+.dieta-estado { display: inline-block; }
+@media (max-width: 360px) {
+  .dieta-chips { gap: 5px; }
+  .dieta-chip { padding: 5px 8px; font-size: 0.72rem; gap: 4px; }
+  .ref-mini .ref-qtd { display: none; }
+}
+.dieta .so-estreito { display: none; }
+@media (max-width: 360px) {
+  .dieta .so-largo { display: none; }
+  .dieta .so-estreito { display: inline; }
+}
+/* Telas estreitas: as três etapas da meta lado a lado, rótulo em cima */
+@media (max-width: 360px) {
+  .dieta-chips { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .dieta-chip { flex-direction: column; align-items: center; gap: 0; border-radius: 12px; padding: 6px 4px; line-height: 1.25; }
+  .dieta-chip b { font-size: 0.85rem; }
+}
