@@ -194,11 +194,6 @@
 /* Pendências de ontem: um pouco mais enxuto */
 .pagina-inicio .faixa-ontem { padding: 14px; }
 
-/* A animação "surgir" com preenchimento deixa o cartão como camada própria: uma folha aberta
-   dentro dele (fim da fase, esforço do treino) ficava atrás do cabeçalho. Sem o preenchimento,
-   o efeito some ao terminar a animação e a folha volta a cobrir a tela toda. */
-main .pilha.pagina-inicio > .cartao, main .pilha.pagina-inicio > section { animation-fill-mode: none; }
-
 /* ---------- Anéis do dia (Treino/Diário, Dieta/Checklist, Água) ---------- */
 /* Verde, âmbar e um branco (preto no claro) puxado para o verde: as cores da casa */
 .pagina-inicio {

@@ -807,13 +807,13 @@ main .pilha > .cartao, main .pilha > .kpis, main > .pilha > section { animation:
 main .pilha > .cartao, main .pilha > .kpis, main > .pilha > section {
   animation-name: surgir-cartao; animation-duration: 0.38s; animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-main .pilha:not(.pagina-inicio) > :is(.cartao, .kpis, section):nth-child(2) { animation-delay: 30ms; }
-main .pilha:not(.pagina-inicio) > :is(.cartao, .kpis, section):nth-child(3) { animation-delay: 60ms; }
-main .pilha:not(.pagina-inicio) > :is(.cartao, .kpis, section):nth-child(4) { animation-delay: 90ms; }
-main .pilha:not(.pagina-inicio) > :is(.cartao, .kpis, section):nth-child(5) { animation-delay: 120ms; }
-main .pilha:not(.pagina-inicio) > :is(.cartao, .kpis, section):nth-child(6) { animation-delay: 150ms; }
-main .pilha:not(.pagina-inicio) > :is(.cartao, .kpis, section):nth-child(7) { animation-delay: 180ms; }
-main .pilha:not(.pagina-inicio) > :is(.cartao, .kpis, section):nth-child(n + 8) { animation-delay: 210ms; }
+main .pilha > :is(.cartao, .kpis, section):nth-child(2) { animation-delay: 30ms; }
+main .pilha > :is(.cartao, .kpis, section):nth-child(3) { animation-delay: 60ms; }
+main .pilha > :is(.cartao, .kpis, section):nth-child(4) { animation-delay: 90ms; }
+main .pilha > :is(.cartao, .kpis, section):nth-child(5) { animation-delay: 120ms; }
+main .pilha > :is(.cartao, .kpis, section):nth-child(6) { animation-delay: 150ms; }
+main .pilha > :is(.cartao, .kpis, section):nth-child(7) { animation-delay: 180ms; }
+main .pilha > :is(.cartao, .kpis, section):nth-child(n + 8) { animation-delay: 210ms; }
 
 /* Linha do indicador: revela da esquerda para a direita, depois o ponto final */
 @keyframes revelar-spark { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
