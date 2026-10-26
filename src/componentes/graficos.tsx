@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Bar, CartesianGrid, ComposedChart, Legend, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Area, Bar, CartesianGrid, ComposedChart, Legend, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { diferencaDias, formatarData, somarDias } from '../lib/datas';
 import { num } from '../lib/formato';
 import type { Composicao } from '../lib/gordura';
@@ -282,6 +282,177 @@ export function GraficoPace({ corridas }: { corridas: { data: string; pace: numb
             }
           />
           <Line dataKey="pace" name="Pace" stroke={CORES.peso} strokeWidth={2} dot={{ r: 3 }} isAnimationActive={false} />
+        </ComposedChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+// ---------- Painel da Análise ----------
+
+/** Uma medida ao longo do ciclo (área com gradiente), com a linha do início e a da meta. */
+export function GraficoMetrica({
+  pontos,
+  nome,
+  unidade,
+  casas = 1,
+  meta,
+  inicio,
+}: {
+  pontos: { data: string; valor: number }[];
+  nome: string;
+  unidade: string;
+  casas?: number;
+  meta?: number | null;
+  inicio?: number | null;
+}) {
+  const CORES = useCores();
+  const dados = pontos.map((p) => ({ dia: paraDia(p.data), valor: p.valor }));
+  const valores = [...pontos.map((p) => p.valor), ...(meta != null ? [meta] : [])];
+  const min = Math.min(...valores);
+  const max = Math.max(...valores);
+  const folga = Math.max((max - min) * 0.15, 0.5);
+  const id = `grad-${nome.replace(/\W/g, '')}`;
+  return (
+    <div className="grafico" style={{ height: 210 }}>
+      <ResponsiveContainer>
+        <ComposedChart data={dados} margin={{ top: 10, right: 8, left: 4, bottom: 0 }}>
+          <defs>
+            <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={CORES.bf} stopOpacity={0.35} />
+              <stop offset="100%" stopColor={CORES.bf} stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid vertical={false} />
+          {eixoX()}
+          <YAxis domain={[Math.floor((min - folga) * 10) / 10, Math.ceil((max + folga) * 10) / 10]} tickFormatter={(v: number) => num(v, casas > 0 ? 1 : 0)} tickLine={false} axisLine={false} width={40} />
+          <Tooltip
+            content={({ active, payload, label }) =>
+              active && payload?.length ? (
+                <div className="dica-grafico">
+                  <b>{formatarData(deDia(Number(label)))}</b>
+                  <div>
+                    {nome}: {num(Number(payload[0].value), casas)}
+                    {unidade}
+                  </div>
+                  {inicio != null && <div className="mudo">Desde o início: {num(Number(payload[0].value) - inicio, casas)}{unidade}</div>}
+                  {meta != null && <div className="mudo">Para a meta: {num(Number(payload[0].value) - meta, casas)}{unidade}</div>}
+                </div>
+              ) : null
+            }
+          />
+          {inicio != null && <ReferenceLine y={inicio} stroke={CORES.dose} strokeDasharray="2 4" ifOverflow="extendDomain" label={{ value: 'início', position: 'insideTopLeft', fill: CORES.magra, fontSize: 11 }} />}
+          {meta != null && <ReferenceLine y={meta} stroke={CORES.bf} strokeDasharray="6 4" ifOverflow="extendDomain" label={{ value: 'meta', position: 'insideBottomLeft', fill: CORES.bf, fontSize: 11 }} />}
+          <Area dataKey="valor" name={nome} stroke={CORES.peso} strokeWidth={2.5} fill={`url(#${id})`} dot={{ r: 3, fill: CORES.peso }} activeDot={{ r: 5 }} isAnimationActive={false} />
+        </ComposedChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+/** Peso dividido em massa magra e massa gorda (áreas empilhadas), medição a medição. */
+export function GraficoMassas({ dados }: { dados: Composicao[] }) {
+  const CORES = useCores();
+  const pontos = dados
+    .filter((c) => !c.atipica && c.massa_magra_kg !== null && c.massa_gorda_kg !== null)
+    .map((c) => ({ dia: paraDia(c.data), magra: c.massa_magra_kg, gorda: c.massa_gorda_kg }));
+  return (
+    <div className="grafico" style={{ height: 220 }}>
+      <ResponsiveContainer>
+        <ComposedChart data={pontos} margin={{ top: 8, right: 8, left: 4, bottom: 0 }}>
+          <CartesianGrid vertical={false} />
+          {eixoX()}
+          <YAxis domain={[0, 'auto']} tickFormatter={(v: number) => num(v, 0)} tickLine={false} axisLine={false} width={36} />
+          <Tooltip
+            content={({ active, payload, label }) =>
+              active && payload?.length ? (
+                <div className="dica-grafico">
+                  <b>{formatarData(deDia(Number(label)))}</b>
+                  {payload.map((p) => (
+                    <div key={String(p.dataKey)} style={{ color: p.color }}>
+                      {p.name}: {num(Number(p.value), 1)} kg
+                    </div>
+                  ))}
+                  <div className="mudo">Peso: {num(payload.reduce((s, p) => s + Number(p.value), 0), 1)} kg</div>
+                </div>
+              ) : null
+            }
+          />
+          <Legend iconType="square" />
+          <Area dataKey="magra" name="Massa magra" stackId="m" stroke={CORES.magra} fill={CORES.magra} fillOpacity={0.45} isAnimationActive={false} />
+          <Area dataKey="gorda" name="Massa gorda" stackId="m" stroke={CORES.bf} fill={CORES.bf} fillOpacity={0.45} isAnimationActive={false} />
+        </ComposedChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+/** Treinos e cardios feitos em cada semana (barras), sobre os dias contados da semana. */
+export function GraficoTreinoSemanas({ semanas }: { semanas: { rotulo: string; treino: number; cardio: number; dias: number }[] }) {
+  const CORES = useCores();
+  return (
+    <div className="grafico" style={{ height: 200 }}>
+      <ResponsiveContainer>
+        <ComposedChart data={semanas} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
+          <CartesianGrid vertical={false} />
+          <XAxis dataKey="rotulo" tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={6} />
+          <YAxis domain={[0, 7]} ticks={[0, 2, 4, 6, 7]} tickLine={false} axisLine={false} width={24} />
+          <Tooltip
+            content={({ active, payload, label }) =>
+              active && payload?.length ? (
+                <div className="dica-grafico">
+                  <b>Semana de {label}</b>
+                  {payload.map((p) => (
+                    <div key={String(p.dataKey)} style={{ color: p.color }}>
+                      {p.name}: {p.value} de {(p.payload as { dias: number }).dias} dias
+                    </div>
+                  ))}
+                </div>
+              ) : null
+            }
+          />
+          <Legend iconType="square" />
+          <Bar dataKey="treino" name="Treino" fill={CORES.peso} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+          <Bar dataKey="cardio" name="Cardio" fill={CORES.magra} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+        </ComposedChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+/** Água (barras, com a meta) e sono (linha, com a faixa de 7 h) por semana. */
+export function GraficoBemEstar({ semanas }: { semanas: { rotulo: string; agua: number | null; meta: number | null; sono: number | null }[] }) {
+  const CORES = useCores();
+  return (
+    <div className="grafico" style={{ height: 210 }}>
+      <ResponsiveContainer>
+        <ComposedChart data={semanas} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
+          <CartesianGrid vertical={false} />
+          <XAxis dataKey="rotulo" tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={6} />
+          <YAxis yAxisId="l" domain={[0, 'auto']} allowDecimals={false} tickFormatter={(v: number) => `${num(v, 0)} L`} tickLine={false} axisLine={false} width={34} />
+          <YAxis yAxisId="h" orientation="right" domain={[0, 10]} ticks={[0, 4, 7, 10]} tickFormatter={(v: number) => `${v} h`} tickLine={false} axisLine={false} width={34} />
+          <Tooltip
+            content={({ active, payload, label }) =>
+              active && payload?.length ? (
+                <div className="dica-grafico">
+                  <b>Semana de {label}</b>
+                  {payload
+                    .filter((p) => p.value !== null && p.value !== undefined)
+                    .map((p) => (
+                      <div key={String(p.dataKey)} style={{ color: p.color }}>
+                        {p.name}: {num(Number(p.value), 1)}
+                        {p.dataKey === 'sono' ? ' h' : ' L'}
+                      </div>
+                    ))}
+                </div>
+              ) : null
+            }
+          />
+          <Legend iconType="square" />
+          <ReferenceLine yAxisId="h" y={7} stroke={CORES.bf} strokeDasharray="3 4" ifOverflow="extendDomain" />
+          <Bar yAxisId="l" dataKey="agua" name="Água" fill={CORES.magra} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+          <Line yAxisId="l" dataKey="meta" name="Meta de água" stroke={CORES.dose} strokeDasharray="5 4" dot={false} connectNulls isAnimationActive={false} />
+          <Line yAxisId="h" dataKey="sono" name="Sono" stroke={CORES.bf} strokeWidth={2.5} dot={{ r: 3 }} connectNulls isAnimationActive={false} />
         </ComposedChart>
       </ResponsiveContainer>
     </div>
