@@ -1,6 +1,6 @@
-// Ícone do app (iPhone, app instalado): número de tarefas do checklist de hoje que ainda faltam.
-// Mesma conta do cartão "Hoje" do Início (tarefasDoDia); só lê registros, nunca grava.
-import { tarefasDoDia, type EntradaTarefas } from './inicio-hoje';
+// Ícone do app (iPhone, app instalado): número de pendências importantes (dose, medição
+// de segunda, dia de ontem sem registro). Só lê registros, nunca grava.
+import { somarDias } from './datas';
 import { segundaDaSemana } from './treino';
 import type { Medida, RegistroDiario, TreinoDia } from './tipos';
 
@@ -23,33 +23,31 @@ export interface EntradaBadge {
   temResumo: boolean;
 }
 
-/** Monta a mesma entrada que o Início usa no checklist. */
-export function entradaDoBadge(e: EntradaBadge): EntradaTarefas {
-  const reg = e.diario.find((r) => r.data === e.hoje) ?? null;
-  const medicaoHoje = e.medidas.find((m) => m.data === e.hoje && m.peso_kg > 0) ?? null;
-  const segunda = segundaDaSemana(e.hoje);
-  const medicao = e.medidas.length && e.hoje === segunda ? { feita: e.medidas.some((m) => m.data >= segunda) } : null;
-  const p = e.proxima;
-  const dose =
-    e.temResumo && !e.posRemedio
-      ? { devida: !!p && (p.situacao === 'hoje' || p.situacao === 'atrasada'), feitaHoje: e.ultimaDose === e.hoje, texto: '' }
-      : null;
-  return {
-    reg,
-    pesoMedicao: medicaoHoje?.peso_kg ?? null,
-    dose,
-    medicao,
-    comTreino: e.comTreino,
-    treinoDia: e.treinoDia ?? null,
-    comDieta: e.comDieta,
-    // A meta só muda o texto da água; o "feito" não depende dela
-    metaAgua: 2,
-  };
+/** O dia tem algo anotado no Diário (ou a pesagem da medição). */
+function diaComRegistro(e: Pick<EntradaBadge, 'diario' | 'medidas'>, data: string): boolean {
+  const r = e.diario.find((x) => x.data === data);
+  const algum =
+    !!r &&
+    [r.peso_kg, r.nausea, r.agua_l, r.sono_h, r.dieta_seguida, r.vomito, r.diarreia, r.intestino_preso, r.cor_urina].some((v) => v !== null && v !== undefined);
+  return algum || e.medidas.some((m) => m.data === data && m.peso_kg > 0);
 }
 
-/** Quantas tarefas de hoje ainda faltam. */
+/**
+ * Só o que pede ação de verdade (os hábitos do dia, que se anotam ao longo do dia,
+ * ficam no checklist do Início e não contam):
+ * - aplicação do dia ou atrasada ainda não registrada;
+ * - medição de segunda ainda não feita (para quem já mede);
+ * - ontem ficou sem nenhum registro no Diário (para quem já usa o Diário).
+ */
 export function pendentesHoje(e: EntradaBadge): number {
-  return tarefasDoDia(entradaDoBadge(e)).filter((t) => !t.feito).length;
+  let n = 0;
+  const p = e.proxima;
+  if (e.temResumo && !e.posRemedio && p && (p.situacao === 'hoje' || p.situacao === 'atrasada') && e.ultimaDose !== e.hoje) n++;
+  const segunda = segundaDaSemana(e.hoje);
+  if (e.hoje === segunda && e.medidas.length && !e.medidas.some((m) => m.data >= segunda)) n++;
+  const ontem = somarDias(e.hoje, -1);
+  if (e.diario.some((r) => r.data < ontem) && !diaComRegistro(e, ontem)) n++;
+  return n;
 }
 
 type NavegadorBadge = {

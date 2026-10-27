@@ -69,15 +69,17 @@ self.addEventListener('push', (e) => {
   } catch {
     d = { corpo: e.data && e.data.text() };
   }
+  // Aviso de dose com o app fechado: o ícone ganha o número (o app refaz a conta ao abrir)
+  const marcar = String(d.tag || 'dose').startsWith('dose') && self.navigator && self.navigator.setAppBadge ? self.navigator.setAppBadge(1).catch(() => {}) : Promise.resolve();
   e.waitUntil(
-    self.registration.showNotification(d.titulo || 'Lembrete de aplicação', {
+    marcar.then(() => self.registration.showNotification(d.titulo || 'Lembrete de aplicação', {
       body: d.corpo || 'Hora da sua aplicação.',
       icon: BASE + 'icone-192.png',
       badge: BASE + 'icone-192.png',
       tag: d.tag || 'dose',
       renotify: true,
       data: { url: new URL(d.url || './', self.registration.scope).href },
-    }),
+    })),
   );
 });
 

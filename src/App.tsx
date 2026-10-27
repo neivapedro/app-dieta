@@ -105,8 +105,9 @@ function Avisos() {
 }
 
 /**
- * Número no ícone do app (iPhone 16.4+, instalado, com notificações): tarefas de hoje
- * que faltam no checklist do Início. Atualiza com os dados e ao voltar ao app; 0 limpa.
+ * Número no ícone do app (iPhone 16.4+, instalado, com notificações): só pendências
+ * importantes (dose, medição de segunda, ontem sem registro). Atualiza com os dados e
+ * ao voltar ao app; 0 limpa.
  */
 function useBadgeApp() {
   const { diario, medidas, dieta } = useDados();

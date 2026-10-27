@@ -1,10 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { aplicarBadge, pendentesHoje, temBadge, type EntradaBadge } from './badge-hoje';
-import type { RegistroDiario, TreinoDia } from './tipos';
+import type { RegistroDiario } from './tipos';
 
 // 2026-11-02 é segunda-feira; 2026-11-04, quarta
 const reg = (r: Partial<RegistroDiario>): RegistroDiario => ({ id: 'r', data: '2026-11-04', peso_kg: null, nausea: null, observacoes: null, ...r });
-const tr = (t: Partial<TreinoDia>): TreinoDia => ({ id: 't', data: '2026-11-04', treino: false, cardio: false, corrida_km: null, corrida_seg: null, ...t });
 const base = (e: Partial<EntradaBadge> = {}): EntradaBadge => ({
   hoje: '2026-11-04',
   diario: [],
@@ -18,40 +17,42 @@ const base = (e: Partial<EntradaBadge> = {}): EntradaBadge => ({
   ...e,
 });
 
-describe('pendentesHoje', () => {
-  it('conta sem Treino e sem dieta, nada anotado: peso, náusea, água e sono', () => {
-    expect(pendentesHoje(base())).toBe(4);
+describe('pendentesHoje: só o importante', () => {
+  // Quem já usa o Diário: registro de anteontem (02/11) e de ontem (03/11)
+  const usando = [reg({ data: '2026-11-02', peso_kg: 90 }), reg({ data: '2026-11-03', sono_h: 7 })];
+
+  it('dia comum com ontem registrado: nada, mesmo com os hábitos de hoje em branco', () => {
+    expect(pendentesHoje(base({ diario: usando }))).toBe(0);
+    expect(pendentesHoje(base({ diario: usando, comTreino: true, comDieta: true }))).toBe(0);
   });
 
-  it('dose devida hoje (ou atrasada) e não registrada entra; registrada hoje sai', () => {
-    expect(pendentesHoje(base({ proxima: { situacao: 'hoje' } }))).toBe(5);
-    expect(pendentesHoje(base({ proxima: { situacao: 'atrasada' } }))).toBe(5);
-    expect(pendentesHoje(base({ proxima: { situacao: 'hoje' }, ultimaDose: '2026-11-04' }))).toBe(4);
-    // Fase pós-remédio ou sem resumo: a dose não entra
-    expect(pendentesHoje(base({ proxima: { situacao: 'atrasada' }, posRemedio: true }))).toBe(4);
-    expect(pendentesHoje(base({ proxima: { situacao: 'hoje' }, temResumo: false }))).toBe(4);
+  it('dose devida hoje (ou atrasada) e não registrada conta; registrada hoje, pós-remédio ou sem resumo não', () => {
+    expect(pendentesHoje(base({ diario: usando, proxima: { situacao: 'hoje' } }))).toBe(1);
+    expect(pendentesHoje(base({ diario: usando, proxima: { situacao: 'atrasada' } }))).toBe(1);
+    expect(pendentesHoje(base({ diario: usando, proxima: { situacao: 'hoje' }, ultimaDose: '2026-11-04' }))).toBe(0);
+    expect(pendentesHoje(base({ diario: usando, proxima: { situacao: 'atrasada' }, posRemedio: true }))).toBe(0);
+    expect(pendentesHoje(base({ diario: usando, proxima: { situacao: 'hoje' }, temResumo: false }))).toBe(0);
   });
 
-  it('com Treino: treino e cardio não marcados contam', () => {
-    expect(pendentesHoje(base({ comTreino: true }))).toBe(6);
-    expect(pendentesHoje(base({ comTreino: true, treinoDia: tr({ treino: true }) }))).toBe(5);
-    expect(pendentesHoje(base({ comTreino: true, treinoDia: tr({ treino: true, cardio: true }) }))).toBe(4);
+  it('segunda: medição pendente conta para quem já mede; feita (ou sem histórico) não', () => {
+    const seg = base({ hoje: '2026-11-02', diario: [reg({ data: '2026-10-30', peso_kg: 91 }), reg({ data: '2026-11-01', sono_h: 7 })], medidas: [{ data: '2026-10-26', peso_kg: 91 }] });
+    expect(pendentesHoje(seg)).toBe(1);
+    expect(pendentesHoje({ ...seg, medidas: [...seg.medidas, { data: '2026-11-02', peso_kg: 90 }] })).toBe(0);
+    expect(pendentesHoje({ ...seg, medidas: [] })).toBe(0);
   });
 
-  it('diário preenchido zera; dieta acrescenta "Segui o plano"', () => {
-    const cheio = reg({ peso_kg: 90, nausea: 0, agua_l: 2, sono_h: 7 });
-    expect(pendentesHoje(base({ diario: [cheio] }))).toBe(0);
-    expect(pendentesHoje(base({ diario: [cheio], comDieta: true }))).toBe(1);
-    expect(pendentesHoje(base({ diario: [{ ...cheio, dieta_seguida: 'sim' }], comDieta: true }))).toBe(0);
-    // Registro de outro dia não conta
-    expect(pendentesHoje(base({ diario: [{ ...cheio, data: '2026-11-03' }] }))).toBe(4);
+  it('ontem sem nenhum registro conta (só para quem já usa o Diário)', () => {
+    expect(pendentesHoje(base({ diario: [reg({ data: '2026-11-01', peso_kg: 90 })] }))).toBe(1);
+    // Registro vazio de ontem não vale; um campo qualquer ou a pesagem da medição vale
+    expect(pendentesHoje(base({ diario: [reg({ data: '2026-11-01', peso_kg: 90 }), reg({ data: '2026-11-03' })] }))).toBe(1);
+    expect(pendentesHoje(base({ diario: [reg({ data: '2026-11-01', peso_kg: 90 }), reg({ data: '2026-11-03', dieta_seguida: 'nao' })] }))).toBe(0);
+    expect(pendentesHoje(base({ diario: [reg({ data: '2026-11-01', peso_kg: 90 })], medidas: [{ data: '2026-11-03', peso_kg: 90 }] }))).toBe(0);
+    // Conta nova (ainda sem Diário antes de ontem): nada
+    expect(pendentesHoje(base())).toBe(0);
   });
 
-  it('medição de hoje vale como o peso; às segundas a medição entra para quem já mede', () => {
-    expect(pendentesHoje(base({ medidas: [{ data: '2026-11-04', peso_kg: 90 }] }))).toBe(3);
-    const seg = base({ hoje: '2026-11-02', medidas: [{ data: '2026-10-26', peso_kg: 91 }] });
-    expect(pendentesHoje(seg)).toBe(5);
-    expect(pendentesHoje({ ...seg, medidas: [...seg.medidas, { data: '2026-11-02', peso_kg: 90 }] })).toBe(3);
+  it('soma: dose atrasada + ontem em branco', () => {
+    expect(pendentesHoje(base({ diario: [reg({ data: '2026-11-01', peso_kg: 90 })], proxima: { situacao: 'atrasada' } }))).toBe(2);
   });
 });
 
