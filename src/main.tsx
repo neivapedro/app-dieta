@@ -4,6 +4,7 @@ import { App } from './App';
 import { ProvedorDados } from './dados/contexto';
 import { registrarServiceWorker, vigiarVersaoNova } from './lib/notificacoes';
 import './estilos.css';
+import './estilos/movimento.css';
 
 if (!import.meta.env.VITE_DEMO) {
   registrarServiceWorker();

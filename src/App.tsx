@@ -1,5 +1,6 @@
-import { BrowserRouter, HashRouter, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { BrowserRouter, HashRouter, NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, type MouseEvent } from 'react';
+import { Comemoracoes, menosMovimento } from './componentes/comemoracao';
 import { NovaSenha } from './paginas/Entrar';
 import { PuxarAtualizar } from './componentes/movimento';
 import { Protecao } from './componentes/Protecao';
@@ -149,15 +150,67 @@ function BadgeApp() {
   return null;
 }
 
+type DocumentoComTransicao = Document & { startViewTransition?: (atualizar: () => Promise<void>) => { finished: Promise<void> } };
+
+/**
+ * Troca de tela com transição suave (View Transitions: Safari 18+, Chrome): a tela
+ * sai e a nova entra deslizando pouco, para o lado da aba escolhida; cabeçalho e
+ * barra de abas ficam parados. Sem suporte ou com "Reduzir movimento": troca direto.
+ */
+function useTrocaDeTela(ordem: string[]) {
+  const navegar = useNavigate();
+  const { pathname } = useLocation();
+  const pronta = useRef<(() => void) | null>(null);
+  // Cada aba abre do topo, não na altura em que a anterior estava; com a tela nova
+  // já montada, a transição pode tirar a "foto" do depois
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+    pronta.current?.();
+    pronta.current = null;
+  }, [pathname]);
+  return (para: string) => (e: MouseEvent<HTMLAnchorElement>) => {
+    const doc = document as DocumentoComTransicao;
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.altKey || e.ctrlKey || e.shiftKey) return;
+    if (para === pathname || typeof doc.startViewTransition !== 'function' || menosMovimento()) return;
+    e.preventDefault();
+    const posicao = (p: string) => {
+      const i = ordem.indexOf(p);
+      return i < 0 ? ordem.length : i;
+    };
+    const raiz = document.documentElement;
+    raiz.dataset.troca = posicao(para) < posicao(pathname) ? 'voltar' : 'avancar';
+    raiz.classList.add('trocando-tela');
+    try {
+      const t = doc.startViewTransition(
+        () =>
+          new Promise<void>((pronto) => {
+            // Tela que demora (parte baixada sob demanda): não segura a transição
+            const limite = setTimeout(pronto, 600);
+            pronta.current = () => {
+              clearTimeout(limite);
+              pronto();
+            };
+            navegar(para);
+          }),
+      );
+      t.finished.catch(() => undefined).finally(() => {
+        raiz.classList.remove('trocando-tela');
+        delete raiz.dataset.troca;
+      });
+    } catch {
+      raiz.classList.remove('trocando-tela');
+      navegar(para);
+    }
+  };
+}
+
 function Estrutura() {
   const { perfil, ciclo, recarregar } = useDados();
   const [comBadge] = useState(() => temBadge());
   const { pathname } = useLocation();
-  // Cada aba abre do topo, não na altura em que a anterior estava
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [pathname]);
   const abas = perfil?.modulo_treino ? [...ABAS.slice(0, 4), ABA_TREINO, ABAS[4]] : ABAS;
+  // Ordem da esquerda para a direita: abas e, depois, os botões do cabeçalho
+  const trocar = useTrocaDeTela([...abas.map((a) => a.para), '/retatrutida', '/perfil']);
   const titulo = TITULOS_EXTRAS[pathname] ?? abas.find((a) => a.para === pathname)?.titulo ?? '';
   const primeiroNome = perfil?.nome.split(' ')[0];
 
@@ -175,10 +228,10 @@ function Estrutura() {
             </div>
           </div>
           <div className="topo-acoes">
-            <NavLink to="/retatrutida" className={({ isActive }) => `icone-botao${isActive ? ' ativo' : ''}`} aria-label="Sobre a retatrutida">
+            <NavLink to="/retatrutida" onClick={trocar('/retatrutida')} className={({ isActive }) => `icone-botao${isActive ? ' ativo' : ''}`} aria-label="Sobre a retatrutida">
               <Icone nome="livro" />
             </NavLink>
-            <NavLink to="/perfil" className={({ isActive }) => `icone-botao${isActive ? ' ativo' : ''}`} aria-label="Perfil">
+            <NavLink to="/perfil" onClick={trocar('/perfil')} className={({ isActive }) => `icone-botao${isActive ? ' ativo' : ''}`} aria-label="Perfil">
               <Icone nome="perfil" />
             </NavLink>
           </div>
@@ -221,13 +274,14 @@ function Estrutura() {
       <nav className="nav" aria-label="Navegação principal">
         <div className={`nav-itens ${abas.length > 6 ? 'apertado' : ''}`} style={{ gridTemplateColumns: `repeat(${abas.length}, 1fr)` }}>
           {abas.map((a) => (
-            <NavLink key={a.para} to={a.para} end className={({ isActive }) => (isActive ? 'ativo' : '')}>
+            <NavLink key={a.para} to={a.para} end onClick={trocar(a.para)} className={({ isActive }) => (isActive ? 'ativo' : '')}>
               <Icone nome={a.icone} />
               {a.rotulo}
             </NavLink>
           ))}
         </div>
       </nav>
+      <Comemoracoes />
     </>
   );
 }
