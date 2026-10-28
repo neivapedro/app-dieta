@@ -4,7 +4,8 @@ import { Diario } from './Diario';
 import { AvisoRapido } from '../componentes/dose';
 import { FormAplicacao } from '../componentes/formularios';
 import { LinhaDoses } from '../componentes/painel';
-import { Campo, CampoNumero, Escolhas, Folha, Vazio } from '../componentes/ui';
+import { Campo, CampoNumero, Escolhas, Folha, IconeChip, Vazio } from '../componentes/ui';
+import { EstadoVazio } from '../componentes/estado-vazio';
 import { useDados } from '../dados/contexto';
 import { CicloSalvoEmParte } from '../dados/repositorio';
 import { useCalculos } from '../dados/useCalculos';
@@ -165,6 +166,7 @@ function Agenda() {
 
       <section className="cartao">
         <div className="secao-cab">
+          <IconeChip nome="calendario" cor="indigo" />
           <div>
             <h2>Próximas aplicações</h2>
             <div className="secao-sub">Datas pela última aplicação real</div>
@@ -262,6 +264,7 @@ function Agenda() {
 
       <section className="cartao">
         <div className="secao-cab">
+          <IconeChip nome="ciclo" cor="indigo" />
           <div>
             <h2>Aplicações realizadas</h2>
             <div className="secao-sub">
@@ -270,7 +273,9 @@ function Agenda() {
           </div>
         </div>
         {realizadas.length === 0 ? (
-          <Vazio>Nenhuma aplicação registrada ainda.</Vazio>
+          <EstadoVazio icone="ciclo" cor="indigo" titulo="Nenhuma aplicação ainda" compacto>
+            Toque em Registrar no alto para anotar a primeira.
+          </EstadoVazio>
         ) : (
           <>
             <div className="aplics">
@@ -494,6 +499,7 @@ function Plano() {
     <>
       <section className="cartao">
         <div className="secao-cab cab-fixa">
+          <IconeChip nome="frasco" cor="indigo" />
           <div className="cresce">
             <h2>Frasco × plano</h2>
             <div className="secao-sub">
@@ -533,6 +539,7 @@ function Plano() {
 
       <section className="cartao">
         <div className="secao-cab cab-fixa">
+          <IconeChip nome="camadas" cor="indigo" />
           <div className="cresce">
             <h2>Fases</h2>
             <div className="secao-sub">Toque numa fase para editar</div>

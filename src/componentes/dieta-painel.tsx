@@ -1,10 +1,34 @@
 // Peças visuais da aba Dieta (anel de kcal, barras dos macros, "Falta"), em SVG e CSS.
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
+import { GradienteMarca } from './painel';
+import { IconeChip } from './ui';
 import { estadoFalta, falta, fracaoAnel, partesBarra, type EstadoMacro, type FatiaKcal } from '../lib/dieta-painel';
 import type { Saldo } from '../lib/dieta';
 import { num } from '../lib/formato';
 
 const CLASSE_ESTADO: Record<EstadoMacro, string> = { ok: 'bom', passou: 'ruim', falta: '' };
+
+/** Ícone da refeição pelo nome (café, almoço, lanche, jantar, pós-treino) ou, sem pista no nome, pelo horário. */
+export function iconeRefeicao(nome: string, horario: string | null): string {
+  const n = nome.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  if (/treino/.test(n)) return 'treino';
+  if (/cafe|desjejum|manha/.test(n)) return 'cafe';
+  if (/almoco/.test(n)) return 'sol';
+  if (/lanche|merenda/.test(n)) return 'maca';
+  if (/jantar|janta|ceia|noite/.test(n)) return 'lua';
+  const h = horario ? Number(horario.slice(0, 2)) + Number(horario.slice(3, 5)) / 60 : null;
+  if (h === null || Number.isNaN(h)) return 'prato';
+  if (h < 4) return 'lua';
+  if (h < 10.5) return 'cafe';
+  if (h < 14.5) return 'sol';
+  if (h < 18.5) return 'maca';
+  return 'lua';
+}
+
+/** Chip verde da refeição (domínio Dieta). */
+export function ChipRefeicao({ nome, horario }: { nome: string; horario: string | null }) {
+  return <IconeChip nome={iconeRefeicao(nome, horario)} cor="verde" />;
+}
 
 export function IconeSeta({ aberta }: { aberta?: boolean }) {
   return (
@@ -28,14 +52,27 @@ export function AnelKcal({ plano, meta }: { plano: number | null; meta: number }
   const c = 2 * Math.PI * r;
   const f = plano === null ? 0 : fracaoAnel(plano, meta);
   const estado = plano === null ? null : estadoFalta(meta - plano, meta, 15);
+  const idGrad = `kcal${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   const texto =
     plano === null ? 'carregando o plano' : estado === 'ok' ? '✓ na meta' : estado === 'passou' ? `+${num(plano - meta, 0)} kcal acima` : `faltam ${num(meta - plano, 0)} kcal`;
   return (
     <div className="anel-kcal" role="img" aria-label={`Plano: ${plano === null ? 'carregando' : `${num(plano, 0)} kcal`} de ${num(meta, 0)} kcal da meta. ${texto}`}>
       <div className="anel-kcal-circulo">
         <svg viewBox="0 0 120 120" aria-hidden="true">
+          <GradienteMarca id={idGrad} />
           <circle cx="60" cy="60" r={r} className="anel-kcal-trilho" />
-          {f > 0 && <circle cx="60" cy="60" r={r} className={`anel-kcal-valor ${estado ? CLASSE_ESTADO[estado] : ''}`} strokeDasharray={`${f * c} ${c}`} transform="rotate(-90 60 60)" />}
+          {f > 0 && (
+            <circle
+              cx="60"
+              cy="60"
+              r={r}
+              className={`anel-kcal-valor ${(estado && CLASSE_ESTADO[estado]) || 'neutro'}`}
+              // Ainda faltando (sem bom/ruim): progresso neutro no degradê da marca
+              style={estado && CLASSE_ESTADO[estado] ? undefined : { stroke: `url(#${idGrad})` }}
+              strokeDasharray={`${f * c} ${c}`}
+              transform="rotate(-90 60 60)"
+            />
+          )}
         </svg>
         <div className="anel-kcal-centro" aria-hidden="true">
           <span className="anel-kcal-num numero">{plano === null ? '–' : num(plano, 0)}</span>

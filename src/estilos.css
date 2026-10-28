@@ -336,8 +336,8 @@ details.ajuda[open] summary { margin-bottom: 8px; }
 
 /* Aba Dieta — cores dos macros como na planilha (Ptn A verde, Ptn V azul, Carb amarelo, Gordura laranja) */
 :root { --m-pa: #30d158; --m-pv: #64d2ff; --m-c: #ffd60a; --m-g: #ff9f0a; }
-@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --m-pa: #248a3d; --m-pv: #0071a4; --m-c: #a05a00; --m-g: #c93400; } }
-:root[data-theme="light"] { --m-pa: #248a3d; --m-pv: #0071a4; --m-c: #a05a00; --m-g: #c93400; }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --m-pa: #1e7a35; --m-pv: #0071a4; --m-c: #a05a00; --m-g: #c93400; } }
+:root[data-theme="light"] { --m-pa: #1e7a35; --m-pv: #0071a4; --m-c: #a05a00; --m-g: #c93400; }
 .m-pa { color: var(--m-pa); }
 .m-pv { color: var(--m-pv); }
 .m-c { color: var(--m-c); }
@@ -927,3 +927,104 @@ details.tabela-detalhe > summary, details.ajuda > summary { min-height: 40px; }
 .icone-chip.indigo { --cor-chip: var(--c-indigo); }
 .titulo-com-icone { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .titulo-com-icone > :last-child { min-width: 0; }
+
+/* ---------- Marca aplicada (cor-assinatura discreta em todas as telas) ----------
+ * Só o destaque leva a cor: aba ativa, botão principal, seleção, progresso neutro, foco e cartões hero.
+ * Verde/vermelho (melhor/pior), âmbar (atenção) e as cores dos gráficos continuam com o significado delas.
+ */
+/* Barra de baixo: aba ativa na cor da marca, com a pílula tingida atrás do ícone */
+.nav a.ativo { color: var(--marca-forte); font-weight: 650; }
+.nav a.ativo::before { background: color-mix(in srgb, var(--marca-m) 24%, transparent); }
+.nav a.ativo svg { stroke-width: 2.2; }
+
+/* Botão principal: degradê da marca, afunda ao tocar */
+.botao.primario {
+  background-color: var(--marca-m); background-image: var(--marca-grad); color: var(--marca-texto); border-color: transparent;
+  box-shadow: 0 6px 16px -10px color-mix(in srgb, var(--marca-m) 80%, transparent);
+}
+.botao.primario:not(:disabled):active { filter: brightness(0.9); }
+
+/* Seleção: aba e pílula ativas com o texto na cor da marca; escolhas marcadas com o degradê */
+.abas button.ativo, .pilulas button.ativo { color: var(--marca-forte); }
+.escolhas button.ativo { background-color: var(--marca-m); background-image: var(--marca-grad); color: var(--marca-texto); }
+input[type="checkbox"], input[type="radio"], input[type="range"], progress { accent-color: var(--marca-m); }
+.etiqueta.destaque { background: color-mix(in srgb, var(--marca-m) 18%, transparent); color: var(--marca-forte); }
+.item .marcador.feito { background: color-mix(in srgb, var(--marca-m) 22%, transparent); color: var(--marca-forte); }
+
+/* Links no meio do texto */
+:where(p, li, small, dd, .mudo, .texto-2, .alerta, .secao-sub) a:where(:not(.botao)) { color: var(--marca-forte); text-underline-offset: 2px; }
+
+/* Foco do teclado: anel na cor da marca */
+:where(a, button, summary, [tabindex], input, select, textarea):focus-visible { outline: 2px solid var(--marca-forte); outline-offset: 2px; }
+.campo input:focus, .campo select:focus, .campo textarea:focus { outline-color: var(--marca-forte); }
+.botao.primario:focus-visible { outline: 2px solid var(--marca-forte); outline-offset: 2px; }
+
+/* Cartões hero: brilho da marca no lugar do brilho amarelado */
+.hero { background: var(--marca-brilho), var(--superficie); border-color: var(--marca-borda); }
+.hero-progresso .barra > div, .meta-feito:not(.bom), .barra > div { background: var(--marca-grad); }
+
+/* Números grandes: algarismos de mesma largura e espaçamento mais justo */
+.hero-titulo, .kpi-valor, .grande, .medio, .anel-texto, .dieta-meta-kcal, .anel-kcal-num { font-variant-numeric: tabular-nums; }
+.hero-titulo, .kpi-valor, .grande { letter-spacing: -0.025em; }
+
+/* Ícone colorido no título: o chip vem antes do bloco do título dentro do cabeçalho do cartão */
+.secao-cab:has(> .icone-chip), .cartao-cab:has(> .icone-chip) { justify-content: flex-start; column-gap: 10px; }
+/* O título ocupa a largura dele (o botão ou as pílulas descem quando não cabem); com .cresce, divide a linha como antes */
+.secao-cab > .icone-chip + :is(div, h2), .cartao-cab > .icone-chip + :is(div, h2) { flex: 1 1 auto; min-width: 0; max-width: calc(100% - 40px); }
+.secao-cab > .icone-chip + .cresce { flex-basis: 0%; }
+/* 320 px: o título fica com a linha toda e o botão desce, em vez de espremer o texto em 4 linhas */
+@media (max-width: 360px) { .secao-cab > .icone-chip + .cresce { flex-basis: auto; } }
+.secao-cab:has(> .pilulas-rolagem) > .pilulas-rolagem { margin-left: auto; }
+.secao-cab > :is(.botao, .etiqueta, button), .cartao-cab > :is(.botao, .etiqueta, .mudo) { flex: none; }
+.cartao-cab > .icone-chip + h2 + .mudo { max-width: 50%; text-align: right; }
+
+/* Vazio de uma linha: caixinha tracejada discreta */
+.vazio { margin: 0; padding: 10px 12px; border-radius: var(--raio-sm); border: 1px dashed var(--borda); background: color-mix(in srgb, var(--superficie-2) 45%, transparent); }
+
+/* Estado vazio com ícone (ou ilustração), título, texto e ação */
+.estado-vazio {
+  display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 22px 16px 18px;
+  border-radius: var(--raio-sm); border: 1px dashed var(--marca-borda);
+  background: radial-gradient(80% 90% at 50% 0%, color-mix(in srgb, var(--marca-m) 11%, transparent), transparent 70%);
+}
+.estado-vazio.compacto { padding: 16px 14px 14px; }
+.estado-vazio-arte { margin-bottom: 4px; display: flex; justify-content: center; }
+.estado-vazio-arte > .icone-chip { width: 48px; height: 48px; border-radius: 15px; }
+.estado-vazio-arte > .icone-chip svg { width: 26px; height: 26px; }
+.estado-vazio.compacto .estado-vazio-arte > .icone-chip { width: 40px; height: 40px; border-radius: 12px; }
+.estado-vazio.compacto .estado-vazio-arte > .icone-chip svg { width: 22px; height: 22px; }
+.estado-vazio-titulo { font-weight: 700; font-size: 1rem; letter-spacing: -0.01em; overflow-wrap: anywhere; }
+.estado-vazio-texto { color: var(--texto-2); font-size: 0.85rem; line-height: 1.45; max-width: 34ch; overflow-wrap: anywhere; }
+.estado-vazio-acao { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 8px; width: 100%; }
+.estado-vazio-acao .botao { flex: 1 1 140px; max-width: 240px; }
+@keyframes flutuar { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+.estado-vazio-arte > * { animation: flutuar 4s ease-in-out infinite; }
+
+/* Ilustração das fotos vazias */
+.ilustracao-fotos { width: 156px; height: 84px; display: block; overflow: visible; }
+.ilu-moldura { fill: var(--superficie-2); stroke: var(--borda); stroke-width: 1.5; stroke-dasharray: 4 4; }
+.ilu-pessoa { fill: none; stroke: var(--texto-3); stroke-width: 2.5; stroke-linecap: round; }
+.ilu-pessoa-depois { fill: none; stroke: #fff; stroke-width: 2.5; stroke-linecap: round; }
+.ilu-brilho { fill: #fff; }
+.ilu-seta { fill: none; stroke: var(--marca-forte); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Toque e mouse: cartões tocáveis respondem */
+.cartao-link { transition: transform 0.12s ease, border-color 0.2s; }
+.cartao-link:active { transform: scale(0.985); }
+@media (hover: hover) {
+  .cartao-link:hover { border-color: var(--marca-borda); }
+  .botao:not(.primario):not(:disabled):hover { border-color: color-mix(in srgb, var(--texto-3) 60%, var(--borda)); }
+}
+
+/* Anel neutro (progresso sem bom/ruim): traço com o degradê da marca */
+.anel-valor.neutro, .anel-kcal-valor.neutro { stroke: var(--marca-forte); }
+
+/* Entrada e primeira configuração: brilho da marca atrás do braço e o nome do app na cor da marca */
+.marca-heroi::before {
+  background:
+    radial-gradient(closest-side at 40% 45%, color-mix(in srgb, var(--marca-a) 30%, transparent), transparent),
+    radial-gradient(closest-side at 62% 58%, color-mix(in srgb, var(--marca-b) 22%, transparent), transparent);
+}
+.entrada .nome-app { color: var(--marca-forte); }
+/* Etiqueta vermelha: o texto puxa um pouco para o texto do tema (≥ 4,5:1 também sobre o fundo rosado) */
+.etiqueta.ruim { color: color-mix(in srgb, var(--ruim) 80%, var(--texto)); }

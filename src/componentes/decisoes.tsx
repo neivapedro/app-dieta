@@ -3,7 +3,7 @@ import { useDados } from '../dados/contexto';
 import { diaDaSemana, formatarData } from '../lib/datas';
 import { decisoesPorDia, descreverRegistro, mudancasMisturadas, ROTULO_TIPO } from '../lib/registroDecisoes';
 import type { RegistroDecisao } from '../lib/tipos';
-import { Vazio } from './ui';
+import { IconeChip, Vazio } from './ui';
 
 const curta = (d: string) => formatarData(d, true).slice(0, 5);
 
@@ -101,6 +101,7 @@ export function ListaDecisoes() {
   return (
     <section className="cartao pilha">
       <div className="cartao-cab" style={{ marginBottom: 0 }}>
+        <IconeChip nome="lista" cor="marca" />
         <h2>Decisões</h2>
         {!anotando && !registroIndisponivel && (
           <button className="botao pequeno" onClick={() => setAnotando(true)}>

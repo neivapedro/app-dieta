@@ -21,7 +21,7 @@ import {
   type TipoCardio,
 } from '../lib/treino';
 import type { MetasProjeto, TreinoDia } from '../lib/tipos';
-import { Bloco, Campo, CampoNumero, Escolhas, Folha } from './ui';
+import { Bloco, Campo, CampoNumero, Escolhas, Folha, IconeChip } from './ui';
 
 export function Marcador({
   rotulo,
@@ -162,6 +162,7 @@ export function CartaoTreinoHoje() {
   return (
     <section className="cartao">
       <div className="cartao-cab">
+        <IconeChip nome="treino" cor="laranja" />
         <h2>Treino de hoje</h2>
         <span className="mudo">
           Dia {diaNumero} de {placar.totalDias}

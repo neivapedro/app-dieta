@@ -13,7 +13,7 @@
 .anel-kcal-circulo { position: relative; width: 100%; aspect-ratio: 1; }
 .anel-kcal-circulo svg { width: 100%; height: 100%; display: block; }
 .anel-kcal-trilho { fill: none; stroke: var(--superficie-2); stroke-width: 11; }
-.anel-kcal-valor { fill: none; stroke: var(--destaque); stroke-width: 11; stroke-linecap: round; transition: stroke-dasharray 0.4s ease; }
+.anel-kcal-valor { fill: none; stroke: var(--marca-forte); stroke-width: 11; stroke-linecap: round; transition: stroke-dasharray 0.4s ease; }
 .anel-kcal-valor.bom { stroke: var(--bom); }
 .anel-kcal-valor.ruim { stroke: var(--ruim); }
 .anel-kcal-centro { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1; text-align: center; }
@@ -103,7 +103,14 @@
   flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0;
   border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
 }
-.ref-vazia-nome .ref-nome { color: var(--texto-2); font-weight: 650; }
+.ref-vazia-nome { flex-direction: column; align-items: flex-start; justify-content: center; gap: 1px; }
+.ref-vazia-linha { display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; }
+.ref-vazia-nome .ref-nome { color: var(--texto); font-weight: 650; }
+.ref-vazia-dica { font-size: 0.75rem; color: var(--texto-3); }
+/* Ícone da refeição (café, almoço, lanche, jantar, pós-treino) */
+.refeicao-card .icone-chip { width: 32px; height: 32px; border-radius: 10px; }
+.dieta .refeicao-card.vazia { padding-left: 12px; }
+.dieta .refeicao-card.vazia { border-style: dashed; border-color: var(--borda); background: color-mix(in srgb, var(--superficie) 70%, transparent); box-shadow: none; }
 .ref-lapis { color: var(--texto-3); display: inline-flex; flex: none; }
 .dieta .ref-adicionar { flex: none; min-height: 40px; }
 .dieta .dieta-nova-refeicao { margin-top: 10px; width: 100%; background: transparent; border-style: dashed; color: var(--texto-2); }

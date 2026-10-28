@@ -384,7 +384,7 @@ function SecaoNotificacoes({
         )}
       </section>
       <Grupo titulo="Avisos que usam as notificações">
-        <Linha icone="ciclo" cor="ambar" rotulo="Lembrete de aplicação" valor={resumoLembrete(perfil)} aoTocar={() => abrir('lembrete')} />
+        <Linha icone="ciclo" cor="indigo" rotulo="Lembrete de aplicação" valor={resumoLembrete(perfil)} aoTocar={() => abrir('lembrete')} />
         <Linha
           icone="dieta"
           cor="verde"
@@ -1086,11 +1086,11 @@ export function Perfil() {
       </button>
 
       <Grupo titulo="Conta">
-        <Linha icone="perfil" cor="neutro" rotulo="Dados pessoais" aoTocar={() => abrir('dados')} />
+        <Linha icone="perfil" cor="marca" rotulo="Dados pessoais" aoTocar={() => abrir('dados')} />
       </Grupo>
 
       <Grupo titulo="Avisos">
-        <Linha icone="ciclo" cor="ambar" rotulo="Lembrete de aplicação" valor={resumoLembrete(perfil)} aoTocar={() => abrir('lembrete')} />
+        <Linha icone="ciclo" cor="indigo" rotulo="Lembrete de aplicação" valor={resumoLembrete(perfil)} aoTocar={() => abrir('lembrete')} />
         <Linha
           icone="dieta"
           cor="verde"
@@ -1105,7 +1105,7 @@ export function Perfil() {
       <Grupo titulo="Medidas">
         <Linha
           icone="gota"
-          cor="neutro"
+          cor="ciano"
           rotulo="Calibração do % de gordura"
           sub={origemCalibracao(perfil)}
           valor={sinal(ajusteVigente(perfil, medidas), 1, ' p.p.')}

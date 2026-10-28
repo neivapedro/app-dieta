@@ -26,7 +26,7 @@
 }
 .med-kpi-botao > .kpi { flex: 1; min-width: 0; transition: border-color 0.2s; }
 .med-kpi-botao:active { transform: scale(0.97); }
-.med-kpi-botao:focus-visible { outline: 2px solid var(--destaque); outline-offset: 2px; }
+.med-kpi-botao:focus-visible { outline: 2px solid var(--marca-forte); outline-offset: 2px; }
 @media (hover: hover) { .med-kpi-botao:hover > .kpi { border-color: var(--texto-3); } }
 @media (max-width: 360px) { .med-delta { font-size: 0.72rem; } .med-delta small { font-size: 0.65rem; } }
 .med-como-ler { margin: -4px 2px 0; }
@@ -75,7 +75,7 @@
   transition: transform 0.12s ease, background-color 0.2s;
 }
 .med-hist-item:active { transform: scale(0.985); }
-.med-hist-item:focus-visible { outline: 2px solid var(--destaque); outline-offset: 2px; }
+.med-hist-item:focus-visible { outline: 2px solid var(--marca-forte); outline-offset: 2px; }
 .med-hist-cab { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .med-hist-cab b { font-size: 0.9rem; }
 .med-hist-seta { margin-left: auto; color: var(--texto-3); font-size: 1.2rem; line-height: 1; }

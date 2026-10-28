@@ -59,7 +59,8 @@ import {
   type Vista,
 } from '../lib/zoom';
 import { ComparadorFotos } from './medidas-comparador';
-import { BotaoExcluir, Campo, Escolhas, Folha } from './ui';
+import { BotaoExcluir, Campo, Escolhas, Folha, IconeChip } from './ui';
+import { EstadoVazio, IlustracaoFotos } from './estado-vazio';
 
 export interface FotoTela extends FotoGuardada {
   /** Endereço temporário da imagem inteira (visualizador) */
@@ -316,7 +317,8 @@ export function CartaoFotos() {
   return (
     <section className="cartao pilha fotos-cartao" style={{ gap: 12 }}>
       <div className="secao-cab" style={{ marginBottom: 0 }}>
-        <div className="cresce">
+        <IconeChip nome="camera" cor="ciano" />
+        <div>
           <h2>Fotos: antes e depois</h2>
           <div className="secao-sub">
             {fotos.length ? `${fotosTexto(fotos.length)} · ~${textoTamanho(bytes)} neste aparelho` : 'Frente, lado e costas, nas mesmas condições'}
@@ -334,7 +336,32 @@ export function CartaoFotos() {
       )}
       {erro && <div className="alerta erro">{erro}</div>}
       {!carregando && !erro && <ComparadorFotos fotos={fotos} composicoes={composicoes} feminino={feminino} />}
-      {!carregando && !erro && (
+      {!carregando && !erro && fotos.length === 0 && (
+        // Sem nenhuma foto: ilustração e os dois botões no lugar das duas caixas vazias
+        <EstadoVazio
+          ilustracao={<IlustracaoFotos />}
+          titulo="Seu antes e depois"
+          acao={SESSOES.map((s) => {
+            const ocupado = salvando?.sessao === s;
+            const principal = s === 'antes' ? !horaDoDepois : horaDoDepois;
+            return (
+              <button
+                key={s}
+                type="button"
+                className={`botao ${principal ? 'primario' : ''}`}
+                aria-label={`Adicionar fotos ao ${ROTULO_SESSAO[s]}`}
+                disabled={!!lote}
+                onClick={() => adicionar(s)}
+              >
+                {ocupado ? `Salvando ${salvando.atual} de ${salvando.arquivos.length}…` : `+ ${ROTULO_SESSAO[s]}`}
+              </button>
+            );
+          })}
+        >
+          As fotos mostram o que a fita e a balança não contam.
+        </EstadoVazio>
+      )}
+      {!carregando && !erro && fotos.length > 0 && (
         <div className="pilha" style={{ gap: 14 }}>
           {medicoes.map(({ s }) => {
             const daSessao = fotosDaSessao(fotos, s);
