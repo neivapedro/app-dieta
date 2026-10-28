@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type Ref } from 'react';
 import { FormDiario } from '../componentes/formularios';
 import { Pilulas } from '../componentes/painel';
-import { Vazio } from '../componentes/ui';
+import { IconeChip, Vazio } from '../componentes/ui';
+import { EstadoVazio } from '../componentes/estado-vazio';
 import { useDados } from '../dados/contexto';
 import { useCalculos } from '../dados/useCalculos';
 import { useMetaAgua } from '../dados/useTreino';
@@ -134,6 +135,7 @@ export function Diario() {
     <div className="pilha">
       <section className="cartao">
         <div className="secao-cab cab-fixa">
+          <IconeChip nome="diario" cor="marca" />
           <div className="cresce">
             <h2>Diário</h2>
             <div className="secao-sub">Peso, náusea, sono e água · doses entram sozinhas</div>
@@ -238,7 +240,17 @@ export function Diario() {
       ) : (
         <section className="cartao">
           {datas.length === 0 ? (
-            <Vazio>Nenhum registro ainda.</Vazio>
+            <EstadoVazio
+              icone="diario"
+              titulo="Nenhum dia anotado ainda"
+              acao={
+                <button className="botao primario" onClick={() => setNovo(hojeLocal())}>
+                  Registrar hoje
+                </button>
+              }
+            >
+              Peso, náusea, sono e água de cada dia ficam aqui, numa lista.
+            </EstadoVazio>
           ) : (
             <>
               <div className="lista">

@@ -1,6 +1,6 @@
 // Peças visuais do painel da Análise, em SVG e CSS (sem a biblioteca de gráficos:
 // aparecem na hora, inclusive sem internet).
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 import { num, pct } from '../lib/formato';
 import { Numero, useContagem } from './movimento';
 import type { ProgressoMeta } from '../lib/painel';
@@ -66,11 +66,25 @@ export function Anel({ fracao, rotulo, detalhe, tom }: { fracao: number | null; 
   // O anel se desenha de 0 até o valor ao aparecer, junto com o número do centro
   const { ref, valor: pctAnim } = useContagem<HTMLDivElement>(fracao === null ? 0 : f * 100);
   const fa = Math.min(Math.max(pctAnim / 100, 0), 1);
+  // Sem tom (progresso neutro, sem bom/ruim): traço com o degradê da marca
+  const neutro = !tom;
+  const idGrad = `anel${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   return (
     <div ref={ref} className="anel" role="img" aria-label={`${rotulo}: ${fracao === null ? 'sem dados' : pct(f, 0)}${detalhe ? `, ${detalhe}` : ''}`}>
       <svg viewBox="0 0 64 64" aria-hidden="true">
+        {neutro && <GradienteMarca id={idGrad} />}
         <circle cx="32" cy="32" r={r} className="anel-trilho" />
-        {fracao !== null && <circle cx="32" cy="32" r={r} className={`anel-valor ${tom ?? ''}`} strokeDasharray={`${fa * c} ${c}`} transform="rotate(-90 32 32)" />}
+        {fracao !== null && (
+          <circle
+            cx="32"
+            cy="32"
+            r={r}
+            className={`anel-valor ${tom || 'neutro'}`}
+            style={neutro ? { stroke: `url(#${idGrad})` } : undefined}
+            strokeDasharray={`${fa * c} ${c}`}
+            transform="rotate(-90 32 32)"
+          />
+        )}
         <text x="32" y="36" textAnchor="middle" className="anel-texto">
           {fracao === null ? '–' : `${Math.round(fa * 100)}%`}
         </text>
@@ -78,6 +92,19 @@ export function Anel({ fracao, rotulo, detalhe, tom }: { fracao: number | null; 
       <div className="anel-rotulo">{rotulo}</div>
       {detalhe && <div className="anel-detalhe">{detalhe}</div>}
     </div>
+  );
+}
+
+/** Degradê da marca para traços de SVG (anel neutro): índigo → violeta → magenta. */
+export function GradienteMarca({ id }: { id: string }) {
+  return (
+    <defs>
+      <linearGradient id={id} x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" style={{ stopColor: 'var(--marca-a)' }} />
+        <stop offset="0.52" style={{ stopColor: 'var(--marca-m)' }} />
+        <stop offset="1" style={{ stopColor: 'var(--marca-b)' }} />
+      </linearGradient>
+    </defs>
   );
 }
 

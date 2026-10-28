@@ -9,7 +9,8 @@ import { movimentoReduzido } from '../componentes/movimento';
 import { Kpi, Pilulas } from '../componentes/painel';
 import { ResumoSemana } from '../componentes/ResumoSemana';
 import { FormMetas } from '../componentes/treino';
-import { Vazio } from '../componentes/ui';
+import { IconeChip, Vazio } from '../componentes/ui';
+import { EstadoVazio } from '../componentes/estado-vazio';
 import { useDados } from '../dados/contexto';
 import { useCalculos } from '../dados/useCalculos';
 import { formatarData } from '../lib/datas';
@@ -218,6 +219,7 @@ export function Medidas() {
 
           <section className="cartao">
             <div className="secao-cab">
+              <IconeChip nome="camadas" cor="ciano" />
               <div>
                 <h2>Qualidade da perda</h2>
                 <div className="secao-sub">Quanto da perda foi gordura e quanto foi massa magra</div>
@@ -229,11 +231,20 @@ export function Medidas() {
         </>
       )}
 
+      {composicoes.length === 0 && (
+        <section className="cartao">
+          <EstadoVazio icone="grafico" cor="ciano" titulo="Sua evolução aparece aqui">
+            Com 2 medições, os gráficos de cintura, peso e % de gordura começam a mostrar o caminho.
+          </EstadoVazio>
+        </section>
+      )}
+
       <CartaoFotos />
 
       {composicoes.length > 0 && (
         <section className="cartao med-evolucao" ref={evolucaoRef}>
           <div className="secao-cab">
+            <IconeChip nome="grafico" cor="ciano" />
             <h2>Evolução</h2>
             <div className="pilulas-rolagem">
               <Pilulas rotulo="Medida do gráfico" opcoes={OPCOES_GRAFICO} valor={metrica} aoMudar={setMetrica} />
@@ -264,6 +275,7 @@ export function Medidas() {
       {ordenadas.length > 0 && (
         <section className="cartao">
           <div className="secao-cab">
+            <IconeChip nome="historico" cor="ciano" />
             <div>
               <h2>Histórico</h2>
               <div className="secao-sub">

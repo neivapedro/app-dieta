@@ -15,7 +15,7 @@
   color: var(--texto-3);
 }
 .treino-hero-anel .anel-valor {
-  stroke: var(--destaque);
+  stroke: var(--marca-forte);
 }
 .treino-hoje-status.completo {
   color: var(--bom);

@@ -7,7 +7,8 @@ import { kg, num, paraNumero, paraTexto, sinal } from '../lib/formato';
 import { segundaDaSemana } from '../lib/treino';
 import type { RegistroForca } from '../lib/tipos';
 import { Kpi } from './painel';
-import { Campo, CampoNumero, Folha, Vazio } from './ui';
+import { Campo, CampoNumero, Folha, IconeChip } from './ui';
+import { EstadoVazio } from './estado-vazio';
 
 const variacao = (v: number | null) => (v === null ? '–' : sinal(v * 100, 1, '%'));
 
@@ -63,6 +64,7 @@ export function CartaoForca({ esforcoSubiu }: { esforcoSubiu?: boolean }) {
       )}
       <section className="cartao">
         <div className="secao-cab">
+          <IconeChip nome="treino" cor="laranja" />
           <div>
             <h2>Força</h2>
             <div className="secao-sub">1× por semana · exercícios-âncora</div>
@@ -72,10 +74,10 @@ export function CartaoForca({ esforcoSubiu }: { esforcoSubiu?: boolean }) {
           </button>
         </div>
         {forca.length === 0 ? (
-          <Vazio>
+          <EstadoVazio icone="treino" cor="laranja" titulo="Nenhuma semana de força ainda" compacto>
             1× por semana, anote a primeira série válida (perto da falha) de cada exercício-âncora: carga, repetições e RIR (repetições na reserva). O app
             estima o 1RM e acompanha o índice de força, um sinal de massa magra que não depende da fita.
-          </Vazio>
+          </EstadoVazio>
         ) : (
           <>
             {indice.nivel && (

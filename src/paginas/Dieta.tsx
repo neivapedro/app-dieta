@@ -1,9 +1,10 @@
 import '../estilos/dieta.css';
 import { useEffect, useMemo, useState } from 'react';
 import { FolhaTroca, FormConfigDieta, FormRefeicao, gr, kcal, LinhaItem, LinhaMacros, novoItem, SeletorAlimento, type Troca } from '../componentes/dieta';
-import { AnelKcal, BarraKcal, BarraMacro, FaltaChips, IconeLapis, IconeSeta, LinhaMacroMeta, ProteinaRefeicoes } from '../componentes/dieta-painel';
+import { AnelKcal, BarraKcal, BarraMacro, ChipRefeicao, FaltaChips, IconeLapis, IconeSeta, LinhaMacroMeta, ProteinaRefeicoes } from '../componentes/dieta-painel';
+import { EstadoVazio } from '../componentes/estado-vazio';
 import { FasePosDieta } from '../componentes/projeto';
-import { Bloco } from '../componentes/ui';
+import { Bloco, IconeChip } from '../componentes/ui';
 import { useDados } from '../dados/contexto';
 import { useAlimentos } from '../dados/useAlimentos';
 import { useCalculos } from '../dados/useCalculos';
@@ -204,6 +205,8 @@ export function Dieta() {
   const refeicaoEditando = plano.refeicoes.find((r) => r.id === editando);
   const ajuste = plano.config.ajuste_kcal;
   const comItens = plano.refeicoes.filter((r) => r.itens.length > 0);
+  // Nenhum alimento no plano: o cartão dos macros mostra um convite no lugar das linhas zeradas
+  const planoVazio = comItens.length === 0;
   const todasAbertas = comItens.length > 0 && comItens.every((r) => abertas.has(r.id));
   const fibraMeta = saldo ? metaFibra(saldo.meta.kcal) : 0;
   // Totais do plano só valem com a lista de alimentos (sem ela, "–")
@@ -396,6 +399,7 @@ export function Dieta() {
       {/* Refeições: fechadas mostram nome, horário, kcal e macros; abertas, os alimentos */}
       <section className="dieta-refeicoes">
         <div className="secao-cab">
+          <IconeChip nome="dieta" cor="verde" />
           <div className="cresce">
             <h2>Refeições</h2>
             <div className="secao-sub">
@@ -434,12 +438,16 @@ export function Dieta() {
               if (!r.itens.length)
                 return (
                   <section key={r.id} className="cartao refeicao-card vazia">
+                    <ChipRefeicao nome={r.nome} horario={r.horario} />
                     <button type="button" className="ref-vazia-nome" onClick={() => setEditando(r.id)} aria-label={`Editar ${r.nome}`}>
-                      {r.horario && <span className="ref-hora numero">{r.horario}</span>}
-                      <span className="ref-nome">{r.nome}</span>
-                      <span className="ref-lapis">
-                        <IconeLapis />
+                      <span className="ref-vazia-linha">
+                        {r.horario && <span className="ref-hora numero">{r.horario}</span>}
+                        <span className="ref-nome">{r.nome}</span>
+                        <span className="ref-lapis">
+                          <IconeLapis />
+                        </span>
                       </span>
+                      <span className="ref-vazia-dica">Nada no prato ainda</span>
                     </button>
                     <button type="button" className="botao pequeno ref-adicionar" onClick={() => setSeletor({ refeicao: r.id, indice: null })}>
                       + <span className="so-largo">Adicionar </span>
@@ -453,6 +461,7 @@ export function Dieta() {
                 <section key={r.id} className={`cartao refeicao-card ${aberta ? 'aberta' : ''}`}>
                   <button type="button" className="ref-cab" aria-expanded={aberta} onClick={() => alternar(r.id)}>
                     <span className="ref-titulo">
+                      <ChipRefeicao nome={r.nome} horario={r.horario} />
                       {r.horario && <span className="ref-hora numero">{r.horario}</span>}
                       <span className="ref-nome">{r.nome}</span>
                     </span>
@@ -526,74 +535,81 @@ export function Dieta() {
       {saldo && metas && corpo && (
         <section className="cartao">
           <div className="secao-cab">
+            <IconeChip nome="alvo" cor="verde" />
             <div>
               <h2>Macros do dia</h2>
               <div className="secao-sub">Plano × meta · o que falta</div>
             </div>
           </div>
-          <div className="macros-metas">
-            <LinhaMacroMeta
-              nome="Proteína animal"
-              classe="m-pa"
-              plano={total.ptn_animal}
-              meta={saldo.meta.ptn_animal}
-              sufixo=" g"
-              tolerancia={1}
-              detalhe={`${num(total.ptn_animal / corpo.massa_magra_kg, 1)} g/kg massa magra · ${num(total.ptn_animal * 4, 0)} kcal`}
-            />
-            <LinhaMacroMeta
-              nome="Carboidrato"
-              classe="m-c"
-              plano={total.carb}
-              meta={saldo.meta.carb}
-              sufixo=" g"
-              tolerancia={1}
-              detalhe={`${num(total.carb / corpo.peso_kg, 1)} g/kg · ${num(total.carb * 4, 0)} kcal`}
-            />
-            <LinhaMacroMeta
-              nome="Gordura"
-              classe="m-g"
-              plano={total.gord}
-              meta={saldo.meta.gord}
-              sufixo=" g"
-              tolerancia={1}
-              detalhe={`${num(total.gord / corpo.peso_kg, 1)} g/kg · ${num(total.gord * 9, 0)} kcal`}
-            />
-            <LinhaMacroMeta
-              nome="Fibra"
-              classe="m-fibra"
-              plano={total.fibra}
-              meta={fibraMeta}
-              sufixo=" g"
-              tolerancia={0}
-              maisEhBom
-              detalhe="referência: 14 g a cada 1.000 kcal · já conta no carboidrato"
-            />
-            <LinhaMacroMeta nome="Total kcal" classe="m-k" plano={total.kcal} meta={saldo.meta.kcal} sufixo="" tolerancia={15} />
-          </div>
-
-          {total.kcal > 0 && (
-            <div className="dieta-bloco">
-              <div className="rotulo">De onde vêm as kcal do plano</div>
-              <BarraKcal fatias={fatiasKcal(total, colageno)} />
-              <div className="texto-2 dieta-pequeno">
-                Proteína vegetal {gr(ptnVegetal)} g: sai da conta do carbo
-                {colageno >= 0.05 && ` · colágeno e gelatina (${gr(colageno)} g) à parte`}.
-              </div>
-            </div>
-          )}
-
-          {ptnTotal && total.kcal > 0 && (
+          {planoVazio ? (
+            <EstadoVazio icone="prato" cor="verde" titulo="O prato ainda está vazio" compacto>
+              Adicione alimentos às refeições e aqui aparece quanto o plano cobre da meta de cada macro.
+            </EstadoVazio>
+          ) : (
             <>
-              <p className="texto-2" style={{ marginTop: 12 }}>
-                <b>Proteína total (animal + vegetal): {gr(ptnTotal.g)} g</b> = {num(ptnTotal.gkg_magra, 1)} g/kg de massa magra · {num(ptnTotal.gkg_peso, 1)} g/kg
-                de peso. A meta continua só a animal.{colageno >= 1 && ` Colágeno e gelatina (${gr(colageno)} g) ficam fora.`}
-              </p>
-              {ptnTotal.abaixo && (
-                <div className="alerta" style={{ marginTop: 8 }}>
-                  A proteína total do plano está abaixo de {num(PTN_TOTAL_MIN_GKG_PESO, 1)} g/kg de peso ({gr(PTN_TOTAL_MIN_GKG_PESO * corpo.peso_kg)} g).
+            <div className="macros-metas">
+              <LinhaMacroMeta
+                nome="Proteína animal"
+                classe="m-pa"
+                plano={total.ptn_animal}
+                meta={saldo.meta.ptn_animal}
+                sufixo=" g"
+                tolerancia={1}
+                detalhe={`${num(total.ptn_animal / corpo.massa_magra_kg, 1)} g/kg massa magra · ${num(total.ptn_animal * 4, 0)} kcal`}
+              />
+              <LinhaMacroMeta
+                nome="Carboidrato"
+                classe="m-c"
+                plano={total.carb}
+                meta={saldo.meta.carb}
+                sufixo=" g"
+                tolerancia={1}
+                detalhe={`${num(total.carb / corpo.peso_kg, 1)} g/kg · ${num(total.carb * 4, 0)} kcal`}
+              />
+              <LinhaMacroMeta
+                nome="Gordura"
+                classe="m-g"
+                plano={total.gord}
+                meta={saldo.meta.gord}
+                sufixo=" g"
+                tolerancia={1}
+                detalhe={`${num(total.gord / corpo.peso_kg, 1)} g/kg · ${num(total.gord * 9, 0)} kcal`}
+              />
+              <LinhaMacroMeta
+                nome="Fibra"
+                classe="m-fibra"
+                plano={total.fibra}
+                meta={fibraMeta}
+                sufixo=" g"
+                tolerancia={0}
+                maisEhBom
+                detalhe="referência: 14 g a cada 1.000 kcal · já conta no carboidrato"
+              />
+              <LinhaMacroMeta nome="Total kcal" classe="m-k" plano={total.kcal} meta={saldo.meta.kcal} sufixo="" tolerancia={15} />
+            </div>
+
+            {total.kcal > 0 && (
+              <div className="dieta-bloco">
+                <div className="rotulo">De onde vêm as kcal do plano</div>
+                <BarraKcal fatias={fatiasKcal(total, colageno)} />
+                <div className="texto-2 dieta-pequeno">
+                  Proteína vegetal {gr(ptnVegetal)} g: sai da conta do carbo
+                  {colageno >= 0.05 && ` · colágeno e gelatina (${gr(colageno)} g) à parte`}.
                 </div>
-              )}
+              </div>
+            )}
+
+            {ptnTotal && total.kcal > 0 && (
+              <>
+                <p className="texto-2" style={{ marginTop: 12 }}>
+                  <b>Proteína total (animal + vegetal): {gr(ptnTotal.g)} g</b> = {num(ptnTotal.gkg_magra, 1)} g/kg de massa magra · {num(ptnTotal.gkg_peso, 1)} g/kg
+                  de peso. A meta continua só a animal.{colageno >= 1 && ` Colágeno e gelatina (${gr(colageno)} g) ficam fora.`}
+                </p>
+                {ptnTotal.abaixo && (
+                  <div className="alerta" style={{ marginTop: 8 }}>
+                    A proteína total do plano está abaixo de {num(PTN_TOTAL_MIN_GKG_PESO, 1)} g/kg de peso ({gr(PTN_TOTAL_MIN_GKG_PESO * corpo.peso_kg)} g).
+                  </div>
+                )}
             </>
           )}
           {distribuicao && distribuicao.com_itens > 0 && (
@@ -625,82 +641,86 @@ export function Dieta() {
               </div>
             </div>
           )}
+            </>
+          )}
           {saldo.meta.carb < 0 && (
             <div className="alerta erro" style={{ marginTop: 10 }}>
               A proteína e a gordura já passam da meta de kcal. Reduza o g/kg delas ou o déficit em Ajustar.
             </div>
           )}
 
-          <details className="tabela-detalhe">
-            <summary>Ver tabela</summary>
-            <div className="tabela-rolagem">
-              <table className="tabela-macros">
-                <thead>
-                  <tr>
-                    <th></th>
-                    <th>Meta</th>
-                    <th>Plano</th>
-                    <th>Falta</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(
-                    [
-                      ['m-pa', 'Proteína animal', saldo.meta.ptn_animal, total.ptn_animal, `${num(total.ptn_animal / corpo.massa_magra_kg, 1)} g/kg massa magra`],
-                      ['m-c', 'Carboidrato', saldo.meta.carb, total.carb, `${num(total.carb / corpo.peso_kg, 1)} g/kg`],
-                      ['m-g', 'Gordura', saldo.meta.gord, total.gord, `${num(total.gord / corpo.peso_kg, 1)} g/kg`],
-                    ] as const
-                  ).map(([cor, nome, meta, feito, gkg]) => {
-                    const f = falta(meta - feito, meta, ' g', 1);
-                    const kc = cor === 'm-g' ? feito * 9 : feito * 4;
-                    return (
-                      <tr key={nome}>
-                        <td>
-                          <div className={cor}>{nome}</div>
-                          <div className="sub-linha">
-                            {gkg} · {num(kc, 0)} kcal · {total.kcal ? num((kc / total.kcal) * 100, 0) : 0}%
-                          </div>
-                        </td>
-                        <td>{gr(meta)} g</td>
-                        <td>{gr(feito)} g</td>
-                        <td className={f.classe}>{f.texto}</td>
-                      </tr>
-                    );
-                  })}
-                  <tr>
-                    <td>
-                      <div className="m-pv">Proteína vegetal</div>
-                      <div className="sub-linha">
-                        {num(ptnVegetal * 4, 0)} kcal · {total.kcal ? num(((ptnVegetal * 4) / total.kcal) * 100, 0) : 0}% · sai da conta do carbo
-                        {colageno >= 0.05 && ` · colágeno e gelatina (${gr(colageno)} g) à parte`}
-                      </div>
-                    </td>
-                    <td>–</td>
-                    <td>{gr(ptnVegetal)} g</td>
-                    <td>–</td>
-                  </tr>
-                  <tr>
-                    <td>
-                      <div>Fibra</div>
-                      <div className="sub-linha">referência: 14 g a cada 1.000 kcal · já conta no carboidrato</div>
-                    </td>
-                    <td>{gr(fibraMeta)} g</td>
-                    <td>{gr(total.fibra)} g</td>
-                    <td className={total.fibra >= fibraMeta * 0.98 ? 'bom' : ''}>{total.fibra >= fibraMeta * 0.98 ? '✓' : `${num(fibraMeta - total.fibra, 0)} g`}</td>
-                  </tr>
-                  <tr className="total">
-                    <td>Total kcal</td>
-                    <td>{num(saldo.meta.kcal, 0)}</td>
-                    <td>{num(total.kcal, 0)}</td>
-                    <td className={falta(saldo.falta.kcal, saldo.meta.kcal, '', 15).classe}>{falta(saldo.falta.kcal, saldo.meta.kcal, '', 15).texto}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <p className="texto-2" style={{ marginTop: 8 }}>
-              “Falta” é meta − plano; “+” em vermelho é o quanto passou. Tudo em kcal pelos macros (4/4/9).
-            </p>
-          </details>
+          {!planoVazio && (
+            <details className="tabela-detalhe">
+              <summary>Ver tabela</summary>
+              <div className="tabela-rolagem">
+                <table className="tabela-macros">
+                  <thead>
+                    <tr>
+                      <th></th>
+                      <th>Meta</th>
+                      <th>Plano</th>
+                      <th>Falta</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(
+                      [
+                        ['m-pa', 'Proteína animal', saldo.meta.ptn_animal, total.ptn_animal, `${num(total.ptn_animal / corpo.massa_magra_kg, 1)} g/kg massa magra`],
+                        ['m-c', 'Carboidrato', saldo.meta.carb, total.carb, `${num(total.carb / corpo.peso_kg, 1)} g/kg`],
+                        ['m-g', 'Gordura', saldo.meta.gord, total.gord, `${num(total.gord / corpo.peso_kg, 1)} g/kg`],
+                      ] as const
+                    ).map(([cor, nome, meta, feito, gkg]) => {
+                      const f = falta(meta - feito, meta, ' g', 1);
+                      const kc = cor === 'm-g' ? feito * 9 : feito * 4;
+                      return (
+                        <tr key={nome}>
+                          <td>
+                            <div className={cor}>{nome}</div>
+                            <div className="sub-linha">
+                              {gkg} · {num(kc, 0)} kcal · {total.kcal ? num((kc / total.kcal) * 100, 0) : 0}%
+                            </div>
+                          </td>
+                          <td>{gr(meta)} g</td>
+                          <td>{gr(feito)} g</td>
+                          <td className={f.classe}>{f.texto}</td>
+                        </tr>
+                      );
+                    })}
+                    <tr>
+                      <td>
+                        <div className="m-pv">Proteína vegetal</div>
+                        <div className="sub-linha">
+                          {num(ptnVegetal * 4, 0)} kcal · {total.kcal ? num(((ptnVegetal * 4) / total.kcal) * 100, 0) : 0}% · sai da conta do carbo
+                          {colageno >= 0.05 && ` · colágeno e gelatina (${gr(colageno)} g) à parte`}
+                        </div>
+                      </td>
+                      <td>–</td>
+                      <td>{gr(ptnVegetal)} g</td>
+                      <td>–</td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <div>Fibra</div>
+                        <div className="sub-linha">referência: 14 g a cada 1.000 kcal · já conta no carboidrato</div>
+                      </td>
+                      <td>{gr(fibraMeta)} g</td>
+                      <td>{gr(total.fibra)} g</td>
+                      <td className={total.fibra >= fibraMeta * 0.98 ? 'bom' : ''}>{total.fibra >= fibraMeta * 0.98 ? '✓' : `${num(fibraMeta - total.fibra, 0)} g`}</td>
+                    </tr>
+                    <tr className="total">
+                      <td>Total kcal</td>
+                      <td>{num(saldo.meta.kcal, 0)}</td>
+                      <td>{num(total.kcal, 0)}</td>
+                      <td className={falta(saldo.falta.kcal, saldo.meta.kcal, '', 15).classe}>{falta(saldo.falta.kcal, saldo.meta.kcal, '', 15).texto}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p className="texto-2" style={{ marginTop: 8 }}>
+                “Falta” é meta − plano; “+” em vermelho é o quanto passou. Tudo em kcal pelos macros (4/4/9).
+              </p>
+            </details>
+          )}
         </section>
       )}
 
