@@ -45,6 +45,17 @@ export function Icone({ nome }: { nome: keyof typeof caminhos | string }) {
   );
 }
 
+export type CorChip = 'marca' | 'azul' | 'roxo' | 'rosa' | 'ciano' | 'laranja' | 'verde' | 'indigo';
+
+/** Ícone do título de um cartão: quadradinho colorido (classe .icone-chip em estilos.css). */
+export function IconeChip({ nome, cor = 'marca', children }: { nome?: string; cor?: CorChip; children?: ReactNode }) {
+  return (
+    <span className={`icone-chip ${cor}`} aria-hidden="true">
+      {children ?? (nome ? <Icone nome={nome} /> : null)}
+    </span>
+  );
+}
+
 export function Folha({ titulo, aoFechar, children }: { titulo: string; aoFechar: () => void; children: ReactNode }) {
   useEffect(() => {
     const esc = (e: KeyboardEvent) => e.key === 'Escape' && aoFechar();

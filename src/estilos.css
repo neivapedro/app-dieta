@@ -886,3 +886,44 @@ details.tabela-detalhe > summary, details.ajuda > summary { min-height: 40px; }
 .pilulas button::after { content: ''; position: absolute; inset: -3px -1px; }
 .item-dieta-nome { padding: 9px 0; margin: -9px 0; }
 @media (max-width: 360px) { .topo h1 { font-size: 1.25rem; } }
+
+/* ---------- Marca (cor-assinatura do app) ----------
+ * --marca-grad: preenchimento (botões principais, aba ativa, anel) com texto --marca-texto (≥ 4,5:1 nos dois temas)
+ * --marca-forte: texto/ícone de destaque sobre a superfície (≥ 4,5:1)
+ * --marca-suave: fundo levemente tingido para cartões de destaque
+ * --marca-brilho: brilhos radiais para o topo de cartões "hero" (somar antes do fundo)
+ */
+:root {
+  --marca-a: #5b4ff0;
+  --marca-m: #7c3aed;
+  --marca-b: #c2255c;
+  --marca-grad: linear-gradient(135deg, var(--marca-a) 0%, var(--marca-m) 52%, var(--marca-b) 100%);
+  --marca-texto: #ffffff;
+  --marca-forte: #b8a9ff;
+  --marca-suave: linear-gradient(120deg, color-mix(in srgb, var(--marca-a) 16%, var(--superficie)), color-mix(in srgb, var(--marca-b) 11%, var(--superficie)));
+  --marca-borda: color-mix(in srgb, var(--marca-m) 38%, var(--borda));
+  --marca-brilho:
+    radial-gradient(110% 80% at 100% 0%, color-mix(in srgb, var(--marca-a) 22%, transparent), transparent 62%),
+    radial-gradient(90% 60% at 0% 100%, color-mix(in srgb, var(--marca-b) 14%, transparent), transparent 62%);
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) { --marca-forte: #5b3fd6; }
+}
+:root[data-theme="light"] { --marca-forte: #5b3fd6; }
+
+/* Ícone do título de um cartão (quadradinho colorido, como no Perfil) */
+.icone-chip {
+  flex: none; width: 30px; height: 30px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center;
+  color: var(--cor-chip, var(--marca-forte)); background: color-mix(in srgb, var(--cor-chip, var(--marca-forte)) 17%, transparent);
+}
+.icone-chip svg { width: 18px; height: 18px; }
+.icone-chip.marca { color: var(--marca-texto); background: var(--marca-grad); }
+.icone-chip.azul { --cor-chip: var(--c-azul); }
+.icone-chip.roxo { --cor-chip: var(--c-roxo); }
+.icone-chip.rosa { --cor-chip: var(--c-rosa); }
+.icone-chip.ciano { --cor-chip: var(--c-ciano); }
+.icone-chip.laranja { --cor-chip: var(--c-laranja); }
+.icone-chip.verde { --cor-chip: var(--c-verde); }
+.icone-chip.indigo { --cor-chip: var(--c-indigo); }
+.titulo-com-icone { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.titulo-com-icone > :last-child { min-width: 0; }
