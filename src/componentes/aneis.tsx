@@ -6,6 +6,7 @@ import { useProjeto } from '../dados/useProjeto';
 import { aneisDoDia, anelFechados, historicoAneis, POSICOES, resumoHistorico, type AneisDia, type PosicaoAnel, type SemanaAneis } from '../lib/aneis-dia';
 import { diaCurto } from '../lib/rotina';
 import type { TarefasHoje } from './inicio';
+import { IconeChip } from './ui';
 
 /** Fica true quando o elemento aparece na tela (sem IntersectionObserver: logo depois de montar). */
 function useVisto<T extends Element>() {
@@ -126,28 +127,31 @@ const DIAS_COLUNA = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
 const SEMANAS_PADRAO = 4;
 
 /** "Seu ciclo em anéis": um dia por célula, semanas em linhas (a mais recente em cima). */
-export function HistoricoAneis({ semanas }: { semanas: SemanaAneis[] }) {
+export function HistoricoAneis({ semanas, semanasPadrao = SEMANAS_PADRAO }: { semanas: SemanaAneis[]; /** Semanas à vista antes do "Ver tudo" */ semanasPadrao?: number }) {
   const [tudo, setTudo] = useState(false);
   const [sel, setSel] = useState<string | null>(null);
   const { ref, visto } = useVisto<HTMLDivElement>();
   const { hoje } = useDados();
   if (!semanas.length) return null;
-  const visiveis = tudo ? semanas : semanas.slice(0, SEMANAS_PADRAO);
+  const visiveis = tudo ? semanas : semanas.slice(0, semanasPadrao);
   const r = resumoHistorico(semanas);
   const exemplo = semanas[0].dias.find((d) => d.aneis)?.aneis ?? null;
   const celSel = sel ? semanas.flatMap((s) => s.dias).find((d) => d.data === sel && d.aneis) ?? null : null;
   return (
     <section className="cartao historico-aneis" aria-label="Seu ciclo em anéis">
       <div className="secao-cab">
-        <div>
-          <h2>Seu ciclo em anéis</h2>
-          <div className="secao-sub numero">
-            3 anéis em {r.completos} de {r.dias} {r.dias === 1 ? 'dia' : 'dias'}
+        <div className="titulo-com-icone">
+          <IconeChip nome="alvo" cor="indigo" />
+          <div>
+            <h2>Seu ciclo em anéis</h2>
+            <div className="secao-sub numero">
+              3 anéis em {r.completos} de {r.dias} {r.dias === 1 ? 'dia' : 'dias'}
+            </div>
           </div>
         </div>
-        {semanas.length > SEMANAS_PADRAO && (
+        {semanas.length > semanasPadrao && (
           <button type="button" className="botao pequeno" onClick={() => setTudo(!tudo)} aria-expanded={tudo}>
-            {tudo ? `Últimas ${SEMANAS_PADRAO}` : 'Ver tudo'}
+            {tudo ? (semanasPadrao === 1 ? 'Esta semana' : `Últimas ${semanasPadrao}`) : 'Ver tudo'}
           </button>
         )}
       </div>

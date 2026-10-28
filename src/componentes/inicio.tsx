@@ -11,7 +11,7 @@ import { alertasSeguranca, AVISO_SEGURANCA } from '../lib/seguranca';
 import { NIVEIS_NAUSEA, type RegistroDiario } from '../lib/tipos';
 import { rotuloCardio, segundaDaSemana, tipoCardioEfetivo, tocarCardio, type TipoCardio } from '../lib/treino';
 import { BotaoCorrida, FormDiaTreino, MarcadoresDia } from './treino';
-import { Campo, Escolhas } from './ui';
+import { Campo, Escolhas, IconeChip, type CorChip } from './ui';
 
 const OPCOES_PLANO = [
   { valor: 'sim' as const, rotulo: 'Sim' },
@@ -203,14 +203,40 @@ export function AnelHoje({ fracao, texto, sub, tom, rotulo }: { fracao: number; 
 // Ordem das linhas à noite: como era o "Fechar o dia" (náusea e sintomas, plano, peso; água e sono no fim)
 const ORDEM_NOITE: ChaveTarefa[] = ['dose', 'medicao', 'nausea', 'plano', 'peso', 'agua', 'sono'];
 
-function Marca({ feito }: { feito: boolean }) {
+// Ícone de cada linha (cor da seção: dose índigo, medidas ciano, dieta verde, água azul, sono roxo)
+const ICONE_TAREFA: Record<ChaveTarefa, [string, CorChip]> = {
+  dose: ['ciclo', 'indigo'],
+  medicao: ['medidas', 'ciano'],
+  treino: ['treino', 'laranja'],
+  cardio: ['treino', 'laranja'],
+  peso: ['balanca', 'ciano'],
+  nausea: ['enjoo', 'rosa'],
+  agua: ['gota', 'azul'],
+  sono: ['lua', 'roxo'],
+  plano: ['dieta', 'verde'],
+};
+
+function Marca({ chave, feito }: { chave: ChaveTarefa; feito: boolean }) {
+  const [nome, cor] = ICONE_TAREFA[chave];
   return (
-    <span className="tarefa-check" aria-hidden="true">
-      {feito ? '✓' : ''}
+    <span className="tarefa-icone" aria-hidden="true">
+      <IconeChip nome={nome} cor={cor} />
+      {feito && <span className="tarefa-check">✓</span>}
     </span>
   );
 }
 
+function TextoTarefa({ x, sub }: { x: Tarefa; sub?: ReactNode }) {
+  return (
+    <span className="tarefa-texto">
+      <span className="tarefa-rotulo">
+        {x.rotulo}
+        {sub}
+      </span>
+      {x.detalhe && <span className="tarefa-valor numero">{x.detalhe}</span>}
+    </span>
+  );
+}
 /**
  * Checklist de hoje: treino e cardio com um toque, e o Diário do dia (peso, náusea,
  * água, sono, plano) abrindo o registro. Depois das 18h vira o "Fechar o dia": náusea,
@@ -265,13 +291,28 @@ export function ChecklistHoje({
   const linhas = tarefas.filter((x) => x.chave !== 'treino' && x.chave !== 'cardio');
   if (noite) linhas.sort((a, b) => ORDEM_NOITE.indexOf(a.chave) - ORDEM_NOITE.indexOf(b.chave));
 
-  // Linha que abre o registro (Diário, medição ou aplicação)
+  // Linhas largas (a ação do dia ou com controle embaixo); as outras são blocos em duas colunas
+  const ehLarga = (x: Tarefa) =>
+    ((x.chave === 'dose' || x.chave === 'medicao') && !x.feito) || (noite && (x.chave === 'nausea' || x.chave === 'plano' || x.chave === 'peso'));
+  const largas = new Set(linhas.filter(ehLarga).map((x) => x.chave));
+  // Blocos seguidos em número ímpar: o último ocupa a linha inteira (não sobra buraco ao lado)
+  let seguidos: Tarefa[] = [];
+  for (const x of [...linhas, null]) {
+    if (x && !largas.has(x.chave)) {
+      seguidos.push(x);
+      continue;
+    }
+    if (seguidos.length % 2 === 1) largas.add(seguidos[seguidos.length - 1].chave);
+    seguidos = [];
+  }
+  const classe = (x: Tarefa, extra = '') => `tarefa ${x.feito ? 'feito' : ''} ${largas.has(x.chave) ? 'tarefa-larga' : ''} ${extra}`;
+
+  // Bloco que abre o registro (Diário, medição ou aplicação)
   const linhaBotao = (x: Tarefa, aoTocar: () => void, destaque?: boolean) => (
-    <li key={x.chave} id={`tarefa-${x.chave}`} className={`tarefa ${x.feito ? 'feito' : ''} ${destaque && !x.feito ? 'tarefa-destaque' : ''}`}>
+    <li key={x.chave} id={`tarefa-${x.chave}`} className={classe(x, destaque && !x.feito ? 'tarefa-destaque' : '')}>
       <button type="button" className="tarefa-linha" onClick={aoTocar}>
-        <Marca feito={x.feito} />
-        <span className="tarefa-rotulo">{x.rotulo}</span>
-        <span className="tarefa-valor numero">{x.detalhe}</span>
+        <Marca chave={x.chave} feito={x.feito} />
+        <TextoTarefa x={x} />
         <span className="tarefa-seta" aria-hidden="true">
           ›
         </span>
@@ -279,23 +320,22 @@ export function ChecklistHoje({
       </button>
     </li>
   );
-  // Linha que já está feita e não abre nada (ex.: aplicação registrada hoje)
-  const linhaFeita = (x: Tarefa) => (
-    <li key={x.chave} className="tarefa feito">
+  // Bloco que já está feito e não abre nada (ex.: aplicação registrada hoje)
+  const linhaFeita = (x: Tarefa, sub?: ReactNode) => (
+    <li key={x.chave} id={`tarefa-${x.chave}`} className={classe(x, 'feito')}>
       <div className="tarefa-linha">
-        <Marca feito />
-        <span className="tarefa-rotulo">{x.rotulo}</span>
-        <span className="tarefa-valor numero">{x.detalhe}</span>
+        <Marca chave={x.chave} feito />
+        <TextoTarefa x={x} sub={sub} />
+        <span className="oculto-visual"> · feito</span>
       </div>
     </li>
   );
   // Linha com o controle embaixo (só no "Fechar o dia")
   const linhaControle = (x: Tarefa, controle: ReactNode) => (
-    <li key={x.chave} id={`tarefa-${x.chave}`} className={`tarefa tarefa-com-controle ${x.feito ? 'feito' : ''}`}>
+    <li key={x.chave} id={`tarefa-${x.chave}`} className={classe(x, 'tarefa-com-controle')}>
       <div className="tarefa-linha">
-        <Marca feito={x.feito} />
-        <span className="tarefa-rotulo">{x.rotulo}</span>
-        <span className="tarefa-valor numero">{x.detalhe}</span>
+        <Marca chave={x.chave} feito={x.feito} />
+        <TextoTarefa x={x} />
       </div>
       <div className="tarefa-controle">{controle}</div>
     </li>
@@ -307,12 +347,14 @@ export function ChecklistHoje({
       return x.feito ? (
         linhaFeita(x)
       ) : (
-        <li key={x.chave} className="tarefa tarefa-destaque">
+        <li key={x.chave} id={`tarefa-${x.chave}`} className={classe(x, 'tarefa-destaque')}>
           <button type="button" className="tarefa-linha" onClick={aoMedir}>
-            <Marca feito={false} />
-            <span className="tarefa-rotulo">
-              Medição de segunda
-              <span className="tarefa-sub">Em jejum, depois de ir ao banheiro e antes de beber água. Mesma fita e mesmo horário de sempre.</span>
+            <Marca chave={x.chave} feito={false} />
+            <span className="tarefa-texto">
+              <span className="tarefa-rotulo">
+                Medição de segunda
+                <span className="tarefa-sub">Em jejum, depois de ir ao banheiro e antes de beber água. Mesma fita e mesmo horário de sempre.</span>
+              </span>
             </span>
             <span className="tarefa-acao">Medir</span>
             <span className="oculto-visual"> · a fazer</span>
@@ -360,17 +402,12 @@ export function ChecklistHoje({
       );
     if (x.chave === 'peso')
       return medicaoHoje ? (
-        <li key={x.chave} className="tarefa feito">
-          <div className="tarefa-linha">
-            <Marca feito />
-            <span className="tarefa-rotulo">
-              Peso
-              <span className="tarefa-sub">
-                Peso do dia: <b>{kg(medicaoHoje.peso_kg)}</b>, da medição de hoje.
-              </span>
-            </span>
-          </div>
-        </li>
+        linhaFeita(
+          { ...x, detalhe: '' },
+          <span className="tarefa-sub">
+            Peso do dia: <b>{kg(medicaoHoje.peso_kg)}</b>, da medição de hoje.
+          </span>,
+        )
       ) : (
         linhaControle(
           x,
@@ -400,11 +437,14 @@ export function ChecklistHoje({
   return (
     <section id="checklist-hoje" className={`cartao checklist ${noite ? 'checklist-noite' : ''}`} aria-label={titulo}>
       <div className="checklist-cab">
-        <div className="cresce">
-          <h2>{titulo}</h2>
-          <div className="secao-sub">
-            {etiqueta ?? diaCurto(hoje)}
-            {noite ? ' · cada toque grava na hora' : ' · toque para anotar'}
+        <div className="cresce titulo-com-icone">
+          <IconeChip nome={noite ? 'lua' : 'check'} cor="marca" />
+          <div>
+            <h2>{titulo}</h2>
+            <div className="secao-sub">
+              {etiqueta ?? diaCurto(hoje)}
+              {noite ? ' · cada toque grava na hora' : ' · toque para anotar'}
+            </div>
           </div>
         </div>
         <span className="checklist-contagem numero" aria-label={`${progresso.feitas} de ${progresso.total} feitos`}>
