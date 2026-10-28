@@ -3,139 +3,28 @@ import '../estilos/inicio.css';
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { TextoRca } from '../componentes/composicao';
-import { AvisoRapido, FaseConfirmada, FimDeFase, ForaDoPlano } from '../componentes/dose';
+import { AvisoRapido } from '../componentes/dose';
 import { FormAplicacao, FormDiario, FormMedida } from '../componentes/formularios';
-import { AneisHoje, HistoricoAneis, useAneis } from '../componentes/aneis';
+import { HistoricoAneis, useAneis } from '../componentes/aneis';
+import { DoseDetalhe, DoseRecolhida, DoseResumo, TopoAneis } from '../componentes/inicio-topo';
 import { AlertasSeguranca, AnelHoje, ChecklistHoje, FaixaOntem, useTarefasHoje } from '../componentes/inicio';
 import { Kpi } from '../componentes/painel';
 import { CartaoFimProjeto } from '../componentes/projeto';
 import { CartaoRelatorioFinal } from '../componentes/relatorio-final-entrada';
 import { ResumoSemana } from '../componentes/ResumoSemana';
 import { FormDiaTreino } from '../componentes/treino';
-import { Bloco, Icone } from '../componentes/ui';
+import { Icone, IconeChip } from '../componentes/ui';
 import { useDados } from '../dados/contexto';
 import { useCalculos } from '../dados/useCalculos';
 import { useProjeto } from '../dados/useProjeto';
-import { capacidadeSeringa, guiaSeringa, marcasVizinhas, semanasDoDegrau, seringaDo, textoSeringa } from '../lib/ciclo';
 import { diaDaSemana, diferencaDias, formatarData } from '../lib/datas';
 import { cm, corVariacao, kg, mg, num, pct, pp, sinal, ui } from '../lib/formato';
 import { cinturaAlvoRca, MDC, type ChaveMdc } from '../lib/gordura';
 import { estadoNotificacao, type EstadoNotificacao } from '../lib/notificacoes';
 import { serieMetrica, type ChavePainel } from '../lib/painel';
-import { DIAS_REGISTRO_DOSE, diaCurto, diaDesdeDose, doseEmDestaque, horaDeFecharODia } from '../lib/rotina';
+import { DIAS_REGISTRO_DOSE, diaDesdeDose, doseEmDestaque, horaDeFecharODia } from '../lib/rotina';
 import { mostrarAtalhoResumo } from '../lib/semana';
 import { segundaDaSemana } from '../lib/treino';
-
-/** Dose da próxima aplicação, compacta: "Puxar até" em destaque, o resto num "detalhes". */
-function DoseHoje({ aoRegistrar, aoRecolher, aoDecidir }: { aoRegistrar: () => void; aoRecolher?: () => void; aoDecidir?: () => void }) {
-  const { ciclo } = useDados();
-  const { resumo } = useCalculos();
-  if (!ciclo || !resumo?.proxima) return null;
-  const p = resumo.proxima;
-  const deg = resumo.degrau;
-  const seringa = seringaDo(ciclo);
-  const vizinhas = marcasVizinhas(p.ui_pratica, seringa.marca, ciclo.concentracao_mg_ml);
-  const passa = p.ui_pratica > capacidadeSeringa(ciclo);
-  const entregaDiferente = Math.abs(p.mg_pratica - p.dose_mg) >= 0.0005;
-  // "Fase 2 · dose 3 de 4" (a dose da fase conta pelas aplicações seguidas com a mesma dose)
-  const posicao =
-    deg.estado === 'em_curso' && deg.previstas
-      ? ` · dose ${deg.feitas + 1} de ${deg.previstas}`
-      : deg.estado === 'inicio' || deg.estado === 'subir'
-        ? ` · dose 1 de ${p.fase ? semanasDoDegrau(ciclo.fases, p.fase.indice) : '–'}`
-        : deg.estado === 'pendente'
-          ? ' · fim'
-          : '';
-  return (
-    <div className={`hoje-dose ${p.situacao}`}>
-      <div className="hoje-dose-cab">
-        <span className="rotulo">Próxima aplicação · {p.numero}ª dose</span>
-        {p.extra && <span className="etiqueta aviso">Dose extra · sobra do frasco</span>}
-        {p.estado === 'pendente' && <span className="etiqueta aviso">Fase concluída · decidir</span>}
-        {p.estado === 'fora_do_plano' && <span className="etiqueta aviso">Fora do plano</span>}
-        {p.situacao === 'hoje' && <span className="etiqueta destaque">Hoje</span>}
-        {p.situacao === 'atrasada' && <span className="etiqueta ruim">Atrasada {p.dias} {p.dias === 1 ? 'dia' : 'dias'}</span>}
-        {p.situacao === 'futura' && <span className="etiqueta">{p.dias === 1 ? 'amanhã' : `em ${p.dias} dias`}</span>}
-      </div>
-      <div className="hoje-dose-principal">
-        <div className={`seringa-pilula ${passa ? 'passa' : ''}`}>
-          <Icone nome="ciclo" />
-          <div>
-            <span>Puxar até</span>
-            <b className="numero">{ui(p.ui_pratica)}</b>
-          </div>
-        </div>
-        <div className="hoje-dose-mg">
-          <b className="numero">{num(p.dose_mg)} mg</b>
-          <span>
-            {diaDaSemana(p.data)}, {formatarData(p.data)}
-          </span>
-        </div>
-      </div>
-      <div className="hoje-dose-fichas">
-        <span>{p.fase ? `Fase ${p.fase.indice + 1}${posicao}` : 'Fora do plano'}</span>
-        <span>Local: {resumo.sugestao_local}</span>
-        {entregaDiferente && (
-          <span>
-            Entrega {mg(p.mg_pratica)} ({sinal(p.mg_pratica - p.dose_mg, 2)})
-          </span>
-        )}
-      </div>
-      {resumo.pausa_dias !== null && (
-        <div className="alerta erro">
-          Pausa de {Math.floor(resumo.pausa_dias / 7)} semanas desde a última dose ({formatarData(resumo.linhas[resumo.linhas.length - 1].aplicacao.data)}):
-          confirme a dose com o médico antes de aplicar.
-        </div>
-      )}
-      {passa && (
-        <div className="alerta erro">
-          {ui(p.ui_pratica)} passa da capacidade da sua seringa de {capacidadeSeringa(ciclo)} UI: confira a seringa (Ciclo › Ajustes) ou a dose antes de aplicar.
-        </div>
-      )}
-      <details className="tabela-detalhe hoje-dose-detalhe">
-        <summary>Seringa, fase e local</summary>
-        <div className="grade">
-          <Bloco rotulo="Dose exata (seringa U-100)" valor={ui(p.ui)} />
-          <Bloco
-            rotulo="Puxando até a marca, entrega"
-            valor={
-              entregaDiferente ? (
-                <>
-                  {mg(p.mg_pratica)} <span className="mudo">({sinal(p.mg_pratica - p.dose_mg, 2)})</span>
-                </>
-              ) : (
-                mg(p.mg_pratica)
-              )
-            }
-          />
-          {p.fase ? <Bloco rotulo={`Fase ${p.fase.indice + 1}`} valor={`${p.fase.fase.nome}${posicao}`} /> : <Bloco rotulo="Fase" valor="Fora do plano" />}
-          <Bloco rotulo="Local sugerido" valor={resumo.sugestao_local} />
-        </div>
-        {!passa && (
-          <p className="mudo" style={{ marginTop: 10 }}>
-            Na {textoSeringa(ciclo)}: {guiaSeringa(p.ui_pratica, seringa.marca)}.
-          </p>
-        )}
-        {vizinhas && !passa && (
-          <p className="mudo vizinhas" style={{ marginTop: 4 }}>
-            Marcas vizinhas: {vizinhas.map((v) => `${ui(v.ui)} = ${mg(v.mg)}`).join(' · ')}.
-          </p>
-        )}
-      </details>
-      <FimDeFase aoDecidir={aoDecidir} />
-      <ForaDoPlano />
-      <FaseConfirmada />
-      <button className="botao primario bloco-largo" onClick={aoRegistrar}>
-        <Icone nome="mais" /> Registrar aplicação
-      </button>
-      {aoRecolher && (
-        <button className="botao pequeno bloco-largo" onClick={aoRecolher} aria-expanded="true">
-          Recolher
-        </button>
-      )}
-    </div>
-  );
-}
 
 const CHAVE_AVISO_NOTIF = 'inicio:aviso-notificacao-dispensado';
 
@@ -331,68 +220,55 @@ export function Inicio() {
       ? `${resumo.doses_plano_restantes} · frasco cobre ${resumo.projecao.length}`
       : `${resumo.projecao.length} ${resumo.projecao.length === 1 ? 'dose' : 'doses'}`;
 
+  const comDose = !pos && !!p;
+  const doseAbertaAgora = comDose && (destaque || doseAberta);
+  const fracaoCiclo = diaCiclo !== null && totalDias ? Math.min(Math.max(diaCiclo / totalDias, 0), 1) : null;
+
   return (
     <div className="pilha pagina-inicio">
       <FaixaOntem />
 
-      <section className={`cartao hero hoje-hero ${!pos && p && (destaque || doseAberta) ? `com-dose ${p.situacao}` : ''}`} aria-label="Hoje">
+      <section className={`cartao hero hoje-hero ${doseAbertaAgora ? `com-dose ${p!.situacao}` : ''}`} aria-label="Hoje">
         <div className="hoje-hero-cab">
-          <div className="cresce">
-            <div className="sobretitulo">
-              {diaDaSemana(hoje)}, {formatarData(hoje).slice(0, 5)}
-              {etiquetaDose ? ` · ${etiquetaDose}` : ''}
-            </div>
-            <div className="hoje-hero-titulo">{tituloFase}</div>
-            {diaCiclo !== null && totalDias !== null && (
-              <div className="hero-sub numero">
-                {pos && pos.semana !== null
-                  ? `Fase pós-remédio · semana ${pos.semana + 1} de ${SEMANAS_POS}${pos.encerrada ? ' (concluída)' : ''}`
-                  : diaCiclo >= 1
-                    ? `Dia ${diaCiclo} de ${totalDias} do ${pos ? 'projeto' : 'ciclo'}`
-                    : `${totalDias} dias de ciclo pela frente`}
-              </div>
-            )}
+          <div className="sobretitulo">
+            {diaDaSemana(hoje)}, {formatarData(hoje).slice(0, 5)}
+            {etiquetaDose ? ` · ${etiquetaDose}` : ''}
           </div>
+          <div className="hoje-hero-titulo">{tituloFase}</div>
+          {diaCiclo !== null && totalDias !== null && (
+            <div className="hero-sub numero">
+              {pos && pos.semana !== null
+                ? `Fase pós-remédio · semana ${pos.semana + 1} de ${SEMANAS_POS}${pos.encerrada ? ' (concluída)' : ''}`
+                : diaCiclo >= 1
+                  ? `Dia ${diaCiclo} de ${totalDias} do ${pos ? 'projeto' : 'ciclo'}`
+                  : `${totalDias} dias de ciclo pela frente`}
+            </div>
+          )}
+          {fracaoCiclo !== null && !pos && (
+            <div className="hoje-ciclo-barra" aria-hidden="true">
+              <div style={{ width: `${fracaoCiclo * 100}%` }} />
+            </div>
+          )}
         </div>
 
-        <AneisHoje aneis={aneis.hoje} acoes={acoesAneis} />
+        <TopoAneis aneis={aneis.hoje} acoes={acoesAneis}>
+          {comDose ? doseAbertaAgora ? <DoseResumo /> : <DoseRecolhida aoAbrir={() => setDoseAberta(true)} /> : null}
+        </TopoAneis>
 
-        {!pos && p ? (
-          destaque || doseAberta ? (
-            <DoseHoje
-              aoRegistrar={() => setRegistrar(true)}
-              aoRecolher={destaque ? undefined : () => setDoseAberta(false)}
-              aoDecidir={() => setDoseAberta(true)}
-            />
-          ) : (
-            <button type="button" className="hoje-dose-linha" onClick={() => setDoseAberta(true)} aria-expanded="false">
-              <span className="hoje-dose-icone" aria-hidden="true">
-                <Icone nome="ciclo" />
-              </span>
-              <span className="cresce">
-                <span className="hoje-dose-linha-rotulo">
-                  Próxima aplicação · {p.dias === 1 ? 'amanhã' : `em ${p.dias} dias`}
-                </span>
-                <span className="hoje-dose-linha-valor numero">
-                  {diaCurto(p.data)} · <b>{mg(p.dose_mg)}</b> · <b>{ui(p.ui_pratica)}</b>
-                </span>
-                {p.ui_pratica > capacidadeSeringa(ciclo) + 1e-9 && (
-                  <span className="etiqueta aviso">passa da seringa de {capacidadeSeringa(ciclo)} UI</span>
-                )}
-              </span>
-              <span className="seta" aria-hidden="true">
-                ▾
-              </span>
-            </button>
-          )
-        ) : null}
+        {doseAbertaAgora && (
+          <DoseDetalhe
+            aoRegistrar={() => setRegistrar(true)}
+            aoRecolher={destaque ? undefined : () => setDoseAberta(false)}
+            aoDecidir={() => setDoseAberta(true)}
+          />
+        )}
       </section>
 
       {/* Ciclo concluído: o relatório final fica pronto (só aparece depois do fim) */}
       <CartaoRelatorioFinal onde="inicio" />
 
       {/* Fim do remédio (ou plano concluído com sobra no frasco): o balanço do projeto */}
-      {mostrarFimProjeto && <CartaoFimProjeto aoRegistrar={() => setRegistrar(true)} />}
+      {mostrarFimProjeto && <CartaoFimProjeto aoRegistrar={() => setRegistrar(true)} compacto />}
 
       {/* Remonta a cada dia: um peso digitado e não salvo ontem não vira o peso de hoje */}
       <ChecklistHoje
@@ -416,21 +292,28 @@ export function Inicio() {
       {perfil?.lembretes_ativos && notif && notif !== 'ativo' && notif !== 'ativo-sem-servidor' && <AvisoNotificacao notif={notif} />}
 
       {ultimaMedicao && mostrarAtalhoResumo(hoje, ultimaMedicao, segundaDaSemana(hoje)) && (
-        <div className="atalho-linha">
-          <span className="texto-2 cresce">Medição da semana feita. Reveja a semana: medidas, dieta, efeitos e a sugestão.</span>
-          <button className="botao pequeno" onClick={() => setResumo(ultimaMedicao)}>
-            Resumo da semana
-          </button>
-        </div>
+        <button type="button" className="atalho-linha" onClick={() => setResumo(ultimaMedicao)}>
+          <IconeChip nome="diario" cor="ciano" />
+          <span className="cresce atalho-linha-texto">
+            <b>Resumo da semana</b>
+            <span>Medição da semana feita. Reveja a semana: medidas, dieta, efeitos e a sugestão.</span>
+          </span>
+          <span className="atalho-linha-seta" aria-hidden="true">
+            ›
+          </span>
+        </button>
       )}
 
-      <HistoricoAneis semanas={aneis.semanas} />
+      <HistoricoAneis semanas={aneis.semanas} semanasPadrao={1} />
 
       <section className="cartao antes-agora">
         <div className="secao-cab">
-          <div>
-            <h2>Antes × agora</h2>
-            <div className="secao-sub">{ini ? `Desde ${formatarData(ini.data, true).slice(0, 5)} · linha: últimas medições` : 'Desde o início do ciclo'}</div>
+          <div className="titulo-com-icone">
+            <IconeChip nome="medidas" cor="ciano" />
+            <div>
+              <h2>Antes × agora</h2>
+              <div className="secao-sub">{ini ? `Desde ${formatarData(ini.data, true).slice(0, 5)} · linha: últimas medições` : 'Desde o início do ciclo'}</div>
+            </div>
           </div>
           <Link to="/analise" className="botao pequeno">
             Análise
@@ -438,7 +321,7 @@ export function Inicio() {
         </div>
         {geral.peso_inicial ? (
           <>
-            <div className="kpis">
+            <div className="kpis kpis-carrossel" data-sem-puxar="" role="group" aria-label="Indicadores: deslize para o lado">
               {ini && (
                 <>
                   {kpi('Cintura', ini.cintura_cm, atu?.cintura_cm ?? null, metas?.cintura_cm ?? null, cm, ' cm', true, 'cintura_cm', ultimos('cintura_cm'))}
@@ -447,12 +330,16 @@ export function Inicio() {
                 </>
               )}
               {kpi('Peso', geral.peso_inicial.peso_kg, geral.peso_atual?.peso_kg ?? null, metas?.peso_kg ?? null, kg, ' kg', true, 'peso_kg', ultimos('peso_kg'))}
+              {cinturaAgora !== null && alturaRca ? (
+                <div className="kpi kpi-rca">
+                  <div className="kpi-rotulo">Cintura/altura</div>
+                  <div className="kpi-rca-texto numero">
+                    <TextoRca cintura={cinturaAgora} altura={alturaRca} />
+                  </div>
+                  <div className="kpi-legenda">(saudável abaixo de 0,50 · cintura abaixo de {cm(cinturaAlvoRca(alturaRca))})</div>
+                </div>
+              ) : null}
             </div>
-            {cinturaAgora !== null && alturaRca ? (
-              <p className="texto-2" style={{ marginTop: 10 }}>
-                Cintura/altura: <TextoRca cintura={cinturaAgora} altura={alturaRca} /> (saudável abaixo de 0,50 · cintura abaixo de {cm(cinturaAlvoRca(alturaRca))}).
-              </p>
-            ) : null}
             <details className="tabela-detalhe">
               <summary>Ver tabela (com massa gorda)</summary>
               <div className="tabela-rolagem">
@@ -488,27 +375,23 @@ export function Inicio() {
         )}
       </section>
 
-      <section className="cartao frasco">
-        <div className="secao-cab">
-          <h2>Saldo do frasco</h2>
-          <span className="mudo numero">{pct(resumo.percentual_usado)} usado</span>
-        </div>
+      <section className="cartao frasco" aria-label="Saldo do frasco">
         <div className="frasco-corpo">
           <AnelHoje fracao={usado} texto={pct(usado, 0)} sub="usado" rotulo={`Frasco: ${pct(resumo.percentual_usado)} usado`} />
-          <div className="frasco-numeros">
-            <div>
-              <span className="rotulo">Saldo</span>
-              <b className="numero">{mg(resumo.saldo_mg)}</b>
-              <span className="mudo numero">
-                {num(resumo.saldo_ml)} ml · {num(resumo.saldo_ui, 0)} UI
+          <div className="frasco-texto">
+            <div className="frasco-cab">
+              <h2>Saldo do frasco</h2>
+              <span className="mudo numero">{pct(resumo.percentual_usado)} usado</span>
+            </div>
+            <div className="frasco-saldo numero">
+              <b>{mg(resumo.saldo_mg)}</b>
+              <span className="mudo">
+                {' '}
+                · {num(resumo.saldo_ml)} ml · {num(resumo.saldo_ui, 0)} UI
               </span>
             </div>
-            <div>
-              <span className="rotulo">Doses restantes no plano</span>
-              <b className="numero">{restantes}</b>
-              <span className="mudo numero">
-                {resumo.aplicacoes_realizadas} feitas · {mg(resumo.total_aplicado_mg)}
-              </span>
+            <div className="frasco-doses mudo numero">
+              Doses restantes no plano: <b>{restantes}</b> · {resumo.aplicacoes_realizadas} feitas · {mg(resumo.total_aplicado_mg)}
             </div>
           </div>
         </div>

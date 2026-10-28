@@ -1,15 +1,123 @@
 /* ---------- Início: o "Hoje" (topo, checklist, frasco, antes × agora) ---------- */
 /* Tudo preso a .pagina-inicio: o CSS é global depois do build */
 
-/* Topo: data, fase, anel do checklist e a próxima dose num bloco só */
-.pagina-inicio .hoje-hero { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
-.pagina-inicio .hoje-hero.com-dose.hoje { border-color: color-mix(in srgb, var(--destaque) 45%, var(--borda)); }
+/* Topo: data e fase, anéis ao lado da próxima aplicação; brilho da cor-assinatura no fundo */
+.pagina-inicio .hoje-hero { padding: 16px; display: flex; flex-direction: column; gap: 14px; background: var(--marca-brilho), var(--superficie); }
+.pagina-inicio .hoje-hero.com-dose.hoje { border-color: var(--marca-borda); }
 .pagina-inicio .hoje-hero.com-dose.atrasada { border-color: color-mix(in srgb, var(--ruim) 60%, var(--borda)); }
-.pagina-inicio .hoje-hero-cab { display: flex; align-items: center; gap: 12px; }
-.pagina-inicio .hoje-hero-titulo { font-size: 1.25rem; font-weight: 750; letter-spacing: -0.02em; line-height: 1.2; margin-top: 3px; overflow-wrap: anywhere; }
-.pagina-inicio .hoje-hero .hero-sub { margin-top: 3px; }
+.pagina-inicio .hoje-hero-cab { display: flex; flex-direction: column; min-width: 0; }
+.pagina-inicio .hoje-hero-titulo { font-size: 1.3rem; font-weight: 750; letter-spacing: -0.02em; line-height: 1.2; margin-top: 3px; overflow-wrap: anywhere; }
+.pagina-inicio .hoje-hero .hero-sub { margin-top: 2px; }
+/* Dias do ciclo: barra fina com o degradê da marca */
+.pagina-inicio .hoje-ciclo-barra { height: 4px; margin-top: 10px; border-radius: 999px; overflow: hidden; background: color-mix(in srgb, var(--texto) 10%, transparent); }
+.pagina-inicio .hoje-ciclo-barra > div { height: 100%; border-radius: 999px; background: var(--marca-grad); }
 
-/* Anel pequeno com o número no meio */
+/* Anéis + próxima aplicação lado a lado; a legenda vira 3 pílulas embaixo */
+.pagina-inicio .hoje-topo { display: flex; flex-direction: column; gap: 12px; }
+.pagina-inicio .hoje-topo-linha { display: flex; align-items: center; gap: 14px; }
+.pagina-inicio .hoje-topo .aneis-hoje-figura { width: 104px; height: 104px; }
+.pagina-inicio .hoje-topo-lado { flex: 1; min-width: 0; }
+.pagina-inicio .aneis-pilulas { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.pagina-inicio .aneis-pilula {
+  width: 100%; min-height: 48px; padding: 6px 10px; border-radius: 12px; border: 1px solid var(--borda-suave); cursor: pointer;
+  background: color-mix(in srgb, var(--superficie-2) 75%, transparent); color: var(--texto); text-align: left; font: inherit;
+  display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 6px; row-gap: 1px;
+  transition: background-color 0.2s, transform 0.12s ease;
+}
+.pagina-inicio .aneis-pilula:active { background: var(--superficie-2); transform: scale(0.97); }
+.pagina-inicio .aneis-pilula .aneis-ponto { width: 8px; height: 8px; }
+.pagina-inicio .aneis-pilula .aneis-legenda-rotulo { font-size: 0.72rem; font-weight: 650; color: var(--texto-2); }
+.pagina-inicio .aneis-pilula .aneis-legenda-valor { grid-column: 1 / -1; font-size: 0.9rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.pagina-inicio .aneis-pilula.vazio .aneis-legenda-valor { color: var(--texto-2); }
+
+/* Próxima aplicação (ao lado dos anéis) */
+.pagina-inicio .hoje-prox { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
+.pagina-inicio .hoje-prox-rotulo { font-size: 0.75rem; font-weight: 650; color: var(--texto-2); line-height: 1.25; }
+.pagina-inicio .hoje-prox-etiquetas { display: flex; flex-wrap: wrap; gap: 4px; }
+.pagina-inicio .hoje-prox-etiquetas:empty { display: none; }
+.pagina-inicio .hoje-prox-etiquetas .etiqueta { white-space: normal; }
+.pagina-inicio .hoje-prox-etiquetas .etiqueta.ruim { color: color-mix(in srgb, var(--ruim) 82%, var(--texto)); }
+.pagina-inicio .seringa-pilula {
+  align-self: stretch; display: flex; flex-direction: column; min-width: 0; padding: 7px 12px 8px; border-radius: 14px; line-height: 1.1;
+  background: var(--marca-suave); border: 1px solid var(--marca-borda);
+}
+.pagina-inicio .seringa-pilula span { font-size: 0.66rem; font-weight: 750; text-transform: uppercase; letter-spacing: 0.06em; color: var(--marca-forte); }
+.pagina-inicio .seringa-pilula b { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.03em; white-space: nowrap; color: var(--texto); }
+.pagina-inicio .seringa-pilula.passa { background: color-mix(in srgb, var(--ruim) 14%, var(--superficie)); border-color: color-mix(in srgb, var(--ruim) 45%, var(--borda)); }
+.pagina-inicio .seringa-pilula.passa span, .pagina-inicio .seringa-pilula.passa b { color: var(--ruim); }
+.pagina-inicio .hoje-prox-mg { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 6px; font-size: 0.78rem; color: var(--texto-2); line-height: 1.3; }
+.pagina-inicio .hoje-prox-mg b { font-size: 1rem; font-weight: 750; color: var(--texto); white-space: nowrap; }
+/* Recolhida (longe do dia): um toque abre a dose */
+.pagina-inicio .hoje-prox-recolhida {
+  width: 100%; gap: 2px; padding: 10px 12px; border-radius: var(--raio-sm); border: 1px solid var(--borda-suave); cursor: pointer;
+  background: color-mix(in srgb, var(--superficie-2) 70%, transparent); color: var(--texto); text-align: left; font: inherit;
+  transition: background-color 0.2s, transform 0.12s ease;
+}
+.pagina-inicio .hoje-prox-recolhida:active { transform: scale(0.98); }
+.pagina-inicio .hoje-prox-dia { font-size: 1.1rem; font-weight: 750; letter-spacing: -0.01em; }
+.pagina-inicio .hoje-prox-valor { font-size: 0.85rem; color: var(--texto-2); }
+.pagina-inicio .hoje-prox-valor b { color: var(--texto); font-weight: 700; }
+.pagina-inicio .hoje-prox-abrir { font-size: 0.75rem; font-weight: 700; color: var(--marca-forte); margin-top: 2px; }
+
+/* Dose aberta, embaixo dos anéis */
+.pagina-inicio .hoje-dose { display: flex; flex-direction: column; gap: 10px; }
+.pagina-inicio .hoje-dose-detalhe > summary {
+  display: flex; align-items: center; gap: 8px; min-height: 40px; list-style: none; cursor: pointer; border-radius: 10px;
+}
+.pagina-inicio .hoje-dose-detalhe > summary::-webkit-details-marker { display: none; }
+.pagina-inicio .hoje-dose-detalhe[open] > summary { margin-bottom: 10px; }
+.pagina-inicio .hoje-dose-fichas { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.pagina-inicio .hoje-dose-fichas span {
+  font-size: 0.75rem; font-weight: 600; color: var(--texto-2); background: color-mix(in srgb, var(--superficie-2) 85%, transparent); border-radius: 999px; padding: 4px 10px; max-width: 100%;
+}
+.pagina-inicio .hoje-dose-mais {
+  flex: none; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem;
+  background: color-mix(in srgb, var(--superficie-2) 85%, transparent); color: var(--texto-2); transition: transform 0.2s ease;
+}
+.pagina-inicio .hoje-dose-detalhe[open] .hoje-dose-mais { transform: rotate(180deg); }
+.pagina-inicio .hoje-dose .alerta { font-size: 0.85rem; }
+.pagina-inicio .hoje-dose-acoes { display: flex; gap: 8px; align-items: stretch; }
+.pagina-inicio .hoje-dose-acoes .hoje-registrar { flex: 1; min-height: 48px; }
+.pagina-inicio .hoje-dose-acoes .hoje-recolher { flex: none; width: auto; min-height: 48px; }
+/* O botão principal do "Hoje" leva o degradê da marca */
+.pagina-inicio .hoje-hero .botao.primario { background: var(--marca-grad); color: var(--marca-texto); border-color: transparent; }
+
+/* Fim da fase: uma faixa curta (fase, situação e o botão); números e decisão abrem na folha */
+.pagina-inicio .hoje-dose > .fim-fase-compacto {
+  margin: 0; padding: 10px 12px 12px; border: 1px solid var(--marca-borda); border-radius: var(--raio-sm); background: var(--marca-suave);
+  display: flex; flex-direction: column; gap: 6px;
+}
+/* "a decidir" já aparece na próxima aplicação; "decidido" continua */
+.pagina-inicio .fim-fase-compacto.pendente > .fim-fase-cab > .etiqueta { display: none; }
+.pagina-inicio .hoje-dose > .fim-fase-compacto.decidido { border-color: color-mix(in srgb, var(--bom) 40%, var(--borda)); background: color-mix(in srgb, var(--bom) 7%, var(--superficie)); }
+.pagina-inicio .fim-fase-compacto > .fim-fase-cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.pagina-inicio .fim-fase-cab h3 { font-size: 0.92rem; line-height: 1.3; }
+.pagina-inicio .fim-fase-nome { font-weight: 500; color: var(--texto-2); }
+.pagina-inicio .fim-fase-compacto > p { font-size: 0.8rem; line-height: 1.35; }
+.pagina-inicio .fim-fase-compacto > .fim-fase-kpis, .pagina-inicio .fim-fase-compacto > .fim-fase-pe { display: none; }
+.pagina-inicio .fim-fase-compacto > .botao {
+  width: 100%; min-height: 40px; margin-top: 2px; padding: 0 14px; font-size: 0.85rem; white-space: nowrap;
+  background: var(--superficie); color: var(--marca-forte); border: 1px solid var(--marca-borda);
+}
+.pagina-inicio .fim-fase-compacto.pendente > .botao.primario { background: var(--marca-grad); color: var(--marca-texto); border-color: transparent; }
+/* Com o fim de fase pendente, "Registrar aplicação" fica em segundo plano: a decisão vem antes */
+.pagina-inicio .hoje-dose:has(> .fim-fase-compacto.pendente) .hoje-registrar.primario {
+  background: var(--superficie-2); color: var(--texto); border: 1px solid var(--borda-suave);
+}
+/* Na folha: o conteúdo completo do fim da fase */
+.pagina-inicio .folha .regras-fase { font-size: 0.85rem; }
+
+@media (max-width: 360px) {
+  .pagina-inicio .hoje-topo-linha { gap: 10px; }
+  .pagina-inicio .hoje-topo .aneis-hoje-figura { width: 84px; height: 84px; }
+  .pagina-inicio .seringa-pilula { padding: 6px 10px; }
+  .pagina-inicio .seringa-pilula b { font-size: 1.35rem; }
+  .pagina-inicio .aneis-pilula { padding: 6px 6px; column-gap: 4px; }
+  .pagina-inicio .aneis-pilula .aneis-legenda-rotulo { font-size: 0.7rem; }
+  .pagina-inicio .aneis-pilula .aneis-legenda-valor { font-size: 0.8rem; }
+}
+
+/* Anel pequeno com o número no meio (frasco) */
 .pagina-inicio .anel-hoje { position: relative; flex: none; width: 68px; height: 68px; }
 .pagina-inicio .anel-hoje svg { width: 100%; height: 100%; display: block; }
 .pagina-inicio .anel-hoje-trilho { fill: none; stroke: var(--superficie-2); stroke-width: 7; }
@@ -21,129 +129,81 @@
 .pagina-inicio .anel-hoje-centro b { font-size: 0.98rem; font-weight: 750; letter-spacing: -0.02em; }
 .pagina-inicio .anel-hoje-centro span { font-size: 0.62rem; color: var(--texto-3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
 
-/* Próxima dose recolhida: uma linha que abre o cartão */
-.pagina-inicio .hoje-dose-linha {
-  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px; padding: 10px 12px; border-radius: var(--raio-sm); cursor: pointer;
-  border: 1px solid var(--borda-suave); background: color-mix(in srgb, var(--superficie-2) 80%, transparent); color: var(--texto); text-align: left;
-  transition: transform 0.12s ease, background-color 0.2s;
-}
-.pagina-inicio .hoje-dose-linha:active { transform: scale(0.98); }
-.pagina-inicio .hoje-dose-linha .cresce { display: flex; flex-direction: column; gap: 2px; align-items: flex-start; }
-.pagina-inicio .hoje-dose-linha-rotulo { font-size: 0.75rem; color: var(--texto-2); font-weight: 600; }
-.pagina-inicio .hoje-dose-linha-valor { font-size: 0.95rem; color: var(--texto-2); }
-.pagina-inicio .hoje-dose-linha-valor b { color: var(--texto); font-weight: 700; }
-.pagina-inicio .hoje-dose-linha .seta { color: var(--texto-3); flex: none; }
-.pagina-inicio .hoje-dose-icone {
-  flex: none; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
-  background: var(--superficie); color: var(--texto-2);
-}
-.pagina-inicio .hoje-dose-icone svg { width: 18px; height: 18px; }
-
-/* Dose aberta (dia, véspera, atrasada, decisão pendente) */
-.pagina-inicio .hoje-dose { display: flex; flex-direction: column; gap: 10px; padding-top: 14px; border-top: 1px solid var(--borda-suave); }
-.pagina-inicio .hoje-dose-cab { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.pagina-inicio .hoje-dose-cab .rotulo { flex: 1 0 auto; max-width: 100%; font-weight: 600; }
-.pagina-inicio .hoje-dose-principal { display: flex; align-items: stretch; gap: 10px; }
-.pagina-inicio .seringa-pilula {
-  flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 16px;
-  background: var(--destaque); color: var(--destaque-texto);
-}
-.pagina-inicio .seringa-pilula svg { width: 26px; height: 26px; flex: none; opacity: 0.85; }
-.pagina-inicio .seringa-pilula > div { display: flex; flex-direction: column; min-width: 0; line-height: 1.1; }
-.pagina-inicio .seringa-pilula span { font-size: 0.72rem; font-weight: 650; opacity: 0.75; text-transform: uppercase; letter-spacing: 0.05em; }
-.pagina-inicio .seringa-pilula b { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.03em; white-space: nowrap; }
-.pagina-inicio .seringa-pilula.passa { background: color-mix(in srgb, var(--ruim) 18%, var(--superficie-2)); color: var(--ruim); }
-.pagina-inicio .hoje-dose-mg {
-  flex: none; display: flex; flex-direction: column; justify-content: center; align-items: flex-end; text-align: right; gap: 2px; padding: 0 2px; max-width: 46%;
-}
-.pagina-inicio .hoje-dose-mg b { font-size: 1.3rem; font-weight: 750; letter-spacing: -0.02em; white-space: nowrap; }
-.pagina-inicio .hoje-dose-mg span { font-size: 0.78rem; color: var(--texto-2); line-height: 1.25; }
-.pagina-inicio .hoje-dose-fichas { display: flex; flex-wrap: wrap; gap: 6px; }
-.pagina-inicio .hoje-dose-fichas span {
-  font-size: 0.75rem; font-weight: 600; color: var(--texto-2); background: var(--superficie-2); border-radius: 999px; padding: 3px 9px; max-width: 100%;
-}
-.pagina-inicio .hoje-dose details.tabela-detalhe { margin-top: 0; }
-.pagina-inicio .hoje-dose .alerta { font-size: 0.85rem; }
-@media (max-width: 360px) {
-  .pagina-inicio .seringa-pilula { padding: 10px; gap: 8px; }
-  .pagina-inicio .seringa-pilula svg { width: 20px; height: 20px; }
-  .pagina-inicio .seringa-pilula b { font-size: 1.45rem; }
-  .pagina-inicio .hoje-dose-mg b { font-size: 1.1rem; }
-  .pagina-inicio .anel-hoje { width: 60px; height: 60px; }
-  .pagina-inicio .hoje-dose-icone { display: none; }
-  .pagina-inicio .hoje-dose-linha-valor { font-size: 0.88rem; }
-}
-
-/* Fim da fase: resumo curto no cartão; o resto abre na folha */
-.pagina-inicio .fim-fase-compacto {
-  margin: 0; padding: 12px; border: 1px solid color-mix(in srgb, var(--aviso) 40%, var(--borda)); border-radius: var(--raio-sm);
-  background: color-mix(in srgb, var(--aviso) 7%, transparent); display: flex; flex-direction: column; gap: 10px;
-}
-.pagina-inicio .fim-fase-compacto.decidido { border-color: color-mix(in srgb, var(--bom) 40%, var(--borda)); background: color-mix(in srgb, var(--bom) 6%, transparent); }
-.pagina-inicio .fim-fase-cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
-.pagina-inicio .fim-fase-cab h3 { font-size: 0.95rem; line-height: 1.3; }
-.pagina-inicio .fim-fase-nome { font-weight: 500; color: var(--texto-2); }
-.pagina-inicio .fim-fase-kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
-.pagina-inicio .fim-fase-kpis > div {
-  display: flex; flex-direction: column; gap: 1px; min-width: 0; padding: 7px 10px; border-radius: 10px; background: var(--superficie);
-}
-.pagina-inicio .fim-fase-kpis span { font-size: 0.68rem; color: var(--texto-3); font-weight: 650; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pagina-inicio .fim-fase-kpis b { font-size: 0.95rem; font-weight: 700; white-space: nowrap; }
-.pagina-inicio .fim-fase-kpis .kpi-bom { color: var(--bom); }
-.pagina-inicio .fim-fase-kpis .kpi-ruim { color: var(--ruim); }
-.pagina-inicio .fim-fase-pe .etiqueta { white-space: normal; border-radius: 10px; padding: 4px 10px; }
-/* Na folha: o conteúdo completo do fim da fase, sem a borda de cima do bloco antigo */
-.pagina-inicio .folha .regras-fase { font-size: 0.85rem; }
-
-/* Checklist de hoje / Fechar o dia */
+/* ---------- Checklist de hoje / Fechar o dia ---------- */
 .pagina-inicio .checklist { display: flex; flex-direction: column; gap: 12px; }
-.pagina-inicio .checklist-cab { display: flex; align-items: flex-start; gap: 10px; }
+.pagina-inicio .checklist-cab { display: flex; align-items: center; gap: 10px; }
 .pagina-inicio .checklist-contagem {
   flex: none; font-size: 0.82rem; color: var(--texto-2); font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--superficie-2); white-space: nowrap;
 }
 .pagina-inicio .checklist-contagem b { color: var(--texto); font-size: 0.95rem; }
-.pagina-inicio .checklist-barra { height: 6px; border-radius: 999px; background: var(--superficie-2); overflow: hidden; margin-top: -4px; }
-.pagina-inicio .checklist-barra > div { height: 100%; border-radius: 999px; background: var(--bom); transition: width 0.35s ease; }
-.pagina-inicio .checklist-treino { display: flex; flex-direction: column; gap: 8px; }
-.pagina-inicio .checklist-treino .check-dia { min-height: 76px; }
-.pagina-inicio .checklist-treino-pe { display: flex; align-items: center; gap: 8px; }
-.pagina-inicio .checklist-treino-pe .mudo { font-size: 0.8rem; }
+.pagina-inicio .checklist-barra { height: 6px; border-radius: 999px; background: var(--superficie-2); overflow: hidden; margin-top: -2px; }
+.pagina-inicio .checklist-barra > div { height: 100%; border-radius: 999px; background: var(--marca-grad); transition: width 0.35s ease; }
 
-.pagina-inicio .tarefas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-.pagina-inicio .tarefa { border-top: 1px solid var(--borda-suave); }
-.pagina-inicio .tarefa:first-child { border-top: 0; }
-.pagina-inicio .tarefa-linha {
-  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 48px; padding: 8px 2px; border: 0; background: none; color: var(--texto);
-  text-align: left; font-size: 0.95rem;
+/* Treino, Bike e Corrida: três fichas baixas numa linha */
+.pagina-inicio .checklist-treino { display: flex; flex-direction: column; gap: 6px; }
+.pagina-inicio .checklist-treino .marcadores-dia { gap: 6px; }
+.pagina-inicio .checklist-treino .check-dia {
+  min-height: 48px; padding: 6px 8px; border-radius: 12px; text-align: left;
+  display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 6px; row-gap: 0;
 }
-.pagina-inicio button.tarefa-linha { cursor: pointer; border-radius: 10px; transition: background-color 0.2s, transform 0.12s ease; }
-.pagina-inicio button.tarefa-linha:active { background: var(--superficie-2); transform: scale(0.99); }
-.pagina-inicio .tarefa-check {
-  flex: none; width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--texto-3);
-  display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.8rem;
-}
-.pagina-inicio .tarefa.feito .tarefa-check { background: var(--bom); border-color: var(--bom); color: #fff; animation: marcar 0.3s ease-out; }
-.pagina-inicio .tarefa-rotulo { flex: 1; min-width: 0; font-weight: 600; display: flex; flex-direction: column; }
-.pagina-inicio .tarefa.feito .tarefa-rotulo { color: var(--texto-2); }
-.pagina-inicio .tarefa-sub { font-size: 0.78rem; font-weight: 400; color: var(--texto-2); line-height: 1.35; margin-top: 2px; }
-.pagina-inicio .tarefa-valor { flex: none; max-width: 52%; font-size: 0.85rem; color: var(--texto-2); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pagina-inicio .tarefa:not(.feito) .tarefa-valor { color: var(--texto-3); }
-.pagina-inicio .tarefa-seta { flex: none; color: var(--texto-3); font-size: 1.2rem; line-height: 1; margin-left: -4px; }
-.pagina-inicio .tarefa-acao {
-  flex: none; font-size: 0.82rem; font-weight: 700; padding: 7px 12px; border-radius: 10px; background: var(--destaque); color: var(--destaque-texto);
-}
-/* Aplicação devida e medição de segunda: a linha chama mais atenção */
-.pagina-inicio .tarefa-destaque .tarefa-check { border-color: var(--aviso); }
-.pagina-inicio .tarefa-destaque .tarefa-rotulo { color: var(--texto); }
-.pagina-inicio .tarefa-destaque:not(.feito) .tarefa-valor { color: var(--texto-2); }
-.pagina-inicio .tarefa-com-controle { padding-bottom: 10px; }
-.pagina-inicio .tarefa-com-controle > .tarefa-linha { min-height: 40px; padding-bottom: 4px; }
-.pagina-inicio .tarefa-controle { display: flex; flex-direction: column; gap: 10px; padding-left: 36px; }
+.pagina-inicio .checklist-treino .check-dia-icone { grid-row: 1 / span 2; width: 20px; height: 20px; font-size: 0.7rem; }
+.pagina-inicio .checklist-treino .check-dia.feito .check-dia-icone { color: var(--superficie); }
+.pagina-inicio .checklist-treino .check-dia-rotulo { font-size: 0.88rem; line-height: 1.15; min-width: 0; overflow-wrap: anywhere; }
+.pagina-inicio .checklist-treino .check-dia-detalhe { font-size: 0.66rem; line-height: 1.2; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pagina-inicio .checklist-treino-pe { display: flex; align-items: center; gap: 8px; }
+.pagina-inicio .checklist-treino-pe .mudo { font-size: 0.78rem; }
 @media (max-width: 360px) {
-  .pagina-inicio .tarefa-controle { padding-left: 0; }
-  .pagina-inicio .tarefa-linha { gap: 10px; font-size: 0.9rem; }
+  .pagina-inicio .checklist-treino .check-dia { padding: 6px 4px; column-gap: 4px; }
+  .pagina-inicio .checklist-treino .check-dia-icone { width: 18px; height: 18px; font-size: 0.65rem; border-width: 1.5px; }
+  .pagina-inicio .checklist-treino .check-dia-rotulo { font-size: 0.76rem; overflow-wrap: normal; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pagina-inicio .checklist-treino .check-dia-detalhe { font-size: 0.65rem; }
 }
-.pagina-inicio .checklist-pe { display: flex; align-items: center; gap: 10px; padding-top: 10px; border-top: 1px solid var(--borda-suave); }
+
+/* Itens do dia: blocos em duas colunas (ícone da seção + valor); a ação do dia ocupa a linha inteira */
+.pagina-inicio .tarefas { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.pagina-inicio .tarefa {
+  --fundo-tarefa: color-mix(in srgb, var(--superficie-2) 72%, var(--superficie));
+  min-width: 0; border-radius: 14px; border: 1px solid transparent; background: var(--fundo-tarefa);
+}
+.pagina-inicio .tarefa-larga { grid-column: 1 / -1; }
+.pagina-inicio .tarefa-destaque:not(.feito) { --fundo-tarefa: var(--superficie); border-color: var(--marca-borda); background: var(--marca-suave); }
+.pagina-inicio .tarefa-linha {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 56px; padding: 8px 10px; border: 0; border-radius: inherit;
+  background: none; color: var(--texto); text-align: left; font: inherit; font-size: 0.9rem;
+}
+.pagina-inicio button.tarefa-linha { cursor: pointer; transition: background-color 0.2s, transform 0.12s ease; }
+.pagina-inicio button.tarefa-linha:active { background: color-mix(in srgb, var(--texto) 6%, transparent); transform: scale(0.98); }
+.pagina-inicio .tarefa-icone { position: relative; flex: none; display: flex; }
+.pagina-inicio .tarefa-icone .icone-chip { width: 32px; height: 32px; }
+.pagina-inicio .tarefa-check {
+  position: absolute; right: -5px; bottom: -5px; width: 17px; height: 17px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-size: 0.6rem; font-weight: 900; line-height: 1;
+  background: var(--bom); color: var(--superficie); box-shadow: 0 0 0 2px var(--fundo-tarefa); animation: marcar 0.3s ease-out;
+}
+.pagina-inicio .tarefa-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.pagina-inicio .tarefa-rotulo { min-width: 0; font-weight: 650; font-size: 0.88rem; line-height: 1.2; display: flex; flex-direction: column; overflow-wrap: break-word; hyphens: manual; }
+.pagina-inicio .tarefa-valor { min-width: 0; font-size: 0.78rem; color: var(--texto-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pagina-inicio .tarefa-sub { font-size: 0.78rem; font-weight: 400; color: var(--texto-2); line-height: 1.35; margin-top: 2px; }
+.pagina-inicio .tarefa-seta { flex: none; color: var(--texto-3); font-size: 1.15rem; line-height: 1; }
+.pagina-inicio .tarefa:not(.tarefa-larga) .tarefa-seta { display: none; }
+/* Linha inteira: rótulo à esquerda, valor à direita */
+.pagina-inicio .tarefa-larga .tarefa-texto { flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; }
+.pagina-inicio .tarefa-larga .tarefa-valor { flex: none; max-width: 55%; text-align: right; }
+.pagina-inicio .tarefa-acao {
+  flex: none; font-size: 0.82rem; font-weight: 700; padding: 8px 14px; border-radius: 10px; background: var(--marca-grad); color: var(--marca-texto);
+}
+.pagina-inicio .tarefa-com-controle { padding-bottom: 12px; }
+.pagina-inicio .tarefa-com-controle > .tarefa-linha { min-height: 48px; }
+.pagina-inicio .tarefa-controle { display: flex; flex-direction: column; gap: 10px; padding: 0 10px 0 52px; }
+@media (max-width: 360px) {
+  .pagina-inicio .tarefa-controle { padding: 0 10px; }
+  .pagina-inicio .tarefa-linha { gap: 8px; padding: 8px 6px 8px 8px; }
+  .pagina-inicio .tarefa-icone .icone-chip { width: 26px; height: 26px; border-radius: 8px; }
+  .pagina-inicio .tarefa-icone .icone-chip svg { width: 16px; height: 16px; }
+  .pagina-inicio .tarefa-rotulo { font-size: 0.8rem; }
+  .pagina-inicio .tarefa-valor { font-size: 0.74rem; }
+}
+.pagina-inicio .checklist-pe { display: flex; align-items: center; gap: 10px; padding-top: 2px; }
 .pagina-inicio .checklist-pe .mudo { font-size: 0.8rem; }
 
 /* Aviso das notificações: linha fina, com o "x" para dispensar */
@@ -159,37 +219,61 @@
 }
 .pagina-inicio .aviso-linha-fechar svg { width: 16px; height: 16px; }
 
-/* Atalho do resumo da semana: uma linha só */
+/* Resumo da semana: uma faixa que abre o resumo */
 .pagina-inicio .atalho-linha {
-  display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--raio-sm); border: 1px solid var(--borda-suave); background: var(--superficie);
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px; padding: 10px 12px; border-radius: var(--raio-sm); cursor: pointer;
+  border: 1px solid var(--borda-suave); background: var(--superficie); color: var(--texto); text-align: left; font: inherit;
+  transition: transform 0.12s ease;
 }
-.pagina-inicio .atalho-linha .texto-2 { font-size: 0.8rem; }
-@media (max-width: 360px) { .pagina-inicio .atalho-linha { flex-wrap: wrap; } .pagina-inicio .atalho-linha .texto-2 { flex-basis: 100%; } }
-.pagina-inicio .atalho-linha .botao { flex: none; }
+.pagina-inicio .atalho-linha:active { transform: scale(0.98); }
+.pagina-inicio .atalho-linha-texto { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.pagina-inicio .atalho-linha-texto b { font-size: 0.92rem; font-weight: 700; }
+.pagina-inicio .atalho-linha-texto span { font-size: 0.78rem; color: var(--texto-2); line-height: 1.3; }
+.pagina-inicio .atalho-linha-seta { flex: none; color: var(--texto-3); font-size: 1.2rem; line-height: 1; }
 
-/* Antes × agora: indicadores dentro do cartão, sem cartão dentro de cartão */
+/* Antes × agora: indicadores num carrossel (deslizar para o lado); 4 lado a lado na tela larga */
 .pagina-inicio .antes-agora .secao-cab { flex-wrap: nowrap; align-items: flex-start; }
 .pagina-inicio .antes-agora .secao-cab > div { min-width: 0; }
 .pagina-inicio .antes-agora .secao-cab > .botao { flex: none; }
+.pagina-inicio .antes-agora .kpis-carrossel {
+  display: flex; gap: 10px; margin: 0 -16px; padding: 0 16px 2px; overflow-x: auto; overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory; scroll-padding: 0 16px; scrollbar-width: none; -webkit-overflow-scrolling: touch;
+}
+.pagina-inicio .antes-agora .kpis-carrossel::-webkit-scrollbar { display: none; }
+.pagina-inicio .antes-agora .kpis-carrossel > .kpi { flex: 0 0 42%; min-width: 0; scroll-snap-align: start; }
 .pagina-inicio .antes-agora .kpi { background: var(--superficie-2); border: 0; box-shadow: none; border-radius: var(--raio-sm); padding: 10px 12px 8px; }
 .pagina-inicio .antes-agora .kpi-valor { font-size: 1.25rem; }
+.pagina-inicio .antes-agora .kpi-rotulo, .pagina-inicio .antes-agora .kpi-legenda { color: var(--texto-2); }
 .pagina-inicio .antes-agora .spark-ponto { box-shadow: 0 0 0 2px var(--superficie-2); }
-@media (max-width: 360px) { .pagina-inicio .antes-agora .kpi-valor { font-size: 1.08rem; } .pagina-inicio .antes-agora .kpi { padding: 9px 9px 7px; } }
-@media (min-width: 560px) { .pagina-inicio .antes-agora .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-
-/* Saldo do frasco: anel + 2 números */
-.pagina-inicio .frasco-corpo { display: flex; align-items: center; gap: 14px; }
-.pagina-inicio .frasco .anel-hoje { width: 76px; height: 76px; }
-.pagina-inicio .frasco-numeros { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.pagina-inicio .frasco-numeros > div { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.pagina-inicio .frasco-numeros .rotulo { font-size: 0.72rem; line-height: 1.25; }
-.pagina-inicio .frasco-numeros b { font-size: 1.05rem; font-weight: 750; letter-spacing: -0.01em; overflow-wrap: anywhere; }
-.pagina-inicio .frasco-numeros .mudo { font-size: 0.75rem; }
+/* Cintura/altura: o último cartão do carrossel */
+.pagina-inicio .antes-agora .kpi-rca { display: flex; flex-direction: column; gap: 4px; }
+.pagina-inicio .kpi-rca-texto { font-size: 0.88rem; font-weight: 600; line-height: 1.3; }
+.pagina-inicio .kpi-rca-texto > span:first-child { font-size: 1.25rem; font-weight: 750; letter-spacing: -0.02em; }
 @media (max-width: 360px) {
-  .pagina-inicio .frasco-corpo { gap: 10px; }
-  .pagina-inicio .frasco .anel-hoje { width: 64px; height: 64px; }
-  .pagina-inicio .frasco-numeros { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .pagina-inicio .antes-agora .kpis-carrossel > .kpi { flex-basis: 46%; }
+  .pagina-inicio .antes-agora .kpi-valor { font-size: 1.08rem; }
+  .pagina-inicio .antes-agora .kpi { padding: 9px 9px 7px; }
 }
+@media (min-width: 560px) {
+  .pagina-inicio .antes-agora .kpis-carrossel { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0; padding: 0; overflow: visible; }
+}
+
+/* Saldo do frasco: anel + saldo numa faixa */
+.pagina-inicio .frasco { padding: 14px 16px; }
+.pagina-inicio .frasco-corpo { display: flex; align-items: center; gap: 14px; }
+.pagina-inicio .frasco .anel-hoje { width: 64px; height: 64px; }
+.pagina-inicio .frasco .anel-hoje-valor { stroke: var(--c-indigo); }
+.pagina-inicio .frasco .anel-hoje-centro b { font-size: 0.9rem; }
+.pagina-inicio .frasco-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pagina-inicio .frasco-cab { display: flex; align-items: baseline; justify-content: space-between; gap: 2px 8px; flex-wrap: wrap; }
+.pagina-inicio .frasco-cab h2 { font-size: 1rem; }
+.pagina-inicio .frasco-cab .mudo { font-size: 0.75rem; }
+.pagina-inicio .frasco-saldo { font-size: 0.8rem; }
+.pagina-inicio .frasco-saldo b { font-size: 1.1rem; font-weight: 750; letter-spacing: -0.01em; }
+.pagina-inicio .frasco-doses { font-size: 0.75rem; line-height: 1.35; }
+.pagina-inicio .frasco-doses b { color: var(--texto); font-weight: 700; }
+.pagina-inicio .frasco details.tabela-detalhe { margin-top: 8px; }
+@media (max-width: 360px) { .pagina-inicio .frasco-corpo { gap: 10px; } .pagina-inicio .frasco .anel-hoje { width: 56px; height: 56px; } }
 
 /* Pendências de ontem: um pouco mais enxuto */
 .pagina-inicio .faixa-ontem { padding: 14px; }
@@ -256,7 +340,7 @@
 }
 
 /* ---------- Seu ciclo em anéis: um dia por célula ---------- */
-.pagina-inicio .historico-aneis { display: flex; flex-direction: column; gap: 12px; }
+.pagina-inicio .historico-aneis { display: flex; flex-direction: column; gap: 10px; }
 .pagina-inicio .historico-aneis .secao-cab { flex-wrap: nowrap; align-items: flex-start; }
 .pagina-inicio .historico-aneis .secao-cab > .botao { flex: none; }
 .pagina-inicio .historico-legenda { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 0.78rem; color: var(--texto-2); margin-top: -4px; }

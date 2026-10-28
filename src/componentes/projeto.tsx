@@ -117,7 +117,7 @@ function SaidaDoRemedio({ pos }: { pos: FasePos }) {
  * botões do PDF final e da fase pós-remédio. Com a fase iniciada, mostra a
  * semana dela e o aviso de reganho (só informação: sem sugestão de meta).
  */
-export function CartaoFimProjeto({ aoRegistrar }: { aoRegistrar: () => void }) {
+export function CartaoFimProjeto({ aoRegistrar, compacto }: { aoRegistrar: () => void; /** Início: a tabela do balanço fica recolhida */ compacto?: boolean }) {
   const { ciclo, gravar, hoje } = useDados();
   const { resumo, composicoes } = useCalculos();
   const proj = useProjeto();
@@ -191,7 +191,14 @@ export function CartaoFimProjeto({ aoRegistrar }: { aoRegistrar: () => void }) {
           : `Sua parte de ${mg(ciclo.quantidade_total_mg)} foi usada em ${resumo.aplicacoes_realizadas} aplicações.`}{' '}
         Metas e resultados do período do remédio, na ordem: medidas antes do peso.
       </p>
-      <Balanco />
+      {compacto ? (
+        <details className="tabela-detalhe">
+          <summary>Ver metas e resultados</summary>
+          <Balanco />
+        </details>
+      ) : (
+        <Balanco />
+      )}
       <div className="linha botoes-fase">
         <Link to="/analise" className="botao pequeno primario">
           PDF final
