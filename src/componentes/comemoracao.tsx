@@ -3,6 +3,7 @@
 // Só reage a alterações feitas agora pelo usuário: abrir o app, recarregar ou
 // receber dados do servidor nunca comemora, e cada conquista comemora uma vez.
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { useDados } from '../dados/contexto';
 import { useCalculos } from '../dados/useCalculos';
 import { useProjeto } from '../dados/useProjeto';
@@ -214,6 +215,9 @@ export function AvisoConquista({ itens, saindo, aoFechar }: { itens: Conquista[]
             {c.titulo}
           </b>
         ))}
+        <Link to="/conquistas" className="aviso-conquista-link">
+          Ver conquistas ›
+        </Link>
       </div>
     </div>
   );

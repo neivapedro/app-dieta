@@ -13,6 +13,7 @@ import { FaixaFases, GraficoJanela, LinhaDoTempo } from '../componentes/analise-
 import { BarrasRitmo, FolhaMetrica, KpiToque, type DetalheMetrica } from '../componentes/analise-detalhe';
 import { GraficoPrevisao } from '../componentes/analise-previsao';
 import { Padroes } from '../componentes/analise-padroes';
+import { ResumoInsights } from '../componentes/insights';
 import { useDados } from '../dados/contexto';
 import { useAlimentos } from '../dados/useAlimentos';
 import { useCalculos } from '../dados/useCalculos';
@@ -972,6 +973,8 @@ export function Analise() {
           </section>
 
           <CartaoRelatorioFinal onde="analise" />
+
+          <ResumoInsights onde="analise" />
 
           <div className="secao-sub analise-kpis-sub">
             {emCiclo

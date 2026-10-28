@@ -1,0 +1,67 @@
+/* "Seu resumo": cartões de frases que deslizam para o lado (Início e Análise › Geral) */
+.insights { padding-bottom: 12px; }
+.insights .insights-cab { flex-wrap: nowrap; align-items: center; margin-bottom: 10px; }
+.insights .insights-cab > .icone-chip + .cresce { max-width: none; flex: 1 1 0%; }
+.insights-cab .secao-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.insights-trilho {
+  display: flex; gap: 10px; margin: 0 -16px; padding: 2px 16px 4px; overflow-x: auto; overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory; scroll-padding: 0 16px; scrollbar-width: none; -webkit-overflow-scrolling: touch;
+}
+.insights-trilho::-webkit-scrollbar { display: none; }
+.insight-cartao {
+  flex: 0 0 84%; min-width: 0; scroll-snap-align: start; display: flex; flex-direction: column;
+  border-radius: var(--raio-sm, 12px); background: var(--superficie-2); border: 1px solid transparent;
+  position: relative; overflow: hidden;
+}
+/* Faixa do tom à esquerda: verde (bom sinal), âmbar (atenção), marca (para saber) */
+.insight-cartao::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--marca-forte); }
+.insight-cartao.tom-bom::before { background: var(--bom); }
+.insight-cartao.tom-atencao::before { background: var(--aviso); }
+.insights-trilho > .insight-cartao:only-child { flex-basis: 100%; }
+@media (min-width: 560px) { .insight-cartao { flex-basis: 46%; } }
+
+.insight-corpo {
+  flex: 1; display: flex; flex-direction: column; gap: 8px; padding: 12px 14px 6px 15px;
+  color: var(--texto); text-decoration: none; min-height: 96px;
+}
+.insight-corpo:active { opacity: 0.85; }
+.insight-topo { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.insight-topo .icone-chip { width: 28px; height: 28px; border-radius: 9px; }
+.insight-topo .icone-chip svg { width: 16px; height: 16px; }
+.insight-tom { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.02em; color: var(--marca-forte); }
+.insight-tom.tom-bom { color: var(--bom); }
+.insight-tom.tom-atencao { color: var(--aviso); }
+.insight-frase { margin: 0; font-size: 0.98rem; font-weight: 650; line-height: 1.3; letter-spacing: -0.01em; overflow-wrap: anywhere; text-wrap: pretty; }
+
+.insight-rodape { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 10px 0 6px; }
+.insight-origem {
+  min-height: 40px; padding: 0 9px; border: 0; background: none; color: var(--marca-forte); font-size: 0.8rem; font-weight: 600;
+  cursor: pointer; white-space: nowrap; flex: none; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px;
+}
+.insight-destino { font-size: 0.75rem; color: var(--texto-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+
+.insights-pontos { display: flex; justify-content: center; gap: 6px; margin-top: 8px; }
+.insights-pontos span { width: 6px; height: 6px; border-radius: 999px; background: var(--borda); transition: width 0.2s, background-color 0.2s; }
+.insights-pontos span.ativo { width: 16px; background: var(--marca-forte); }
+@media (prefers-reduced-motion: reduce) { .insights-pontos span { transition: none; } }
+@media (min-width: 560px) { .insights-pontos { display: none; } }
+
+/* Folha "De onde vem" */
+.insight-folha-frase { margin: 0; font-size: 1.05rem; font-weight: 650; line-height: 1.35; }
+.insight-folha-origem { margin: 0; color: var(--texto-2); font-size: 0.92rem; line-height: 1.45; }
+.insight-folha .mudo { margin: 0; }
+
+/* Atalho da galeria no cabeçalho do resumo */
+.chip-conquistas {
+  flex: none; display: inline-flex; align-items: center; gap: 5px; min-height: 40px; padding: 0 12px 0 10px; border-radius: 999px;
+  text-decoration: none; color: var(--marca-forte); font-weight: 700; font-size: 0.85rem;
+  background: color-mix(in srgb, var(--marca-m) 14%, transparent); border: 1px solid var(--marca-borda);
+}
+.chip-conquistas svg { width: 17px; height: 17px; }
+.chip-conquistas:active { transform: scale(0.97); }
+.chip-conquistas-barra { display: none; }
+@media (max-width: 360px) { .chip-conquistas-de { display: none; } .chip-conquistas-barra { display: inline; } .chip-conquistas { padding: 0 10px 0 8px; } }
+
+/* Comemoração: link para a galeria no aviso */
+.aviso-conquista-link { color: var(--marca-forte); font-size: 0.82rem; font-weight: 650; text-decoration: none; margin-top: 2px; }

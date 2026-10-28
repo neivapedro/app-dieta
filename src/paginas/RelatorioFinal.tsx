@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { BotaoStoriesFinal } from '../componentes/relatorio-final-compartilhar';
 import { CalorNausea, GraficosCorpo, GraficosHabitos, GraficosTreino } from '../componentes/relatorio-final-graficos';
 import { SlotPdfFinal } from '../componentes/relatorio-final-pdf';
+import { LinhaConquistas } from '../componentes/conquistas';
 import {
   AneisHabitos,
   CapaRelatorio,
@@ -177,6 +178,8 @@ export function RelatorioFinal() {
           <SlotPdfFinal relatorio={r} fotos={fotos} carregandoFotos={carregandoFotos} />
         </div>
       </Secao>
+
+      <LinhaConquistas />
 
       {r.pos_remedio && <p className="mudo rf-pos">{r.pos_remedio.texto}</p>}
       <p className="rf-rodape">{r.textos.rodape}</p>

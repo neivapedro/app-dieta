@@ -1,0 +1,80 @@
+/* Galeria de conquistas: medalhas (SVG), grade por categoria e o detalhe na folha */
+
+/* ---------- Medalha ---------- */
+.medalha { position: relative; display: inline-grid; place-items: center; flex: none; }
+.medalha > svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.medalha.ganha > svg { filter: drop-shadow(0 4px 8px color-mix(in srgb, var(--marca-m) 38%, transparent)); }
+/* Face da medalha ganha: disco com o degradê, brilho em cima e aro claro (o texto branco fica sobre ele) */
+.medalha.ganha .medalha-centro {
+  width: calc(var(--tam, 64px) * 0.68); height: calc(var(--tam, 64px) * 0.68); border-radius: 50%;
+  background-color: var(--marca-m); background-image: linear-gradient(180deg, rgb(255 255 255 / 0.2), transparent 55%), var(--marca-grad);
+  box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / 0.42), 0 1px 3px rgb(0 0 0 / 0.18);
+}
+.medalha.ganha.hex .medalha-centro { width: calc(var(--tam, 64px) * 0.54); height: calc(var(--tam, 64px) * 0.54); }
+.medalha-trilho { fill: none; stroke: var(--borda); stroke-width: 3; }
+.medalha-progresso { fill: none; stroke: var(--marca-forte); stroke-width: 3; stroke-linecap: round; }
+.medalha-fundo { fill: var(--superficie-2); stroke: color-mix(in srgb, var(--texto-3) 45%, transparent); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.medalha-centro { position: relative; display: grid; place-items: center; line-height: 1; }
+.medalha.hex .medalha-centro b { font-size: calc(var(--tam, 64px) * 0.24); }
+.medalha.ganha .medalha-centro { color: var(--marca-texto); }
+.medalha.bloqueada .medalha-centro { color: var(--texto-2); }
+.medalha-centro svg { width: calc(var(--tam, 64px) * 0.36); height: calc(var(--tam, 64px) * 0.36); }
+.medalha-centro b { font-size: calc(var(--tam, 64px) * 0.3); font-weight: 800; letter-spacing: -0.03em; }
+.medalha-centro b.longo { font-size: calc(var(--tam, 64px) * 0.24); }
+.medalha.ganha .medalha-centro b { text-shadow: 0 1px 2px rgb(0 0 0 / 0.25); }
+
+/* ---------- Página ---------- */
+.conquistas-hero-topo { display: flex; align-items: center; gap: 14px; }
+.conquistas-anel { position: relative; width: 76px; height: 76px; flex: none; display: grid; place-items: center; }
+.conquistas-anel svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.conquistas-anel-trilho { fill: none; stroke: var(--superficie-2); stroke-width: 7; }
+.conquistas-anel-valor { fill: none; stroke-width: 7; stroke-linecap: round; }
+.conquistas-anel-centro { position: relative; font-weight: 800; font-size: 1.02rem; letter-spacing: -0.02em; }
+.conquistas-hero-titulo { font-size: 1.3rem; font-weight: 750; letter-spacing: -0.02em; line-height: 1.2; margin: 2px 0 4px; }
+.conquistas-hero .hero-sub { color: var(--texto-2); font-size: 0.85rem; }
+.conquistas-recentes { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--borda); }
+.conquistas-recentes-lista { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
+.conquistas-vazio { margin: 12px 0 0; }
+
+.conquistas-categoria .secao-cab { margin-bottom: 8px; }
+.medalhas-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 4px 6px; }
+@media (max-width: 380px) { .medalhas-grade { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+.medalha-item {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; min-height: 44px;
+  padding: 8px 2px 10px; border: 0; border-radius: 12px; background: none; color: var(--texto); cursor: pointer; text-align: center;
+}
+.medalha-item:active { background: var(--superficie-2); }
+.medalha-item:active .medalha { transform: scale(0.96); }
+.medalha-titulo { font-size: 0.78rem; font-weight: 650; line-height: 1.25; overflow-wrap: anywhere; hyphens: auto; text-wrap: balance; }
+.medalha-item.bloqueada .medalha-titulo { color: var(--texto-2); }
+.medalha-sub { font-size: 0.72rem; color: var(--texto-3); }
+.medalha-item.ganha .medalha-sub { color: var(--marca-forte); font-weight: 650; }
+@media (max-width: 360px) { .medalha-titulo { font-size: 0.74rem; } }
+
+.conquistas-rodape { margin: 0 4px; }
+
+/* ---------- Folha de detalhe ---------- */
+.medalha-detalhe-topo { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 6px 0 2px; }
+.medalha-detalhe-status { font-weight: 650; color: var(--texto-2); text-align: center; }
+.medalha-detalhe-status.ganha { color: var(--marca-forte); }
+.medalha-detalhe-progresso { display: flex; flex-direction: column; gap: 6px; }
+.medalha-detalhe-numeros { font-size: 0.85rem; color: var(--texto-2); gap: 4px 10px; }
+.medalha-detalhe-info { margin: 0; font-size: 0.92rem; font-weight: 600; }
+.medalha-detalhe-criterio { margin: 4px 0 0; color: var(--texto-2); font-size: 0.92rem; line-height: 1.45; }
+
+/* ---------- Atalho em linha (Relatório final) ---------- */
+.atalho-conquistas-linha {
+  display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--raio, 14px); text-decoration: none; color: var(--texto);
+  background: var(--marca-suave); border: 1px solid var(--marca-borda);
+}
+.atalho-conquistas-linha:active { transform: scale(0.98); }
+.atalho-conquistas-icone { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--marca-grad); color: var(--marca-texto); flex: none; }
+.atalho-conquistas-texto { display: flex; flex-direction: column; gap: 1px; }
+.atalho-conquistas-texto b { font-size: 0.95rem; }
+.atalho-conquistas-texto span { font-size: 0.8rem; color: var(--texto-2); }
+.atalho-conquistas-linha .atalho-linha-seta { color: var(--texto-3); font-size: 1.2rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .medalha-item:active .medalha, .atalho-conquistas-linha:active { transform: none; }
+}
