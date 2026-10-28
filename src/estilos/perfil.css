@@ -133,7 +133,8 @@ details.tabela-detalhe.pf-como { margin-top: 0; }
 }
 .pf-conta-parte .rotulo { font-size: 0.72rem; white-space: nowrap; }
 .pf-conta-parte b { font-size: 1.05rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.pf-conta-total { background: color-mix(in srgb, var(--aviso) 14%, var(--superficie-2)); }
+.pf-conta-total { background: color-mix(in srgb, var(--marca-m) 14%, var(--superficie-2)); }
+.pf-conta-total .rotulo { color: var(--texto-2); }
 .pf-conta-op { flex: none; color: var(--texto-3); font-weight: 700; }
 @media (max-width: 360px) {
   .pf-conta { gap: 4px; }
