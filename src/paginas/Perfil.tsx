@@ -2,6 +2,7 @@ import '../estilos/perfil.css';
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { BotaoExcluir, Campo, CampoNumero, Escolhas, Icone } from '../componentes/ui';
+import { CorDoApp } from '../componentes/aparencia';
 import { CALENDARIO_URL } from '../config';
 import { useFotos } from '../componentes/fotos';
 import { fotoParaBackup, importarFotos } from '../dados/fotos';
@@ -1111,6 +1112,10 @@ export function Perfil() {
           valor={sinal(ajusteVigente(perfil, medidas), 1, ' p.p.')}
           aoTocar={() => abrir('calibracao')}
         />
+      </Grupo>
+
+      <Grupo titulo="Aparência">
+        <CorDoApp />
       </Grupo>
 
       <Grupo titulo="Dados">

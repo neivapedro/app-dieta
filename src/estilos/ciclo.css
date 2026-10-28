@@ -115,7 +115,7 @@
 .cal-legenda i { width: 12px; height: 12px; border-radius: 4px; background: var(--tom, var(--superficie-2)); flex: none; }
 .cal-legenda i.anel-dose { background: transparent; box-shadow: inset 0 0 0 2px var(--c-indigo); }
 
-.dia-detalhe { scroll-margin-bottom: calc(var(--nav-altura) + 16px + env(safe-area-inset-bottom)); }
+.dia-detalhe { scroll-margin-bottom: calc(var(--nav-ocupa) + 16px); }
 .dia-detalhe h2 { text-transform: none; }
 .dia-detalhe-etiquetas { gap: 6px; margin-top: 6px; }
 .dia-detalhe-etiquetas:empty { display: none; }
@@ -184,7 +184,7 @@
 .plano-espaco { height: 64px; }
 .plano-salvar {
   position: fixed; z-index: 15; left: 50%; transform: translateX(-50%);
-  bottom: calc(var(--nav-altura) + 10px + env(safe-area-inset-bottom));
+  bottom: calc(var(--nav-ocupa) + 10px);
   width: min(688px, calc(100% - 32px)); display: flex; align-items: center; gap: 10px;
   padding: 8px 8px 8px 14px; border-radius: var(--raio); border: 1px solid var(--borda-suave);
   background: var(--vidro); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px);

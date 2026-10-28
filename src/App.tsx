@@ -1,6 +1,7 @@
 import { BrowserRouter, HashRouter, NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, type MouseEvent } from 'react';
 import { Comemoracoes, menosMovimento } from './componentes/comemoracao';
+import { useRolagemDaTela } from './componentes/navegacao';
 import { NovaSenha } from './paginas/Entrar';
 import { PuxarAtualizar } from './componentes/movimento';
 import { Protecao } from './componentes/Protecao';
@@ -207,26 +208,35 @@ function useTrocaDeTela(ordem: string[]) {
 function Estrutura() {
   const { perfil, ciclo, recarregar } = useDados();
   const [comBadge] = useState(() => temBadge());
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const abas = perfil?.modulo_treino ? [...ABAS.slice(0, 4), ABA_TREINO, ABAS[4]] : ABAS;
   // Ordem da esquerda para a direita: abas e, depois, os botões do cabeçalho
   const trocar = useTrocaDeTela([...abas.map((a) => a.para), '/retatrutida', '/perfil']);
   const titulo = TITULOS_EXTRAS[pathname] ?? abas.find((a) => a.para === pathname)?.titulo ?? '';
   const primeiroNome = perfil?.nome.split(' ')[0];
+  // Subtela do Perfil (?secao=) tem título e botão de voltar próprios: sem o título grande.
+  // Tela nova fora das abas: ponha o título em TITULOS_EXTRAS (sem título, fica sem o grande)
+  const comTituloGrande = !!titulo && !(pathname === '/perfil' && new URLSearchParams(search).has('secao'));
+  const topo = useRef<HTMLElement>(null);
+  const nav = useRef<HTMLElement>(null);
+  const tituloGrande = useRef<HTMLDivElement>(null);
+  useRolagemDaTela({ topo, nav, titulo: tituloGrande }, pathname + search);
 
   return (
     <>
       <div className="app">
-        <header className="topo">
-          <div className="topo-marca">
-            <span className="marca-mini" aria-hidden="true">
-              <img src={`${import.meta.env.BASE_URL}braco.webp`} alt="" />
-            </span>
-            <div style={{ minWidth: 0 }}>
-              <h1>{titulo}</h1>
-              {pathname === '/' && <div className="sub">Olá{primeiroNome ? `, ${primeiroNome}` : ''} · {ciclo?.nome}</div>}
+        {/* Cabeçalho de vidro: marca, título pequeno (aparece quando o grande sai da tela) e atalhos */}
+        <header className="topo" ref={topo}>
+          <span className="marca-mini" aria-hidden="true">
+            <img src={`${import.meta.env.BASE_URL}braco.webp`} alt="" />
+          </span>
+          {comTituloGrande ? (
+            <div className="topo-titulo" aria-hidden="true">
+              {titulo}
             </div>
-          </div>
+          ) : (
+            <h1 className="topo-titulo">{titulo}</h1>
+          )}
           <div className="topo-acoes">
             <NavLink to="/retatrutida" onClick={trocar('/retatrutida')} className={({ isActive }) => `icone-botao${isActive ? ' ativo' : ''}`} aria-label="Sobre a retatrutida">
               <Icone nome="livro" />
@@ -236,6 +246,12 @@ function Estrutura() {
             </NavLink>
           </div>
         </header>
+        {comTituloGrande && (
+          <div className="titulo-grande nao-imprimir" ref={tituloGrande}>
+            <h1>{titulo}</h1>
+            {pathname === '/' && <div className="sub">Olá{primeiroNome ? `, ${primeiroNome}` : ''} · {ciclo?.nome}</div>}
+          </div>
+        )}
         <Avisos />
         <PuxarAtualizar aoAtualizar={recarregar} />
         {comBadge && <BadgeApp />}
@@ -271,12 +287,13 @@ function Estrutura() {
           </Protecao>
         </main>
       </div>
-      <nav className="nav" aria-label="Navegação principal">
-        <div className={`nav-itens ${abas.length > 6 ? 'apertado' : ''}`} style={{ gridTemplateColumns: `repeat(${abas.length}, 1fr)` }}>
+      {/* Barra de abas flutuante (cápsula de vidro); encolhe rolando para baixo (useRolagemDaTela) */}
+      <nav className="nav" aria-label="Navegação principal" ref={nav}>
+        <div className={`nav-itens${abas.length > 5 ? ' seis' : ''}`}>
           {abas.map((a) => (
             <NavLink key={a.para} to={a.para} end onClick={trocar(a.para)} className={({ isActive }) => (isActive ? 'ativo' : '')}>
               <Icone nome={a.icone} />
-              {a.rotulo}
+              <span className="nav-rotulo">{a.rotulo}</span>
             </NavLink>
           ))}
         </div>

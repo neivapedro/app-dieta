@@ -3,11 +3,12 @@
 /*
  * Troca de tela (View Transitions; App.tsx liga só com suporte e sem "Reduzir movimento").
  * A tela velha sai rápido e a nova entra deslizando pouco, do lado da aba escolhida.
- * Cabeçalho e barra de abas ganham nome próprio só durante a troca: ficam parados.
+ * Cabeçalho e barra de abas ganham nome próprio só durante a troca: ficam parados (o título grande
+ * fica no conteúdo e desliza com a tela; o pequeno, no centro do cabeçalho, troca esmaecendo).
  */
 :root.trocando-tela .topo { view-transition-name: topo; }
 :root.trocando-tela .nav { view-transition-name: barra-abas; }
-:root.trocando-tela .topo h1 { view-transition-name: titulo-tela; }
+:root.trocando-tela .topo .topo-titulo { view-transition-name: titulo-tela; }
 
 ::view-transition-old(root),
 ::view-transition-new(root) {
@@ -27,7 +28,7 @@
 ::view-transition-old(titulo-tela) { animation: troca-sumir 0.1s ease-in both; }
 ::view-transition-new(titulo-tela) { animation: troca-surgir 0.18s ease-out 0.08s both; }
 ::view-transition-old(titulo-tela),
-::view-transition-new(titulo-tela) { mix-blend-mode: normal; height: 100%; object-fit: none; object-position: left center; }
+::view-transition-new(titulo-tela) { mix-blend-mode: normal; height: 100%; object-fit: none; object-position: center; }
 
 @keyframes troca-sair { to { opacity: 0; transform: translateX(-14px); } }
 @keyframes troca-entrar { from { opacity: 0; transform: translateX(22px); } }

@@ -20,7 +20,6 @@
   --g-bf: #ffd60a;
   --g-dose: #636366;
   --raio: 14px;
-  --nav-altura: 64px;
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   font-size: 16px;
   line-height: 1.45;
@@ -83,29 +82,8 @@ h3 { font-size: 0.95rem; }
 p { margin: 0; }
 a { color: var(--destaque); }
 
-.app { max-width: 720px; margin: 0 auto; padding: 0 16px calc(var(--nav-altura) + 24px + env(safe-area-inset-bottom)); }
-
-.topo {
-  position: sticky; top: 0; z-index: 10;
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: calc(12px + env(safe-area-inset-top)) 0 12px;
-  background: var(--fundo);
-}
-.topo .sub { color: var(--texto-2); font-size: 0.85rem; overflow-wrap: anywhere; }
-
-.nav {
-  position: fixed; bottom: 0; left: 0; right: 0; z-index: 20;
-  display: flex; justify-content: center;
-  background: var(--superficie); border-top: 1px solid var(--borda);
-  padding-bottom: env(safe-area-inset-bottom);
-}
-.nav-itens { display: grid; grid-template-columns: repeat(5, 1fr); width: 100%; max-width: 720px; }
-.nav a {
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-  height: var(--nav-altura); text-decoration: none; color: var(--texto-3); font-size: 0.72rem; font-weight: 500;
-}
-.nav a.ativo { color: var(--destaque); }
-.nav svg { width: 22px; height: 22px; }
+/* Espaço livre no fim da tela para a barra de abas flutuante (ver "Barra de abas de vidro" no fim do arquivo) */
+.app { max-width: 720px; margin: 0 auto; padding: 0 16px calc(var(--nav-ocupa) + 24px); }
 
 .pilha { display: flex; flex-direction: column; gap: 14px; }
 .linha { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -278,7 +256,6 @@ details.ajuda[open] summary { margin-bottom: 8px; }
   display: flex; align-items: center; justify-content: center;
 }
 .marca-mini img { width: 34px; height: 34px; object-fit: contain; }
-.topo-marca { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .nome-app { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--texto-3); }
 
 /* Aba Treino */
@@ -344,9 +321,6 @@ details.ajuda[open] summary { margin-bottom: 8px; }
 .m-g { color: var(--m-g); }
 .m-k { color: var(--texto); }
 
-.nav-itens.apertado a { font-size: 0.64rem; }
-.nav-itens.apertado svg { width: 20px; height: 20px; }
-
 .macros { display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: 0.76rem; font-weight: 600; font-variant-numeric: tabular-nums; }
 
 .refeicao { padding-bottom: 12px; }
@@ -383,7 +357,7 @@ details.ajuda[open] summary { margin-bottom: 8px; }
 .tabela-macros tr.total td { font-weight: 700; border-bottom: 0; }
 
 .saldo-fixo {
-  position: sticky; bottom: calc(var(--nav-altura) + env(safe-area-inset-bottom) + 8px); z-index: 5;
+  position: sticky; bottom: calc(var(--nav-ocupa) + 10px); z-index: 5;
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 8px; padding: 9px 12px; border-radius: 12px;
   background: var(--superficie); border: 1px solid var(--borda); box-shadow: 0 4px 16px rgb(0 0 0 / 0.35);
   font-size: 0.76rem; font-variant-numeric: tabular-nums;
@@ -395,9 +369,9 @@ details.ajuda[open] summary { margin-bottom: 8px; }
 .falta-inline { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 8px; width: 100%; font-size: 0.78rem; font-variant-numeric: tabular-nums; }
 .item-dieta .falta-inline { padding: 6px 8px; border-radius: 8px; background: var(--superficie-2); }
 .estado-gravacao { width: 100%; font-size: 0.72rem; font-weight: 600; color: var(--texto-2); }
-.rodape-fixo { position: sticky; bottom: calc(var(--nav-altura) + env(safe-area-inset-bottom) + 8px); z-index: 6; display: flex; flex-direction: column; gap: 6px; }
+.rodape-fixo { position: sticky; bottom: calc(var(--nav-ocupa) + 10px); z-index: 6; display: flex; flex-direction: column; gap: 6px; }
 .rodape-fixo > .saldo-fixo, .rodape-fixo > .alerta.desfazer { position: static; }
-.alerta.desfazer { position: sticky; bottom: calc(var(--nav-altura) + env(safe-area-inset-bottom) + 64px); z-index: 6; align-items: center; background: linear-gradient(color-mix(in srgb, var(--info) 12%, transparent), color-mix(in srgb, var(--info) 12%, transparent)), var(--superficie); }
+.alerta.desfazer { position: sticky; bottom: calc(var(--nav-ocupa) + 66px); z-index: 6; align-items: center; background: linear-gradient(color-mix(in srgb, var(--info) 12%, transparent), color-mix(in srgb, var(--info) 12%, transparent)), var(--superficie); }
 .refeicao-titulo { min-height: 36px; }
 details.ajuda summary { min-height: 32px; display: flex; align-items: center; }
 
@@ -498,7 +472,6 @@ details.ajuda summary { min-height: 32px; display: flex; align-items: center; }
 /* Cabeçalho: livro (retatrutida) e perfil lado a lado */
 .topo-acoes { display: flex; gap: 8px; flex: none; }
 .icone-botao.ativo { background: var(--superficie-2); border-color: var(--texto-3); }
-@media (max-width: 360px) { .topo h1 { font-size: 1.25rem; } }
 
 /* Aba Retatrutida: texto longo, pensado para leitura no celular */
 .oculto-visual { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
@@ -768,25 +741,6 @@ details.tabela-detalhe[open] > summary { margin-bottom: 8px; }
 .bloco { border-radius: var(--raio-sm); }
 h2 { font-size: 1.08rem; }
 
-/* Cabeçalho e barra de abas de vidro (translúcidos com desfoque, como no iOS) */
-.topo {
-  margin: 0 -16px; padding-left: 16px; padding-right: 16px;
-  background: var(--vidro);
-  -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px);
-}
-.topo h1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.topo .sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.nav {
-  background: var(--vidro); border-top-color: var(--borda-suave);
-  -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px);
-}
-.nav a { position: relative; isolation: isolate; transition: color 0.2s; }
-.nav a.ativo::before {
-  content: ''; position: absolute; z-index: -1; top: 7px; left: 50%; width: 52px; height: 32px; transform: translateX(-50%);
-  border-radius: 999px; background: color-mix(in srgb, var(--destaque) 13%, transparent);
-}
-.nav-itens.apertado a.ativo::before { width: 44px; height: 30px; }
-
 /* Abas e seletores em pílula */
 .abas { background: var(--superficie-2); border: 0; padding: 3px; border-radius: 13px; }
 .abas button { border-radius: 10px; transition: background-color 0.2s, color 0.2s, box-shadow 0.2s; }
@@ -885,7 +839,6 @@ details.tabela-detalhe > summary, details.ajuda > summary { min-height: 40px; }
 .pilulas button { min-height: 34px; position: relative; }
 .pilulas button::after { content: ''; position: absolute; inset: -3px -1px; }
 .item-dieta-nome { padding: 9px 0; margin: -9px 0; }
-@media (max-width: 360px) { .topo h1 { font-size: 1.25rem; } }
 
 /* ---------- Marca (cor-assinatura do app) ----------
  * --marca-grad: preenchimento (botões principais, aba ativa, anel) com texto --marca-texto (≥ 4,5:1 nos dois temas)
@@ -932,11 +885,6 @@ details.tabela-detalhe > summary, details.ajuda > summary { min-height: 40px; }
  * Só o destaque leva a cor: aba ativa, botão principal, seleção, progresso neutro, foco e cartões hero.
  * Verde/vermelho (melhor/pior), âmbar (atenção) e as cores dos gráficos continuam com o significado delas.
  */
-/* Barra de baixo: aba ativa na cor da marca, com a pílula tingida atrás do ícone */
-.nav a.ativo { color: var(--marca-forte); font-weight: 650; }
-.nav a.ativo::before { background: color-mix(in srgb, var(--marca-m) 24%, transparent); }
-.nav a.ativo svg { stroke-width: 2.2; }
-
 /* Botão principal: degradê da marca, afunda ao tocar */
 .botao.primario {
   background-color: var(--marca-m); background-image: var(--marca-grad); color: var(--marca-texto); border-color: transparent;
@@ -1028,3 +976,154 @@ input[type="checkbox"], input[type="radio"], input[type="range"], progress { acc
 .entrada .nome-app { color: var(--marca-forte); }
 /* Etiqueta vermelha: o texto puxa um pouco para o texto do tema (≥ 4,5:1 também sobre o fundo rosado) */
 .etiqueta.ruim { color: color-mix(in srgb, var(--ruim) 80%, var(--texto)); }
+
+/* ---------- Cores do app (Perfil → Aparência → Cor do app) ----------
+ * data-cor no <html> (o index.html aplica antes da primeira pintura; ver src/lib/cor-app.ts).
+ * Cada opção troca só as três cores do degradê e o --marca-forte de cada tema; o resto deriva delas.
+ * Contraste conferido: texto branco sobre o degradê ≥ 5,1:1 e --marca-forte sobre superfície/fundo ≥ 7:1 (escuro)
+ * e ≥ 6,6:1 (claro), ≥ 4,5:1 também sobre as tintas da marca (etiqueta, aba ativa).
+ * As amostras do Perfil usam as mesmas cores, cada uma no seu botão (data-cor-previa).
+ */
+.cor-app-amostra[data-cor-previa="roxo-rosa"] { --marca-a: #5b4ff0; --marca-m: #7c3aed; --marca-b: #c2255c; }
+:root[data-cor="azul"], .cor-app-amostra[data-cor-previa="azul"] { --marca-a: #2563eb; --marca-m: #1d4ed8; --marca-b: #0e7490; --marca-forte: #7cb6ff; }
+:root[data-cor="verde"], .cor-app-amostra[data-cor-previa="verde"] { --marca-a: #047857; --marca-m: #0f766e; --marca-b: #3f7a12; --marca-forte: #5fd690; }
+:root[data-cor="laranja"], .cor-app-amostra[data-cor-previa="laranja"] { --marca-a: #c2410c; --marca-m: #b93a10; --marca-b: #be123c; --marca-forte: #ffa463; }
+:root[data-cor="grafite"], .cor-app-amostra[data-cor-previa="grafite"] { --marca-a: #52525b; --marca-m: #3f3f46; --marca-b: #27272a; --marca-forte: #d4d4d8; }
+@media (prefers-color-scheme: light) {
+  :root[data-cor="azul"]:not([data-theme="dark"]) { --marca-forte: #0a4fb8; }
+  :root[data-cor="verde"]:not([data-theme="dark"]) { --marca-forte: #0b6232; }
+  :root[data-cor="laranja"]:not([data-theme="dark"]) { --marca-forte: #9a3300; }
+  :root[data-cor="grafite"]:not([data-theme="dark"]) { --marca-forte: #3f3f46; }
+}
+:root[data-cor="azul"][data-theme="light"] { --marca-forte: #0a4fb8; }
+:root[data-cor="verde"][data-theme="light"] { --marca-forte: #0b6232; }
+:root[data-cor="laranja"][data-theme="light"] { --marca-forte: #9a3300; }
+:root[data-cor="grafite"][data-theme="light"] { --marca-forte: #3f3f46; }
+
+/* ---------- Algarismos arredondados (como no app Fitness) ----------
+ * Só nos números de destaque (valores de KPI, anéis, ladrilhos, números grandes); o texto segue na fonte do sistema.
+ * Fora dos aparelhos Apple não há fonte arredondada: cai na do sistema. Algarismos de mesma largura onde alinham.
+ */
+:root { --fonte-numeros: ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', Roboto, sans-serif; }
+:is(.grande, .medio, .kpi-valor, .anel-texto, .dieta-meta-kcal, .anel-kcal-num, .bloco .valor, .hero-stat .valor,
+  .seringa-pilula b, .aneis-legenda-valor, .hoje-prox-valor, .tarefa-valor, .medida-card-valor, .tempo-valor, .aplic-valor,
+  .ajuste-valor, .forca-num, .fotos-numero, .barra-macro-valor, .pf-avatar,
+  .recap-grande, .recap-enorme, .rf-capa-grande-valor, .rf-ladrilho-valor, .rf-recorde-valor) {
+  font-family: var(--fonte-numeros); font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Cabeçalho de vidro com título grande que recolhe (navegação do iOS) ----------
+ * No topo da tela o título aparece grande no conteúdo (.titulo-grande); rolando, ele passa por baixo do
+ * cabeçalho e esmaece, e o título pequeno surge no centro do cabeçalho (.topo.compacto). App.tsx mede
+ * (rolagem passiva + requestAnimationFrame). A altura do cabeçalho não muda (a Análise gruda o filtro nela).
+ */
+:root { --topo-lado: 88px; }
+.topo {
+  position: sticky; top: 0; z-index: 10;
+  display: grid; grid-template-columns: minmax(var(--topo-lado), 1fr) minmax(0, auto) minmax(var(--topo-lado), 1fr);
+  align-items: center; column-gap: 8px;
+  margin: 0 -16px; padding: calc(8px + env(safe-area-inset-top)) 16px 8px;
+  background: var(--vidro);
+  -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px);
+  box-shadow: 0 1px 0 transparent; transition: box-shadow 0.25s ease;
+}
+.topo.compacto { box-shadow: 0 1px 0 var(--borda-suave); }
+.topo .marca-mini { width: 36px; height: 36px; border-radius: 10px; justify-self: start; }
+.topo .marca-mini img { width: 28px; height: 28px; }
+.topo-titulo {
+  margin: 0; min-width: 0; font-size: 1.0625rem; font-weight: 650; letter-spacing: -0.01em; line-height: 1.25; text-align: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  opacity: 0; transform: translateY(6px); transition: opacity 0.2s ease, transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.topo.compacto .topo-titulo { opacity: 1; transform: none; }
+.topo-acoes { display: flex; gap: 8px; justify-self: end; }
+.topo-acoes .icone-botao { border-radius: 50%; border-color: var(--borda-suave); background: color-mix(in srgb, var(--superficie) 80%, transparent); }
+.topo-acoes .icone-botao.ativo { background: color-mix(in srgb, var(--marca-m) 16%, var(--superficie)); border-color: var(--marca-borda); color: var(--marca-forte); }
+@media (max-width: 360px) { :root { --topo-lado: 84px; } .topo-titulo { font-size: 1rem; } }
+
+.titulo-grande { padding: 4px 0 16px; min-width: 0; }
+.titulo-grande > * { opacity: calc(1 - var(--sumir, 0)); transform: scale(calc(1 - var(--sumir, 0) * 0.04)); transform-origin: 0 100%; }
+.titulo-grande h1 { font-size: 2.125rem; font-weight: 750; letter-spacing: -0.025em; line-height: 1.12; overflow-wrap: anywhere; }
+.titulo-grande .sub { margin-top: 3px; color: var(--texto-2); font-size: 0.95rem; overflow-wrap: anywhere; }
+@media (max-width: 360px) { .titulo-grande h1 { font-size: 1.875rem; } }
+@media (prefers-reduced-motion: reduce) { .titulo-grande > * { transform: none; } }
+
+/* ---------- Barra de abas de vidro flutuante (iOS 26) ----------
+ * Cápsula translúcida acima do indicador de início. Rolando para baixo ela encolhe (só ícones);
+ * para cima, ou no topo, volta. Com "Reduzir movimento" fica sempre inteira.
+ * --nav-ocupa: espaço que a barra tapa no fim da tela (barras fixas e o fim do conteúdo ficam acima dele).
+ * --nav-altura: compatível com as contas antigas (--nav-altura + área segura ≥ --nav-ocupa).
+ */
+:root {
+  --nav-barra: 62px;
+  --nav-barra-mini: 50px;
+  --nav-base: max(12px, calc(env(safe-area-inset-bottom) - 10px));
+  --nav-ocupa: calc(var(--nav-barra) + var(--nav-base));
+  --nav-altura: calc(var(--nav-barra) + 12px);
+  --nav-margem: 12px;
+  --nav-vidro: color-mix(in srgb, var(--superficie) 78%, transparent);
+  --nav-brilho: rgb(255 255 255 / 0.1);
+  --nav-borda: rgb(255 255 255 / 0.09);
+  --nav-sombra: 0 10px 34px -10px rgb(0 0 0 / 0.7), 0 2px 8px rgb(0 0 0 / 0.28);
+  --nav-pilula: color-mix(in srgb, var(--marca-m) 24%, transparent);
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --nav-vidro: color-mix(in srgb, var(--superficie) 76%, transparent);
+    --nav-brilho: rgb(255 255 255 / 0.85);
+    --nav-borda: rgb(0 0 0 / 0.07);
+    --nav-sombra: 0 10px 30px -12px rgb(0 0 0 / 0.22), 0 1px 4px rgb(0 0 0 / 0.08);
+    --nav-pilula: color-mix(in srgb, var(--marca-m) 14%, transparent);
+  }
+}
+:root[data-theme="light"] {
+  --nav-vidro: color-mix(in srgb, var(--superficie) 76%, transparent);
+  --nav-brilho: rgb(255 255 255 / 0.85);
+  --nav-borda: rgb(0 0 0 / 0.07);
+  --nav-sombra: 0 10px 30px -12px rgb(0 0 0 / 0.22), 0 1px 4px rgb(0 0 0 / 0.08);
+  --nav-pilula: color-mix(in srgb, var(--marca-m) 14%, transparent);
+}
+.nav {
+  position: fixed; z-index: 20; left: 0; right: 0; bottom: var(--nav-base); margin: 0 auto;
+  width: min(560px, calc(100% - 2 * var(--nav-margem) - env(safe-area-inset-left) - env(safe-area-inset-right)));
+  height: var(--nav-barra); padding: 4px; border-radius: 999px;
+  background: var(--nav-vidro); border: 1px solid var(--nav-borda);
+  -webkit-backdrop-filter: blur(22px) saturate(190%); backdrop-filter: blur(22px) saturate(190%);
+  box-shadow: inset 0 1px 0 var(--nav-brilho), inset 0 -1px 0 rgb(0 0 0 / 0.04), var(--nav-sombra);
+  transition: height 0.34s cubic-bezier(0.2, 0.8, 0.2, 1), width 0.34s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.nav-itens { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); height: 100%; }
+.nav a {
+  position: relative; isolation: isolate; min-width: 0; height: 100%; border-radius: 999px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  text-decoration: none; color: var(--texto-2); font-size: 0.68rem; font-weight: 550; letter-spacing: -0.005em;
+  transition: color 0.2s;
+}
+.nav a::before {
+  content: ''; position: absolute; z-index: -1; inset: 0; border-radius: inherit;
+  background: var(--nav-pilula); opacity: 0; transform: scale(0.8);
+  transition: opacity 0.22s ease, transform 0.32s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+.nav a.ativo { color: var(--marca-forte); font-weight: 650; }
+.nav a.ativo::before { opacity: 1; transform: none; }
+.nav a:active::before { opacity: 1; transform: scale(0.94); }
+.nav svg { width: 22px; height: 22px; flex: none; }
+.nav a.ativo svg { stroke-width: 2.2; }
+.nav-rotulo {
+  max-width: 100%; max-height: 1.3em; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  transition: opacity 0.18s ease, max-height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+/* Seis abas (com Treino): rótulo um pouco menor para caber em 320 px */
+.nav-itens.seis a { font-size: 0.64rem; letter-spacing: -0.015em; }
+@media (max-width: 360px) { .nav-itens.seis a { font-size: 0.6rem; } .nav-itens.seis svg { width: 21px; height: 21px; } }
+/* Encolhida: mais baixa e um pouco mais estreita, só os ícones */
+.nav.mini { --nav-margem: 28px; height: var(--nav-barra-mini); }
+.nav.mini .nav-rotulo { opacity: 0; max-height: 0; }
+@media (max-width: 360px) { .nav.mini { --nav-margem: 20px; } }
+@media (prefers-reduced-motion: reduce) {
+  .nav.mini { --nav-margem: 12px; height: var(--nav-barra); }
+  .nav.mini .nav-rotulo { opacity: 1; max-height: 1.3em; }
+}
+/* Rolar até um campo (foco, scrollIntoView) não o deixa atrás da barra flutuante */
+html { scroll-padding-bottom: calc(var(--nav-ocupa) + 8px); }
+@media print { .titulo-grande { display: none !important; } }

@@ -54,6 +54,14 @@
       html, body { margin: 0; background: #0b0b0c; }
       @media (prefers-color-scheme: light) { html, body { background: #f2f2f4; } }
     </style>
+    <!-- Cor do app escolhida no Perfil (só neste aparelho): aplicada antes da primeira pintura, sem piscar a cor padrão.
+         Mesma chave e mesma lista de src/lib/cor-app.ts -->
+    <script>
+      try {
+        var corApp = localStorage.getItem('app-dieta:cor');
+        if (/^(azul|verde|laranja|grafite)$/.test(corApp || '')) document.documentElement.setAttribute('data-cor', corApp);
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>
