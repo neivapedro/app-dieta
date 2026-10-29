@@ -107,7 +107,7 @@ function FolhaStories({ r, fotos, aoFechar }: { r: RelatorioFinal; fotos: FotoTe
 
   return (
     <div className="compartilhar-camada">
-      <Folha titulo="Compartilhar o resumo" aoFechar={aoFechar}>
+      <Folha detentes={false} titulo="Compartilhar o resumo" aoFechar={aoFechar}>
         <div className="pilha">
           <div className={`compartilhar-previa rf-previa-stories ${previa && !arquivo ? 'atualizando' : ''}`} aria-busy={!arquivo}>
             {previa ? (

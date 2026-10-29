@@ -246,7 +246,7 @@ export function SeletorAlimento({
   const achados = useMemo(() => buscarAlimentos(lista, termo, usados), [lista, termo, usados]);
 
   return (
-    <Folha titulo="Escolher alimento" aoFechar={aoFechar}>
+    <Folha detentes={false} titulo="Escolher alimento" aoFechar={aoFechar}>
       <div className="pilha">
         <Campo rotulo="Buscar">
           <input
@@ -314,7 +314,7 @@ export function FormRefeicao({
   }
 
   return (
-    <Folha titulo="Refeição" aoFechar={aoFechar}>
+    <Folha detentes={false} titulo="Refeição" aoFechar={aoFechar}>
       <form className="pilha" onSubmit={salvar}>
         <div className="grade">
           <Campo rotulo="Nome">
@@ -428,7 +428,7 @@ export function FormConfigDieta({
     setAtividades(atividades.map((a, j) => (j === i ? { ...a, [campo]: v } : a)));
 
   return (
-    <Folha titulo="Ajustar gasto e metas" aoFechar={aoFechar}>
+    <Folha detentes={false} titulo="Ajustar gasto e metas" aoFechar={aoFechar}>
       <form className="pilha" onSubmit={salvar}>
         <Campo rotulo="Seu dia a dia, sem contar o exercício" grupo dica={FATORES_ATIVIDADE.find((f) => f.valor === fator)?.detalhe}>
           <Escolhas

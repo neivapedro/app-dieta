@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { FolhaTroca, FormConfigDieta, FormRefeicao, gr, kcal, LinhaItem, LinhaMacros, novoItem, SeletorAlimento, type Troca } from '../componentes/dieta';
 import { AnelKcal, BarraKcal, BarraMacro, ChipRefeicao, FaltaChips, IconeLapis, IconeSeta, LinhaMacroMeta, ProteinaRefeicoes } from '../componentes/dieta-painel';
 import { EstadoVazio } from '../componentes/estado-vazio';
+import { LinhaDeslizante } from '../componentes/linha-deslizante';
 import { FasePosDieta } from '../componentes/projeto';
 import { Bloco, IconeChip } from '../componentes/ui';
 import { useDados } from '../dados/contexto';
@@ -486,8 +487,15 @@ export function Dieta() {
                   {aberta && (
                     <div className="ref-corpo">
                       {r.itens.map((item, i) => (
-                        <LinhaItem
+                        <LinhaDeslizante
                           key={`${i}-${item.alimento_id}`}
+                          acoes={[
+                            { rotulo: 'Trocar', aoTocar: () => setSeletor({ refeicao: r.id, indice: i }) },
+                            // Remover tem o "Desfazer" logo abaixo (como o ×)
+                            { rotulo: 'Apagar', perigo: true, aoTocar: () => remover(r.id, i) },
+                          ]}
+                        >
+                        <LinhaItem
                           item={item}
                           alimento={banco.mapa.get(item.alimento_id)}
                           aoMudar={(novo) => mudarItem(r.id, i, novo)}
@@ -496,6 +504,7 @@ export function Dieta() {
                           faltaNoFoco={saldo ? <FaltaChips saldo={saldo} inline /> : null}
                           fechar={saldo ? fecharMacro(item, banco.mapa.get(item.alimento_id), saldo) : null}
                         />
+                        </LinhaDeslizante>
                       ))}
                       {m && (
                         <div className="ref-resumo">

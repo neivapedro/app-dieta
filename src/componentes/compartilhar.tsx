@@ -139,7 +139,7 @@ function FolhaCompartilhar({ periodo, aoFechar }: { periodo?: Periodo | null; ao
 
   return (
     <div className="compartilhar-camada">
-      <Folha titulo="Compartilhar progresso" aoFechar={aoFechar}>
+      <Folha detentes={false} titulo="Compartilhar progresso" aoFechar={aoFechar}>
         <div className="pilha">
           <div className={`compartilhar-previa ${previa && !arquivo ? 'atualizando' : ''}`} aria-busy={!arquivo}>
             {previa ? <img src={previa} alt={dados.descricao} width={1080} height={1350} /> : <div className={erro ? 'compartilhar-erro' : 'esqueleto'}>{erro && 'Não foi possível gerar a imagem.'}</div>}

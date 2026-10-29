@@ -122,7 +122,11 @@ export function IconeChip({ nome, cor = 'marca', children }: { nome?: string; co
   );
 }
 
-export function Folha({ titulo, aoFechar, children }: { titulo: string; aoFechar: () => void; children: ReactNode }) {
+/**
+ * Folha de baixo. Conteúdo longo abre no detente médio e o arraste leva ao grande ou fecha;
+ * `detentes={false}` abre sempre inteira (formulários).
+ */
+export function Folha({ titulo, aoFechar, children, detentes = true }: { titulo: string; aoFechar: () => void; children: ReactNode; detentes?: boolean }) {
   useEffect(() => {
     const esc = (e: KeyboardEvent) => e.key === 'Escape' && aoFechar();
     document.addEventListener('keydown', esc);
@@ -165,14 +169,14 @@ export function Folha({ titulo, aoFechar, children }: { titulo: string; aoFechar
       if (antes && antes.isConnected && antes !== document.body) antes.focus({ preventScroll: true });
     };
   }, []);
-  // Arrasta para baixo pela alça/cabeçalho para fechar; ao sair, desce deslizando
-  const { eventos, desloc } = useArrastarFolha(folhaRef, fundoRef, aoFechar);
+  // Detentes (médio/grande); arrasta pela alça/cabeçalho (no médio, por qualquer ponto) para mudar ou fechar; ao sair, desce deslizando
+  const { eventos, desloc } = useArrastarFolha(folhaRef, fundoRef, aoFechar, detentes);
   useSaidaFolha(fundoRef, folhaRef, desloc);
   return (
     <div className="folha-fundo" ref={fundoRef} onClick={aoFechar}>
-      <div className="folha" ref={folhaRef} role="dialog" aria-modal="true" aria-label={titulo} tabIndex={-1} onClick={(e) => e.stopPropagation()}>
-        <div className="folha-alca" aria-hidden="true" {...eventos} />
-        <div className="cartao-cab folha-cab" {...eventos}>
+      <div className="folha" ref={folhaRef} role="dialog" aria-modal="true" aria-label={titulo} tabIndex={-1} onClick={(e) => e.stopPropagation()} {...eventos}>
+        <div className="folha-alca" aria-hidden="true" />
+        <div className="cartao-cab folha-cab">
           <h2>{titulo}</h2>
           <button className="icone-botao" onClick={aoFechar} aria-label="Fechar">
             <Icone nome="fechar" />

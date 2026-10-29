@@ -236,7 +236,7 @@ export function FormForca({ exercicios, aoFechar }: { exercicios: string[]; aoFe
   }
 
   return (
-    <Folha titulo="Força da semana" aoFechar={aoFechar}>
+    <Folha detentes={false} titulo="Força da semana" aoFechar={aoFechar}>
       <form className="pilha" onSubmit={salvar}>
         <p className="mudo">
           A primeira série válida de cada exercício, levada perto da falha (RIR 0 a 1), sempre no mesmo dia da semana. RIR = repetições que ainda
@@ -317,7 +317,7 @@ export function FormExerciciosForca({ atuais, aoFechar }: { atuais: string[]; ao
   }
 
   return (
-    <Folha titulo="Exercícios-âncora" aoFechar={aoFechar}>
+    <Folha detentes={false} titulo="Exercícios-âncora" aoFechar={aoFechar}>
       <form className="pilha" onSubmit={enviar}>
         <p className="mudo">
           Padrão: {EXERCICIOS_PADRAO.join(', ')}. Use 3 ou 4 exercícios multiarticulares que você faz toda semana. Trocar de exercício ou de máquina: mude o nome, e a referência daquele exercício
