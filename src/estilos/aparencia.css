@@ -25,3 +25,18 @@
   .cor-app { padding-left: 12px; }
   .cor-app-nome { font-size: 0.66rem; }
 }
+
+/* Vibração ao tocar (interruptor no estilo iOS) */
+.vibracao-linha {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px; padding: 10px 14px; margin: 0;
+  background: transparent; border: 0; border-top: 1px solid var(--borda-suave); border-radius: 0; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.vibracao-linha:focus-visible { outline: 2px solid var(--marca-forte); outline-offset: 2px; border-radius: var(--raio-sm); }
+.vibracao-chave {
+  margin-left: auto; flex: none; width: 51px; height: 31px; border-radius: 999px; padding: 2px; display: flex; align-items: center;
+  background: var(--superficie-2); border: 1px solid var(--borda); transition: background 0.2s ease;
+}
+.vibracao-chave > span { width: 25px; height: 25px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgb(0 0 0 / 0.35); transition: transform 0.2s ease; }
+.vibracao-chave.ligada { background: var(--marca-grad); border-color: transparent; }
+.vibracao-chave.ligada > span { transform: translateX(20px); }
+@media (prefers-reduced-motion: reduce) { .vibracao-chave, .vibracao-chave > span { transition: none; } }

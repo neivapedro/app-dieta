@@ -1,6 +1,7 @@
 import '../estilos/aparencia.css';
 import { useState } from 'react';
 import { CORES_APP, escolherCorDoApp, lerCorDoApp, type CorApp } from '../lib/cor-app';
+import { definirVibracao, vibracaoLigada, vibrarLeve } from '../lib/haptico';
 
 /**
  * Perfil → Aparência → Cor do app: cinco degradês para a cor da marca (botões, aba ativa, destaques).
@@ -56,5 +57,38 @@ export function CorDoApp() {
         })}
       </div>
     </div>
+  );
+}
+
+/** Perfil → Aparência → Vibração: toque tátil leve ao marcar e salvar (iPhone com iOS 18+ ou Android). Vale só neste aparelho. */
+export function VibracaoDoApp() {
+  const [ligada, setLigada] = useState(() => vibracaoLigada());
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={ligada}
+      className="vibracao-linha"
+      onClick={() => {
+        const nova = !ligada;
+        definirVibracao(nova);
+        setLigada(nova);
+        // O toque de confirmação só quando acabou de ligar
+        if (nova) vibrarLeve();
+      }}
+    >
+      <span className="pf-icone pf-cor-marca" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M2 8v8M5 6v12M22 8v8M19 6v12M9 5h6a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z" />
+        </svg>
+      </span>
+      <span className="pf-texto">
+        <span className="pf-rotulo">Vibração ao tocar</span>
+        <span className="pf-sub">Só neste aparelho</span>
+      </span>
+      <span className={`vibracao-chave${ligada ? ' ligada' : ''}`} aria-hidden="true">
+        <span />
+      </span>
+    </button>
   );
 }

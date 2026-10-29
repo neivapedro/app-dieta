@@ -2,7 +2,7 @@ import '../estilos/perfil.css';
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { BotaoExcluir, Campo, CampoNumero, Escolhas, Icone } from '../componentes/ui';
-import { CorDoApp } from '../componentes/aparencia';
+import { CorDoApp, VibracaoDoApp } from '../componentes/aparencia';
 import { CALENDARIO_URL } from '../config';
 import { useFotos } from '../componentes/fotos';
 import { fotoParaBackup, importarFotos } from '../dados/fotos';
@@ -1116,6 +1116,7 @@ export function Perfil() {
 
       <Grupo titulo="Aparência">
         <CorDoApp />
+        <VibracaoDoApp />
       </Grupo>
 
       <Grupo titulo="Dados">
