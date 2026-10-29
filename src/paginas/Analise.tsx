@@ -7,6 +7,8 @@ import { LinhaQualidade, useQualidade } from '../componentes/composicao';
 import { Anel, BarraMeta, LinhaDoses, MapaCalor, Pilulas, tomAdesao, Variacoes } from '../componentes/painel';
 import { Bloco, IconeChip, Vazio } from '../componentes/ui';
 import { EstadoVazio } from '../componentes/estado-vazio';
+import { useDeslizarAbas } from '../componentes/deslizar-abas';
+import { vibrarLeve } from '../lib/haptico';
 import { GraficoBarrasSemana, ProvedorSincronia, type Marco, type PontoSerie, type Serie } from '../componentes/grafico';
 import { BarraPeriodo, type DestaqueAnalise } from '../componentes/analise-filtro';
 import { FaixaFases, GraficoJanela, LinhaDoTempo } from '../componentes/analise-graficos';
@@ -64,6 +66,7 @@ const ABAS_ANALISE: [AbaAnalise, string][] = [
   ['habitos', 'Hábitos'],
   ['relatorio', 'PDF'],
 ];
+const CHAVES_ANALISE = ABAS_ANALISE.map(([k]) => k);
 
 function linhaComparacao(rotulo: string, a: number | null, b: number | null, fmt: (n: number | null) => string, fmtDelta: (n: number) => string, menorMelhor: boolean, chave: ChaveMdc) {
   const d = a !== null && b !== null ? b - a : null;
@@ -163,9 +166,12 @@ export function Analise() {
     setParams(novo, { replace: true });
   };
   const setAba = (a: AbaAnalise) => {
+    if (a !== aba) vibrarLeve();
     mudarParams(a, params.get('periodo'));
     window.scrollTo({ top: 0 });
   };
+  // Deslizar o dedo para o lado no conteúdo troca de aba (gráficos e filtros ficam fora do gesto)
+  const deslizar = useDeslizarAbas(CHAVES_ANALISE, aba, setAba);
   const [metrica, setMetrica] = useState<ChavePainel>('cintura_cm');
   // Destaque cruzado (bloco de dose, semana ou dia) e o detalhe de um KPI aberto
   const [destaque, setDestaque] = useState<DestaqueAnalise | null>(null);
@@ -904,7 +910,7 @@ export function Analise() {
   const intervaloIniAtu = iniP ? `${formatarData(iniP.data, true)} → ${atuP ? formatarData(atuP.data, true) : 'sem nova medição'}` : 'Medições com fita, em jejum';
 
   return (
-    <div className="pilha relatorio analise">
+    <div className="pilha relatorio analise" ref={deslizar}>
       <div className="so-impressao">
         <h1>Relatório do ciclo · {perfil?.nome}</h1>
         <p>Gerado em {formatarData(hoje)}. Dados registrados pelo próprio paciente no app Ciclo.</p>

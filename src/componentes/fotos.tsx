@@ -514,7 +514,7 @@ function FolhaLote({
   }
 
   return (
-    <Folha titulo={n === 1 ? `Nova foto · ${onde}` : `${n} fotos novas · ${onde}`} aoFechar={aoFechar}>
+    <Folha detentes={false} titulo={n === 1 ? `Nova foto · ${onde}` : `${n} fotos novas · ${onde}`} aoFechar={aoFechar}>
       {lote.fase === 'escolher' && (
         <div className="pilha" style={{ gap: 12 }}>
           <Campo
@@ -642,7 +642,7 @@ function Visualizador({
   }
 
   return (
-    <Folha titulo={`${ROTULO_SESSAO[vista.sessao]} · foto ${i + 1} de ${lista.length}`} aoFechar={aoFechar}>
+    <Folha detentes={false} titulo={`${ROTULO_SESSAO[vista.sessao]} · foto ${i + 1} de ${lista.length}`} aoFechar={aoFechar}>
       <div className="pilha" style={{ gap: 10 }}>
         <CarrosselFoto
           key={vista.id}

@@ -5,6 +5,7 @@ import { diaDaSemana, formatarData, hojeLocal } from '../lib/datas';
 import { cm, kg, lerFaixa, num, paraNumero, paraTexto, pp } from '../lib/formato';
 import { ajusteVigente, cenariosPesoMeta, cinturaAlvoRca, cinturaNecessaria, percentualGordura, type Composicao } from '../lib/gordura';
 import { compararMetas } from '../lib/registroDecisoes';
+import { vibrarLeve } from '../lib/haptico';
 import {
   digitosParaTempo,
   ESCALA_ESFORCO,
@@ -38,7 +39,15 @@ export function Marcador({
   previsto?: boolean;
 }) {
   return (
-    <button type="button" className={`check-dia ${feito ? 'feito' : ''} ${previsto ? 'previsto' : ''}`} onClick={aoTocar} aria-pressed={feito}>
+    <button
+      type="button"
+      className={`check-dia ${feito ? 'feito' : ''} ${previsto ? 'previsto' : ''}`}
+      onClick={() => {
+        vibrarLeve();
+        aoTocar();
+      }}
+      aria-pressed={feito}
+    >
       <span className="check-dia-icone">{feito ? '✓' : ''}</span>
       <span className="check-dia-rotulo">{rotulo}</span>
       <span className="check-dia-detalhe">{detalhe}</span>
@@ -251,6 +260,7 @@ export function FormDiaTreino({ data, foco, aoFechar }: { data: string; foco?: '
 
   return (
     <Folha
+      detentes={false}
       titulo={
         focoCorrida
           ? // Com treino marcado, a folha também tem o esforço da musculação
@@ -406,7 +416,7 @@ export function FormMetas({
   const atual = (v: number | null | undefined, f: (n: number | null | undefined) => string) => (base ? `${quando}: ${f(v)}` : undefined);
 
   return (
-    <Folha titulo="Metas do fim do projeto" aoFechar={aoFechar}>
+    <Folha detentes={false} titulo="Metas do fim do projeto" aoFechar={aoFechar}>
       <form className="pilha" onSubmit={salvar}>
         {primeiraVez && (
           <p className="mudo">

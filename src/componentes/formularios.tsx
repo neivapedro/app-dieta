@@ -9,6 +9,7 @@ import { cm, kg, lerFaixa, lerPeso, num, paraNumero, paraTexto, pp, ui } from '.
 import { ajusteVigente, composicao, motivoSemGordura } from '../lib/gordura';
 import { LOCAIS_APLICACAO, NIVEIS_NAUSEA, type Aplicacao, type CorUrina, type Medida, type RegistroDiario } from '../lib/tipos';
 import { AlertasSeguranca } from './inicio';
+import { vibrarSucesso } from '../lib/haptico';
 import { BotaoExcluir, Campo, CampoNumero, Escolhas, Folha } from './ui';
 
 const OPCOES_NAUSEA = NIVEIS_NAUSEA.map((r, i) => ({ valor: i, rotulo: `${i} · ${r}` }));
@@ -117,6 +118,7 @@ export function FormAplicacao({ aplicacao, aoFechar, aoSalvar }: { aplicacao?: A
       return setErro(`Confira: ${avisos.join('; ')}. Toque em Salvar de novo para confirmar.`);
     }
     setSalvando(true);
+    vibrarSucesso();
     const nova: Aplicacao = {
       id: aplicacao?.id ?? crypto.randomUUID(),
       ciclo_id: ciclo!.id,
@@ -168,7 +170,7 @@ export function FormAplicacao({ aplicacao, aoFechar, aoSalvar }: { aplicacao?: A
   }
 
   return (
-    <Folha titulo={aplicacao ? `Editar ${numero}ª aplicação` : `Registrar ${numero}ª aplicação`} aoFechar={aoFechar}>
+    <Folha detentes={false} titulo={aplicacao ? `Editar ${numero}ª aplicação` : `Registrar ${numero}ª aplicação`} aoFechar={aoFechar}>
       <form className="pilha" onSubmit={salvar}>
         <div className="linha">
           {sit.fase ? (
@@ -350,6 +352,7 @@ export function FormDiario({ registro, dataInicial, aoFechar }: { registro?: Reg
       return setErro('Preencha ao menos um campo.');
     if (salvando) return;
     setSalvando(true);
+    vibrarSucesso();
     // Pela fila: grava na hora e, sem internet, envia quando a conexão voltar
     gravar({
       tipo: 'diario',
@@ -376,7 +379,7 @@ export function FormDiario({ registro, dataInicial, aoFechar }: { registro?: Reg
   }
 
   return (
-    <Folha titulo="Registro do dia" aoFechar={aoFechar}>
+    <Folha detentes={false} titulo="Registro do dia" aoFechar={aoFechar}>
       <form className="pilha" onSubmit={salvar}>
         <Campo rotulo="Data" dica={diaDaSemana(data)}>
           <input type="date" value={data} max={hojeLocal()} onChange={(e) => trocarData(e.target.value)} required />
@@ -578,6 +581,7 @@ export function FormMedida({ medida, aoFechar, aoSalvar }: { medida?: Medida; ao
     if (medidas.some((m) => m.data === data && m.id !== medida?.id)) return setErro('Já existe uma medição nesta data. Toque nela no histórico para editar.');
     if (salvando) return;
     setSalvando(true);
+    vibrarSucesso();
     // Pela fila: aparece na hora e, sem sinal, é enviada quando a internet voltar
     gravar({
       tipo: 'medida',
@@ -603,7 +607,7 @@ export function FormMedida({ medida, aoFechar, aoSalvar }: { medida?: Medida; ao
   }
 
   return (
-    <Folha titulo={medida ? 'Editar medição' : 'Nova medição'} aoFechar={aoFechar}>
+    <Folha detentes={false} titulo={medida ? 'Editar medição' : 'Nova medição'} aoFechar={aoFechar}>
       <form className="pilha" onSubmit={salvar}>
         <Campo rotulo="Data">
           <input type="date" value={data} max={hojeLocal()} onChange={(e) => setData(e.target.value)} required />

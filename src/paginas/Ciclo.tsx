@@ -6,6 +6,9 @@ import { FormAplicacao } from '../componentes/formularios';
 import { LinhaDoses } from '../componentes/painel';
 import { Campo, CampoNumero, Escolhas, Folha, IconeChip, Vazio } from '../componentes/ui';
 import { EstadoVazio } from '../componentes/estado-vazio';
+import { useDeslizarAbas } from '../componentes/deslizar-abas';
+import { LinhaDeslizante } from '../componentes/linha-deslizante';
+import { vibrarLeve } from '../lib/haptico';
 import { useDados } from '../dados/contexto';
 import { CicloSalvoEmParte } from '../dados/repositorio';
 import { useCalculos } from '../dados/useCalculos';
@@ -41,6 +44,7 @@ const ABAS_CICLO: [Aba, string][] = [
   ['plano', 'Plano'],
   ['ajustes', 'Ajustes'],
 ];
+const CHAVES_CICLO = ABAS_CICLO.map(([k]) => k);
 
 /** Plano com mudanças não salvas (para avisar antes de sair dele) */
 const planoComMudancas = { atual: false };
@@ -52,11 +56,14 @@ export function Ciclo() {
   const setAba = (a: Aba) => {
     if (aba === 'plano' && a !== 'plano' && planoComMudancas.atual && !window.confirm('O plano tem mudanças não salvas. Sair sem salvar?')) return;
     planoComMudancas.atual = false;
+    if (a !== aba) vibrarLeve();
     setParams(a === 'agenda' ? {} : { aba: a }, { replace: true });
     window.scrollTo({ top: 0 });
   };
+  // Deslizar o dedo para o lado no conteúdo troca de aba (pelo mesmo setAba: confirma o Plano não salvo)
+  const deslizar = useDeslizarAbas(CHAVES_CICLO, aba, setAba);
   return (
-    <div className="pilha">
+    <div className="pilha" ref={deslizar}>
       <div className="abas abas-painel" role="tablist" aria-label="Seções do ciclo">
         {ABAS_CICLO.map(([k, r]) => (
           <button key={k} role="tab" aria-selected={aba === k} className={aba === k ? 'ativo' : ''} onClick={() => setAba(k)}>
@@ -90,7 +97,7 @@ const nomeFase = (f: FaseLocalizada | null) => (f ? `Fase ${f.indice + 1} · ${f
 const REALIZADAS_INICIAIS = 5;
 
 function Agenda() {
-  const { ciclo } = useDados();
+  const { ciclo, gravar } = useDados();
   const { resumo, hoje } = useCalculos();
   const [editando, setEditando] = useState<Aplicacao | null>(null);
   const [novo, setNovo] = useState(false);
@@ -282,7 +289,20 @@ function Agenda() {
               {(todasFeitas ? realizadas : realizadas.slice(0, REALIZADAS_INICIAIS)).map((l) => {
                 const dif = Math.abs(l.diferenca_mg) > 1e-9;
                 return (
-                  <button type="button" key={l.aplicacao.id} className="aplic" onClick={() => setEditando(l.aplicacao)}>
+                  <LinhaDeslizante
+                    key={l.aplicacao.id}
+                    acoes={[
+                      { rotulo: 'Editar', aoTocar: () => setEditando(l.aplicacao) },
+                      {
+                        rotulo: 'Apagar',
+                        perigo: true,
+                        confirmar: 'O saldo e a agenda serão recalculados.',
+                        // O mesmo caminho do "Excluir aplicação" do formulário
+                        aoTocar: () => gravar({ tipo: 'excluir', dado: { alvo: 'aplicacao', id: l.aplicacao.id, data: l.aplicacao.data } }),
+                      },
+                    ]}
+                  >
+                  <button type="button" className="aplic" onClick={() => setEditando(l.aplicacao)}>
                     <span className="aplic-no numero">{l.numero}</span>
                     <span className="aplic-corpo">
                       <span className="aplic-data numero">
@@ -309,6 +329,7 @@ function Agenda() {
                       <span>{ui(l.ui_aplicada)}</span>
                     </span>
                   </button>
+                  </LinhaDeslizante>
                 );
               })}
             </div>
@@ -667,7 +688,7 @@ function FolhaFase({
   const m = marcacao(fv.dose_mg, ciclo);
   const capacidade = capacidadeSeringa(ciclo);
   return (
-    <Folha titulo={`Fase ${i + 1}`} aoFechar={aoFechar}>
+    <Folha detentes={false} titulo={`Fase ${i + 1}`} aoFechar={aoFechar}>
       <div className="pilha folha-fase">
         <div className="linha">
           <span className="mudo">

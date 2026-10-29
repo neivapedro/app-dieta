@@ -11,6 +11,7 @@ import { ResumoSemana } from '../componentes/ResumoSemana';
 import { FormMetas } from '../componentes/treino';
 import { IconeChip, Vazio } from '../componentes/ui';
 import { EstadoVazio } from '../componentes/estado-vazio';
+import { LinhaDeslizante } from '../componentes/linha-deslizante';
 import { useDados } from '../dados/contexto';
 import { useCalculos } from '../dados/useCalculos';
 import { formatarData } from '../lib/datas';
@@ -35,7 +36,7 @@ const HISTORICO_CURTO = 5;
 
 /** Equivale à aba "% de Gordura" da Planilha Gorgonoidiana. */
 export function Medidas() {
-  const { medidas, perfil, registroDecisoes, aplicacoes } = useDados();
+  const { medidas, perfil, registroDecisoes, aplicacoes, gravar } = useDados();
   const { composicoes, geral } = useCalculos();
   const qualidade = useQualidade();
   const [editando, setEditando] = useState<Medida | null>(null);
@@ -292,7 +293,15 @@ export function Medidas() {
                 { rotulo: '% gordura', valor: pp(c.bf), d: delta(c, a, 'bf'), fmt: (n) => sinal(n, 1, ' p.p.'), chave: 'bf' },
               ];
               return (
-                <button key={m.id} type="button" className="med-hist-item" onClick={() => setEditando(m)} aria-label={`Editar a medição de ${formatarData(c.data)}`}>
+                <LinhaDeslizante
+                  key={m.id}
+                  acoes={[
+                    { rotulo: 'Editar', aoTocar: () => setEditando(m) },
+                    // O mesmo caminho e o mesmo aviso do "Excluir medição" do formulário
+                    { rotulo: 'Apagar', perigo: true, confirmar: 'Excluir esta medição?', aoTocar: () => gravar({ tipo: 'excluir', dado: { alvo: 'medida', id: m.id, data: m.data } }) },
+                  ]}
+                >
+                <button type="button" className="med-hist-item" onClick={() => setEditando(m)} aria-label={`Editar a medição de ${formatarData(c.data)}`}>
                   <span className="med-hist-cab">
                     <b className="numero">{formatarData(c.data, true)}</b>
                     {c.atipica && <span className="etiqueta aviso">atípica</span>}
@@ -314,6 +323,7 @@ export function Medidas() {
                     ))}
                   </span>
                 </button>
+                </LinhaDeslizante>
               );
             })}
           </div>

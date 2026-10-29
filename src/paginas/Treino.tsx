@@ -19,6 +19,8 @@ import { ajusteVigente, cenariosPesoMeta, cinturaNecessaria, MDC, type ChaveMdc,
 import { progressoMeta } from '../lib/painel';
 import { SEMANAS_POS } from '../lib/projeto';
 import { formatarKm, formatarTempo, segundaDaSemana, SUBIDA_ESFORCO, textoKmCorridos, type ComparacaoEsforco, type Contagem } from '../lib/treino';
+import { useDeslizarAbas } from '../componentes/deslizar-abas';
+import { vibrarLeve } from '../lib/haptico';
 import { ABAS_TREINO, abaTreino, barraPlacar, resumoCorridas, textoHoje, tomPlacar, type AbaTreino } from '../lib/treino-painel';
 import type { MetricaSemanal } from '../lib/treino-grafico';
 
@@ -119,6 +121,8 @@ const OPCOES_METRICA: [MetricaSemanal, string][] = [
   ['peso_kg', 'Peso'],
 ];
 
+const CHAVES_TREINO = ABAS_TREINO.map(([k]) => k);
+
 export function Treino() {
   const t = useTreino();
   const { perfil, medidas } = useDados();
@@ -131,9 +135,12 @@ export function Treino() {
   const [params, setParams] = useSearchParams();
   const aba = abaTreino(params.get('aba'));
   const setAba = (a: AbaTreino) => {
+    if (a !== aba) vibrarLeve();
     setParams(a === 'hoje' ? {} : { aba: a }, { replace: true });
     window.scrollTo({ top: 0 });
   };
+  // Deslizar o dedo para o lado no conteúdo troca de aba
+  const deslizar = useDeslizarAbas(CHAVES_TREINO, aba, setAba);
   if (!t) return null;
   const { placar: p, hoje, inicial, atual, metas } = t;
   const progresso = p.totalDias ? Math.min(p.diaAtual / p.totalDias, 1) : 0;
@@ -826,7 +833,7 @@ export function Treino() {
   );
 
   return (
-    <div className="pilha">
+    <div className="pilha" ref={deslizar}>
       <div className="abas abas-painel" role="tablist" aria-label="Seções do treino">
         {ABAS_TREINO.map(([k, r]) => (
           <button key={k} role="tab" aria-selected={aba === k} className={aba === k ? 'ativo' : ''} onClick={() => setAba(k)}>

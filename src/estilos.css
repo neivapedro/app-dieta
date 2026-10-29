@@ -840,6 +840,28 @@ main .pilha > .cartao, main .pilha > .kpis, main > .pilha > section { animation:
 }
 /* No topo da rolagem o cabeçalho também arrasta; rolada, ele volta a rolar a folha */
 .folha.no-topo > .folha-cab { touch-action: none; }
+/* Detente médio: a folha mostra só o começo (sem rolar dentro); o arraste sobe para a altura toda */
+.folha.folha-media { overflow-y: hidden; }
+/* Deslizar entre sub-abas: o conteúdo (não a barra de abas) acompanha o dedo; só durante o gesto */
+.deslizando-abas > :not([role="tablist"]) { transform: translateX(var(--deslize, 0px)); transition: var(--deslize-transicao, none); }
+.app:has(.deslizando-abas) { overflow-x: clip; }
+/* Linha com ações ao deslizar (Editar / Apagar): as ações ficam por baixo, à direita; a frente desliza */
+.linha-deslizante { position: relative; overflow: hidden; }
+.linha-frente { position: relative; z-index: 1; background: var(--superficie); }
+.linha-acoes { position: absolute; top: 0; right: 0; bottom: 0; display: flex; }
+.linha-acoes.armada { left: 0; }
+.linha-acao {
+  flex: 1 0 auto; min-width: 76px; padding: 0 12px; border: 0; font: inherit; font-size: 0.85rem; font-weight: 650;
+  color: #fff; background: #636366; cursor: pointer; overflow-wrap: anywhere;
+}
+/* Vermelho escuro o bastante para o texto branco (≥ 4,5:1) nos dois temas */
+.linha-acao.perigo { background: #c80014; }
+.linha-acoes.armada .linha-acao { flex: 1 1 auto; font-size: 0.8rem; line-height: 1.25; text-align: center; padding: 4px 14px; }
+.linha-frente { touch-action: pan-y pinch-zoom; }
+/* As listas que usam a linha: divisórias e cantos no invólucro (a frente leva só o conteúdo) */
+.aplics > .linha-deslizante + .linha-deslizante { border-top: 1px solid var(--borda-suave); }
+.med-hist > .linha-deslizante { border-radius: var(--raio-sm); }
+.ref-corpo > .linha-deslizante:first-child > .linha-frente > .item-dieta { border-top: 0; }
 /* Saída: a cópia da folha desce do ponto em que estava e o fundo some */
 .folha-fundo.saindo { animation: sumir 0.3s ease-in forwards; pointer-events: none; }
 .folha-fundo.saindo .folha { animation: descer-folha 0.3s cubic-bezier(0.32, 0.72, 0, 1) forwards; }

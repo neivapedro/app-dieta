@@ -8,6 +8,7 @@ import { hojeLocal, somarDias } from '../lib/datas';
 import { kg, lerPeso, num, paraTexto } from '../lib/formato';
 import { diaCurto, horaDaFaixaOntem, pendenciasDeOntem, textoPendencias } from '../lib/rotina';
 import { alertasSeguranca, AVISO_SEGURANCA } from '../lib/seguranca';
+import { vibrarLeve } from '../lib/haptico';
 import { NIVEIS_NAUSEA, type RegistroDiario } from '../lib/tipos';
 import { rotuloCardio, segundaDaSemana, tipoCardioEfetivo, tocarCardio, type TipoCardio } from '../lib/treino';
 import { BotaoCorrida, FormDiaTreino, MarcadoresDia } from './treino';
@@ -45,6 +46,8 @@ export function useGravarDia() {
   const { diario, gravar, hoje } = useDados();
   return (data: string, campos: Partial<CamposDia>) => {
     if (diaVirou(hoje)) return;
+    // Tique tátil no próprio toque (marcar no checklist, náusea, sintomas, plano, peso)
+    vibrarLeve();
     const atual = diario.find((r) => r.data === data);
     const novo: CamposDia = {
       peso_kg: atual?.peso_kg ?? null,
@@ -74,6 +77,7 @@ export function useGravarTreino() {
   // cardioTipo: toque em Bike ou Corrida (marca, troca o tipo ou desmarca; ver tocarCardio)
   return (data: string, campos: { treino?: boolean; cardio?: boolean; cardioTipo?: TipoCardio }) => {
     if (diaVirou(hoje)) return;
+    vibrarLeve();
     const atual = treinos.find((t) => t.data === data);
     gravar({
       tipo: 'treino',

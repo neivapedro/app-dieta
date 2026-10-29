@@ -1,7 +1,18 @@
 // Movimento com propósito: números que contam ao aparecer, folha que arrasta para fechar
 // e sai deslizando, e o "puxar para atualizar". Tudo some com "Reduzir movimento".
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as PE, type RefObject } from 'react';
-import { DURACAO_CONTAGEM, deveFecharFolha, direcaoGesto, LIMITE_PUXAR, resistencia, valorContagem, velocidadeGesto } from '../lib/movimento-gestos';
+import { vibrarLeve } from '../lib/haptico';
+import {
+  alturaMedia,
+  destinoFolha,
+  DURACAO_CONTAGEM,
+  direcaoGesto,
+  LIMITE_PUXAR,
+  resistencia,
+  usarDetentes,
+  valorContagem,
+  velocidadeGesto,
+} from '../lib/movimento-gestos';
 
 /** "Reduzir movimento" ligado no aparelho */
 export function movimentoReduzido(): boolean {
@@ -83,18 +94,51 @@ export function Numero({ valor, formato, className }: { valor: number; formato: 
   );
 }
 
-/* ---------- Folha: arrastar para fechar e animação de saída ---------- */
+/* ---------- Folha: detentes, arrastar para fechar e animação de saída ---------- */
 
 const ALVOS_CLIQUE = 'button, a, input, select, textarea, label, [role="button"], [role="radio"], [role="tab"]';
+// Onde o arraste da folha no detente médio não começa (campos, carrossel de fotos, gestos próprios)
+const SEM_ARRASTAR_FOLHA = 'input, select, textarea, [contenteditable="true"], .foto-carrossel, [data-sem-arrastar]';
+const CURVA_FOLHA = 'cubic-bezier(0.32, 0.72, 0, 1)';
+
+export type DetenteFolha = 'media' | 'grande';
 
 /**
- * Arrastar a folha para baixo pela alça ou pelo cabeçalho (só com a folha no topo
- * da rolagem). Fecha passando de 25% da altura ou num gesto rápido.
- * Devolve os eventos para a alça/cabeçalho e o deslocamento atual (para a saída).
+ * Folha com detentes (como no Mapas do iPhone): com conteúdo longo e `comDetentes`, abre no
+ * médio (~58% da tela, sem rolagem dentro) e o arraste em qualquer ponto sobe para o grande
+ * (a altura toda, com rolagem) ou desce para fechar. Conteúdo curto: do tamanho do conteúdo.
+ * No grande, arrasta pela alça ou pelo cabeçalho (só com a folha no topo da rolagem) para
+ * voltar ao médio ou fechar. Um campo que ganha foco leva ao grande (o teclado não o esconde).
+ * Devolve os eventos da folha e o deslocamento atual (para a animação de saída).
  */
-export function useArrastarFolha(folhaRef: RefObject<HTMLElement | null>, fundoRef: RefObject<HTMLElement | null>, aoFechar: () => void) {
-  const gesto = useRef<{ id: number; y0: number; arrastando: boolean; amostras: { y: number; t: number }[] } | null>(null);
+export function useArrastarFolha(folhaRef: RefObject<HTMLElement | null>, fundoRef: RefObject<HTMLElement | null>, aoFechar: () => void, comDetentes = true) {
+  const gesto = useRef<{
+    id: number;
+    x0: number;
+    y0: number;
+    h0: number;
+    grande: number;
+    arrastando: boolean;
+    amostras: { y: number; t: number }[];
+  } | null>(null);
   const desloc = useRef(0);
+  // Detente atual (null = sem detentes: folha do tamanho do conteúdo)
+  const detente = useRef<DetenteFolha | null>(null);
+  const media = useRef(0);
+  const fim = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  const maxAltura = (folha: HTMLElement) => {
+    const m = parseFloat(getComputedStyle(folha).maxHeight);
+    return Number.isFinite(m) && m > 0 ? m : window.innerHeight * 0.92;
+  };
+  const alturaGrande = (folha: HTMLElement) => Math.min(folha.scrollHeight, maxAltura(folha));
+
+  const marcarDetente = (folha: HTMLElement, d: DetenteFolha | null) => {
+    detente.current = d;
+    folha.classList.toggle('folha-media', d === 'media');
+    if (d) folha.dataset.detente = d;
+    else delete folha.dataset.detente;
+  };
 
   // Na rolagem do topo, o cabeçalho também arrasta (fora dele, o cabeçalho rola a folha normalmente)
   useEffect(() => {
@@ -106,52 +150,136 @@ export function useArrastarFolha(folhaRef: RefObject<HTMLElement | null>, fundoR
     return () => folha.removeEventListener('scroll', marcar);
   }, [folhaRef]);
 
-  function mover(d: number) {
+  // Ao abrir: conteúdo longo começa no detente médio. Conteúdo que cresce logo depois de abrir
+  // (gráfico carregando), antes de qualquer toque, também passa ao médio.
+  useLayoutEffect(() => {
+    const folha = folhaRef.current;
+    if (!folha || !comDetentes) return;
+    const abrirMedia = () => {
+      if (!usarDetentes(folha.scrollHeight, window.innerHeight, window.innerWidth)) return false;
+      media.current = alturaMedia(window.innerHeight);
+      folha.style.height = `${media.current}px`;
+      marcarDetente(folha, 'media');
+      return true;
+    };
+    if (abrirMedia() || typeof ResizeObserver !== 'function') return;
+    const t0 = performance.now();
+    let tocou = false;
+    const toque = () => (tocou = true);
+    folha.addEventListener('pointerdown', toque, { once: true });
+    const obs = new ResizeObserver(() => {
+      if (tocou || performance.now() - t0 > 900 || detente.current) return obs.disconnect();
+      if (abrirMedia()) obs.disconnect();
+    });
+    obs.observe(folha);
+    return () => {
+      obs.disconnect();
+      folha.removeEventListener('pointerdown', toque);
+    };
+  }, [folhaRef, comDetentes]);
+
+  /** Altura visível v (px). Acima da base (médio, ou a altura toda sem detentes) muda a altura; abaixo, desce a folha. */
+  function mover(v: number, grande: number) {
     const folha = folhaRef.current;
     const fundo = fundoRef.current;
+    if (!folha) return;
+    const base = detente.current ? media.current : grande;
+    const d = Math.max(0, base - v);
     desloc.current = d;
-    if (folha) {
-      folha.style.transition = 'none';
-      folha.style.transform = d > 0 ? `translateY(${d}px)` : '';
-    }
+    folha.style.transition = 'none';
+    if (detente.current) folha.style.height = `${Math.round(Math.min(Math.max(v, base), grande))}px`;
+    folha.style.transform = d > 0 ? `translateY(${d}px)` : '';
     if (fundo) {
-      const h = folha?.offsetHeight || 1;
-      fundo.style.backgroundColor = d > 0 ? `rgb(0 0 0 / ${(0.5 * Math.max(0, 1 - d / h)).toFixed(3)})` : '';
+      fundo.style.transition = 'none';
+      fundo.style.backgroundColor = d > 0 ? `rgb(0 0 0 / ${(0.5 * Math.max(0, 1 - d / Math.max(base, 1))).toFixed(3)})` : '';
     }
   }
 
-  function voltar() {
+  /** Encaixa no detente (com a curva de mola; sem animação no "reduzir movimento") */
+  function encaixar(d: DetenteFolha | null, grande: number) {
     const folha = folhaRef.current;
     const fundo = fundoRef.current;
+    if (!folha) return;
+    const antes = detente.current;
     desloc.current = 0;
-    if (folha) {
-      folha.style.transition = 'transform 0.32s cubic-bezier(0.32, 0.72, 0, 1)';
-      folha.style.transform = '';
-    }
+    clearTimeout(fim.current);
+    const animar = !movimentoReduzido();
+    folha.style.transition = animar ? `transform 0.34s ${CURVA_FOLHA}, height 0.4s ${CURVA_FOLHA}` : 'none';
+    folha.style.transform = '';
     if (fundo) {
-      fundo.style.transition = 'background-color 0.32s ease';
+      fundo.style.transition = animar ? 'background-color 0.32s ease' : 'none';
       fundo.style.backgroundColor = '';
     }
+    if (d === 'media') {
+      folha.scrollTop = 0;
+      folha.style.height = `${media.current}px`;
+      marcarDetente(folha, 'media');
+    } else if (d === 'grande') {
+      folha.style.height = `${grande}px`;
+      marcarDetente(folha, 'grande');
+      // No fim, a altura volta a seguir o conteúdo (até o máximo da folha)
+      fim.current = setTimeout(() => {
+        if (detente.current === 'grande') folha.style.height = '';
+      }, animar ? 420 : 0);
+    }
+    if (d !== antes) vibrarLeve();
   }
+
+  useEffect(() => () => clearTimeout(fim.current), []);
+
+  // Campo com foco no médio: vai para o grande (no iPhone o teclado esconderia o campo).
+  // Foco pelo teclado (Tab) num item abaixo da parte visível também.
+  useEffect(() => {
+    const folha = folhaRef.current;
+    if (!folha) return;
+    const foco = (e: FocusEvent) => {
+      const alvo = e.target as Element | null;
+      if (detente.current !== 'media' || !alvo || alvo === folha || alvo.closest?.('.folha') !== folha) return;
+      const campo = alvo.matches('input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea, select, [contenteditable="true"]');
+      const r = alvo.getBoundingClientRect();
+      const fora = r.bottom > folha.getBoundingClientRect().top + media.current || folha.scrollTop > 0;
+      if (!campo && !fora) return;
+      encaixar('grande', alturaGrande(folha));
+    };
+    // Arrastando a folha, o iPhone não rola a página por trás
+    const tocar = (e: TouchEvent) => {
+      if (gesto.current?.arrastando && e.cancelable) e.preventDefault();
+    };
+    folha.addEventListener('focusin', foco);
+    folha.addEventListener('touchmove', tocar, { passive: false });
+    return () => {
+      folha.removeEventListener('focusin', foco);
+      folha.removeEventListener('touchmove', tocar);
+    };
+  }, [folhaRef]);
 
   const eventos = {
     onPointerDown(e: PE<HTMLElement>) {
       const folha = folhaRef.current;
-      if (!folha || (e.pointerType === 'mouse' && e.button !== 0)) return;
-      if ((e.target as Element).closest?.(ALVOS_CLIQUE)) return;
-      if (folha.scrollTop > 0) return;
-      gesto.current = { id: e.pointerId, y0: e.clientY, arrastando: false, amostras: [{ y: e.clientY, t: e.timeStamp }] };
+      const alvo = e.target as Element;
+      if (!folha || (e.pointerType === 'mouse' && e.button !== 0) || !alvo.closest) return;
+      // Folha aberta por cima desta (dentro dela no DOM): o gesto é da outra
+      if (alvo.closest('.folha') !== folha || alvo.closest(SEM_ARRASTAR_FOLHA)) return;
+      const noCab = !!alvo.closest('.folha-alca, .folha-cab');
+      if (detente.current !== 'media') {
+        if (!noCab || alvo.closest(ALVOS_CLIQUE) || folha.scrollTop > 0) return;
+      }
+      const grande = detente.current === 'media' ? alturaGrande(folha) : folha.offsetHeight;
+      gesto.current = { id: e.pointerId, x0: e.clientX, y0: e.clientY, h0: folha.offsetHeight, grande, arrastando: false, amostras: [{ y: e.clientY, t: e.timeStamp }] };
     },
     onPointerMove(e: PE<HTMLElement>) {
       const g = gesto.current;
       if (!g || g.id !== e.pointerId) return;
+      const dx = e.clientX - g.x0;
       const dy = e.clientY - g.y0;
       if (!g.arrastando) {
-        if (dy < -6) {
+        const dir = direcaoGesto(dx, dy, 6);
+        if (!dir) return;
+        // Para o lado (carrossel, tabela) ou, sem detente acima, para cima: não é da folha
+        if (dir === 'horizontal' || (dy < 0 && detente.current !== 'media')) {
           gesto.current = null;
           return;
         }
-        if (dy < 6) return;
         g.arrastando = true;
         try {
           (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -161,23 +289,23 @@ export function useArrastarFolha(folhaRef: RefObject<HTMLElement | null>, fundoR
       }
       g.amostras.push({ y: e.clientY, t: e.timeStamp });
       if (g.amostras.length > 8) g.amostras.shift();
-      // Para cima não sobe além do lugar (só um leve elástico)
-      mover(dy > 0 ? dy : 0);
+      mover(g.h0 - dy, g.grande);
     },
     onPointerUp(e: PE<HTMLElement>) {
       const g = gesto.current;
       if (!g || g.id !== e.pointerId) return;
       gesto.current = null;
       if (!g.arrastando) return;
-      const altura = folhaRef.current?.offsetHeight ?? 0;
-      if (deveFecharFolha(desloc.current, altura, velocidadeGesto(g.amostras))) aoFechar();
-      else voltar();
+      const visivel = g.h0 - (e.clientY - g.y0);
+      const destino = destinoFolha(visivel, velocidadeGesto(g.amostras), detente.current ? media.current : 0, g.grande);
+      if (destino === 'fechar') aoFechar();
+      else encaixar(detente.current ? destino : null, g.grande);
     },
     onPointerCancel(e: PE<HTMLElement>) {
       const g = gesto.current;
       if (!g || g.id !== e.pointerId) return;
       gesto.current = null;
-      if (g.arrastando) voltar();
+      if (g.arrastando) encaixar(detente.current, g.grande);
     },
   };
   return { eventos, desloc };
