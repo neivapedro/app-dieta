@@ -6,6 +6,7 @@ import { TextoRca } from '../componentes/composicao';
 import { AvisoRapido } from '../componentes/dose';
 import { FormAplicacao, FormDiario, FormMedida } from '../componentes/formularios';
 import { HistoricoAneis, useAneis } from '../componentes/aneis';
+import { ResumoInsights } from '../componentes/insights';
 import { DoseDetalhe, DoseRecolhida, DoseResumo, TopoAneis } from '../componentes/inicio-topo';
 import { AlertasSeguranca, AnelHoje, ChecklistHoje, FaixaOntem, useTarefasHoje } from '../componentes/inicio';
 import { Kpi } from '../componentes/painel';
@@ -303,6 +304,8 @@ export function Inicio() {
           </span>
         </button>
       )}
+
+      <ResumoInsights onde="inicio" />
 
       <HistoricoAneis semanas={aneis.semanas} semanasPadrao={1} />
 

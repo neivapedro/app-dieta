@@ -25,6 +25,7 @@ import { Treino } from './paginas/Treino';
 const Retatrutida = lazy(() => import('./paginas/Retatrutida'));
 // Relatório final: tela longa, com gráficos e fotos; baixa só quando aberta
 const RelatorioFinal = lazy(() => import('./paginas/RelatorioFinal'));
+const Conquistas = lazy(() => import('./paginas/Conquistas'));
 
 const ABAS = [
   { para: '/', rotulo: 'Início', icone: 'inicio', titulo: 'Início' },
@@ -37,7 +38,7 @@ const ABAS = [
 const ABA_TREINO = { para: '/treino', rotulo: 'Treino', icone: 'treino', titulo: 'Treino' };
 
 // Telas abertas pelos botões do cabeçalho (fora da barra de abas)
-const TITULOS_EXTRAS: Record<string, string> = { '/perfil': 'Perfil', '/retatrutida': 'Retatrutida', '/relatorio-final': 'Relatório final' };
+const TITULOS_EXTRAS: Record<string, string> = { '/perfil': 'Perfil', '/retatrutida': 'Retatrutida', '/relatorio-final': 'Relatório final', '/conquistas': 'Conquistas' };
 
 function AvisoNovaVersao() {
   // O aviso pode chegar antes desta parte da tela existir (ainda carregando)
@@ -281,6 +282,7 @@ function Estrutura() {
                 </Suspense>
               }
             />
+            <Route path="/conquistas" element={<Suspense fallback={<p className="mudo">Carregando…</p>}><Conquistas /></Suspense>} />
             {perfil?.modulo_treino && <Route path="/treino" element={<Treino />} />}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
