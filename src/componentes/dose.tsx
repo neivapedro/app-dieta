@@ -234,7 +234,7 @@ export function FimDeFase({ aoDecidir }: { aoDecidir?: () => void } = {}) {
         <span className="etiqueta destaque">Dose nova: {doseNovaTexto}</span>
       </div>
       <button type="button" className={`botao bloco-largo ${pendente ? 'primario' : ''}`} onClick={() => setFolha(true)} aria-haspopup="dialog">
-        {pendente ? 'Ver números e decidir' : 'Ver decisão e anotações'}
+        {pendente ? 'Decidir a fase' : 'Ver decisão e anotações'}
       </button>
       {folha && (
         <Folha titulo={`Fim da fase ${d.ultima_fase + 1} · ${atual.nome}`} aoFechar={() => setFolha(false)}>

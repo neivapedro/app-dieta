@@ -45,7 +45,9 @@ export function useRolagemDaTela(
       const h1 = titulo?.querySelector('h1');
       let compacto = true;
       if (titulo && h1) {
-        const base = topo.getBoundingClientRect().bottom;
+        // Título na linha dos botões (.na-linha): começa a sumir logo que a tela rola; senão, ao passar por baixo do cabeçalho
+        const r0 = topo.getBoundingClientRect();
+        const base = titulo.classList.contains('na-linha') ? r0.top + parseFloat(getComputedStyle(topo).paddingTop) + 3 : r0.bottom;
         // Cada linha (título e subtítulo) esmaece enquanto passa por baixo do cabeçalho
         let assinatura = '';
         const linhas = [...titulo.children] as HTMLElement[];

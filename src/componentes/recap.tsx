@@ -378,7 +378,7 @@ export function RecapSemana({ data, aoFechar }: { data?: string; aoFechar: () =>
         </div>
         <div className="recap-cab">
           <span className="marca-mini recap-marca" aria-hidden="true">
-            <img src={`${import.meta.env.BASE_URL}braco.webp`} alt="" />
+            <img src={`${import.meta.env.BASE_URL}icone-512.png`} alt="" />
           </span>
           <span className="recap-cab-texto">
             <b>Resumo da semana</b>
@@ -419,7 +419,7 @@ export function BotaoStories({ aoAbrir }: { aoAbrir: () => void }) {
   return (
     <button type="button" className="botao botao-stories" onClick={aoAbrir}>
       <span className="botao-stories-anel" aria-hidden="true">
-        <img src={`${import.meta.env.BASE_URL}braco.webp`} alt="" />
+        <img src={`${import.meta.env.BASE_URL}icone-512.png`} alt="" />
       </span>
       <span className="botao-stories-texto">
         <b>Ver em stories</b>

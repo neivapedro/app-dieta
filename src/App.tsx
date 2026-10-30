@@ -218,6 +218,8 @@ function Estrutura() {
   // Subtela do Perfil (?secao=) tem título e botão de voltar próprios: sem o título grande.
   // Tela nova fora das abas: ponha o título em TITULOS_EXTRAS (sem título, fica sem o grande)
   const comTituloGrande = !!titulo && !(pathname === '/perfil' && new URLSearchParams(search).has('secao'));
+  // A marca do app só aparece no cabeçalho do Perfil; nas outras telas o título grande divide a linha com os botões
+  const comMarca = pathname === '/perfil';
   const topo = useRef<HTMLElement>(null);
   const nav = useRef<HTMLElement>(null);
   const tituloGrande = useRef<HTMLDivElement>(null);
@@ -226,11 +228,15 @@ function Estrutura() {
   return (
     <>
       <div className="app">
-        {/* Cabeçalho de vidro: marca, título pequeno (aparece quando o grande sai da tela) e atalhos */}
-        <header className="topo" ref={topo}>
-          <span className="marca-mini" aria-hidden="true">
-            <img src={`${import.meta.env.BASE_URL}braco.webp`} alt="" />
-          </span>
+        {/* Cabeçalho de vidro: título pequeno (aparece quando o grande sai da tela) e atalhos */}
+        <header className={`topo${comMarca ? ' com-marca' : ''}`} ref={topo}>
+          {comMarca ? (
+            <span className="marca-mini" aria-hidden="true">
+              <img src={`${import.meta.env.BASE_URL}icone-512.png`} alt="" />
+            </span>
+          ) : (
+            <span aria-hidden="true" />
+          )}
           {comTituloGrande ? (
             <div className="topo-titulo" aria-hidden="true">
               {titulo}
@@ -248,7 +254,7 @@ function Estrutura() {
           </div>
         </header>
         {comTituloGrande && (
-          <div className="titulo-grande nao-imprimir" ref={tituloGrande}>
+          <div className={`titulo-grande nao-imprimir${comMarca ? '' : ' na-linha'}`} ref={tituloGrande}>
             <h1>{titulo}</h1>
             {pathname === '/' && <div className="sub">Olá{primeiroNome ? `, ${primeiroNome}` : ''} · {ciclo?.nome}</div>}
           </div>

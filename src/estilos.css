@@ -243,13 +243,13 @@ details.ajuda[open] summary { margin-bottom: 8px; }
 .oculto { display: none; }
 .botao svg, .alerta svg { width: 20px; height: 20px; flex: none; }
 
-/* Marca: braço flexionado */
+/* Marca: o ícone do app num quadrado arredondado com brilho suave da marca */
 .marca-heroi { position: relative; display: flex; justify-content: center; padding: 8px 0; }
 .marca-heroi::before {
-  content: ''; position: absolute; inset: 10% 20%; border-radius: 50%;
+  content: ''; position: absolute; inset: -6px calc(50% - 90px); border-radius: 50%;
   background: radial-gradient(closest-side, color-mix(in srgb, var(--texto) 14%, transparent), transparent);
 }
-.marca-heroi img { position: relative; width: min(52vw, 200px); height: auto; filter: drop-shadow(0 12px 24px rgb(0 0 0 / 0.35)); }
+.marca-heroi img { position: relative; width: 96px; height: 96px; border-radius: 22px; box-shadow: 0 10px 30px -6px color-mix(in srgb, var(--marca-m) 55%, transparent), 0 0 0 1px rgb(255 255 255 / 0.08); }
 .marca-mini {
   width: 44px; height: 44px; border-radius: 12px; flex: none;
   background: linear-gradient(180deg, #3a3a3c, #0b0b0c); border: 1px solid var(--borda);
@@ -1050,8 +1050,11 @@ input[type="checkbox"], input[type="radio"], input[type="range"], progress { acc
   box-shadow: 0 1px 0 transparent; transition: box-shadow 0.25s ease;
 }
 .topo.compacto { box-shadow: 0 1px 0 var(--borda-suave); }
-.topo .marca-mini { width: 36px; height: 36px; border-radius: 10px; justify-self: start; }
-.topo .marca-mini img { width: 28px; height: 28px; }
+/* No topo da tela o cabeçalho é transparente (o título grande divide a linha com os botões); o vidro entra ao rolar */
+.topo:not(.compacto) { background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.topo { transition: box-shadow 0.25s ease, background-color 0.25s ease; }
+.topo .marca-mini { width: 36px; height: 36px; border-radius: 10px; justify-self: start; background: none; border: 0; overflow: hidden; }
+.topo .marca-mini img { width: 36px; height: 36px; object-fit: cover; border-radius: 10px; }
 .topo-titulo {
   margin: 0; min-width: 0; font-size: 1.0625rem; font-weight: 650; letter-spacing: -0.01em; line-height: 1.25; text-align: center;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -1063,11 +1066,14 @@ input[type="checkbox"], input[type="radio"], input[type="range"], progress { acc
 .topo-acoes .icone-botao.ativo { background: color-mix(in srgb, var(--marca-m) 16%, var(--superficie)); border-color: var(--marca-borda); color: var(--marca-forte); }
 @media (max-width: 360px) { :root { --topo-lado: 84px; } .topo-titulo { font-size: 1rem; } }
 
-.titulo-grande { padding: 4px 0 16px; min-width: 0; }
+.titulo-grande { --h1-tam: 2.125rem; padding: 4px 0 16px; min-width: 0; }
 .titulo-grande > * { opacity: calc(1 - var(--sumir, 0)); transform: scale(calc(1 - var(--sumir, 0) * 0.04)); transform-origin: 0 100%; }
-.titulo-grande h1 { font-size: 2.125rem; font-weight: 750; letter-spacing: -0.025em; line-height: 1.12; overflow-wrap: anywhere; }
+.titulo-grande h1 { font-size: var(--h1-tam); font-weight: 750; letter-spacing: -0.025em; line-height: 1.12; overflow-wrap: anywhere; }
 .titulo-grande .sub { margin-top: 3px; color: var(--texto-2); font-size: 0.95rem; overflow-wrap: anywhere; }
-@media (max-width: 360px) { .titulo-grande h1 { font-size: 1.875rem; } }
+/* Título na mesma linha dos dois botões do cabeçalho: sobe por baixo do cabeçalho (60 px = 8 + 44 + 8) e deixa a coluna dos botões livre */
+.titulo-grande.na-linha { margin-top: -60px; padding: calc((60px - 1.12 * var(--h1-tam)) / 2) 0 12px; }
+.titulo-grande.na-linha h1 { max-width: calc(100% - 104px); }
+@media (max-width: 360px) { .titulo-grande { --h1-tam: 1.875rem; } .titulo-grande.na-linha h1 { max-width: calc(100% - 100px); } }
 @media (prefers-reduced-motion: reduce) { .titulo-grande > * { transform: none; } }
 
 /* ---------- Barra de abas de vidro flutuante (iOS 26) ----------
@@ -1083,7 +1089,7 @@ input[type="checkbox"], input[type="radio"], input[type="range"], progress { acc
   --nav-ocupa: calc(var(--nav-barra) + var(--nav-base));
   --nav-altura: calc(var(--nav-barra) + 12px);
   --nav-margem: 12px;
-  --nav-vidro: color-mix(in srgb, var(--superficie) 78%, transparent);
+  --nav-vidro: color-mix(in srgb, var(--superficie) 86%, transparent);
   --nav-brilho: rgb(255 255 255 / 0.1);
   --nav-borda: rgb(255 255 255 / 0.09);
   --nav-sombra: 0 10px 34px -10px rgb(0 0 0 / 0.7), 0 2px 8px rgb(0 0 0 / 0.28);
@@ -1091,7 +1097,7 @@ input[type="checkbox"], input[type="radio"], input[type="range"], progress { acc
 }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
-    --nav-vidro: color-mix(in srgb, var(--superficie) 76%, transparent);
+    --nav-vidro: color-mix(in srgb, var(--superficie) 92%, transparent);
     --nav-brilho: rgb(255 255 255 / 0.85);
     --nav-borda: rgb(0 0 0 / 0.07);
     --nav-sombra: 0 10px 30px -12px rgb(0 0 0 / 0.22), 0 1px 4px rgb(0 0 0 / 0.08);
@@ -1099,7 +1105,7 @@ input[type="checkbox"], input[type="radio"], input[type="range"], progress { acc
   }
 }
 :root[data-theme="light"] {
-  --nav-vidro: color-mix(in srgb, var(--superficie) 76%, transparent);
+  --nav-vidro: color-mix(in srgb, var(--superficie) 92%, transparent);
   --nav-brilho: rgb(255 255 255 / 0.85);
   --nav-borda: rgb(0 0 0 / 0.07);
   --nav-sombra: 0 10px 30px -12px rgb(0 0 0 / 0.22), 0 1px 4px rgb(0 0 0 / 0.08);
@@ -1110,7 +1116,7 @@ input[type="checkbox"], input[type="radio"], input[type="range"], progress { acc
   width: min(560px, calc(100% - 2 * var(--nav-margem) - env(safe-area-inset-left) - env(safe-area-inset-right)));
   height: var(--nav-barra); padding: 4px; border-radius: 999px;
   background: var(--nav-vidro); border: 1px solid var(--nav-borda);
-  -webkit-backdrop-filter: blur(22px) saturate(190%); backdrop-filter: blur(22px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%); backdrop-filter: blur(28px) saturate(190%);
   box-shadow: inset 0 1px 0 var(--nav-brilho), inset 0 -1px 0 rgb(0 0 0 / 0.04), var(--nav-sombra);
   transition: height 0.34s cubic-bezier(0.2, 0.8, 0.2, 1), width 0.34s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
@@ -1149,3 +1155,28 @@ input[type="checkbox"], input[type="radio"], input[type="range"], progress { acc
 /* Rolar até um campo (foco, scrollIntoView) não o deixa atrás da barra flutuante */
 html { scroll-padding-bottom: calc(var(--nav-ocupa) + 8px); }
 @media print { .titulo-grande { display: none !important; } }
+
+/* ---------- Três níveis de cartão ----------
+ * 1) hero: tinta + borda da marca; 2) cartão: borda fina; 3) itens internos: só preenchimento, sem borda
+ * (blocos, indicadores, fichas, avisos dentro de um cartão se separam por fundo, não por caixa). */
+.cartao .alerta, .hero .alerta, .folha .alerta { border-color: transparent; }
+.cartao .kpi, .hero .kpi { border-color: transparent; box-shadow: none; background: var(--superficie-2); }
+.cartao .check-dia, .hero .check-dia { border-color: transparent; }
+.cartao .check-dia.previsto:not(.feito) { border-color: var(--texto-3); }
+.cartao .sintoma:not(.sim):not(.nao) { border-color: transparent; }
+.cartao .diagrama { border-color: transparent; background: var(--superficie-2); }
+.cartao .abas { border-color: transparent; background: var(--superficie-2); }
+.cartao .abas button.ativo { background: var(--superficie); }
+.cartao .escolhas button:not(.ativo) { border-color: transparent; }
+
+/* Entrada: o ícone do app, título e formulário logo abaixo (cabem sem rolar em 390×844 e deixam espaço para o teclado) */
+.entrada-cab { align-items: center; text-align: center; gap: 6px; }
+.entrada-cab h1 { font-size: 1.35rem; line-height: 1.2; }
+.entrada-cab .marca-heroi { padding: 0 0 6px; }
+.centro:has(> .entrada) { align-items: flex-start; padding-top: max(32px, env(safe-area-inset-top)); }
+@media (max-height: 700px) {
+  .entrada.pilha { gap: 12px; }
+  .entrada-cab .marca-heroi img { width: 64px; height: 64px; border-radius: 15px; }
+  .entrada-cab p { display: none; }
+  .centro:has(> .entrada) { padding-top: 16px; }
+}

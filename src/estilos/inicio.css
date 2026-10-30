@@ -2,14 +2,13 @@
 /* Tudo preso a .pagina-inicio: o CSS é global depois do build */
 
 /* Topo: data e fase, anéis ao lado da próxima aplicação; brilho da cor-assinatura no fundo */
-.pagina-inicio .hoje-hero { padding: 16px; display: flex; flex-direction: column; gap: 14px; background: var(--marca-brilho), var(--superficie); }
-.pagina-inicio .hoje-hero.com-dose.hoje { border-color: var(--marca-borda); }
+.pagina-inicio .hoje-hero { padding: 16px; display: flex; flex-direction: column; gap: 12px; background: var(--marca-brilho), var(--superficie); border-color: var(--marca-borda); }
 .pagina-inicio .hoje-hero.com-dose.atrasada { border-color: color-mix(in srgb, var(--ruim) 60%, var(--borda)); }
 .pagina-inicio .hoje-hero-cab { display: flex; flex-direction: column; min-width: 0; }
 .pagina-inicio .hoje-hero-titulo { font-size: 1.3rem; font-weight: 750; letter-spacing: -0.02em; line-height: 1.2; margin-top: 3px; overflow-wrap: anywhere; }
 .pagina-inicio .hoje-hero .hero-sub { margin-top: 2px; }
 /* Dias do ciclo: barra fina com o degradê da marca */
-.pagina-inicio .hoje-ciclo-barra { height: 4px; margin-top: 10px; border-radius: 999px; overflow: hidden; background: color-mix(in srgb, var(--texto) 10%, transparent); }
+.pagina-inicio .hoje-ciclo-barra { height: 4px; margin-top: 8px; border-radius: 999px; overflow: hidden; background: color-mix(in srgb, var(--texto) 10%, transparent); }
 .pagina-inicio .hoje-ciclo-barra > div { height: 100%; border-radius: 999px; background: var(--marca-grad); }
 
 /* Anéis + próxima aplicação lado a lado; a legenda vira 3 pílulas embaixo */
@@ -17,17 +16,16 @@
 .pagina-inicio .hoje-topo-linha { display: flex; align-items: center; gap: 14px; }
 .pagina-inicio .hoje-topo .aneis-hoje-figura { width: 104px; height: 104px; }
 .pagina-inicio .hoje-topo-lado { flex: 1; min-width: 0; }
-.pagina-inicio .aneis-pilulas { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+/* Legenda dos anéis: uma linha de texto pequeno (sem caixas), cada item ainda abre a ação do anel */
+.pagina-inicio .aneis-pilulas { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 10px; }
 .pagina-inicio .aneis-pilula {
-  width: 100%; min-height: 48px; padding: 6px 10px; border-radius: 12px; border: 1px solid var(--borda-suave); cursor: pointer;
-  background: color-mix(in srgb, var(--superficie-2) 75%, transparent); color: var(--texto); text-align: left; font: inherit;
-  display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 6px; row-gap: 1px;
-  transition: background-color 0.2s, transform 0.12s ease;
+  min-height: 40px; padding: 0 2px; border: 0; border-radius: 10px; cursor: pointer; background: none; color: var(--texto-2); text-align: left; font: inherit;
+  display: inline-flex; align-items: center; gap: 5px; font-size: 0.75rem; transition: background-color 0.2s, transform 0.12s ease;
 }
-.pagina-inicio .aneis-pilula:active { background: var(--superficie-2); transform: scale(0.97); }
-.pagina-inicio .aneis-pilula .aneis-ponto { width: 8px; height: 8px; }
-.pagina-inicio .aneis-pilula .aneis-legenda-rotulo { font-size: 0.72rem; font-weight: 650; color: var(--texto-2); }
-.pagina-inicio .aneis-pilula .aneis-legenda-valor { grid-column: 1 / -1; font-size: 0.9rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.pagina-inicio .aneis-pilula:active { background: color-mix(in srgb, var(--texto) 8%, transparent); transform: scale(0.97); }
+.pagina-inicio .aneis-pilula .aneis-ponto { width: 7px; height: 7px; }
+.pagina-inicio .aneis-pilula .aneis-legenda-rotulo { flex: none; font-size: 0.75rem; font-weight: 600; color: var(--texto-2); overflow: visible; }
+.pagina-inicio .aneis-pilula .aneis-legenda-valor { font-size: 0.75rem; min-width: 0; }
 .pagina-inicio .aneis-pilula.vazio .aneis-legenda-valor { color: var(--texto-2); }
 
 /* Próxima aplicação (ao lado dos anéis) */
@@ -39,17 +37,17 @@
 .pagina-inicio .hoje-prox-etiquetas .etiqueta.ruim { color: color-mix(in srgb, var(--ruim) 82%, var(--texto)); }
 .pagina-inicio .seringa-pilula {
   align-self: stretch; display: flex; flex-direction: column; min-width: 0; padding: 7px 12px 8px; border-radius: 14px; line-height: 1.1;
-  background: var(--marca-suave); border: 1px solid var(--marca-borda);
+  background: var(--marca-suave); border: 0;
 }
 .pagina-inicio .seringa-pilula span { font-size: 0.66rem; font-weight: 750; text-transform: uppercase; letter-spacing: 0.06em; color: var(--marca-forte); }
 .pagina-inicio .seringa-pilula b { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.03em; white-space: nowrap; color: var(--texto); }
-.pagina-inicio .seringa-pilula.passa { background: color-mix(in srgb, var(--ruim) 14%, var(--superficie)); border-color: color-mix(in srgb, var(--ruim) 45%, var(--borda)); }
+.pagina-inicio .seringa-pilula.passa { background: color-mix(in srgb, var(--ruim) 14%, var(--superficie)); }
 .pagina-inicio .seringa-pilula.passa span, .pagina-inicio .seringa-pilula.passa b { color: var(--ruim); }
 .pagina-inicio .hoje-prox-mg { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 6px; font-size: 0.78rem; color: var(--texto-2); line-height: 1.3; }
 .pagina-inicio .hoje-prox-mg b { font-size: 1rem; font-weight: 750; color: var(--texto); white-space: nowrap; }
 /* Recolhida (longe do dia): um toque abre a dose */
 .pagina-inicio .hoje-prox-recolhida {
-  width: 100%; gap: 2px; padding: 10px 12px; border-radius: var(--raio-sm); border: 1px solid var(--borda-suave); cursor: pointer;
+  width: 100%; gap: 2px; padding: 10px 12px; border-radius: var(--raio-sm); border: 0; cursor: pointer;
   background: color-mix(in srgb, var(--superficie-2) 70%, transparent); color: var(--texto); text-align: left; font: inherit;
   transition: background-color 0.2s, transform 0.12s ease;
 }
@@ -82,14 +80,10 @@
 /* O botão principal do "Hoje" leva o degradê da marca */
 .pagina-inicio .hoje-hero .botao.primario { background: var(--marca-grad); color: var(--marca-texto); border-color: transparent; }
 
-/* Fim da fase: uma faixa curta (fase, situação e o botão); números e decisão abrem na folha */
-.pagina-inicio .hoje-dose > .fim-fase-compacto {
-  margin: 0; padding: 10px 12px 12px; border: 1px solid var(--marca-borda); border-radius: var(--raio-sm); background: var(--marca-suave);
-  display: flex; flex-direction: column; gap: 6px;
-}
-/* "a decidir" já aparece na próxima aplicação; "decidido" continua */
-.pagina-inicio .fim-fase-compacto.pendente > .fim-fase-cab > .etiqueta { display: none; }
-.pagina-inicio .hoje-dose > .fim-fase-compacto.decidido { border-color: color-mix(in srgb, var(--bom) 40%, var(--borda)); background: color-mix(in srgb, var(--bom) 7%, var(--superficie)); }
+/* Fim da fase: o título já diz a fase; aqui só uma linha "Decidir a fase ›" que abre a folha com os números */
+.pagina-inicio .hoje-dose > .fim-fase-compacto { margin: 0; padding: 0; border: 0; background: none; display: flex; flex-direction: column; gap: 6px; }
+.pagina-inicio .fim-fase-compacto.pendente > .fim-fase-cab, .pagina-inicio .fim-fase-compacto.pendente > p { display: none; }
+.pagina-inicio .hoje-dose > .fim-fase-compacto.decidido { padding: 10px 12px 12px; border-radius: var(--raio-sm); background: color-mix(in srgb, var(--bom) 9%, var(--superficie)); }
 .pagina-inicio .fim-fase-compacto > .fim-fase-cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
 .pagina-inicio .fim-fase-cab h3 { font-size: 0.92rem; line-height: 1.3; }
 .pagina-inicio .fim-fase-nome { font-weight: 500; color: var(--texto-2); }
@@ -97,13 +91,13 @@
 .pagina-inicio .fim-fase-compacto > .fim-fase-kpis, .pagina-inicio .fim-fase-compacto > .fim-fase-pe { display: none; }
 .pagina-inicio .fim-fase-compacto > .botao {
   width: 100%; min-height: 40px; margin-top: 2px; padding: 0 14px; font-size: 0.85rem; white-space: nowrap;
-  background: var(--superficie); color: var(--marca-forte); border: 1px solid var(--marca-borda);
+  background: var(--superficie); color: var(--marca-forte); border: 0;
 }
-.pagina-inicio .fim-fase-compacto.pendente > .botao.primario { background: var(--marca-grad); color: var(--marca-texto); border-color: transparent; }
-/* Com o fim de fase pendente, "Registrar aplicação" fica em segundo plano: a decisão vem antes */
-.pagina-inicio .hoje-dose:has(> .fim-fase-compacto.pendente) .hoje-registrar.primario {
-  background: var(--superficie-2); color: var(--texto); border: 1px solid var(--borda-suave);
+.pagina-inicio .fim-fase-compacto.pendente > .botao {
+  margin: 0; min-height: 44px; justify-content: space-between; border-radius: var(--raio-sm); font-size: 0.92rem; font-weight: 700;
+  background: var(--marca-suave); color: var(--marca-forte);
 }
+.pagina-inicio .fim-fase-compacto.pendente > .botao::after { content: '›'; font-size: 1.3rem; line-height: 1; font-weight: 600; }
 /* Na folha: o conteúdo completo do fim da fase */
 .pagina-inicio .folha .regras-fase { font-size: 0.85rem; }
 
@@ -112,9 +106,8 @@
   .pagina-inicio .hoje-topo .aneis-hoje-figura { width: 84px; height: 84px; }
   .pagina-inicio .seringa-pilula { padding: 6px 10px; }
   .pagina-inicio .seringa-pilula b { font-size: 1.35rem; }
-  .pagina-inicio .aneis-pilula { padding: 6px 6px; column-gap: 4px; }
-  .pagina-inicio .aneis-pilula .aneis-legenda-rotulo { font-size: 0.7rem; }
-  .pagina-inicio .aneis-pilula .aneis-legenda-valor { font-size: 0.8rem; }
+  .pagina-inicio .aneis-pilulas { gap: 0 6px; }
+  .pagina-inicio .aneis-pilula { gap: 4px; }
 }
 
 /* Anel pequeno com o número no meio (frasco) */
@@ -163,10 +156,10 @@
 .pagina-inicio .tarefas { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .pagina-inicio .tarefa {
   --fundo-tarefa: color-mix(in srgb, var(--superficie-2) 72%, var(--superficie));
-  min-width: 0; border-radius: 14px; border: 1px solid transparent; background: var(--fundo-tarefa);
+  min-width: 0; border-radius: 14px; background: var(--fundo-tarefa);
 }
 .pagina-inicio .tarefa-larga { grid-column: 1 / -1; }
-.pagina-inicio .tarefa-destaque:not(.feito) { --fundo-tarefa: var(--superficie); border-color: var(--marca-borda); background: var(--marca-suave); }
+.pagina-inicio .tarefa-destaque:not(.feito) { --fundo-tarefa: var(--superficie); background: var(--marca-suave); }
 .pagina-inicio .tarefa-linha {
   display: flex; align-items: center; gap: 10px; width: 100%; min-height: 56px; padding: 8px 10px; border: 0; border-radius: inherit;
   background: none; color: var(--texto); text-align: left; font: inherit; font-size: 0.9rem;

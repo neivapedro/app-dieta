@@ -20,7 +20,7 @@
   background: conic-gradient(from 210deg, var(--aviso), color-mix(in srgb, var(--aviso) 45%, var(--ruim)), var(--aviso));
 }
 .botao-stories-anel img {
-  width: 100%; height: 100%; object-fit: contain; border-radius: 50%; padding: 6px;
+  width: 100%; height: 100%; object-fit: cover; border-radius: 50%; padding: 0;
   background: linear-gradient(180deg, #3a3a3c, #0b0b0c); border: 2px solid var(--superficie-2);
 }
 .botao-stories-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.2; }
@@ -78,7 +78,7 @@
 
 .recap-cab { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
 .recap-marca { width: 34px; height: 34px; border-radius: 10px; }
-.recap-marca img { width: 26px; height: 26px; }
+.recap-marca img { width: 34px; height: 34px; object-fit: cover; border-radius: 10px; }
 .recap-cab-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
 .recap-cab-texto b { font-size: 0.85rem; }
 .recap-cab-texto span { font-size: 0.75rem; color: var(--texto-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

@@ -37,9 +37,9 @@ export function Entrar() {
   return (
     <div className="centro">
       <form className="entrada pilha" onSubmit={enviar}>
-        <div className="pilha" style={{ alignItems: 'center', textAlign: 'center', gap: 8 }}>
+        <div className="pilha entrada-cab">
           <div className="marca-heroi">
-            <img src={`${import.meta.env.BASE_URL}braco.webp`} alt="" />
+            <img src={`${import.meta.env.BASE_URL}icone-512.png`} alt="" />
           </div>
           <span className="nome-app">Ciclo</span>
           <h1>Seu ciclo, suas medidas, sua evolução</h1>

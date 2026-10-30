@@ -207,17 +207,17 @@ export function AnelHoje({ fracao, texto, sub, tom, rotulo }: { fracao: number; 
 // Ordem das linhas à noite: como era o "Fechar o dia" (náusea e sintomas, plano, peso; água e sono no fim)
 const ORDEM_NOITE: ChaveTarefa[] = ['dose', 'medicao', 'nausea', 'plano', 'peso', 'agua', 'sono'];
 
-// Ícone de cada linha (cor da seção: dose índigo, medidas ciano, dieta verde, água azul, sono roxo)
+// Ícone de cada linha: uma só cor (fundo suave da marca + ícone da marca); cor forte só para estado
 const ICONE_TAREFA: Record<ChaveTarefa, [string, CorChip]> = {
-  dose: ['ciclo', 'indigo'],
-  medicao: ['medidas', 'ciano'],
-  treino: ['treino', 'laranja'],
-  cardio: ['treino', 'laranja'],
-  peso: ['balanca', 'ciano'],
-  nausea: ['enjoo', 'rosa'],
-  agua: ['gota', 'azul'],
-  sono: ['lua', 'roxo'],
-  plano: ['dieta', 'verde'],
+  dose: ['ciclo', 'suave'],
+  medicao: ['medidas', 'suave'],
+  treino: ['treino', 'suave'],
+  cardio: ['treino', 'suave'],
+  peso: ['balanca', 'suave'],
+  nausea: ['enjoo', 'suave'],
+  agua: ['gota', 'suave'],
+  sono: ['lua', 'suave'],
+  plano: ['dieta', 'suave'],
 };
 
 function Marca({ chave, feito }: { chave: ChaveTarefa; feito: boolean }) {

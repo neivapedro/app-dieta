@@ -111,7 +111,7 @@ export function Icone({ nome }: { nome: keyof typeof caminhos | string }) {
   );
 }
 
-export type CorChip = 'marca' | 'azul' | 'roxo' | 'rosa' | 'ciano' | 'laranja' | 'verde' | 'indigo';
+export type CorChip = 'marca' | 'azul' | 'roxo' | 'rosa' | 'ciano' | 'laranja' | 'verde' | 'indigo' | 'suave';
 
 /** Ícone do título de um cartão: quadradinho colorido (classe .icone-chip em estilos.css). */
 export function IconeChip({ nome, cor = 'marca', children }: { nome?: string; cor?: CorChip; children?: ReactNode }) {

@@ -114,7 +114,6 @@ export function DoseResumo() {
         {p.situacao === 'atrasada' && <span className="etiqueta ruim">Atrasada {p.dias} {p.dias === 1 ? 'dia' : 'dias'}</span>}
         {p.situacao === 'futura' && <span className="etiqueta">{p.dias === 1 ? 'amanhã' : `em ${p.dias} dias`}</span>}
         {p.extra && <span className="etiqueta aviso">Dose extra · sobra do frasco</span>}
-        {p.estado === 'pendente' && <span className="etiqueta aviso">Fase concluída · decidir</span>}
         {p.estado === 'fora_do_plano' && <span className="etiqueta aviso">Fora do plano</span>}
       </div>
       <div className={`seringa-pilula ${passa ? 'passa' : ''}`}>

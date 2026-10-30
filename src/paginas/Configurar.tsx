@@ -53,7 +53,7 @@ export function Configurar() {
     <div className="app" style={{ paddingTop: 24 }}>
       <form className="pilha" onSubmit={salvar}>
         <div className="marca-heroi">
-          <img src={`${import.meta.env.BASE_URL}braco.webp`} alt="" style={{ width: 'min(36vw, 140px)' }} />
+          <img src={`${import.meta.env.BASE_URL}icone-512.png`} alt="" />
         </div>
         <div>
           <h1>Vamos configurar</h1>
