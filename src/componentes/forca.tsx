@@ -64,7 +64,7 @@ export function CartaoForca({ esforcoSubiu }: { esforcoSubiu?: boolean }) {
       )}
       <section className="cartao">
         <div className="secao-cab">
-          <IconeChip nome="treino" cor="laranja" />
+          <IconeChip nome="treino" cor="marca" />
           <div>
             <h2>Força</h2>
             <div className="secao-sub">1× por semana · exercícios-âncora</div>

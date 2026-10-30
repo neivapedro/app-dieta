@@ -173,7 +173,7 @@ function Agenda() {
 
       <section className="cartao">
         <div className="secao-cab">
-          <IconeChip nome="calendario" cor="indigo" />
+          <IconeChip nome="calendario" cor="marca" />
           <div>
             <h2>Próximas aplicações</h2>
             <div className="secao-sub">Datas pela última aplicação real</div>
@@ -271,7 +271,7 @@ function Agenda() {
 
       <section className="cartao">
         <div className="secao-cab">
-          <IconeChip nome="ciclo" cor="indigo" />
+          <IconeChip nome="ciclo" cor="marca" />
           <div>
             <h2>Aplicações realizadas</h2>
             <div className="secao-sub">
@@ -520,7 +520,7 @@ function Plano() {
     <>
       <section className="cartao">
         <div className="secao-cab cab-fixa">
-          <IconeChip nome="frasco" cor="indigo" />
+          <IconeChip nome="frasco" cor="marca" />
           <div className="cresce">
             <h2>Frasco × plano</h2>
             <div className="secao-sub">
@@ -560,7 +560,7 @@ function Plano() {
 
       <section className="cartao">
         <div className="secao-cab cab-fixa">
-          <IconeChip nome="camadas" cor="indigo" />
+          <IconeChip nome="camadas" cor="marca" />
           <div className="cresce">
             <h2>Fases</h2>
             <div className="secao-sub">Toque numa fase para editar</div>

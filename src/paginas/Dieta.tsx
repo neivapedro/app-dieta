@@ -5,7 +5,7 @@ import { AnelKcal, BarraKcal, BarraMacro, ChipRefeicao, FaltaChips, IconeLapis, 
 import { EstadoVazio } from '../componentes/estado-vazio';
 import { LinhaDeslizante } from '../componentes/linha-deslizante';
 import { FasePosDieta } from '../componentes/projeto';
-import { Bloco, IconeChip } from '../componentes/ui';
+import { Bloco, Icone, IconeChip } from '../componentes/ui';
 import { useDados } from '../dados/contexto';
 import { useAlimentos } from '../dados/useAlimentos';
 import { useCalculos } from '../dados/useCalculos';
@@ -400,7 +400,7 @@ export function Dieta() {
       {/* Refeições: fechadas mostram nome, horário, kcal e macros; abertas, os alimentos */}
       <section className="dieta-refeicoes">
         <div className="secao-cab">
-          <IconeChip nome="dieta" cor="verde" />
+          <IconeChip nome="dieta" cor="marca" />
           <div className="cresce">
             <h2>Refeições</h2>
             <div className="secao-sub">
@@ -450,10 +450,13 @@ export function Dieta() {
                       </span>
                       <span className="ref-vazia-dica">Nada no prato ainda</span>
                     </button>
-                    <button type="button" className="botao pequeno ref-adicionar" onClick={() => setSeletor({ refeicao: r.id, indice: null })}>
-                      + <span className="so-largo">Adicionar </span>
-                      <span className="so-largo">alimento</span>
-                      <span className="so-estreito">Alimento</span>
+                    <button
+                      type="button"
+                      className="icone-botao ref-adicionar"
+                      aria-label={`Adicionar alimento em ${r.nome}`}
+                      onClick={() => setSeletor({ refeicao: r.id, indice: null })}
+                    >
+                      <Icone nome="mais" />
                     </button>
                   </section>
                 );
@@ -544,7 +547,7 @@ export function Dieta() {
       {saldo && metas && corpo && (
         <section className="cartao">
           <div className="secao-cab">
-            <IconeChip nome="alvo" cor="verde" />
+            <IconeChip nome="alvo" cor="marca" />
             <div>
               <h2>Macros do dia</h2>
               <div className="secao-sub">Plano × meta · o que falta</div>

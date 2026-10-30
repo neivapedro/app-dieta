@@ -938,13 +938,7 @@ export function Analise() {
                 <div className="hero-titulo">{p0 ? `${num(p0.dose_mg)} mg · ${p0.fase ? p0.fase.fase.nome : 'fora do plano'}` : faseDepois ? 'Fase pós-remédio' : 'Ciclo concluído'}</div>
                 <div className="hero-sub">{faseAtual}</div>
               </div>
-              <div className="hero-acoes">
-                {/* Cartão de progresso (imagem) do período escolhido no filtro; sem a dose por padrão */}
-                <BotaoCompartilharProgresso variante="pequeno" periodo={janela} />
-                <button className="botao pequeno" onClick={() => setAba('relatorio')}>
-                  PDF
-                </button>
-              </div>
+              <MenuAcoesHero periodo={janela} aoPdf={() => setAba('relatorio')} />
             </div>
             {diaCiclo !== null && totalDias !== null && (
               <div className="hero-progresso">
@@ -977,10 +971,6 @@ export function Analise() {
               </div>
             </div>
           </section>
-
-          <CartaoRelatorioFinal onde="analise" />
-
-          <ResumoInsights onde="analise" />
 
           <div className="secao-sub analise-kpis-sub">
             {emCiclo
@@ -1029,9 +1019,11 @@ export function Analise() {
             />
           </div>
 
+          <ResumoInsights onde="analise" />
+
           <section className="cartao">
             <div className="secao-cab">
-              <IconeChip nome="brilho" cor="rosa" />
+              <IconeChip nome="brilho" cor="marca" />
               <div>
                 <h2>Destaques</h2>
                 <div className="secao-sub">{emCiclo ? 'O que os seus registros mostram agora' : `O que os registros mostram ${per.quando}`}</div>
@@ -1060,7 +1052,7 @@ export function Analise() {
           {progressos.length > 0 && (
             <section className="cartao">
               <div className="secao-cab">
-                <IconeChip nome="alvo" cor="rosa" />
+                <IconeChip nome="alvo" cor="marca" />
                 <div>
                   <h2>Metas do projeto</h2>
                   <div className="secao-sub">{emCiclo ? 'Do início até a meta, pela medição mais recente' : `Do início até a meta, pela medição até ${formatarData(per.ate).slice(0, 5)}`}</div>
@@ -1095,7 +1087,7 @@ export function Analise() {
 
           <section className="cartao">
             <div className="secao-cab">
-              <IconeChip nome="grafico" cor="indigo" />
+              <IconeChip nome="grafico" cor="marca" />
               <div>
                 <h2>Peso × dose</h2>
                 <div className="secao-sub">Arraste para ler · pinça ou faixa para ampliar · toque nos marcos</div>
@@ -1131,7 +1123,7 @@ export function Analise() {
 
           <section className="cartao">
             <div className="secao-cab">
-              <IconeChip nome="calendario" cor="verde" />
+              <IconeChip nome="calendario" cor="marca" />
               <div>
                 <h2>Hábitos</h2>
                 <div className="secao-sub">{emCiclo ? (curtoCiclo ? 'Desde a 1ª dose, até ontem' : 'Últimas 4 semanas, até ontem') : `${per.quando[0].toUpperCase()}${per.quando.slice(1)}, até ontem`}</div>
@@ -1142,6 +1134,8 @@ export function Analise() {
             </div>
             {aneis(emCiclo ? adesao28 : adesaoP)}
           </section>
+
+          <CartaoRelatorioFinal onde="analise" />
         </ProvedorSincronia>
       )}
 
@@ -1149,7 +1143,7 @@ export function Analise() {
         <ProvedorSincronia>
           <section className="cartao">
             <div className="secao-cab">
-              <IconeChip nome="medidas" cor="ciano" />
+              <IconeChip nome="medidas" cor="marca" />
               <div>
                 <h2>{emCiclo ? 'Início × agora' : 'Início × fim do período'}</h2>
                 <div className="secao-sub">{intervaloIniAtu}</div>
@@ -1177,7 +1171,7 @@ export function Analise() {
 
           <section className="cartao">
             <div className="secao-cab">
-              <IconeChip nome="grafico" cor="ciano" />
+              <IconeChip nome="grafico" cor="marca" />
               <h2>Evolução</h2>
               <div className="pilulas-rolagem">
                 <Pilulas rotulo="Medida do gráfico" opcoes={OPCOES_METRICA} valor={metrica} aoMudar={setMetrica} />
@@ -1213,7 +1207,7 @@ export function Analise() {
           {comMassas && (
             <section className="cartao">
               <div className="secao-cab">
-                <IconeChip nome="camadas" cor="ciano" />
+                <IconeChip nome="camadas" cor="marca" />
                 <div>
                   <h2>Composição do peso</h2>
                   <div className="secao-sub">Peso, massa magra e massa gorda (eixo da direita) a cada medição</div>
@@ -1228,14 +1222,14 @@ export function Analise() {
 
           <section className="cartao">
             <h2 className="titulo-com-icone">
-              <IconeChip nome="camadas" cor="ciano" />
+              <IconeChip nome="camadas" cor="marca" />
               Qualidade da perda</h2>
             <LinhaQualidade q={qualidadeP} />
           </section>
 
           <section className="cartao">
             <div className="secao-cab">
-              <IconeChip nome="lista" cor="rosa" />
+              <IconeChip nome="lista" cor="marca" />
               <div>
                 <h2>Por fase</h2>
                 <div className="secao-sub">Cintura, massa gorda e massa magra em cada bloco de dose · toque para destacar</div>
@@ -1310,7 +1304,7 @@ export function Analise() {
         <ProvedorSincronia>
           <section className="cartao">
             <div className="secao-cab">
-              <IconeChip nome="frasco" cor="indigo" />
+              <IconeChip nome="frasco" cor="marca" />
               <div>
                 <h2>Frasco</h2>
                 <div className="secao-sub">{ciclo?.nome}</div>
@@ -1329,7 +1323,7 @@ export function Analise() {
 
           <section className="cartao">
             <div className="secao-cab">
-              <IconeChip nome="ciclo" cor="indigo" />
+              <IconeChip nome="ciclo" cor="marca" />
               <div>
                 <h2>Doses do ciclo</h2>
                 <div className="secao-sub">Altura da barra = dose em mg · toque num bloco para destacá-lo nos gráficos</div>
@@ -1351,7 +1345,7 @@ export function Analise() {
           {(serie.length > 0 || pontosNausea.length > 0 || pontosSono.length > 0) && (
             <section className="cartao">
               <div className="secao-cab">
-                <IconeChip nome="historico" cor="indigo" />
+                <IconeChip nome="historico" cor="marca" />
                 <div>
                   <h2>Linha do tempo</h2>
                   <div className="secao-sub">Arraste num gráfico: a mesma data aparece nos três</div>
@@ -1378,7 +1372,7 @@ export function Analise() {
 
           <section className="cartao">
             <div className="secao-cab">
-              <IconeChip nome="gota" cor="indigo" />
+              <IconeChip nome="gota" cor="marca" />
               <div>
                 <h2>Náusea depois da dose</h2>
                 <div className="secao-sub">Média de 0 a 3 por dia depois da aplicação (D0 = dia da dose){emCiclo ? '' : ` · ${per.quando}`}</div>
@@ -1435,7 +1429,7 @@ export function Analise() {
 
           <section className="cartao">
             <div className="secao-cab">
-              <IconeChip nome="lista" cor="indigo" />
+              <IconeChip nome="lista" cor="marca" />
               <div>
                 <h2>Peso e náusea por fase</h2>
                 <div className="secao-sub">Ritmo de peso de cada bloco de dose · toque para destacar</div>
@@ -1544,7 +1538,7 @@ export function Analise() {
         <>
           <section className="cartao">
             <div className="secao-cab">
-              <IconeChip nome="calendario" cor="rosa" />
+              <IconeChip nome="calendario" cor="marca" />
               <div>
                 <h2>Adesão</h2>
                 <div className="secao-sub">{emCiclo ? 'Desde a 1ª dose' : `${per.quando[0].toUpperCase()}${per.quando.slice(1)}`}, até ontem (hoje ainda está em aberto)</div>
@@ -1560,7 +1554,7 @@ export function Analise() {
           {treinoSemanas.length > 0 && (
             <section className="cartao">
               <div className="secao-cab">
-                <IconeChip nome="treino" cor="laranja" />
+                <IconeChip nome="treino" cor="marca" />
                 <div>
                   <h2>Treino por semana</h2>
                   <div className="secao-sub">Dias com treino e com cardio, de segunda a domingo · toque numa semana para destacá-la</div>
@@ -1595,7 +1589,7 @@ export function Analise() {
           {(temBemEstar || sono7.noites > 0 || agua.dias > 0 || temUrina) && (
             <section className="cartao">
               <div className="secao-cab">
-                <IconeChip nome="lua" cor="roxo" />
+                <IconeChip nome="lua" cor="marca" />
                 <div>
                   <h2>Sono e hidratação</h2>
                   <div className="secao-sub">Médias por semana e dos últimos 7 dias · toque numa semana para destacá-la</div>
@@ -1674,7 +1668,7 @@ export function Analise() {
           {dadosPadroes && (
             <section className="cartao">
               <div className="secao-cab">
-                <IconeChip nome="brilho" cor="rosa" />
+                <IconeChip nome="brilho" cor="marca" />
                 <div>
                   <h2>Padrões</h2>
                   <div className="secao-sub">Hábitos × resultados {emCiclo ? 'no ciclo' : per.quando} · associação, não causa</div>
@@ -1687,7 +1681,7 @@ export function Analise() {
           {metasDieta && dieta && (
             <section className="cartao">
               <h2 className="titulo-com-icone">
-                <IconeChip nome="dieta" cor="verde" />
+                <IconeChip nome="dieta" cor="marca" />
                 Plano alimentar</h2>
               <div className="grade grade-4">
                 <Bloco rotulo="Meta" valor={`${num(metasDieta.meta_kcal, 0)} kcal`} />
@@ -1759,7 +1753,7 @@ export function Analise() {
 
           <section className="cartao">
             <h2 className="titulo-com-icone">
-              <IconeChip nome="ciclo" cor="indigo" />
+              <IconeChip nome="ciclo" cor="marca" />
               Aplicações</h2>
             {resumo.linhas.length === 0 ? (
               <Vazio>Nenhuma aplicação registrada.</Vazio>
@@ -1800,6 +1794,46 @@ export function Analise() {
       {detalhe && <FolhaMetrica d={detalhe} marcos={marcos} fases={fasesDetalhe} hoje={hoje} destaque={destaqueP} aoFechar={fecharFolha} />}
 
       <p className="mudo so-impressao">Este relatório registra e calcula; as decisões de dose são tomadas com acompanhamento médico.</p>
+    </div>
+  );
+}
+
+/** Compartilhar e PDF num só botão "⋯" (menu pequeno) no topo da Geral. */
+function MenuAcoesHero({ periodo, aoPdf }: { periodo: Parameters<typeof BotaoCompartilharProgresso>[0]['periodo']; aoPdf: () => void }) {
+  const [aberto, setAberto] = useState(false);
+  const raiz = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!aberto) return;
+    const fora = (e: Event) => {
+      if (raiz.current && !raiz.current.contains(e.target as Node)) setAberto(false);
+    };
+    const tecla = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setAberto(false);
+    };
+    document.addEventListener('pointerdown', fora);
+    document.addEventListener('keydown', tecla);
+    return () => {
+      document.removeEventListener('pointerdown', fora);
+      document.removeEventListener('keydown', tecla);
+    };
+  }, [aberto]);
+  return (
+    <div className="hero-menu nao-imprimir" ref={raiz}>
+      <button type="button" className="icone-botao hero-menu-botao" aria-label="Mais ações: compartilhar ou gerar PDF" aria-haspopup="true" aria-expanded={aberto} onClick={() => setAberto((v) => !v)}>
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true">
+          <circle cx="5" cy="12" r="1.8" />
+          <circle cx="12" cy="12" r="1.8" />
+          <circle cx="19" cy="12" r="1.8" />
+        </svg>
+      </button>
+      {/* Fica montado (só escondido) para a folha de compartilhar continuar aberta depois de fechar o menu */}
+      <div className="hero-menu-lista" hidden={!aberto} onClick={() => setAberto(false)}>
+        {/* Cartão de progresso (imagem) do período escolhido no filtro; sem a dose por padrão */}
+        <BotaoCompartilharProgresso variante="pequeno" periodo={periodo} classe="hero-menu-item" />
+        <button type="button" className="botao pequeno hero-menu-item" onClick={aoPdf}>
+          PDF
+        </button>
+      </div>
     </div>
   );
 }

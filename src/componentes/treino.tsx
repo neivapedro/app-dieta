@@ -171,7 +171,7 @@ export function CartaoTreinoHoje() {
   return (
     <section className="cartao">
       <div className="cartao-cab">
-        <IconeChip nome="treino" cor="laranja" />
+        <IconeChip nome="treino" cor="marca" />
         <h2>Treino de hoje</h2>
         <span className="mudo">
           Dia {diaNumero} de {placar.totalDias}

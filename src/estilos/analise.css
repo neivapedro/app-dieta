@@ -100,3 +100,27 @@
   .hero > .hero-cab > .hero-acoes { flex-direction: row; width: 100%; }
   .hero > .hero-cab > .hero-acoes > * { flex: 1; }
 }
+
+/* ---------- Topo da Geral: título em uma linha e menu "⋯" ---------- */
+.hero > .hero-cab { align-items: flex-start; flex-wrap: nowrap; }
+.hero .hero-titulo { font-size: clamp(1.05rem, 5.4vw, 1.3rem); line-height: 1.2; overflow-wrap: break-word; }
+.hero-menu { position: relative; flex: none; margin: -4px -6px 0 0; }
+.hero-menu-botao { width: 44px; height: 44px; border-radius: 12px; color: var(--texto-2); background: var(--superficie-2); border-color: transparent; }
+.hero-menu-lista {
+  position: absolute; right: 0; top: calc(100% + 4px); z-index: 8; min-width: 190px; padding: 6px;
+  display: flex; flex-direction: column; gap: 4px; border-radius: 14px;
+  background: var(--superficie); border: 1px solid var(--borda); box-shadow: 0 12px 32px -8px rgb(0 0 0 / 0.5);
+}
+.hero-menu-lista[hidden] { display: none; }
+.hero-menu-lista .hero-menu-item { width: 100%; min-height: 44px; justify-content: flex-start; border-color: transparent; background: transparent; padding: 0 12px; gap: 10px; }
+.hero-menu-lista .hero-menu-item:active { background: var(--superficie-2); }
+@media (max-width: 360px) {
+  .hero > .hero-cab { flex-wrap: nowrap; }
+}
+
+/* "Prévia do relatório final": faixa fina de uma linha no fim da Geral */
+.rf-entrada[data-onde="analise"] { min-height: 44px; padding: 8px 12px; gap: 10px; border-radius: 14px; align-items: center; }
+.rf-entrada[data-onde="analise"] .rf-entrada-texto small { display: none; }
+.rf-entrada[data-onde="analise"] .rf-entrada-texto b { font-size: 0.9rem; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+.rf-entrada[data-onde="analise"] .rf-entrada-icone { width: 30px; height: 30px; flex: none; }
+.rf-entrada[data-onde="analise"] .rf-entrada-icone svg { width: 18px; height: 18px; }

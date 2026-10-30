@@ -160,7 +160,7 @@
 @keyframes recap-crescer { from { transform: scaleY(0); } to { transform: scaleY(1); } }
 .recap-dia-sem { font-size: 0.75rem; font-weight: 650; color: var(--texto-2); }
 .recap-dia.pico .recap-dia-sem { color: var(--texto); }
-.recap-dia-d { font-size: 0.68rem; color: var(--texto-3); font-variant-numeric: tabular-nums; }
+.recap-dia-d { font-size: 0.7rem; color: var(--texto-3); font-variant-numeric: tabular-nums; }
 .recap-dia-d.dose { color: var(--aviso); font-weight: 750; }
 .recap-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
 .recap-chips span { padding: 6px 10px; border-radius: 999px; background: var(--superficie-2); font-size: 0.8rem; color: var(--texto-2); }
