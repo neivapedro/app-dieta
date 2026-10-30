@@ -19,7 +19,7 @@
 .anel-kcal-centro { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1; text-align: center; }
 .anel-kcal-num { font-size: 1.5rem; font-weight: 750; letter-spacing: -0.02em; }
 .anel-kcal-de { font-size: 0.72rem; color: var(--texto-2); font-weight: 600; margin-top: 2px; }
-.anel-kcal-un { font-size: 0.66rem; color: var(--texto-3); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
+.anel-kcal-un { font-size: 0.7rem; color: var(--texto-3); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
 @media (max-width: 360px) { .anel-kcal-num { font-size: 1.25rem; } }
 .anel-kcal-status { font-size: 0.74rem; font-weight: 650; color: var(--texto-2); text-align: center; white-space: nowrap; }
 .anel-kcal-status.estado-bom { color: var(--bom); }
@@ -98,7 +98,7 @@
 .dieta .ref-acoes .botao { flex: 1 1 0; min-height: 40px; min-width: 0; }
 
 /* Refeição vazia: uma linha só, com o "Adicionar alimento" */
-.dieta .refeicao-card.vazia { display: flex; align-items: center; gap: 8px; padding: 8px 10px 8px 14px; flex-wrap: wrap; }
+.dieta .refeicao-card.vazia { display: flex; align-items: center; gap: 10px; padding: 6px 8px 6px 12px; }
 .ref-vazia-nome {
   flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0;
   border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
@@ -106,13 +106,16 @@
 .ref-vazia-nome { flex-direction: column; align-items: flex-start; justify-content: center; gap: 1px; }
 .ref-vazia-linha { display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; }
 .ref-vazia-nome .ref-nome { color: var(--texto); font-weight: 650; }
-.ref-vazia-dica { font-size: 0.75rem; color: var(--texto-3); }
+.ref-vazia-dica { font-size: 0.78rem; color: var(--texto-3); }
 /* Ícone da refeição (café, almoço, lanche, jantar, pós-treino) */
 .refeicao-card .icone-chip { width: 32px; height: 32px; border-radius: 10px; }
 .dieta .refeicao-card.vazia { padding-left: 12px; }
-.dieta .refeicao-card.vazia { border-style: dashed; border-color: var(--borda); background: color-mix(in srgb, var(--superficie) 70%, transparent); box-shadow: none; }
+.dieta .refeicao-card.vazia { border: 0; border-radius: 12px; background: transparent; box-shadow: none; min-height: 52px; flex-wrap: nowrap; }
+.dieta .refeicao-card.vazia .icone-chip { opacity: 0.8; }
+.dieta .refeicao-card.vazia .ref-nome { font-size: 0.95rem; }
+.dieta .refeicao-card.vazia .ref-adicionar { margin-left: auto; width: 40px; height: 40px; color: var(--marca-forte); background: var(--marca-suave); border-color: var(--marca-borda); }
 .ref-lapis { color: var(--texto-3); display: inline-flex; flex: none; }
-.dieta .ref-adicionar { flex: none; min-height: 40px; }
+.dieta .ref-adicionar { flex: none; }
 .dieta .dieta-nova-refeicao { margin-top: 10px; width: 100%; background: transparent; border-style: dashed; color: var(--texto-2); }
 
 /* ---------- Macros do dia ---------- */
@@ -156,13 +159,13 @@
 
 /* ---------- "Falta" (rodapé fixo e no campo em foco) ---------- */
 .falta-chips { display: grid; grid-template-columns: auto repeat(4, minmax(0, 1fr)); align-items: center; gap: 4px; width: 100%; }
-.falta-chips-titulo { font-size: 0.68rem; font-weight: 750; text-transform: uppercase; letter-spacing: 0.05em; color: var(--texto-3); padding-right: 4px; }
+.falta-chips-titulo { font-size: 0.7rem; font-weight: 750; text-transform: uppercase; letter-spacing: 0.05em; color: var(--texto-3); padding-right: 4px; }
 .falta-cel { display: flex; flex-direction: column; align-items: center; min-width: 0; line-height: 1.2; }
-.falta-rot { font-size: 0.66rem; font-weight: 650; white-space: nowrap; }
+.falta-rot { font-size: 0.7rem; font-weight: 650; white-space: nowrap; }
 .falta-val { font-size: 0.86rem; font-weight: 750; white-space: nowrap; color: var(--texto); }
 .falta-val.estado-bom { color: var(--bom); }
 .falta-val.estado-ruim { color: var(--ruim); }
-@media (max-width: 340px) { .falta-val { font-size: 0.78rem; } .falta-chips-titulo { font-size: 0.6rem; } }
+@media (max-width: 340px) { .falta-val { font-size: 0.78rem; } .falta-chips-titulo { font-size: 0.7rem; } }
 .falta-chips-inline { padding: 6px 8px; border-radius: 10px; background: var(--superficie-2); }
 
 .dieta .saldo-fixo.dieta-saldo {
@@ -195,3 +198,17 @@
 /* Teclado aberto num campo de quantidade: a "Falta" já aparece logo abaixo do campo; a barra fixa
    sai do caminho (em paisagem ela cobria os números do campo) */
 .dieta:has(.falta-chips-inline) .saldo-fixo.dieta-saldo { display: none; }
+
+/* ---------- "Falta" encostada na cápsula de abas ---------- */
+.dieta .rodape-fixo.dieta-rodape, .dieta .saldo-fixo.dieta-saldo {
+  bottom: calc(var(--nav-base) + var(--nav-barra) + 6px);
+  transition: bottom 0.34s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.dieta .alerta.desfazer { transition: bottom 0.34s cubic-bezier(0.2, 0.8, 0.2, 1); }
+body:has(.nav.mini) .dieta .rodape-fixo.dieta-rodape, body:has(.nav.mini) .dieta .saldo-fixo.dieta-saldo {
+  bottom: calc(var(--nav-base) + var(--nav-barra-mini) + 6px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .dieta .rodape-fixo.dieta-rodape, .dieta .saldo-fixo.dieta-saldo, .dieta .alerta.desfazer { transition: none; }
+  body:has(.nav.mini) .dieta .rodape-fixo.dieta-rodape, body:has(.nav.mini) .dieta .saldo-fixo.dieta-saldo { bottom: calc(var(--nav-base) + var(--nav-barra) + 6px); }
+}

@@ -317,7 +317,7 @@ export function CartaoFotos() {
   return (
     <section className="cartao pilha fotos-cartao" style={{ gap: 12 }}>
       <div className="secao-cab" style={{ marginBottom: 0 }}>
-        <IconeChip nome="camera" cor="ciano" />
+        <IconeChip nome="camera" cor="marca" />
         <div>
           <h2>Fotos: antes e depois</h2>
           <div className="secao-sub">

@@ -52,7 +52,7 @@ export function useInsights(): Insight[] {
   }, [diario, treinos, perfil, hoje, composicoes, serie, resumo, sexo, t, metaAguaDe]);
 }
 
-const COR_CATEGORIA: Record<CategoriaInsight, CorChip> = { corpo: 'ciano', habito: 'verde', remedio: 'indigo', treino: 'rosa' };
+const COR_CATEGORIA: Record<CategoriaInsight, CorChip> = { corpo: 'marca', habito: 'marca', remedio: 'marca', treino: 'marca' };
 
 /** Ícone pelo assunto da frase (sono, água, plano…), senão o da categoria. */
 function iconeDe(i: Insight): string {

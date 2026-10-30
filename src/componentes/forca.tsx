@@ -64,7 +64,7 @@ export function CartaoForca({ esforcoSubiu }: { esforcoSubiu?: boolean }) {
       )}
       <section className="cartao">
         <div className="secao-cab">
-          <IconeChip nome="treino" cor="laranja" />
+          <IconeChip nome="treino" cor="marca" />
           <div>
             <h2>Força</h2>
             <div className="secao-sub">1× por semana · exercícios-âncora</div>
@@ -74,7 +74,7 @@ export function CartaoForca({ esforcoSubiu }: { esforcoSubiu?: boolean }) {
           </button>
         </div>
         {forca.length === 0 ? (
-          <EstadoVazio icone="treino" cor="laranja" titulo="Nenhuma semana de força ainda" compacto>
+          <EstadoVazio icone="treino" cor="marca" titulo="Nenhuma semana de força ainda" compacto>
             1× por semana, anote a primeira série válida (perto da falha) de cada exercício-âncora: carga, repetições e RIR (repetições na reserva). O app
             estima o 1RM e acompanha o índice de força, um sinal de massa magra que não depende da fita.
           </EstadoVazio>

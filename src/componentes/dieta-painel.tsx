@@ -27,7 +27,7 @@ export function iconeRefeicao(nome: string, horario: string | null): string {
 
 /** Chip verde da refeição (domínio Dieta). */
 export function ChipRefeicao({ nome, horario }: { nome: string; horario: string | null }) {
-  return <IconeChip nome={iconeRefeicao(nome, horario)} cor="verde" />;
+  return <IconeChip nome={iconeRefeicao(nome, horario)} cor="marca" />;
 }
 
 export function IconeSeta({ aberta }: { aberta?: boolean }) {

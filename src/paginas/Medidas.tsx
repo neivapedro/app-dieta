@@ -220,7 +220,7 @@ export function Medidas() {
 
           <section className="cartao">
             <div className="secao-cab">
-              <IconeChip nome="camadas" cor="ciano" />
+              <IconeChip nome="camadas" cor="marca" />
               <div>
                 <h2>Qualidade da perda</h2>
                 <div className="secao-sub">Quanto da perda foi gordura e quanto foi massa magra</div>
@@ -234,7 +234,7 @@ export function Medidas() {
 
       {composicoes.length === 0 && (
         <section className="cartao">
-          <EstadoVazio icone="grafico" cor="ciano" titulo="Sua evolução aparece aqui">
+          <EstadoVazio icone="grafico" cor="marca" titulo="Sua evolução aparece aqui">
             Com 2 medições, os gráficos de cintura, peso e % de gordura começam a mostrar o caminho.
           </EstadoVazio>
         </section>
@@ -245,7 +245,7 @@ export function Medidas() {
       {composicoes.length > 0 && (
         <section className="cartao med-evolucao" ref={evolucaoRef}>
           <div className="secao-cab">
-            <IconeChip nome="grafico" cor="ciano" />
+            <IconeChip nome="grafico" cor="marca" />
             <h2>Evolução</h2>
             <div className="pilulas-rolagem">
               <Pilulas rotulo="Medida do gráfico" opcoes={OPCOES_GRAFICO} valor={metrica} aoMudar={setMetrica} />
@@ -276,7 +276,7 @@ export function Medidas() {
       {ordenadas.length > 0 && (
         <section className="cartao">
           <div className="secao-cab">
-            <IconeChip nome="historico" cor="ciano" />
+            <IconeChip nome="historico" cor="marca" />
             <div>
               <h2>Histórico</h2>
               <div className="secao-sub">

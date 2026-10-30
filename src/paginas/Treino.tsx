@@ -330,7 +330,7 @@ export function Treino() {
     <>
       <section className="cartao">
         <div className="secao-cab">
-          <IconeChip nome="trofeu" cor="laranja" />
+          <IconeChip nome="trofeu" cor="marca" />
           <div>
             <h2>Placar</h2>
             <div className="secao-sub">Feito ÷ meta até hoje · 1 treino e 1 cardio por dia</div>
@@ -398,7 +398,7 @@ export function Treino() {
 
       <section className="cartao">
         <div className="secao-cab">
-          <IconeChip nome="calendario" cor="laranja" />
+          <IconeChip nome="calendario" cor="marca" />
           <div>
             <h2>{t.placarPos ? 'Calendário' : 'Calendário do projeto'}</h2>
             <div className="secao-sub">Toque num dia para marcar ou corrigir</div>
@@ -416,7 +416,7 @@ export function Treino() {
 
       <section className="cartao">
         <div className="secao-cab">
-          <IconeChip nome="grafico" cor="laranja" />
+          <IconeChip nome="grafico" cor="marca" />
           <div>
             <h2>Aderência × medidas</h2>
             <div className="secao-sub">Por semana</div>
@@ -494,7 +494,7 @@ export function Treino() {
       {t.corridas.length > 1 && (
         <section className="cartao">
           <div className="secao-cab">
-            <IconeChip nome="pulso" cor="laranja" />
+            <IconeChip nome="pulso" cor="marca" />
             <div>
               <h2>Pace</h2>
               <div className="secao-sub">Minutos por km · mais baixo = mais rápido · marcos: recordes</div>
@@ -506,14 +506,14 @@ export function Treino() {
 
       <section className="cartao">
         <div className="secao-cab">
-          <IconeChip nome="relogio" cor="laranja" />
+          <IconeChip nome="relogio" cor="marca" />
           <div>
             <h2>Corridas</h2>
             <div className="secao-sub">{t.corridas.length ? 'Toque numa corrida para editar' : 'Distância, tempo e pace'}</div>
           </div>
         </div>
         {t.corridas.length === 0 ? (
-          <EstadoVazio icone="pulso" cor="laranja" titulo="Nenhuma corrida registrada" compacto>
+          <EstadoVazio icone="pulso" cor="marca" titulo="Nenhuma corrida registrada" compacto>
             Depois de cada corrida, registre a distância e o tempo para acompanhar o pace.
           </EstadoVazio>
         ) : (
@@ -609,7 +609,7 @@ export function Treino() {
     <>
       <section className="cartao">
         <div className="secao-cab">
-          <IconeChip nome="medidas" cor="ciano" />
+          <IconeChip nome="medidas" cor="marca" />
           <div>
             <h2>Medidas: início × {final ? 'final' : 'agora'}</h2>
             <div className="secao-sub">
@@ -781,7 +781,7 @@ export function Treino() {
       {m?.bf && (cinturaMeta !== null || cenarios.length > 0) && (
         <section className="cartao">
           <div className="secao-cab">
-            <IconeChip nome="alvo" cor="ciano" />
+            <IconeChip nome="alvo" cor="marca" />
             <div>
               <h2>Meta de {num(m.bf, 1)}% em cm e kg</h2>
               <div className="secao-sub">O que o % de gordura da meta significa na fita e na balança</div>
@@ -876,7 +876,7 @@ function CartaoEsforco({ treino, cardio }: { treino: ComparacaoEsforco; cardio: 
   return (
     <section className="cartao">
       <div className="secao-cab">
-        <IconeChip nome="raio" cor="laranja" />
+        <IconeChip nome="raio" cor="marca" />
         <div>
           <h2>Esforço percebido</h2>
           <div className="secao-sub">Escala de 1 a 10 · média da semana × 4 semanas antes</div>
