@@ -1049,7 +1049,7 @@ input[type="checkbox"], input[type="radio"], input[type="range"], progress { acc
   -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px);
   box-shadow: 0 1px 0 transparent; transition: box-shadow 0.25s ease;
 }
-.topo.compacto { box-shadow: 0 1px 0 var(--borda-suave); }
+.topo.compacto { box-shadow: 0 1px 0 var(--borda-suave); background: color-mix(in srgb, var(--fundo) 88%, transparent); }
 /* No topo da tela o cabeçalho é transparente (o título grande divide a linha com os botões); o vidro entra ao rolar */
 .topo:not(.compacto) { background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; }
 .topo { transition: box-shadow 0.25s ease, background-color 0.25s ease; }
@@ -1071,7 +1071,7 @@ input[type="checkbox"], input[type="radio"], input[type="range"], progress { acc
 .titulo-grande h1 { font-size: var(--h1-tam); font-weight: 750; letter-spacing: -0.025em; line-height: 1.12; overflow-wrap: anywhere; }
 .titulo-grande .sub { margin-top: 3px; color: var(--texto-2); font-size: 0.95rem; overflow-wrap: anywhere; }
 /* Título na mesma linha dos dois botões do cabeçalho: sobe por baixo do cabeçalho (60 px = 8 + 44 + 8) e deixa a coluna dos botões livre */
-.titulo-grande.na-linha { margin-top: -60px; padding: calc((60px - 1.12 * var(--h1-tam)) / 2) 0 12px; }
+.titulo-grande.na-linha { margin-top: -60px; padding: calc((60px - 1.12 * var(--h1-tam)) / 2) 0 14px; }
 .titulo-grande.na-linha h1 { max-width: calc(100% - 104px); }
 @media (max-width: 360px) { .titulo-grande { --h1-tam: 1.875rem; } .titulo-grande.na-linha h1 { max-width: calc(100% - 100px); } }
 @media (prefers-reduced-motion: reduce) { .titulo-grande > * { transform: none; } }

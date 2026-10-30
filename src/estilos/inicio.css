@@ -17,7 +17,7 @@
 .pagina-inicio .hoje-topo .aneis-hoje-figura { width: 104px; height: 104px; }
 .pagina-inicio .hoje-topo-lado { flex: 1; min-width: 0; }
 /* Legenda dos anéis: uma linha de texto pequeno (sem caixas), cada item ainda abre a ação do anel */
-.pagina-inicio .aneis-pilulas { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 10px; }
+.pagina-inicio .aneis-pilulas { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 0 14px; }
 .pagina-inicio .aneis-pilula {
   min-height: 40px; padding: 0 2px; border: 0; border-radius: 10px; cursor: pointer; background: none; color: var(--texto-2); text-align: left; font: inherit;
   display: inline-flex; align-items: center; gap: 5px; font-size: 0.75rem; transition: background-color 0.2s, transform 0.12s ease;
