@@ -513,7 +513,7 @@ export function Treino() {
           </div>
         </div>
         {t.corridas.length === 0 ? (
-          <EstadoVazio icone="pulso" cor="laranja" titulo="Nenhuma corrida registrada" compacto>
+          <EstadoVazio icone="pulso" cor="marca" titulo="Nenhuma corrida registrada" compacto>
             Depois de cada corrida, registre a distância e o tempo para acompanhar o pace.
           </EstadoVazio>
         ) : (

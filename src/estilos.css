@@ -1168,3 +1168,8 @@ html { scroll-padding-bottom: calc(var(--nav-ocupa) + 8px); }
   }
   .insight-frase { font: -apple-system-subheadline; font-family: inherit; font-weight: 650; line-height: 1.3; letter-spacing: -0.01em; }
 }
+/* Texto grande: "Início / Agora / Meta" quebra de linha em vez de vazar */
+.meta-pes { flex-wrap: wrap; }
+/* Texto grande (Dynamic Type): as grades de números passam a ter menos colunas em vez de vazar */
+.kpis { grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr)); }
+.hero-stats { grid-template-columns: repeat(auto-fit, minmax(min(100%, 4.6rem), 1fr)); }

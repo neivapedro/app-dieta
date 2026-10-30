@@ -234,7 +234,7 @@ export function Medidas() {
 
       {composicoes.length === 0 && (
         <section className="cartao">
-          <EstadoVazio icone="grafico" cor="ciano" titulo="Sua evolução aparece aqui">
+          <EstadoVazio icone="grafico" cor="marca" titulo="Sua evolução aparece aqui">
             Com 2 medições, os gráficos de cintura, peso e % de gordura começam a mostrar o caminho.
           </EstadoVazio>
         </section>

@@ -554,7 +554,7 @@ export function Dieta() {
             </div>
           </div>
           {planoVazio ? (
-            <EstadoVazio icone="prato" cor="verde" titulo="O prato ainda está vazio" compacto>
+            <EstadoVazio icone="prato" cor="marca" titulo="O prato ainda está vazio" compacto>
               Adicione alimentos às refeições e aqui aparece quanto o plano cobre da meta de cada macro.
             </EstadoVazio>
           ) : (

@@ -838,7 +838,7 @@ export function Analise() {
         {anelDe('Diário', a.registro, 'dias')}
       </div>
     ) : (
-      <EstadoVazio icone="calendario" cor="rosa" titulo="Ainda sem aplicação" compacto>
+      <EstadoVazio icone="calendario" cor="marca" titulo="Ainda sem aplicação" compacto>
         A adesão aparece depois da primeira aplicação.
       </EstadoVazio>
     );
@@ -1041,7 +1041,7 @@ export function Analise() {
                 ))}
               </div>
             ) : (
-              <EstadoVazio icone="brilho" cor="rosa" titulo={emCiclo ? 'Os destaques estão a caminho' : 'Nada de diferente neste período'} compacto>
+              <EstadoVazio icone="brilho" cor="marca" titulo={emCiclo ? 'Os destaques estão a caminho' : 'Nada de diferente neste período'} compacto>
                 {emCiclo
                   ? 'Os destaques aparecem conforme você registra medidas, pesos e o Diário. Variações menores que o erro da fita não entram.'
                   : 'Nada que passe do erro da fita neste período. Tente um período maior.'}
@@ -1115,7 +1115,7 @@ export function Analise() {
                 </details>
               </>
             ) : (
-              <EstadoVazio icone="grafico" cor="indigo" titulo="Sem pesos ainda" compacto>
+              <EstadoVazio icone="grafico" cor="marca" titulo="Sem pesos ainda" compacto>
                 Registre pesos no Diário ou nas Medidas para ver o gráfico.
               </EstadoVazio>
             )}

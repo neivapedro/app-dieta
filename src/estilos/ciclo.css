@@ -238,9 +238,9 @@ details.tabela-detalhe.regras > summary { color: var(--texto); font-size: 1rem; 
 .agenda-hero .sem-quebra { white-space: nowrap; }
 
 /* ---------- Barras de dose: aplicadas na cor-assinatura; previstas em preenchimento translúcido ---------- */
-.dose-barra { background: linear-gradient(180deg, var(--marca-m), var(--marca-a)); }
-.dose-barra.feita { background: linear-gradient(180deg, var(--marca-b), var(--marca-m) 55%, var(--marca-a)); }
-.dose-barra.prevista { background: color-mix(in srgb, var(--marca-m) 34%, transparent); }
-.dose-barra.hipotese { background: color-mix(in srgb, var(--marca-m) 16%, transparent); border: 0; }
-.doses-hoje { border-left: 1.5px solid var(--marca-forte); opacity: 0.8; }
-.doses-eixo .doses-eixo-hoje { color: var(--marca-forte); }
+.doses .dose-barra { background: linear-gradient(180deg, var(--marca-m), var(--marca-a)); }
+.doses .dose-barra.feita { background: linear-gradient(180deg, var(--marca-b), var(--marca-m) 55%, var(--marca-a)); }
+.doses .dose-barra.prevista { background: color-mix(in srgb, var(--marca-m) 42%, transparent); }
+.doses .dose-barra.hipotese { background: color-mix(in srgb, var(--marca-m) 26%, transparent); border: 0; }
+.doses .doses-hoje { border-left: 1.5px solid var(--marca-forte); opacity: 0.8; }
+.doses .doses-eixo .doses-eixo-hoje { color: var(--marca-forte); }

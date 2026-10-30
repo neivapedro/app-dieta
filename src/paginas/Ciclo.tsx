@@ -280,7 +280,7 @@ function Agenda() {
           </div>
         </div>
         {realizadas.length === 0 ? (
-          <EstadoVazio icone="ciclo" cor="indigo" titulo="Nenhuma aplicação ainda" compacto>
+          <EstadoVazio icone="ciclo" cor="marca" titulo="Nenhuma aplicação ainda" compacto>
             Toque em Registrar no alto para anotar a primeira.
           </EstadoVazio>
         ) : (
