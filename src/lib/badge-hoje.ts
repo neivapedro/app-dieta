@@ -1,7 +1,7 @@
 // Ícone do app (iPhone, app instalado): número de pendências importantes (dose, medição
 // de segunda, dia de ontem sem registro). Só lê registros, nunca grava.
 import { somarDias } from './datas';
-import { segundaDaSemana } from './treino';
+import { medicaoDoDia } from './medicao-adiada';
 import type { Medida, RegistroDiario, TreinoDia } from './tipos';
 
 export interface EntradaBadge {
@@ -21,6 +21,8 @@ export interface EntradaBadge {
   treinoDia?: TreinoDia | null;
   /** O ciclo já tem o resumo calculado (sem ele a dose fica fora, como no Início) */
   temResumo: boolean;
+  /** Dia para o qual a medição de segunda foi adiada ('Medir amanhã') */
+  medicaoAdiadaPara?: string | null;
 }
 
 /** O dia tem algo anotado no Diário (ou a pesagem da medição). */
@@ -43,8 +45,8 @@ export function pendentesHoje(e: EntradaBadge): number {
   let n = 0;
   const p = e.proxima;
   if (e.temResumo && !e.posRemedio && p && (p.situacao === 'hoje' || p.situacao === 'atrasada') && e.ultimaDose !== e.hoje) n++;
-  const segunda = segundaDaSemana(e.hoje);
-  if (e.hoje === segunda && e.medidas.length && !e.medidas.some((m) => m.data >= segunda)) n++;
+  const medicao = medicaoDoDia({ hoje: e.hoje, medidas: e.medidas, adiadaPara: e.medicaoAdiadaPara ?? null });
+  if (medicao && !medicao.feita) n++;
   const ontem = somarDias(e.hoje, -1);
   if (e.diario.some((r) => r.data < ontem) && !diaComRegistro(e, ontem)) n++;
   return n;

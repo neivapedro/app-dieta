@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useDados } from '../dados/contexto';
 import { useCalculos } from '../dados/useCalculos';
+import { useMedicaoAdiada } from '../dados/useMedicaoAdiada';
 import { useMetaAgua, useTreino } from '../dados/useTreino';
 import { diaDeSintoma, diaVazio, mediaSono7, TEXTO_SINTOMA_AGUA, TEXTO_SONO_BAIXO } from '../lib/bemestar';
 import { progressoTarefas, tarefasDoDia, type ChaveTarefa, type EntradaTarefas, type Tarefa } from '../lib/inicio-hoje';
@@ -9,6 +10,7 @@ import { kg, lerPeso, num, paraTexto } from '../lib/formato';
 import { diaCurto, horaDaFaixaOntem, pendenciasDeOntem, textoPendencias } from '../lib/rotina';
 import { alertasSeguranca, AVISO_SEGURANCA } from '../lib/seguranca';
 import { vibrarLeve } from '../lib/haptico';
+import { medicaoDoDia, podeAdiarMedicao } from '../lib/medicao-adiada';
 import { NIVEIS_NAUSEA, type RegistroDiario } from '../lib/tipos';
 import { rotuloCardio, segundaDaSemana, tipoCardioEfetivo, tocarCardio, type TipoCardio } from '../lib/treino';
 import { BotaoCorrida, FormDiaTreino, MarcadoresDia } from './treino';
@@ -166,8 +168,9 @@ export function useTarefasHoje(dose: EntradaTarefas['dose']) {
   const comTreino = !!t && t.placar.iniciado && !t.placar.encerrado;
   const tr = t?.doDia(hoje) ?? null;
   // Às segundas, para quem já mede: a medição em jejum entra no checklist
-  const segunda = segundaDaSemana(hoje);
-  const medicao = medidas.length && hoje === segunda ? { feita: medidas.some((m) => m.data >= segunda) } : null;
+  const [adiadaPara, adiarMedicao] = useMedicaoAdiada();
+  const medicao = medicaoDoDia({ hoje, medidas, adiadaPara });
+  const medicaoAdiadaPraAmanha = !!adiadaPara && adiadaPara > hoje && segundaDaSemana(adiadaPara) === segundaDaSemana(hoje) && medidas.length > 0 && !medidas.some((m) => m.data >= segundaDaSemana(hoje));
   const comDieta = temPlano(dieta);
   const metaAgua = metaAguaDe(hoje).meta;
   const tarefas = tarefasDoDia({
@@ -180,7 +183,7 @@ export function useTarefasHoje(dose: EntradaTarefas['dose']) {
     comDieta,
     metaAgua,
   });
-  return { tarefas, progresso: progressoTarefas(tarefas), reg, medicaoHoje, comTreino, tr, comDieta, metaAgua };
+  return { tarefas, progresso: progressoTarefas(tarefas), reg, medicaoHoje, comTreino, tr, comDieta, metaAgua, medicaoAdiada: medicao?.adiada ?? false, medicaoAdiadaPraAmanha, adiarMedicao, hoje };
 }
 
 export type TarefasHoje = ReturnType<typeof useTarefasHoje>;
@@ -266,7 +269,7 @@ export function ChecklistHoje({
   const t = useTreino();
   const gravarDia = useGravarDia();
   const gravarTreino = useGravarTreino();
-  const { tarefas, progresso, reg, medicaoHoje, comTreino, tr } = h;
+  const { tarefas, progresso, reg, medicaoHoje, comTreino, tr, medicaoAdiada, medicaoAdiadaPraAmanha, adiarMedicao } = h;
   const [peso, setPeso] = useState(paraTexto(reg?.peso_kg));
   // Campo não mexido acompanha o peso gravado (ex.: peso salvo junto com a aplicação)
   const [mexeuPeso, setMexeuPeso] = useState(false);
@@ -356,13 +359,25 @@ export function ChecklistHoje({
             <Marca chave={x.chave} feito={false} />
             <span className="tarefa-texto">
               <span className="tarefa-rotulo">
-                Medição de segunda
+                {medicaoAdiada ? 'Medição adiada' : 'Medição de segunda'}
                 <span className="tarefa-sub">Em jejum, depois de ir ao banheiro e antes de beber água. Mesma fita e mesmo horário de sempre.</span>
               </span>
             </span>
             <span className="tarefa-acao">Medir</span>
             <span className="oculto-visual"> · a fazer</span>
           </button>
+          {podeAdiarMedicao(hoje) && (
+            <button
+              type="button"
+              className="tarefa-adiar"
+              onClick={() => {
+                vibrarLeve();
+                adiarMedicao(somarDias(hoje, 1));
+              }}
+            >
+              Medir amanhã
+            </button>
+          )}
         </li>
       );
     if (!noite) return linhaBotao(x, aoDiario);
@@ -479,6 +494,14 @@ export function ChecklistHoje({
             )}
           </div>
         </div>
+      )}
+      {medicaoAdiadaPraAmanha && (
+        <p className="tarefa-adiada" role="status">
+          Medição adiada para amanhã.
+          <button type="button" onClick={() => adiarMedicao(null)}>
+            Desfazer
+          </button>
+        </p>
       )}
       <ul className="tarefas">{linhas.map(linha)}</ul>
       {erroPeso && <div className="alerta erro">{erroPeso}</div>}

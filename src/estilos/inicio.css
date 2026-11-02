@@ -371,3 +371,15 @@
 .pagina-inicio .historico-detalhe li.fechado .numero { color: var(--cor-anel); }
 .pagina-inicio .historico-estado { flex: none; min-width: 74px; text-align: right; font-size: 0.75rem; color: var(--texto-3); }
 .pagina-inicio .historico-detalhe li.fechado .historico-estado { color: var(--texto-2); font-weight: 650; }
+
+/* Medir amanhã: adiar a medição de segunda */
+.pagina-inicio .tarefa-adiar {
+  display: block; width: 100%; min-height: 44px; margin-top: 2px; padding: 8px 12px; background: transparent; border: 0; border-top: 1px solid var(--borda-suave);
+  color: var(--marca-forte); font: inherit; font-size: 0.88rem; font-weight: 650; text-align: center; cursor: pointer; border-radius: 0 0 var(--raio-sm) var(--raio-sm);
+}
+.pagina-inicio .tarefa-adiar:focus-visible { outline: 2px solid var(--marca-forte); outline-offset: -2px; }
+.pagina-inicio .tarefa-adiada {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 8px; padding: 8px 12px; min-height: 44px;
+  border-radius: var(--raio-sm); background: var(--superficie-2); color: var(--texto-2); font-size: 0.86rem;
+}
+.pagina-inicio .tarefa-adiada button { background: transparent; border: 0; color: var(--marca-forte); font: inherit; font-weight: 650; min-height: 44px; padding: 0 6px; cursor: pointer; }

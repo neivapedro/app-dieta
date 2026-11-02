@@ -10,6 +10,7 @@ import { useDados } from './dados/contexto';
 import { useCalculos } from './dados/useCalculos';
 import { useProjeto } from './dados/useProjeto';
 import { useTreino } from './dados/useTreino';
+import { useMedicaoAdiada } from './dados/useMedicaoAdiada';
 import { aplicarBadge, pendentesHoje, temBadge } from './lib/badge-hoje';
 import { Analise } from './paginas/Analise';
 import { Ciclo } from './paginas/Ciclo';
@@ -115,6 +116,7 @@ function Avisos() {
 function useBadgeApp() {
   const { diario, medidas, dieta } = useDados();
   const { resumo, hoje } = useCalculos();
+  const [adiada] = useMedicaoAdiada();
   const proj = useProjeto();
   const t = useTreino();
   const comTreino = !!t && t.placar.iniciado && !t.placar.encerrado;
@@ -128,6 +130,7 @@ function useBadgeApp() {
     posRemedio: !!proj?.pos,
     comTreino,
     treinoDia: t?.doDia(hoje) ?? null,
+    medicaoAdiadaPara: adiada,
     temResumo: !!resumo && !!proj,
   });
   const ultimo = useRef(n);
