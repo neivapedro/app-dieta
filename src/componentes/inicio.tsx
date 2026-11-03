@@ -13,6 +13,7 @@ import { vibrarLeve } from '../lib/haptico';
 import { medicaoDoDia, podeAdiarMedicao } from '../lib/medicao-adiada';
 import { NIVEIS_NAUSEA, type RegistroDiario } from '../lib/tipos';
 import { rotuloCardio, segundaDaSemana, tipoCardioEfetivo, tocarCardio, type TipoCardio } from '../lib/treino';
+import { FormDiario } from './formularios';
 import { BotaoCorrida, FormDiaTreino, MarcadoresDia } from './treino';
 import { Campo, Escolhas, IconeChip, type CorChip } from './ui';
 
@@ -116,6 +117,7 @@ export function FaixaOntem() {
   const t = useTreino();
   const gravarDia = useGravarDia();
   const gravarTreino = useGravarTreino();
+  const [abrirOntem, setAbrirOntem] = useState(false);
   if (!horaDaFaixaOntem(new Date().getHours())) return null;
   const ontem = somarDias(hoje, -1);
   // Na virada para a fase pós-remédio, ontem ainda pode ser do placar do projeto
@@ -152,6 +154,14 @@ export function FaixaOntem() {
           <Escolhas opcoes={OPCOES_PLANO} valor={null} aoMudar={(v) => v && gravarDia(p.data, { dieta_seguida: v })} />
         </div>
       )}
+      {(p.agua || p.sono) && (
+        <div className="linha">
+          <button className="botao pequeno" onClick={() => setAbrirOntem(true)}>
+            Completar ontem <span className="mudo">(água, sono…)</span>
+          </button>
+        </div>
+      )}
+      {abrirOntem && <FormDiario dataInicial={p.data} aoFechar={() => setAbrirOntem(false)} />}
     </section>
   );
 }

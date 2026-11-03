@@ -6,6 +6,7 @@ import { useProjeto } from '../dados/useProjeto';
 import { aneisDoDia, anelFechados, historicoAneis, POSICOES, resumoHistorico, type AneisDia, type PosicaoAnel, type SemanaAneis } from '../lib/aneis-dia';
 import { diaCurto } from '../lib/rotina';
 import type { TarefasHoje } from './inicio';
+import { FormDiario } from './formularios';
 import { IconeChip } from './ui';
 
 /** Fica true quando o elemento aparece na tela (sem IntersectionObserver: logo depois de montar). */
@@ -130,6 +131,7 @@ const SEMANAS_PADRAO = 4;
 export function HistoricoAneis({ semanas, semanasPadrao = SEMANAS_PADRAO }: { semanas: SemanaAneis[]; /** Semanas à vista antes do "Ver tudo" */ semanasPadrao?: number }) {
   const [tudo, setTudo] = useState(false);
   const [sel, setSel] = useState<string | null>(null);
+  const [editarDia, setEditarDia] = useState<string | null>(null);
   const { ref, visto } = useVisto<HTMLDivElement>();
   const { hoje } = useDados();
   if (!semanas.length) return null;
@@ -222,8 +224,12 @@ export function HistoricoAneis({ semanas, semanasPadrao = SEMANAS_PADRAO }: { se
               );
             })}
           </ul>
+          <button type="button" className="botao pequeno" style={{ marginTop: 8 }} onClick={() => setEditarDia(celSel.data)}>
+            Editar este dia
+          </button>
         </div>
       )}
+      {editarDia && <FormDiario dataInicial={editarDia} aoFechar={() => setEditarDia(null)} />}
     </section>
   );
 }

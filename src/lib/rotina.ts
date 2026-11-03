@@ -53,6 +53,9 @@ export interface PendenciasOntem {
   cardio: boolean;
   /** "Segui o plano?" sem resposta */
   dieta: boolean;
+  /** Água e sono de ontem sem registro (só para quem já usa o Diário) */
+  agua: boolean;
+  sono: boolean;
   /** Dias seguidos com treino e cardio até anteontem (o que se perde sem marcar ontem) */
   sequencia: number;
 }
@@ -84,10 +87,15 @@ export function pendenciasDeOntem({
   const treino = noPlacar && !t?.treino;
   const cardio = noPlacar && !t?.cardio;
   const dieta = comDieta && (!inicioCiclo || ontem >= inicioCiclo) && !diario.find((r) => r.data === ontem)?.dieta_seguida;
-  if (!treino && !cardio && !dieta) return null;
+  // Quem já usa o Diário (tem registro antes de ontem) e já estava no ciclo ontem
+  const usaDiario = (!inicioCiclo || ontem >= inicioCiclo) && diario.some((r) => r.data < ontem);
+  const regOntem = diario.find((r) => r.data === ontem);
+  const agua = usaDiario && regOntem?.agua_l == null;
+  const sono = usaDiario && regOntem?.sono_h == null;
+  if (!treino && !cardio && !dieta && !agua && !sono) return null;
   // Com ontem incompleto, a sequência do placar visto de ontem é a que vem até anteontem
   const sequencia = noPlacar && (treino || cardio) ? calcularPlacar(treinos, periodoTreino!.inicio, periodoTreino!.fim, ontem).sequenciaAtual : 0;
-  return { data: ontem, treino, cardio, dieta, sequencia };
+  return { data: ontem, treino, cardio, dieta, agua, sono, sequencia };
 }
 
 /** "cardio não marcado · dieta sem resposta" */
@@ -97,5 +105,8 @@ export function textoPendencias(p: PendenciasOntem): string {
   else if (p.treino) partes.push('treino não marcado');
   else if (p.cardio) partes.push('cardio não marcado');
   if (p.dieta) partes.push('dieta sem resposta');
+  if (p.agua && p.sono) partes.push('água e sono sem registro');
+  else if (p.agua) partes.push('água sem registro');
+  else if (p.sono) partes.push('sono sem registro');
   return partes.join(' · ');
 }
