@@ -27,6 +27,20 @@ describe('medicaoDoDia', () => {
   });
 });
 
+describe('medicaoDoDia: depois de medir', () => {
+  it('medida na terça (adiada): aparece como feita só na terça; quarta e quinta não mostram mais', () => {
+    const medidas = [...antes, med('2026-11-03')];
+    expect(medicaoDoDia({ hoje: '2026-11-03', medidas, adiadaPara: '2026-11-03' })).toEqual({ feita: true, adiada: true });
+    expect(medicaoDoDia({ hoje: '2026-11-04', medidas, adiadaPara: '2026-11-03' })).toBeNull();
+    expect(medicaoDoDia({ hoje: '2026-11-05', medidas, adiadaPara: '2026-11-03' })).toBeNull();
+  });
+  it('medida na segunda sem adiar: feita na segunda; terça em diante nada', () => {
+    const medidas = [...antes, med('2026-11-02')];
+    expect(medicaoDoDia({ hoje: '2026-11-02', medidas, adiadaPara: null })).toEqual({ feita: true, adiada: false });
+    expect(medicaoDoDia({ hoje: '2026-11-03', medidas, adiadaPara: null })).toBeNull();
+  });
+});
+
 describe('podeAdiarMedicao', () => {
   it('de segunda a sábado pode; domingo não (o dia seguinte é outra semana)', () => {
     expect(podeAdiarMedicao('2026-11-02')).toBe(true);

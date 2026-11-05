@@ -22,6 +22,8 @@ export function medicaoDoDia(e: { hoje: string; medidas: { data: string }[]; adi
   if (!e.medidas.length) return null;
   const segunda = segundaDaSemana(e.hoje);
   const feita = e.medidas.some((m) => m.data >= segunda);
+  // Já medida: o cartão aparece só no dia em que a medição foi feita, nos seguintes some
+  if (feita && !e.medidas.some((m) => m.data === e.hoje)) return null;
   const adiadaPara = e.adiadaPara && segundaDaSemana(e.adiadaPara) === segunda ? e.adiadaPara : null;
   if (adiadaPara && adiadaPara > e.hoje) return null; // adiada para mais adiante: some por hoje
   if (adiadaPara && adiadaPara <= e.hoje) return { feita, adiada: e.hoje > segunda };

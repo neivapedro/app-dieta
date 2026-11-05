@@ -21,7 +21,7 @@ function Erro({ msg }: { msg: string | null }) {
 // ---------- Aplicação ----------
 
 export function FormAplicacao({ aplicacao, aoFechar, aoSalvar }: { aplicacao?: Aplicacao; aoFechar: () => void; aoSalvar?: (aviso: string) => void }) {
-  const { ciclo, diario, medidas, aplicacoes, gravar } = useDados();
+  const { ciclo, diario, aplicacoes, gravar } = useDados();
   const { resumo, hoje } = useCalculos();
   const [data, setData] = useState(aplicacao?.data ?? hoje);
   // Posição pela data escolhida: uma dose esquecida registrada depois entra no lugar certo
@@ -51,12 +51,9 @@ export function FormAplicacao({ aplicacao, aoFechar, aoSalvar }: { aplicacao?: A
   const [local, setLocal] = useState(aplicacao ? (aplicacao.local ?? '') : resumo!.sugestao_local);
   const [obs, setObs] = useState(aplicacao?.observacoes ?? '');
   const regDia = diario.find((r) => r.data === data);
-  // Dia com medição: o peso do dia é o da medição (não oferece um segundo peso)
-  const medicaoDia = medidas.find((m) => m.data === data && m.peso_kg > 0) ?? null;
-  const [peso, setPeso] = useState(paraTexto(regDia?.peso_kg));
+  // O peso não é pedido aqui: ele vem da medição semanal (segunda-feira)
   const [nausea, setNausea] = useState<number | null>(regDia?.nausea ?? null);
-  // O Diário só é tocado no campo que você mexeu aqui (peso e náusea separados)
-  const [mexeuPeso, setMexeuPeso] = useState(false);
+  // O Diário só é tocado se você mexeu na náusea aqui
   const [mexeuNausea, setMexeuNausea] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [confirmado, setConfirmado] = useState<string | null>(null);
@@ -66,7 +63,6 @@ export function FormAplicacao({ aplicacao, aoFechar, aoSalvar }: { aplicacao?: A
     setData(nova);
     setConfirmado(null);
     const r = diario.find((x) => x.data === nova);
-    if (!mexeuPeso) setPeso(paraTexto(r?.peso_kg));
     if (!mexeuNausea) setNausea(r?.nausea ?? null);
     // Dose ainda não mexida acompanha a dose indicada na nova posição
     if (!mexeuDose && !aplicacao) setDose(paraTexto(doseSugerida(nova)));
@@ -93,8 +89,6 @@ export function FormAplicacao({ aplicacao, aoFechar, aoSalvar }: { aplicacao?: A
     e.preventDefault();
     if (!doseNum || doseNum <= 0) return setErro('Informe a dose em mg.');
     if (!data) return setErro('Informe a data.');
-    const p = lerPeso(peso);
-    if (mexeuPeso && !medicaoDia && p.erro) return setErro(p.erro);
     // Pontos para conferir antes de gravar (segundo toque confirma)
     const avisosDose: string[] = [];
     const avisos: string[] = [];
@@ -138,12 +132,11 @@ export function FormAplicacao({ aplicacao, aoFechar, aoSalvar }: { aplicacao?: A
     if (subir && !aplicacao && data >= subir.data && mesmaDose(doseNum, subir.dose_mg)) {
       gravar({ tipo: 'decisoes', dado: { ciclo_id: ciclo!.id, decisoes: (ciclo!.decisoes ?? []).filter((x) => x.id !== subir.id) } });
     }
-    const mudouPeso = mexeuPeso && !medicaoDia;
-    if (mudouPeso || mexeuNausea) {
+    if (mexeuNausea) {
       const { id: _id, ...resto } = regDia ?? ({} as Partial<RegistroDiario>);
-      const pesoFinal = mudouPeso ? p.valor : regDia?.peso_kg ?? null;
+      const pesoFinal = regDia?.peso_kg ?? null;
       const nauseaFinal = mexeuNausea ? nausea : regDia?.nausea ?? null;
-      // Apagar o peso ou a náusea aqui também apaga do Diário; um dia que fica sem nada é excluído
+      // Apagar a náusea aqui também apaga do Diário; um dia que fica sem nada é excluído
       const final = { ...resto, data, peso_kg: pesoFinal, nausea: nauseaFinal, observacoes: regDia?.observacoes ?? null };
       if (diaVazio(final)) {
         if (regDia) gravar({ tipo: 'excluir', dado: { alvo: 'diario', id: regDia.id, data } });
@@ -229,24 +222,6 @@ export function FormAplicacao({ aplicacao, aoFechar, aoSalvar }: { aplicacao?: A
             ))}
           </select>
         </Campo>
-        {medicaoDia ? (
-          <div className="alerta info">
-            <span>
-              Peso no dia: <b>{kg(medicaoDia.peso_kg)}</b>, da medição de {formatarData(data)}.
-            </span>
-          </div>
-        ) : (
-          <CampoNumero
-            rotulo="Peso no dia"
-            sufixo="kg"
-            valor={peso}
-            aoMudar={(v) => {
-              setPeso(v);
-              setMexeuPeso(true);
-            }}
-            dica={data ? `Opcional, vai para o Diário de ${formatarData(data)}.` : 'Opcional, vai para o Diário.'}
-          />
-        )}
         <Campo rotulo="Náusea no dia (opcional)" grupo>
           <Escolhas
             opcoes={OPCOES_NAUSEA}
