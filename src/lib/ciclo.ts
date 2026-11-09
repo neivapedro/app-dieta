@@ -1,7 +1,6 @@
 import { diferencaDias, formatarData, maiorData, somarDias } from './datas';
 import { serieDePeso, type PontoPeso } from './analise';
 import type { Aplicacao, Ciclo, DecisaoFase, Fase, Medida, RegistroDiario } from './tipos';
-import { LOCAIS_APLICACAO } from './tipos';
 
 const EPS = 1e-9;
 
@@ -534,9 +533,15 @@ function janela(diario: RegistroDiario[], pesosDia: PontoPeso[], de: string, ate
   };
 }
 
+/**
+ * Rodízio do abdome: depois do lado direito vem o esquerdo e vice-versa. Se a última aplicação
+ * foi registrada em outro local (dados antigos), vale o lado oposto dela; sem histórico, começa pelo direito.
+ */
 export function sugerirLocal(ultimo: string | null | undefined): string {
-  const i = LOCAIS_APLICACAO.indexOf((ultimo ?? '') as (typeof LOCAIS_APLICACAO)[number]);
-  return LOCAIS_APLICACAO[(i + 1) % LOCAIS_APLICACAO.length];
+  const u = (ultimo ?? '').toLowerCase();
+  if (u.includes('direit')) return 'Abdome esquerdo';
+  if (u.includes('esquerd')) return 'Abdome direito';
+  return 'Abdome direito';
 }
 
 /** Concentração de uma aplicação: a gravada no registro ou, nas antigas, a do ciclo. */

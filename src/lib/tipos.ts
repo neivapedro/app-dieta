@@ -164,14 +164,8 @@ export interface Medida {
   atipica?: boolean;
 }
 
-export const LOCAIS_APLICACAO = [
-  'Abdome direito',
-  'Abdome esquerdo',
-  'Coxa direita',
-  'Coxa esquerda',
-  'Braço direito',
-  'Braço esquerdo',
-] as const;
+/** Locais oferecidos para aplicar: só o abdome, alternando direito e esquerdo. */
+export const LOCAIS_APLICACAO = ['Abdome direito', 'Abdome esquerdo'] as const;
 
 export const NIVEIS_NAUSEA = ['Nenhuma', 'Leve', 'Moderada', 'Forte'] as const;
 

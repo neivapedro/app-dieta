@@ -149,7 +149,7 @@ describe('Agenda recalculada pela última aplicação', () => {
   it('alerta aplicação duplicada e sugere rodízio do local', () => {
     const r = calcularCiclo(ciclo, [ap('2026-10-08', 1.25, 'Abdome direito'), ap('2026-10-09', 1.25, 'Abdome esquerdo')], [], '2026-10-10');
     expect(r.alertas.some((a) => a.includes('duplicado'))).toBe(true);
-    expect(r.sugestao_local).toBe('Coxa direita');
+    expect(r.sugestao_local).toBe('Abdome direito');
   });
 
   it('encerra quando o saldo acaba', () => {
@@ -291,5 +291,16 @@ describe('Sinal das variações', () => {
     expect(sinal(-0.004, 2, ' kg')).toBe('0,00 kg');
     expect(sinal(-0.006, 2)).toBe('− 0,01');
     expect(sinal(0.25, 1)).toBe('+ 0,3');
+  });
+});
+
+describe('rodízio do abdome', () => {
+  it('direito → esquerdo → direito; sem histórico começa pelo direito; local antigo vale o lado oposto', async () => {
+    const { sugerirLocal } = await import('./ciclo');
+    expect(sugerirLocal('Abdome direito')).toBe('Abdome esquerdo');
+    expect(sugerirLocal('Abdome esquerdo')).toBe('Abdome direito');
+    expect(sugerirLocal(null)).toBe('Abdome direito');
+    expect(sugerirLocal('Coxa esquerda')).toBe('Abdome direito');
+    expect(sugerirLocal('Braço direito')).toBe('Abdome esquerdo');
   });
 });
