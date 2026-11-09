@@ -214,16 +214,25 @@ export function FormAplicacao({ aplicacao, aoFechar, aoSalvar }: { aplicacao?: A
                 : undefined
           }
         />
-        <Campo rotulo="Local da aplicação" dica={!aplicacao ? 'Alterna entre abdome direito e esquerdo: o lado oposto ao da última aplicação.' : undefined}>
-          <select value={local} onChange={(e) => setLocal(e.target.value)}>
-            <option value="">—</option>
-            {LOCAIS_APLICACAO.map((l) => (
-              <option key={l}>{l}</option>
-            ))}
-            {/* Aplicação antiga em outro local: continua aparecendo ao editar */}
-            {local && !(LOCAIS_APLICACAO as readonly string[]).includes(local) && <option key={local}>{local}</option>}
-          </select>
-        </Campo>
+        {aplicacao ? (
+          <Campo rotulo="Local da aplicação">
+            <select value={local} onChange={(e) => setLocal(e.target.value)}>
+              <option value="">—</option>
+              {LOCAIS_APLICACAO.map((l) => (
+                <option key={l}>{l}</option>
+              ))}
+              {/* Aplicação antiga em outro local: continua aparecendo ao editar */}
+              {local && !(LOCAIS_APLICACAO as readonly string[]).includes(local) && <option key={local}>{local}</option>}
+            </select>
+          </Campo>
+        ) : (
+          // Aplicação nova: o lado é sempre o oposto ao da última (rodízio do abdome), sem escolha
+          <div className="alerta info">
+            <span>
+              Local: <b>{local}</b>. Alterna a cada aplicação.
+            </span>
+          </div>
+        )}
         <Campo rotulo="Náusea no dia (opcional)" grupo>
           <Escolhas
             opcoes={OPCOES_NAUSEA}
